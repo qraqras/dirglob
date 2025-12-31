@@ -1,0 +1,21 @@
+{
+    "name": "DirGlob Dev Container",
+    "build": {
+        "dockerfile": "Dockerfile"
+    },
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "C_Cpp.default.cStandard": "c99",
+                "clangd.arguments": [
+                    "--compile-commands-dir=build"
+                ]
+            },
+            "extensions": [
+                "ms-vscode.cpptools",
+                "ms-vscode.cmake-tools"
+            ],
+        }
+    },
+    "postCreateCommand": "bash -lc 'if [ -f Makefile ]; then make || true; fi'"
+}
