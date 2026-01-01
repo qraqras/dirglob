@@ -8,6 +8,7 @@ RUN apt update && apt install -y --no-install-recommends \
     ca-certificates \
     git \
     python3 \
+    ruby \
     gcc \
     make \
     cmake \
