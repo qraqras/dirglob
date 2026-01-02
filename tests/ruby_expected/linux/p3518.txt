@@ -1,0 +1,6 @@
+./.hidden
+./.dir
+./.file.txt
+.dir/.hidden
+dir/.hidden
+dir/.file.txt

@@ -1,0 +1,2 @@
+./test.c
+dir/test.c

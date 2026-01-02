@@ -1,0 +1,7 @@
+./a
+./b
+./c
+a/b
+a/c
+dir/a
+dir/b

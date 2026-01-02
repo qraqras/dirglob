@@ -109,76 +109,172 @@ tests/ruby_expected/
 
 ### テストデータファイル
 
-#### patterns.txt
-TSV 形式。カラム定義:
-
 **テスト方針**:
-1. ディレクトリパターンとファイル名パターンを組み合わせて1つの完全なパスパターンを生成する
-2. ディレクトリパターン同士を組み合わせてネストパスパターンを生成する
-3. パス区切り文字はプラットフォームに応じて変更する（Windows: `\`, POSIX: `/`）
+1. ディレクトリパターン、ファイルパターン、オプションを独立した3つのTSVファイルで管理
+2. 生成時に `dir × file × options` の3次元マトリックスを作成
+3. パス区切り文字はTSVには含めず、生成時にプラットフォームに応じて注入
+4. ディレクトリ同士の組み合わせ（ネスト）も同様に生成時に処理
 
-これにより、以下を体系的にテストする：
-- プラットフォーム固有のパス区切り文字の処理
-- `FNM_PATHNAME` フラグの影響（ワイルドカードが区切り文字をまたぐか）
-- ディレクトリトラバースとファイル名マッチングの独立性
-- ディレクトリのネスト構造とパターンの再帰的なマッチング
+これにより、以下を実現：
+- **プラットフォーム中立**: TSVは `/` や `\` を含まない中立的な形式
+- **保守性**: 新パターン追加時、1ファイルのみ編集で全組み合わせに反映
+- **柔軟性**: dir×file、dir×dir、file単体など組み合わせ方を制御可能
+- **可読性**: 各ファイルの役割が明確
 
-##### ディレクトリパターン (6種類)
+#### directories.txt
+TSV 形式。ディレクトリ部分のパターンを定義。
+
+**カラム定義**:
 ```
-種類            バリエーション                        説明
-1. リテラル      dir, .dir, dir/sub, .dir/sub         固定ディレクトリ名、ドット付き、ネスト
-2. *             *, .*, */sub, .*/sub, dir/*          ワイルドカード、ドット付き
-3. ?             ?, .?, ??/sub, ?ir                   単一文字マッチ、ドット付き
-4. []            [abc], .[abc], [a-z], [!abc]         文字クラス、範囲、否定、ドット付き
-5. {}            {a,b}, .{a,b}, {a,b}/sub             ブレース展開、ドット付き、ネスト
-6. **            **, **/dir, dir/**, **/sub/dir       Globstar、再帰ディレクトリ
+id  pattern    type       can_nest  description
 ```
 
-##### ファイル名パターン (5種類)
-```
-種類            バリエーション                        説明
-1. リテラル      file.txt, .file.txt, .hidden         固定ファイル名、ドットファイル
-2. *             *.txt, .*.txt, file.*, *             ワイルドカード、ドット付き
-3. ?             ?.txt, file.???, ???.txt             単一文字マッチ
-4. []            [abc].txt, [a-z]*.txt, [!.]*.txt     文字クラス、範囲、否定
-5. {}            {a,b}.txt, file.{txt,md}             ブレース展開、拡張子選択
-```
+**フィールド説明**:
+- `id`: ディレクトリパターンの一意な識別子（数値）
+- `pattern`: ディレクトリパターン（**区切り文字なし**）
+- `type`: パターン種別（`literal`, `star`, `question`, `bracket`, `brace`, `globstar`）
+- `can_nest`: ネスト可能か（`0`=不可、`1`=可）。dir×dir組み合わせ生成の制御用
+- `description`: パターンの説明
 
-##### 組み合わせマトリックス
-
-**基本組み合わせ**: 6種類(ディレクトリ) × 5種類(ファイル名) = **30パターン**
-
-**各セルの代表例**:
+**パターン種別 (6種類)**:
 ```
-              リテラル      *           ?           []          {}
-リテラル      dir/file.txt  dir/*.txt   dir/?.txt   dir/[a].txt dir/{a,b}.txt
-*             */file.txt    */*.txt     */?.txt     */[a].txt   */{a,b}.txt
-?             ?/file.txt    ?/*.txt     ?/?.txt     ?/[a].txt   ?/{a,b}.txt
-[]            [a]/file.txt  [a]/*.txt   [a]/?.txt   [a]/[b].txt [a]/{x,y}.txt
-{}            {a,b}/file.txt {a,b}/*.txt {a,b}/?.txt {a,b}/[x].txt {a,b}/{x,y}.txt
-**            **/file.txt   **/*.txt    **/?.txt    **/[a].txt  **/{a,b}.txt
+種類            バリエーション例                      説明                        can_nest
+1. literal      dir, .dir, sub                       固定ディレクトリ名           1
+2. star         *, .*, subdir                        ワイルドカード               1
+3. question     ?, .?, d?r                           単一文字マッチ               1
+4. bracket      [abc], .[abc], [a-z], [!abc]         文字クラス、範囲、否定       1
+5. brace        {a,b}, .{a,b}                        ブレース展開                 1
+6. globstar     **                                   再帰ディレクトリ             0
 ```
 
-**バリエーション展開**:
-各セルで以下のバリエーションをテスト:
-- ドットファイル/ドットディレクトリの組み合わせ (4パターン): `dir/file`, `.dir/file`, `dir/.file`, `.dir/.file`
-- ネスト深度: 単一、2階層、3階層
-- 範囲指定: `[a-z]`, `[0-9]`, `[a-zA-Z0-9]`
-- 否定パターン: `[!abc]`, `[^abc]`
-- ブレースネスト: `{a,{b,c}}`
+**TSV例**:
+```
+id  pattern  type      can_nest  description
+1       literal   1         空（ファイル単体パターン用）
+2   dir     literal   1         固定ディレクトリ名
+3   .dir    literal   1         ドット付きディレクトリ
+4   sub     literal   1         サブディレクトリ名
+5   *       star      1         任意のディレクトリ
+6   .*      star      1         ドット付き任意ディレクトリ
+7   ?       question  1         1文字ディレクトリ
+8   .?      question  1         ドット+1文字
+9   d?r     question  1         部分ワイルドカード
+10  [abc]   bracket   1         文字クラス
+11  .[abc]  bracket   1         ドット+文字クラス
+12  [a-z]   bracket   1         範囲指定
+13  [!abc]  bracket   1         否定文字クラス
+14  {a,b}   brace     1         ブレース展開
+15  .{a,b}  brace     1         ドット+ブレース
+16  **      globstar  0         再帰ディレクトリ（ネスト不可）
+```
 
-**推定パターン数**:
-- 基本マトリックス（ディレクトリ×ファイル名）: 6 × 5 = 30パターン
-- ディレクトリ×ディレクトリ（ネスト）: 6 × 6 = 36パターン
-- ドット組み合わせ: (30 + 36) × 4 = 264パターン
-- 追加バリエーション（範囲、否定、ネスト等）: 約150パターン
-- エッジケース・特殊パターン: 約50パターン
-- **合計**: 約500パターン（プラットフォーム別）
+**推定レコード数**: 約30〜40パターン（バリエーション含む）
 
-**プラットフォーム別の扱い**:
-- Linux/POSIX: パス区切り `/` で生成（約500パターン）
-- Windows: パス区切り `\` で生成（約500パターン）
-- 共通パターン: 区切り文字を含まないパターン（約100パターン）
+#### files.txt
+TSV 形式。ファイル名部分のパターンを定義。
+
+**カラム定義**:
+```
+id  pattern      type       description
+```
+
+**フィールド説明**:
+- `id`: ファイルパターンの一意な識別子（数値）
+- `pattern`: ファイル名パターン
+- `type`: パターン種別（`literal`, `star`, `question`, `bracket`, `brace`）
+- `description`: パターンの説明
+
+**パターン種別 (5種類)**:
+```
+種類            バリエーション例                      説明
+1. literal      file.txt, .file.txt, .hidden         固定ファイル名、ドットファイル
+2. star         *.txt, .*.txt, file.*, *             ワイルドカード、拡張子
+3. question     ?.txt, file.???, ???.txt             単一文字マッチ
+4. bracket      [abc].txt, [a-z]*.txt, [!.]*.txt     文字クラス、範囲、否定
+5. brace        {a,b}.txt, file.{txt,md}             ブレース展開、拡張子選択
+```
+
+**TSV例**:
+```
+id  pattern      type      description
+1   file.txt     literal   固定ファイル名
+2   .file.txt    literal   ドットファイル
+3   .hidden      literal   拡張子なしドットファイル
+4   *.txt        star      txt拡張子
+5   .*.txt       star      ドット+拡張子
+6   file.*       star      ファイル名固定+任意拡張子
+7   *            star      任意のファイル
+8   ?.txt        question  1文字+拡張子
+9   file.???     question  3文字拡張子
+10  ???.txt      question  3文字ファイル名
+11  [abc].txt    bracket   文字クラス
+12  [a-z]*.txt   bracket   範囲+ワイルドカード
+13  [!.]*.txt    bracket   否定+ワイルドカード
+14  {a,b}.txt    brace     ブレース展開
+15  file.{txt,md} brace    拡張子選択
+```
+
+**推定レコード数**: 約20〜30パターン（バリエーション含む）
+
+#### 組み合わせ戦略
+
+**3次元マトリックス**: `directories × files × options`
+
+**1. ファイル単体パターン** (dir.id=1, pattern="")
+- `"" + file` → ファイル名のみのパターン
+- 例: `*.txt`, `file.??`, `[abc].txt`
+- 件数: 約30パターン × 16オプション = **480テストケース**
+
+**2. ディレクトリ×ファイル組み合わせ** (dir.id≥2, can_nest=1)
+- `dir + sep + file` → 完全なパスパターン
+- 例: `dir/file.txt`, `*/*.txt`, `[a-z]/{x,y}.md` (sep=`/` or `\`)
+- 件数: 約30 dir × 30 file = 900組み合わせ
+  - Linux: 900パターン × 16オプション = **14,400テストケース**
+  - Windows: 900パターン × 16オプション = **14,400テストケース**
+
+**3. ディレクトリ×ディレクトリ（ネスト）** (dir1.can_nest=1, dir2.can_nest=1)
+- `dir1 + sep + dir2` → ネストディレクトリパターン
+- 例: `dir/sub`, `*/[abc]`, `{a,b}/*` (sep=`/` or `\`)
+- 件数: 約30 dir × 30 dir = 900組み合わせ
+  - Linux: 900パターン × 16オプション = **14,400テストケース**
+  - Windows: 900パターン × 16オプション = **14,400テストケース**
+
+**4. Globstar特殊処理** (dir.type=globstar)
+- `**` は他のディレクトリと組み合わせ不可（can_nest=0）
+- ファイルとのみ組み合わせ: `**/file`, `**/*.txt`
+- 件数: 1 globstar × 30 file = 30パターン
+  - プラットフォーム共通: 30パターン × 16オプション = **480テストケース**
+
+**5. 複雑な組み合わせ・エッジケース**
+- 3階層以上のネスト: `dir1/dir2/file`
+- 複数パターン（カンマ区切り）: `*.txt,*.md`
+- エスケープ・不正パターン
+- 件数: 約100パターン × 16オプション = **1,600テストケース**
+
+**推定総テストケース数**:
+```
+カテゴリ                     Linux    Windows  共通     合計
+─────────────────────────────────────────────────────
+ファイル単体                  480      -        -        480
+dir×file                     14,400   14,400   -        28,800
+dir×dir                      14,400   14,400   -        28,800
+Globstar                     -        -        480      480
+複雑・エッジケース            800      800      -        1,600
+─────────────────────────────────────────────────────
+合計                         30,080   29,600   480      60,160
+```
+
+**実運用時の削減戦略**:
+上記は理論上の最大値。実際には以下で削減：
+1. **サンプリング**: 各type組み合わせから代表的なパターンのみ選択
+2. **優先度付け**: 高頻度・重要な組み合わせを優先
+3. **段階的拡張**: 初期は基本パターン、後から網羅性を追加
+
+**初期実装の推奨規模**:
+- dir: 15パターン（各typeから2-3個）
+- file: 15パターン（各typeから3個）
+- 組み合わせ: 15×15 + 15 (file単体) = 240パターン/プラットフォーム
+- テストケース: 240 × 2 (platforms) × 16 (options) ≈ **7,680ケース**
 
 ##### 特殊パターン・エッジケース
 基本マトリックス以外の重要なテストケース:
@@ -205,99 +301,31 @@ TSV 形式。カラム定義:
 - `[abc` (閉じていない)
 - `{a,b` (閉じていない)
 
-##### 生成ルール
+#### 特殊パターン・エッジケース
+基本マトリックス以外の重要なテストケース（手動で追加）:
 
-`tests/scripts/gen_matrix.py` での実装:
+**空・特殊パス**:
+- 空パターン: `""`
+- カレント: `.`, `./file.txt`, `./*`
+- 親ディレクトリ: `..`, `../file.txt`, `../*`
 
-```python
-# ディレクトリパターンの定義
-dir_patterns = {
-    'literal': ['dir', '.dir', 'dir/sub', '.dir/sub', ''],
-    'star': ['*', '.*', '*/sub', '.*/sub', 'dir/*'],
-    'question': ['?', '.?', '??/sub', '?ir'],
-    'bracket': ['[abc]', '.[abc]', '[a-z]', '[!abc]'],
-    'brace': ['{a,b}', '.{a,b}', '{a,b}/sub'],
-    'globstar': ['**', '**/dir', 'dir/**', '**/sub/dir']
-}
+**複数パターン** (カンマ区切り):
+- `*.txt,*.md`
+- `dir/*.txt,sub/*.md`
+- `**/*.rb,**/*.py`
 
-# ファイル名パターンの定義
-file_patterns = {
-    'literal': ['file.txt', '.file.txt', '.hidden'],
-    'star': ['*.txt', '.*.txt', 'file.*', '*'],
-    'question': ['?.txt', 'file.???', '???.txt'],
-    'bracket': ['[abc].txt', '[a-z]*.txt', '[!.]*.txt'],
-    'brace': ['{a,b}.txt', 'file.{txt,md}']
-}
+**エスケープシーケンス**:
+- `\*.txt`, `\?.txt`, `\[abc\].txt`
+- `file\ name.txt` (スペース)
 
-# パス結合（プラットフォーム依存）
-import platform
+**不正パターン** (エラーハンドリング):
+- `[abc` (閉じていない)
+- `{a,b` (閉じていない)
 
-def get_separator():
-    """プラットフォームに応じたパス区切り文字を返す"""
-    return '\\' if platform.system() == 'Windows' else '/'
-
-def combine(part1, part2):
-    """2つのパス要素を結合する（ディレクトリ×ディレクトリ、ディレクトリ×ファイル両対応）"""
-    sep = get_separator()
-    if part1 == '':
-        return part2
-    elif part1.endswith(sep) or part1.endswith('/'):
-        # 既に区切り文字で終わっている場合はそのまま連結
-        return part1 + part2
-    else:
-        # プラットフォーム固有の区切り文字で結合
-        return part1 + sep + part2
-
-# 全組み合わせを生成
-patterns = []
-
-# 1. ディレクトリ × ファイル名の組み合わせ
-for dir_type, dir_list in dir_patterns.items():
-    for file_type, file_list in file_patterns.items():
-        for d in dir_list:
-            for f in file_list:
-                patterns.append({
-                    'pattern': combine(d, f),
-                    'dir_type': dir_type,
-                    'file_type': file_type,
-                    'component1': d,
-                    'component2': f,
-                    'combination': 'dir_file'
-                })
-
-# 2. ディレクトリ × ディレクトリの組み合わせ（ネストパス）
-for dir_type1, dir_list1 in dir_patterns.items():
-    for dir_type2, dir_list2 in dir_patterns.items():
-        for d1 in dir_list1:
-            for d2 in dir_list2:
-                if d1 and d2:  # 空パターンは除外
-                    patterns.append({
-                        'pattern': combine(d1, d2),
-                        'dir_type': dir_type1,
-                        'file_type': dir_type2,  # ディレクトリだが列名は維持
-                        'component1': d1,
-                        'component2': d2,
-                        'combination': 'dir_dir'
-                    })
-```
-
-**最終TSVフォーマット**:
-```
-id  pattern                 dir_type    file_type   description
-1   file.txt                literal     literal     リテラル×リテラル
-2   .file.txt               literal     literal     リテラル×ドットファイル
-3   dir/file.txt            literal     literal     ディレクトリ×リテラル
-4   .dir/file.txt           literal     literal     ドットディレクトリ×リテラル
-5   dir/.file.txt           literal     literal     ディレクトリ×ドットファイル
-...
-250 **/{a,b}[0-9].txt       combined    combined    複雑な組み合わせ
-```
-
-**テストケース総数**:
-- Linux/POSIX: 約500パターン × 16オプション = **8,000テストケース**
-- Windows: 約500パターン × 16オプション = **8,000テストケース**
-- 共通: 約100パターン × 16オプション = **1,600テストケース**
-- **合計**: 約**17,600テストケース**（プラットフォーム依存を含む）
+**3階層以上のネスト**:
+- `dir1/dir2/file.txt`
+- `*/*/file.txt`
+- `**/sub/dir/*.txt`
 
 #### options.txt
 TSV 形式。カラム定義:

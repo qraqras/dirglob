@@ -1,0 +1,5 @@
+dir/file.txt
+dir/a
+dir/sub
+dir/test.c
+dir/b

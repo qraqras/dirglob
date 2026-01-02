@@ -1,0 +1,6 @@
+./a.txt
+./b.txt
+./c.txt
+./z.txt
+a/a.txt
+b/b.txt

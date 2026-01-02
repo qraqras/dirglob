@@ -1,0 +1,8 @@
+./a.txt
+./abc.txt
+./b.txt
+./c.txt
+./file.txt
+./xyz.txt
+./z.txt
+.dir/file.txt

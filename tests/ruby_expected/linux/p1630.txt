@@ -1,0 +1,10 @@
+./file.txt
+./xyz.txt
+./abc.txt
+./z.txt
+./c.txt
+./b.txt
+./a.txt
+./.file.txt
+a/a.txt
+b/b.txt

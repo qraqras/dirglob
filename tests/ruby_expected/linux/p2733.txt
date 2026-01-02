@@ -1,0 +1,3 @@
+dir/sub/test.c
+dir/test.c
+test.c

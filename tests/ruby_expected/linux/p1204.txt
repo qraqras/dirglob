@@ -1,0 +1,4 @@
+./file.c
+./file.md
+./file.txt
+.dir/file.txt

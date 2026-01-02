@@ -1,0 +1,5 @@
+./file.txt
+./file.c
+.dir/file.txt
+sub/file.txt
+dir/file.txt

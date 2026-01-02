@@ -1,0 +1,4 @@
+./file.txt
+.dir/file.txt
+dir/file.txt
+sub/file.txt

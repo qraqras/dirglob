@@ -1,0 +1,4 @@
+./.dir
+./.file.txt
+./.hidden
+.dir/.hidden

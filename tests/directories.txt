@@ -1,0 +1,14 @@
+id	pattern	type	can_nest	description
+1		literal	1	空（ファイル単体パターン用）
+2	dir	literal	1	固定ディレクトリ名
+3	.dir	literal	1	ドット付きディレクトリ
+4	sub	literal	1	サブディレクトリ名
+5	*	star	1	任意のディレクトリ
+6	.*	star	1	ドット付き任意ディレクトリ
+7	d?r	question	1	部分ワイルドカード
+8	?	question	1	1文字ディレクトリ
+9	[abc]	bracket	1	文字クラス
+10	[a-z]	bracket	1	範囲指定
+11	{a,b}	brace	1	ブレース展開
+12	{x,y,z}	brace	1	3要素ブレース
+13	**	globstar	0	再帰ディレクトリ（ネスト不可）

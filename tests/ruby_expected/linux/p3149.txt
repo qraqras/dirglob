@@ -1,0 +1,4 @@
+.dir/.
+.dir/.hidden
+.dir/file.txt
+.dir/sub

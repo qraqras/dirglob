@@ -1,0 +1,7 @@
+file.txt
+a/b/file.txt
+sub/file.txt
+dir/file.txt
+dir/sub/file.txt
+file.c
+x/y/file.txt
