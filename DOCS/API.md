@@ -14,10 +14,11 @@
  * flags: ビットフラグ（下記参照）
  * base: 相対検索の基準ディレクトリ（NULL でカレント）
  * sort: `1` = Ruby の sort=true 相当（既定の振る舞いを再現）、`0` = ソートしない
- * count: 出力要素数（返却配列の長さ）
- * 戻り値: NULL終端ではなく size を使うための char**（NULL はエラー）
+ * out: 出力パラメータ（マッチしたパスの配列へのポインタ）
+ * count: 出力パラメータ（返却配列の長さ）
+ * 戻り値: true = 成功、false = エラー
  */
-char **dirglob(const char **patterns, size_t npatterns, unsigned flags, const char *base, int sort, size_t *count);
+bool dirglob(const char **patterns, size_t npatterns, unsigned flags, const char *base, int sort, char ***out, size_t *count);
 
 /* 結果の解放 */
 void dirglob_free(char **list, size_t count);
@@ -59,11 +60,11 @@ const char *dirglob_version(void);
 
 int main(void) {
     const char *patterns[] = {"a/**/*.rb", "**/*.txt"};
+    char **res = NULL;
     size_t count = 0;
     unsigned flags = DIRGLOB_F_DOTMATCH; /* 例 */
 
-    char **res = dirglob(patterns, 2, flags, NULL, 1, &count);
-    if (!res) {
+    if (!dirglob(patterns, 2, flags, NULL, 1, &res, &count)) {
         perror("dirglob");
         return 1;
     }
@@ -87,8 +88,9 @@ int main(void) {
 ---
 
 ## エラー処理とメモリ
-- `dirglob` がエラー時には NULL を返します。より詳細なエラー情報が必要な場合は `errno` を参照して下さい。
-- 返却される配列と各文字列はライブラリ側の `malloc` により割り当てられるため、呼び出し側は `dirglob_free` を必ず呼んで解放してください。
+- `dirglob` がエラー時には `false` を返します。より詳細なエラー情報が必要な場合は `errno` を参照して下さい。
+- 成功時（`true` 返却時）、`out` に設定される配列と各文字列はライブラリ側の `malloc` により割り当てられるため、呼び出し側は `dirglob_free` を必ず呼んで解放してください。
+- エラー時（`false` 返却時）は `out` と `count` の内容は未定義です。メモリ解放は不要です。
 
 ---
 
