@@ -32,7 +32,7 @@ void assert_matches_expected(char **c_result, size_t c_count, const char *expect
  * @param expected_count 期待される結果数
  */
 void assert_result_equals(char **actual, size_t actual_count,
-                         const char **expected, size_t expected_count);
+                          const char **expected, size_t expected_count);
 
 /**
  * テストフィクスチャをセットアップ

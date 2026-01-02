@@ -48,15 +48,15 @@ def generate_option_name(flags, base, sort):
 def generate_matrix(test_dir):
     """3次元マトリックス生成"""
     platform_name, sep = get_platform()
-    
+
     # TSVファイル読み込み
     directories = load_tsv(test_dir / 'directories.txt')
     files = load_tsv(test_dir / 'files.txt')
     options = load_tsv(test_dir / 'options.txt')
-    
+
     test_cases = []
     case_id = 1
-    
+
     # 1. ファイル単体パターン (dir.pattern == '')
     empty_dir = next(d for d in directories if d['pattern'] == '')
     for file in files:
@@ -76,7 +76,7 @@ def generate_matrix(test_dir):
                 'combination_type': 'file_only'
             })
             case_id += 1
-    
+
     # 2. dir×file組み合わせ (dir.pattern != '', can_nest=1)
     for directory in directories:
         if directory['pattern'] == '':
@@ -102,9 +102,9 @@ def generate_matrix(test_dir):
                     'combination_type': 'dir_file'
                 })
                 case_id += 1
-    
+
     # 3. dir×dir組み合わせ (can_nest=1同士)
-    nestable_dirs = [d for d in directories 
+    nestable_dirs = [d for d in directories
                      if d['pattern'] != '' and d.get('can_nest') == '1']
     for dir1 in nestable_dirs:
         for dir2 in nestable_dirs:
@@ -128,7 +128,7 @@ def generate_matrix(test_dir):
                     'combination_type': 'dir_dir'
                 })
                 case_id += 1
-    
+
     return test_cases, platform_name
 
 
@@ -139,22 +139,22 @@ def main():
     test_dir = script_dir.parent
     build_dir = test_dir.parent / 'build'
     build_dir.mkdir(exist_ok=True)
-    
+
     # マトリックス生成
     print('Generating test matrix...')
     test_cases, platform_name = generate_matrix(test_dir)
-    
+
     # JSON出力
     output_file = build_dir / 'test_matrix.json'
     with open(output_file, 'w', encoding='utf-8') as f:
         json.dump(test_cases, f, indent=2, ensure_ascii=False)
-    
+
     # 統計情報
     by_type = {}
     for case in test_cases:
         ctype = case['combination_type']
         by_type[ctype] = by_type.get(ctype, 0) + 1
-    
+
     print(f'\n=== Test Matrix Generated ===')
     print(f'Platform: {platform_name}')
     print(f'Total test cases: {len(test_cases)}')
@@ -162,7 +162,7 @@ def main():
     for ctype, count in sorted(by_type.items()):
         print(f'  {ctype:12s}: {count:5d} cases')
     print(f'\nOutput: {output_file}')
-    
+
     return 0
 
 
