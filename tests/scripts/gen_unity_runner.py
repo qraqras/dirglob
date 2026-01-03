@@ -22,6 +22,13 @@ for name in sorted(os.listdir(tests_dir)):
         continue
     c_files.append(os.path.join(tests_dir, name))
 
+# Also scan generated test files if they exist
+generated_dir = os.path.join(os.path.dirname(out_file), 'generated')
+if os.path.isdir(generated_dir):
+    for name in sorted(os.listdir(generated_dir)):
+        if name.endswith('.c'):
+            c_files.append(os.path.join(generated_dir, name))
+
 pattern = re.compile(r"^\s*(?:void|int)\s+(test_[A-Za-z0-9_]+)\s*\(", re.MULTILINE)
 static_pat = re.compile(r"^\s*static\s+(?:void|int)\s+(test_[A-Za-z0-9_]+)\s*\(", re.MULTILINE)
 

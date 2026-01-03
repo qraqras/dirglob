@@ -28,8 +28,22 @@ else()
   set(UNITY_TARGET unity)
 endif()
 
-# Gather test source files
+# Gather test source files (manual test files only, not generated)
 file(GLOB TEST_IMPLS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CONFIGURE_DEPENDS test_*.c)
+list(FILTER TEST_IMPLS EXCLUDE REGEX "^test_parity_.*\\.c$")
+
+# Add test helpers
+list(APPEND TEST_IMPLS test_helpers.c)
+
+# Add generated parity tests if they exist
+set(GENERATED_COMMON_TEST ${CMAKE_CURRENT_BINARY_DIR}/generated/test_parity_common.c)
+set(GENERATED_LINUX_TEST ${CMAKE_CURRENT_BINARY_DIR}/generated/test_parity_linux.c)
+if(EXISTS ${GENERATED_COMMON_TEST})
+  list(APPEND TEST_IMPLS ${GENERATED_COMMON_TEST})
+endif()
+if(UNIX AND NOT APPLE AND EXISTS ${GENERATED_LINUX_TEST})
+  list(APPEND TEST_IMPLS ${GENERATED_LINUX_TEST})
+endif()
 
 set(GENERATED_RUNNER ${CMAKE_CURRENT_BINARY_DIR}/test_runner_generated.c)
 find_program(PYTHON_EXECUTABLE python3 python)
@@ -51,7 +65,10 @@ set(TEST_RUNNER ${GENERATED_RUNNER})
 add_executable(test_dirglob ${TEST_RUNNER} ${TEST_IMPLS})
 add_dependencies(test_dirglob gen_unity_runner)
 
-target_include_directories(test_dirglob PRIVATE "${PROJECT_SOURCE_DIR}/include")
+target_include_directories(test_dirglob PRIVATE
+  "${PROJECT_SOURCE_DIR}/include"
+  "${CMAKE_CURRENT_SOURCE_DIR}"
+)
 target_link_libraries(test_dirglob PRIVATE dirglob ${UNITY_TARGET})
 
 enable_testing()

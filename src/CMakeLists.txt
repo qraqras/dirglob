@@ -1,6 +1,9 @@
 # src/CMakeLists.txt
 add_library(dirglob
   dirglob/dirglob.c
+  dirglob/fnmatch.c
+  dirglob/traverse.c
+  dirglob/utils.c
 )
 
 target_include_directories(dirglob

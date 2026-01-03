@@ -84,7 +84,7 @@ void test_parity_{case_id}(void) {{
     size_t count = 0;
 
     // dirglob実行
-    bool ok = dirglobv({pattern_array}, {npatterns}, {flags}, {base}, {sort}, &result, &count);
+    bool ok = dirglob({pattern_array}, {npatterns}, {flags}, {base}, {sort}, &result, &count);
 
     // 期待出力と比較
     assert_matches_expected(result, count, "{escape_c_string(expected_file)}");
@@ -111,18 +111,6 @@ def generate_test_file(test_cases, platform, output_file):
 
 '''
 
-    # setUp/tearDown
-    setup = '''
-void setUp(void) {
-    // テストごとの初期化
-}
-
-void tearDown(void) {
-    // テストごとのクリーンアップ
-}
-
-'''
-
     # テスト関数生成
     test_functions = []
     for tc in test_cases:
@@ -131,7 +119,6 @@ void tearDown(void) {
     # ファイル書き込み
     with open(output_file, 'w', encoding='utf-8') as f:
         f.write(header)
-        f.write(setup)
         f.write('\n'.join(test_functions))
 
     print(f'  Generated: {output_file} ({len(test_cases)} tests)')
