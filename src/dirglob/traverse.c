@@ -269,7 +269,7 @@ int traverse_directory(const char *pattern, const char *base,
 
 /* Forward declaration for recursion */
 int traverse_directory_recursive(const char *dir_pattern, const char *file_pattern,
-                                  const char *base, unsigned flags, glob_results_t *results);
+                                 const char *base, unsigned flags, glob_results_t *results);
 
 /* Helper to process pattern (simplified version for recursion) */
 static int process_file_pattern(const char *pattern, const char *base,
@@ -322,7 +322,8 @@ static int process_file_pattern(const char *pattern, const char *base,
     first_component[first_len] = '\0';
 
     const char *rest = slash + 1;
-    while (*rest == '/') rest++;
+    while (*rest == '/')
+        rest++;
 
     int ret;
     if (has_glob_pattern(first_component))
@@ -359,7 +360,7 @@ static int process_file_pattern(const char *pattern, const char *base,
  * @brief Recursively traverse directories matching dir_pattern and apply file_pattern
  */
 int traverse_directory_recursive(const char *dir_pattern, const char *file_pattern,
-                                  const char *base, unsigned flags, glob_results_t *results)
+                                 const char *base, unsigned flags, glob_results_t *results)
 {
 #ifndef _WIN32
     DIR *dir;
@@ -413,9 +414,9 @@ int traverse_directory_recursive(const char *dir_pattern, const char *file_patte
                 /* We need to collect results and prepend directory name */
                 glob_results_t subresults;
                 glob_results_init(&subresults);
-                
+
                 int ret = process_file_pattern(file_pattern, full_path, flags, &subresults);
-                
+
                 if (ret == 0)
                 {
                     /* Prepend directory name to all results */
@@ -435,7 +436,7 @@ int traverse_directory_recursive(const char *dir_pattern, const char *file_patte
                 {
                     glob_results_clear(&subresults);
                 }
-                
+
                 free(full_path);
 
                 if (ret != 0)
@@ -525,9 +526,9 @@ int traverse_directory_recursive(const char *dir_pattern, const char *file_patte
                 /* Collect results and prepend directory name */
                 glob_results_t subresults;
                 glob_results_init(&subresults);
-                
+
                 int ret = process_file_pattern(file_pattern, full_path, flags, &subresults);
-                
+
                 if (ret == 0)
                 {
                     /* Prepend directory name to all results */
@@ -547,7 +548,7 @@ int traverse_directory_recursive(const char *dir_pattern, const char *file_patte
                 {
                     glob_results_clear(&subresults);
                 }
-                
+
                 free(full_path);
 
                 if (ret != 0)

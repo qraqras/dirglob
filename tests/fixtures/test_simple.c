@@ -8,9 +8,10 @@ int main(void)
     size_t count = 0;
 
     printf("Test 1: *.txt\n");
-    dirglob((const char*[]){"*.txt"}, 1, 0, NULL, 1, &result, &count);
+    dirglob((const char *[]){"*.txt"}, 1, 0, NULL, 1, &result, &count);
     printf("  Count: %zu\n", count);
-    for (size_t i = 0; i < count; i++) {
+    for (size_t i = 0; i < count; i++)
+    {
         printf("  [%zu] %s\n", i, result[i]);
         free(result[i]);
     }
@@ -19,9 +20,10 @@ int main(void)
     count = 0;
 
     printf("\nTest 2: a/a.txt\n");
-    dirglob((const char*[]){"a/a.txt"}, 1, 0, NULL, 1, &result, &count);
+    dirglob((const char *[]){"a/a.txt"}, 1, 0, NULL, 1, &result, &count);
     printf("  Count: %zu\n", count);
-    for (size_t i = 0; i < count; i++) {
+    for (size_t i = 0; i < count; i++)
+    {
         printf("  [%zu] %s\n", i, result[i]);
         free(result[i]);
     }
@@ -30,9 +32,10 @@ int main(void)
     count = 0;
 
     printf("\nTest 3: a/*.txt\n");
-    dirglob((const char*[]){"a/*.txt"}, 1, 0, NULL, 1, &result, &count);
+    dirglob((const char *[]){"a/*.txt"}, 1, 0, NULL, 1, &result, &count);
     printf("  Count: %zu\n", count);
-    for (size_t i = 0; i < count; i++) {
+    for (size_t i = 0; i < count; i++)
+    {
         printf("  [%zu] %s\n", i, result[i]);
         free(result[i]);
     }

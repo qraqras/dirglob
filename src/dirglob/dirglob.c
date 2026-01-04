@@ -97,7 +97,7 @@ static int process_pattern(const char *pattern, const char *base,
 
   /* Rest of pattern (after the slash) */
   const char *rest_pattern = slash + 1;
-  
+
   /* Skip multiple slashes */
   while (*rest_pattern == '/')
   {
@@ -128,9 +128,9 @@ static int process_pattern(const char *pattern, const char *base,
       /* Collect results from subdirectory and prepend directory name */
       glob_results_t subresults;
       glob_results_init(&subresults);
-      
+
       ret = process_pattern(rest_pattern, new_base, flags, &subresults);
-      
+
       if (ret == 0)
       {
         /* Prepend directory name to all results */
