@@ -72,4 +72,4 @@ target_include_directories(test_dirglob PRIVATE
 target_link_libraries(test_dirglob PRIVATE dirglob ${UNITY_TARGET})
 
 enable_testing()
-add_test(NAME dirglob_test COMMAND test_dirglob)
+add_test(NAME dirglob_test COMMAND test_dirglob WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/tests/fixtures)
