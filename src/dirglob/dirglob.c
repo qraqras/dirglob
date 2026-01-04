@@ -75,17 +75,92 @@ static int process_pattern(const char *pattern, const char *base,
     return 0; /* No match is not an error */
   }
 
-  /* For now, handle simple patterns (no directory components) */
-  /* TODO: Handle patterns with / separators */
-  if (strchr(pattern, '/') == NULL)
+  /* Handle patterns with directory components */
+  const char *slash = strchr(pattern, '/');
+  if (slash == NULL)
   {
-    /* Simple filename pattern */
+    /* Simple filename pattern - no directory component */
     return traverse_directory(pattern, base, flags, results);
   }
 
-  /* Complex patterns with directories - not yet implemented */
-  /* For now, return no matches */
-  return 0;
+  /* Pattern has directory component: dir/file or dir/wildcard/file etc. */
+  /* Split pattern into first component and rest */
+  size_t first_len = slash - pattern;
+  char *first_component = malloc(first_len + 1);
+  if (!first_component)
+  {
+    errno = ENOMEM;
+    return -1;
+  }
+  memcpy(first_component, pattern, first_len);
+  first_component[first_len] = '\0';
+
+  /* Rest of pattern (after the slash) */
+  const char *rest_pattern = slash + 1;
+  
+  /* Skip multiple slashes */
+  while (*rest_pattern == '/')
+  {
+    rest_pattern++;
+  }
+
+  int ret;
+  if (has_glob_pattern(first_component))
+  {
+    /* First component has wildcards - need to match directories */
+    ret = traverse_directory_recursive(first_component, rest_pattern, base, flags, results);
+  }
+  else
+  {
+    /* First component is literal - check if directory exists and recurse */
+    char *new_base = path_join(base, first_component);
+    if (!new_base)
+    {
+      free(first_component);
+      errno = ENOMEM;
+      return -1;
+    }
+
+    /* Check if directory exists */
+    struct stat st;
+    if (stat(new_base, &st) == 0 && S_ISDIR(st.st_mode))
+    {
+      /* Collect results from subdirectory and prepend directory name */
+      glob_results_t subresults;
+      glob_results_init(&subresults);
+      
+      ret = process_pattern(rest_pattern, new_base, flags, &subresults);
+      
+      if (ret == 0)
+      {
+        /* Prepend directory name to all results */
+        for (size_t i = 0; i < subresults.count; i++)
+        {
+          char *prefixed_path = path_join(first_component, subresults.items[i]);
+          if (prefixed_path)
+          {
+            glob_results_add(results, prefixed_path);
+            free(prefixed_path);
+          }
+          free(subresults.items[i]);
+        }
+        free(subresults.items);
+      }
+      else
+      {
+        glob_results_clear(&subresults);
+      }
+    }
+    else
+    {
+      /* Directory doesn't exist - no matches */
+      ret = 0;
+    }
+    free(new_base);
+  }
+
+  free(first_component);
+  return ret;
 }
 
 /**

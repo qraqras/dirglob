@@ -22,7 +22,7 @@ def convert_flags_to_c(flags_str):
 def convert_base_to_c(base_str):
     """
     baseパラメータをC言語表現に変換
-    
+
     注意: テストはfixtures/ディレクトリから実行されるため、
     Rubyスクリプトと同様にbase値を変換する必要がある。
     - 'tests/fixtures' -> '.' (既にfixturesディレクトリにいるため)

@@ -1,3 +1,4 @@
 ./a.c
 ./file.c
 ./test.c
+./test_simple.c

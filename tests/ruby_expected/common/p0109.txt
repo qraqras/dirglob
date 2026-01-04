@@ -17,6 +17,8 @@ file.md
 file.txt
 sub
 test.c
+test_simple
+test_simple.c
 x
 xyz.txt
 y

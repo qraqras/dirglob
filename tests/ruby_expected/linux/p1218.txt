@@ -2,6 +2,8 @@
 ./b.md
 ./xyz.txt
 ./abc.txt
+./test_simple.c
+./test_simple
 ./file.md
 ./z.txt
 ./z

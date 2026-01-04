@@ -2,29 +2,31 @@
 #include <unistd.h>
 #include <dirglob/dirglob.h>
 
-int main() {
+int main()
+{
     char **result = NULL;
     size_t count = 0;
-    
+
     char cwd[1024];
     getcwd(cwd, sizeof(cwd));
     printf("Current directory: %s\n", cwd);
-    
+
     // Simple test: file.txt with no base
     printf("Before dirglob call\n");
     fflush(stdout);
-    bool ok = dirglob((const char*[]){"file.txt"}, 1, 0, NULL, 1, &result, &count);
+    bool ok = dirglob((const char *[]){"file.txt"}, 1, 0, NULL, 1, &result, &count);
     printf("After dirglob call\n");
     fflush(stdout);
-    
+
     printf("Return value: %d\n", ok);
     printf("Count: %zu\n", count);
-    
-    for (size_t i = 0; i < count; i++) {
+
+    for (size_t i = 0; i < count; i++)
+    {
         printf("Result[%zu]: %s\n", i, result[i]);
     }
-    
+
     dirglob_free(result, count);
-    
+
     return 0;
 }

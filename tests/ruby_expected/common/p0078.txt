@@ -1,3 +1,4 @@
+test_simple.c
 a.c
 test.c
 file.c
