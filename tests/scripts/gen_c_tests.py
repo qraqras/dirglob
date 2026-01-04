@@ -20,9 +20,20 @@ def convert_flags_to_c(flags_str):
 
 
 def convert_base_to_c(base_str):
-    """baseパラメータをC言語表現に変換"""
+    """
+    baseパラメータをC言語表現に変換
+    
+    注意: テストはfixtures/ディレクトリから実行されるため、
+    Rubyスクリプトと同様にbase値を変換する必要がある。
+    - 'tests/fixtures' -> '.' (既にfixturesディレクトリにいるため)
+    - 'NULL' -> NULL
+    - その他 -> そのまま
+    """
     if base_str == 'NULL':
         return 'NULL'
+    elif base_str == 'tests/fixtures':
+        # Rubyスクリプトと同じ変換: fixtures/から実行するため'.'に変換
+        return '"."'
     else:
         return f'"{base_str}"'
 
@@ -74,8 +85,8 @@ def generate_test_function(test_case, platform):
         pattern_list = ', '.join(f'"{escape_c_string(p)}"' for p in patterns)
         pattern_array = f'(const char*[]){{{pattern_list}}}'
 
-    # 期待出力ファイルパス
-    expected_file = f'tests/ruby_expected/{platform}/{case_id}.txt'
+    # 期待出力ファイルパス (テスト実行時のワーキングディレクトリから見た相対パス)
+    expected_file = f'../../tests/ruby_expected/{platform}/{case_id}.txt'
 
     # テスト関数生成
     code = f'''

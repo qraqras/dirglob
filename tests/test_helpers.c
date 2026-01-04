@@ -144,6 +144,10 @@ void assert_matches_expected(char **c_result, size_t c_count, const char *expect
         if (c_count != 0)
         {
             fprintf(stderr, "\nExpected empty result, but got %zu items\n", c_count);
+            fprintf(stderr, "Expected file: %s\n", expected_file);
+            for (size_t i = 0; i < c_count && i < 5; i++) {
+                fprintf(stderr, "  Result[%zu]: %s\n", i, c_result[i]);
+            }
             TEST_FAIL_MESSAGE("Expected empty result");
         }
         return;
