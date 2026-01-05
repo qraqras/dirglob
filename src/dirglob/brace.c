@@ -23,7 +23,7 @@ static const char *find_closing_brace(const char *str)
             depth++;
         else if (*p == '}')
             depth--;
-        
+
         if (depth > 0)
             p++;
     }
@@ -72,7 +72,7 @@ int expand_braces(const char *pattern, char ***expanded, size_t *count)
         *expanded = malloc(sizeof(char *));
         if (!*expanded)
             return -1;
-        
+
         (*expanded)[0] = dirglob_strdup(pattern);
         if (!(*expanded)[0])
         {
@@ -92,7 +92,7 @@ int expand_braces(const char *pattern, char ***expanded, size_t *count)
         *expanded = malloc(sizeof(char *));
         if (!*expanded)
             return -1;
-        
+
         (*expanded)[0] = dirglob_strdup(pattern);
         if (!(*expanded)[0])
         {
@@ -126,12 +126,12 @@ int expand_braces(const char *pattern, char ***expanded, size_t *count)
     *expanded = malloc(alt_count * sizeof(char *));
     if (!*expanded)
         return -1;
-    
+
     *count = 0;
 
     /* Process each alternative */
     const char *alt_start = alts_start;
-    
+
     for (const char *c = alts_start; c <= close; c++)
     {
         if (c < close && *c == '\\' && c + 1 < close)
@@ -139,11 +139,11 @@ int expand_braces(const char *pattern, char ***expanded, size_t *count)
             c++;
             continue;
         }
-        
+
         if (c == close || *c == ',')
         {
             size_t alt_len = c - alt_start;
-            
+
             /* Build expanded pattern: prefix + alternative + suffix */
             size_t total_len = prefix_len + alt_len + strlen(suffix) + 1;
             char *result = malloc(total_len);
@@ -156,21 +156,21 @@ int expand_braces(const char *pattern, char ***expanded, size_t *count)
                 *expanded = NULL;
                 return -1;
             }
-            
+
             /* Copy prefix */
             memcpy(result, pattern, prefix_len);
             /* Copy alternative */
             memcpy(result + prefix_len, alt_start, alt_len);
             /* Copy suffix */
             strcpy(result + prefix_len + alt_len, suffix);
-            
+
             /* Recursively expand in case there are more braces */
             char **sub_expanded = NULL;
             size_t sub_count = 0;
             if (expand_braces(result, &sub_expanded, &sub_count) == 0)
             {
                 free(result);
-                
+
                 /* Reallocate to accommodate sub-expanded patterns */
                 size_t new_capacity = *count + sub_count;
                 char **new_expanded = realloc(*expanded, new_capacity * sizeof(char *));
@@ -186,7 +186,7 @@ int expand_braces(const char *pattern, char ***expanded, size_t *count)
                     return -1;
                 }
                 *expanded = new_expanded;
-                
+
                 for (size_t i = 0; i < sub_count; i++)
                 {
                     (*expanded)[*count] = sub_expanded[i];
@@ -199,7 +199,7 @@ int expand_braces(const char *pattern, char ***expanded, size_t *count)
                 (*expanded)[*count] = result;
                 (*count)++;
             }
-            
+
             alt_start = c + 1;
         }
     }
