@@ -18,6 +18,9 @@
 
 #define INITIAL_CAPACITY 16
 
+/* Internal flag: Skip . directory (used when parent was matched via glob) */
+#define FNM_SKIP_DOT_DIR (1U << 16)
+
 void glob_results_init(glob_results_t *results)
 {
     results->items = NULL;
@@ -143,6 +146,12 @@ int traverse_directory(const char *pattern, const char *base,
             continue;
         }
 
+        /* Skip . if FNM_SKIP_DOT_DIR is set (parent was glob-matched) */
+        if (strcmp(name, ".") == 0 && (flags & FNM_SKIP_DOT_DIR))
+        {
+            continue;
+        }
+
         /* Skip . unless FNM_DOTMATCH is set */
         if (strcmp(name, ".") == 0 && !(flags & FNM_DOTMATCH))
         {
@@ -233,6 +242,12 @@ int traverse_directory(const char *pattern, const char *base,
 
         /* Always skip .. */
         if (strcmp(name, "..") == 0)
+        {
+            continue;
+        }
+
+        /* Skip . if FNM_SKIP_DOT_DIR is set (parent was glob-matched) */
+        if (strcmp(name, ".") == 0 && (flags & FNM_SKIP_DOT_DIR))
         {
             continue;
         }
@@ -436,7 +451,9 @@ int traverse_directory_recursive(const char *dir_pattern, const char *file_patte
                 glob_results_t subresults;
                 glob_results_init(&subresults);
 
-                int ret = process_file_pattern(file_pattern, full_path, flags, &subresults);
+                /* Set FNM_SKIP_DOT_DIR to prevent matching . in subdirs */
+                unsigned subflags = flags | FNM_SKIP_DOT_DIR;
+                int ret = process_file_pattern(file_pattern, full_path, subflags, &subresults);
 
                 if (ret == 0)
                 {
@@ -554,7 +571,9 @@ int traverse_directory_recursive(const char *dir_pattern, const char *file_patte
                 glob_results_t subresults;
                 glob_results_init(&subresults);
 
-                int ret = process_file_pattern(file_pattern, full_path, flags, &subresults);
+                /* Set FNM_SKIP_DOT_DIR to prevent matching . in subdirs */
+                unsigned subflags = flags | FNM_SKIP_DOT_DIR;
+                int ret = process_file_pattern(file_pattern, full_path, subflags, &subresults);
 
                 if (ret == 0)
                 {
