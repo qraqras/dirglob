@@ -37,8 +37,6 @@ file.txt
 sub
 sub/file.txt
 test.c
-test_simple
-test_simple.c
 x
 x/y
 x/y/file.txt

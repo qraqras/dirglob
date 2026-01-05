@@ -120,6 +120,7 @@ int traverse_directory(const char *pattern, const char *base,
     DIR *dir;
     struct dirent *entry;
     const char *dir_path = base ? base : ".";
+    int pattern_starts_with_dot = (pattern && pattern[0] == '.');
 
     dir = opendir(dir_path);
     if (!dir)
@@ -136,14 +137,20 @@ int traverse_directory(const char *pattern, const char *base,
     {
         const char *name = entry->d_name;
 
-        /* Skip . and .. */
-        if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
+        /* Always skip .. */
+        if (strcmp(name, "..") == 0)
         {
             continue;
         }
 
-        /* Skip dot files unless FNM_DOTMATCH is set */
-        if (!(flags & FNM_DOTMATCH) && name[0] == '.')
+        /* Skip . unless FNM_DOTMATCH is set */
+        if (strcmp(name, ".") == 0 && !(flags & FNM_DOTMATCH))
+        {
+            continue;
+        }
+
+        /* Skip other dot files unless FNM_DOTMATCH is set or pattern starts with . */
+        if (!(flags & FNM_DOTMATCH) && !pattern_starts_with_dot && name[0] == '.' && strcmp(name, ".") != 0)
         {
             continue;
         }
@@ -187,6 +194,7 @@ int traverse_directory(const char *pattern, const char *base,
     WIN32_FIND_DATAA find_data;
     HANDLE hFind;
     char *search_path;
+    int pattern_starts_with_dot = (pattern && pattern[0] == '.');
 
     /* Create search pattern: base\* */
     const char *dir_path = base ? base : ".";
@@ -223,14 +231,20 @@ int traverse_directory(const char *pattern, const char *base,
     {
         const char *name = find_data.cFileName;
 
-        /* Skip . and .. */
-        if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
+        /* Always skip .. */
+        if (strcmp(name, "..") == 0)
         {
             continue;
         }
 
-        /* Skip dot files unless FNM_DOTMATCH is set */
-        if (!(flags & FNM_DOTMATCH) && name[0] == '.')
+        /* Skip . unless FNM_DOTMATCH is set */
+        if (strcmp(name, ".") == 0 && !(flags & FNM_DOTMATCH))
+        {
+            continue;
+        }
+
+        /* Skip other dot files unless FNM_DOTMATCH is set or pattern starts with . */
+        if (!(flags & FNM_DOTMATCH) && !pattern_starts_with_dot && name[0] == '.' && strcmp(name, ".") != 0)
         {
             continue;
         }
@@ -366,6 +380,7 @@ int traverse_directory_recursive(const char *dir_pattern, const char *file_patte
     DIR *dir;
     struct dirent *entry;
     const char *dir_path = base ? base : ".";
+    int pattern_starts_with_dot = (dir_pattern && dir_pattern[0] == '.');
 
     dir = opendir(dir_path);
     if (!dir)
@@ -383,14 +398,20 @@ int traverse_directory_recursive(const char *dir_pattern, const char *file_patte
         const char *name = entry->d_name;
         struct stat st;
 
-        /* Skip . and .. */
-        if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
+        /* Always skip .. */
+        if (strcmp(name, "..") == 0)
         {
             continue;
         }
 
-        /* Skip dot files unless FNM_DOTMATCH is set */
-        if (!(flags & FNM_DOTMATCH) && name[0] == '.')
+        /* Skip . unless FNM_DOTMATCH is set */
+        if (strcmp(name, ".") == 0 && !(flags & FNM_DOTMATCH))
+        {
+            continue;
+        }
+
+        /* Skip other dot files unless FNM_DOTMATCH is set or pattern starts with . */
+        if (!(flags & FNM_DOTMATCH) && !pattern_starts_with_dot && name[0] == '.' && strcmp(name, ".") != 0)
         {
             continue;
         }
@@ -460,7 +481,7 @@ int traverse_directory_recursive(const char *dir_pattern, const char *file_patte
     WIN32_FIND_DATAA find_data;
     HANDLE hFind;
     char *search_path;
-
+    int pattern_starts_with_dot = (dir_pattern && dir_pattern[0] == '.');
     /* Create search pattern: base\* */
     const char *dir_path = base ? base : ".";
     size_t len = strlen(dir_path);
@@ -496,14 +517,20 @@ int traverse_directory_recursive(const char *dir_pattern, const char *file_patte
     {
         const char *name = find_data.cFileName;
 
-        /* Skip . and .. */
-        if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
+        /* Always skip .. */
+        if (strcmp(name, "..") == 0)
         {
             continue;
         }
 
-        /* Skip dot files unless FNM_DOTMATCH is set */
-        if (!(flags & FNM_DOTMATCH) && name[0] == '.')
+        /* Skip . unless FNM_DOTMATCH is set */
+        if (strcmp(name, ".") == 0 && !(flags & FNM_DOTMATCH))
+        {
+            continue;
+        }
+
+        /* Skip other dot files unless FNM_DOTMATCH is set or pattern starts with . */
+        if (!(flags & FNM_DOTMATCH) && !pattern_starts_with_dot && name[0] == '.' && strcmp(name, ".") != 0)
         {
             continue;
         }

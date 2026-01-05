@@ -73,6 +73,15 @@ char **load_expected_output(const char *filepath, size_t *count)
             len--;
         }
 
+        // 空行のみのファイル（改行のみ）は空の配列として扱う
+        if (line_count == 1 && len == 0)
+        {
+            free(lines);
+            fclose(fp);
+            *count = 0;
+            return NULL;
+        }
+
         // 行をコピー
         lines[idx] = strdup(buffer);
         if (lines[idx] == NULL)

@@ -3,4 +3,3 @@ dir/sub/test.c
 dir/test.c
 file.c
 test.c
-test_simple.c

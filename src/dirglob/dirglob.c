@@ -189,20 +189,56 @@ bool dirglob(const char **patterns, size_t npatterns, unsigned flags,
   /* Process each pattern */
   for (size_t i = 0; i < npatterns; i++)
   {
-    if (process_pattern(patterns[i], base, flags, &results) != 0)
+    /* Expand braces first */
+    char **expanded = NULL;
+    size_t expanded_count = 0;
+    
+    if (expand_braces(patterns[i], &expanded, &expanded_count) != 0)
     {
       glob_results_clear(&results);
       return false;
     }
+    
+    /* Process each expanded pattern */
+    for (size_t j = 0; j < expanded_count; j++)
+    {
+      /* Collect results for this specific expanded pattern */
+      glob_results_t pattern_results;
+      glob_results_init(&pattern_results);
+      
+      if (process_pattern(expanded[j], base, flags, &pattern_results) != 0)
+      {
+        /* Cleanup */
+        glob_results_clear(&pattern_results);
+        for (size_t k = 0; k < expanded_count; k++)
+          free(expanded[k]);
+        free(expanded);
+        glob_results_clear(&results);
+        return false;
+      }
+      
+      /* Sort this pattern's results if requested */
+      if (sort_flag)
+      {
+        glob_results_sort(&pattern_results);
+      }
+      
+      /* Merge into main results */
+      for (size_t k = 0; k < pattern_results.count; k++)
+      {
+        glob_results_add(&results, pattern_results.items[k]);
+        free(pattern_results.items[k]);
+      }
+      free(pattern_results.items);
+    }
+    
+    /* Cleanup expanded patterns */
+    for (size_t j = 0; j < expanded_count; j++)
+      free(expanded[j]);
+    free(expanded);
   }
 
-  /* Sort if requested */
-  if (sort_flag)
-  {
-    glob_results_sort(&results);
-  }
-
-  /* Remove duplicates */
+  /* Remove duplicates (do not sort again - already sorted per pattern) */
   glob_results_deduplicate(&results);
 
   /* Return results */

@@ -4,6 +4,7 @@ add_library(dirglob
   dirglob/fnmatch.c
   dirglob/traverse.c
   dirglob/utils.c
+  dirglob/brace.c
 )
 
 target_include_directories(dirglob

@@ -1,4 +1,3 @@
-test_simple.c
 a.c
 dir/sub/test.c
 dir/test.c
