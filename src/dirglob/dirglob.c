@@ -105,6 +105,16 @@ static int process_pattern(const char *pattern, const char *base,
   }
 
   int ret;
+
+  /* Check for ** (recursive glob) */
+  if (strcmp(first_component, "**") == 0)
+  {
+    /* Recursive directory traversal */
+    ret = traverse_recursive_glob(rest_pattern, base, flags, results);
+    free(first_component);
+    return ret;
+  }
+
   if (has_glob_pattern(first_component))
   {
     /* First component has wildcards - need to match directories */
@@ -217,13 +227,7 @@ bool dirglob(const char **patterns, size_t npatterns, unsigned flags,
         return false;
       }
 
-      /* Sort this pattern's results if requested */
-      if (sort_flag)
-      {
-        glob_results_sort(&pattern_results);
-      }
-
-      /* Merge into main results */
+      /* Merge into main results (sorting will be done later) */
       for (size_t k = 0; k < pattern_results.count; k++)
       {
         glob_results_add(&results, pattern_results.items[k]);
@@ -238,7 +242,13 @@ bool dirglob(const char **patterns, size_t npatterns, unsigned flags,
     free(expanded);
   }
 
-  /* Remove duplicates (do not sort again - already sorted per pattern) */
+  /* Sort all results if requested */
+  if (sort_flag)
+  {
+    glob_results_sort(&results);
+  }
+
+  /* Remove duplicates (after sorting if needed) */
   glob_results_deduplicate(&results);
 
   /* Return results */

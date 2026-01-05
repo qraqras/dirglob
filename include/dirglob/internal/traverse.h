@@ -64,4 +64,16 @@ int traverse_directory(const char *pattern, const char *base,
 int traverse_directory_recursive(const char *dir_pattern, const char *file_pattern,
                                  const char *base, unsigned flags, glob_results_t *results);
 
+/**
+ * @brief Recursively traverse all directories for ** pattern
+ *
+ * @param pattern Pattern to match in each directory
+ * @param base Base directory (NULL for current)
+ * @param flags FNM_* flags
+ * @param results Result collector
+ * @return 0 on success, -1 on error
+ */
+int traverse_recursive_glob(const char *pattern, const char *base,
+                            unsigned flags, glob_results_t *results);
+
 #endif /* DIRGLOB_INTERNAL_TRAVERSE_H */

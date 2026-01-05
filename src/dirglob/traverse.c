@@ -252,8 +252,8 @@ int traverse_directory(const char *pattern, const char *base,
             continue;
         }
 
-        /* Skip . unless FNM_DOTMATCH is set */
-        if (strcmp(name, ".") == 0 && !(flags & FNM_DOTMATCH))
+        /* Skip . unless FNM_DOTMATCH is set or pattern starts with . */
+        if (strcmp(name, ".") == 0 && !(flags & FNM_DOTMATCH) && !pattern_starts_with_dot)
         {
             continue;
         }
@@ -308,26 +308,23 @@ static int process_file_pattern(const char *pattern, const char *base,
     if (!has_glob_pattern(pattern))
     {
         /* Literal file - construct full path and add if exists */
-        char *result_path;
-        if (base && base[0] != '\0')
+        char *result_path = path_join(base, pattern);
+        if (!result_path)
         {
-            result_path = path_join(base, pattern);
-            if (!result_path)
-            {
-                errno = ENOMEM;
-                return -1;
-            }
-
-            /* Check if file exists */
-            struct stat st;
-            if (stat(result_path, &st) == 0)
-            {
-                /* Return relative path from original base */
-                free(result_path);
-                return glob_results_add(results, pattern);
-            }
-            free(result_path);
+            errno = ENOMEM;
+            return -1;
         }
+
+        /* Check if file exists */
+        struct stat st;
+        if (stat(result_path, &st) == 0)
+        {
+            /* Return relative path from original base */
+            int ret = glob_results_add(results, pattern);
+            free(result_path);
+            return ret;
+        }
+        free(result_path);
         return 0;
     }
 
@@ -419,8 +416,8 @@ int traverse_directory_recursive(const char *dir_pattern, const char *file_patte
             continue;
         }
 
-        /* Skip . unless FNM_DOTMATCH is set */
-        if (strcmp(name, ".") == 0 && !(flags & FNM_DOTMATCH))
+        /* Skip . unless FNM_DOTMATCH is set or pattern starts with . */
+        if (strcmp(name, ".") == 0 && !(flags & FNM_DOTMATCH) && !pattern_starts_with_dot)
         {
             continue;
         }
@@ -540,8 +537,8 @@ int traverse_directory_recursive(const char *dir_pattern, const char *file_patte
             continue;
         }
 
-        /* Skip . unless FNM_DOTMATCH is set */
-        if (strcmp(name, ".") == 0 && !(flags & FNM_DOTMATCH))
+        /* Skip . unless FNM_DOTMATCH is set or pattern starts with . */
+        if (strcmp(name, ".") == 0 && !(flags & FNM_DOTMATCH) && !pattern_starts_with_dot)
         {
             continue;
         }
@@ -603,6 +600,220 @@ int traverse_directory_recursive(const char *dir_pattern, const char *file_patte
                     return -1;
                 }
             }
+        }
+    } while (FindNextFileA(hFind, &find_data));
+
+    FindClose(hFind);
+    return 0;
+#endif
+}
+
+/**
+ * @brief Recursively traverse all directories for ** pattern
+ *
+ * This implements the ** globstar pattern which matches zero or more directories.
+ * For pattern "** /file.txt", it will match:
+ * - file.txt (in current directory)
+ * - dir/file.txt (in any subdirectory)
+ * - dir/subdir/file.txt (in any nested subdirectory)
+ */
+int traverse_recursive_glob(const char *pattern, const char *base,
+                            unsigned flags, glob_results_t *results)
+{
+    /* First, try to match pattern in current directory */
+    glob_results_t current_results;
+    glob_results_init(&current_results);
+
+    if (process_file_pattern(pattern, base, flags, &current_results) == 0)
+    {
+        /* Add results from current directory */
+        for (size_t i = 0; i < current_results.count; i++)
+        {
+            glob_results_add(results, current_results.items[i]);
+            free(current_results.items[i]);
+        }
+        free(current_results.items);
+    }
+    else
+    {
+        glob_results_clear(&current_results);
+        return -1;
+    }
+
+    /* Now recursively search all subdirectories */
+#ifndef _WIN32
+    DIR *dir;
+    struct dirent *entry;
+    const char *dir_path = base ? base : ".";
+
+    dir = opendir(dir_path);
+    if (!dir)
+    {
+        /* If directory doesn't exist, that's not an error for glob */
+        if (errno == ENOENT || errno == ENOTDIR)
+        {
+            return 0;
+        }
+        return -1;
+    }
+
+    while ((entry = readdir(dir)) != NULL)
+    {
+        const char *name = entry->d_name;
+
+        /* Skip . and .. */
+        if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
+        {
+            continue;
+        }
+
+        /* Skip dot files/directories unless FNM_DOTMATCH is set */
+        if (!(flags & FNM_DOTMATCH) && name[0] == '.')
+        {
+            continue;
+        }
+
+        /* Build full path */
+        char *full_path = path_join(base, name);
+        if (!full_path)
+        {
+            closedir(dir);
+            errno = ENOMEM;
+            return -1;
+        }
+
+        /* Check if it's a directory */
+        struct stat st;
+        if (stat(full_path, &st) == 0 && S_ISDIR(st.st_mode))
+        {
+            /* Recursively search this directory */
+            glob_results_t subresults;
+            glob_results_init(&subresults);
+
+            int ret = traverse_recursive_glob(pattern, full_path, flags, &subresults);
+
+            if (ret == 0)
+            {
+                /* Prepend directory name to all results */
+                for (size_t i = 0; i < subresults.count; i++)
+                {
+                    char *prefixed_path = path_join(name, subresults.items[i]);
+                    if (prefixed_path)
+                    {
+                        glob_results_add(results, prefixed_path);
+                        free(prefixed_path);
+                    }
+                    free(subresults.items[i]);
+                }
+                free(subresults.items);
+            }
+            else
+            {
+                glob_results_clear(&subresults);
+                free(full_path);
+                closedir(dir);
+                return -1;
+            }
+        }
+
+        free(full_path);
+    }
+
+    closedir(dir);
+    return 0;
+
+#else
+    /* Windows implementation */
+    WIN32_FIND_DATAA find_data;
+    HANDLE hFind;
+    char *search_path;
+    const char *dir_path = base ? base : ".";
+    size_t len = strlen(dir_path);
+    search_path = malloc(len + 3);
+    if (!search_path)
+    {
+        errno = ENOMEM;
+        return -1;
+    }
+
+    strcpy(search_path, dir_path);
+    if (len > 0 && dir_path[len - 1] != '\\' && dir_path[len - 1] != '/')
+    {
+        strcat(search_path, "\\");
+    }
+    strcat(search_path, "*");
+
+    hFind = FindFirstFileA(search_path, &find_data);
+    free(search_path);
+
+    if (hFind == INVALID_HANDLE_VALUE)
+    {
+        DWORD err = GetLastError();
+        if (err == ERROR_FILE_NOT_FOUND || err == ERROR_PATH_NOT_FOUND)
+        {
+            return 0;
+        }
+        errno = ENOENT;
+        return -1;
+    }
+
+    do
+    {
+        const char *name = find_data.cFileName;
+
+        /* Skip . and .. */
+        if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
+        {
+            continue;
+        }
+
+        /* Skip dot files/directories unless FNM_DOTMATCH is set */
+        if (!(flags & FNM_DOTMATCH) && name[0] == '.')
+        {
+            continue;
+        }
+
+        /* Check if it's a directory */
+        if (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+        {
+            char *full_path = path_join(base, name);
+            if (!full_path)
+            {
+                FindClose(hFind);
+                errno = ENOMEM;
+                return -1;
+            }
+
+            /* Recursively search this directory */
+            glob_results_t subresults;
+            glob_results_init(&subresults);
+
+            int ret = traverse_recursive_glob(pattern, full_path, flags, &subresults);
+
+            if (ret == 0)
+            {
+                /* Prepend directory name to all results */
+                for (size_t i = 0; i < subresults.count; i++)
+                {
+                    char *prefixed_path = path_join(name, subresults.items[i]);
+                    if (prefixed_path)
+                    {
+                        glob_results_add(results, prefixed_path);
+                        free(prefixed_path);
+                    }
+                    free(subresults.items[i]);
+                }
+                free(subresults.items);
+            }
+            else
+            {
+                glob_results_clear(&subresults);
+                free(full_path);
+                FindClose(hFind);
+                return -1;
+            }
+
+            free(full_path);
         }
     } while (FindNextFileA(hFind, &find_data));
 
