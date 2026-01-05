@@ -29,4 +29,10 @@ char *path_join(const char *base, const char *name);
  */
 int expand_braces(const char *pattern, char ***expanded, size_t *count);
 
+/**
+ * @brief Compare two paths using Ruby-style sorting rules
+ * @return <0 if s1 < s2, 0 if s1 == s2, >0 if s1 > s2
+ */
+int dirglob_compare_paths(const char *s1, const char *s2);
+
 #endif /* DIRGLOB_INTERNAL_UTILS_H */

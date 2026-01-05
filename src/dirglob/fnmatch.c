@@ -25,6 +25,13 @@ static int match_recursive(const char *pattern, const char *string, unsigned fla
         {
         case '*':
         {
+            /* FNM_DOTMATCH controls whether * matches leading dot */
+            if (!(flags & FNM_DOTMATCH) && *s == '.' &&
+                (s == string || ((flags & FNM_PATHNAME) && s > string && s[-1] == '/')))
+            {
+                return 1;
+            }
+
             /* Skip consecutive asterisks */
             while (*p == '*')
                 p++;

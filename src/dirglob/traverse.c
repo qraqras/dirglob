@@ -21,14 +21,101 @@
 /* Internal flag: Skip . directory (used when parent was matched via glob) */
 #define FNM_SKIP_DOT_DIR (1U << 16)
 
+/* Global counter for discovery order (used for sort: false) */
+static size_t g_global_discovery_counter = 0;
+
+/* Directory cache for stable discovery indices */
+typedef struct dir_cache_node
+{
+    char *path;
+    char **entries;
+    size_t *discovery_indices;
+    size_t count;
+    size_t capacity;
+    struct dir_cache_node *next;
+} dir_cache_node_t;
+
+static dir_cache_node_t *g_dir_cache = NULL;
+
+void glob_results_reset_discovery_counter(void)
+{
+    g_global_discovery_counter = 0;
+}
+
+void glob_results_clear_cache(void)
+{
+    dir_cache_node_t *current = g_dir_cache;
+    while (current)
+    {
+        dir_cache_node_t *next = current->next;
+        free(current->path);
+        for (size_t i = 0; i < current->count; i++)
+            free(current->entries[i]);
+        free(current->entries);
+        free(current->discovery_indices);
+        free(current);
+        current = next;
+    }
+    g_dir_cache = NULL;
+}
+
+static dir_cache_node_t *get_cached_dir(const char *dir_path)
+{
+    dir_cache_node_t *current = g_dir_cache;
+    while (current)
+    {
+        if (strcmp(current->path, dir_path) == 0)
+            return current;
+        current = current->next;
+    }
+
+    /* Not found, create new cache node */
+    DIR *dir = opendir(dir_path);
+    if (!dir)
+        return NULL;
+
+    dir_cache_node_t *node = malloc(sizeof(dir_cache_node_t));
+    if (!node)
+    {
+        closedir(dir);
+        return NULL;
+    }
+
+    node->path = dirglob_strdup(dir_path);
+    node->count = 0;
+    node->capacity = INITIAL_CAPACITY;
+    node->entries = malloc(node->capacity * sizeof(char *));
+    node->discovery_indices = malloc(node->capacity * sizeof(size_t));
+    node->next = g_dir_cache;
+    g_dir_cache = node;
+
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != NULL)
+    {
+        if (node->count >= node->capacity)
+        {
+            node->capacity *= 2;
+            node->entries = realloc(node->entries, node->capacity * sizeof(char *));
+            node->discovery_indices = realloc(node->discovery_indices, node->capacity * sizeof(size_t));
+        }
+        node->entries[node->count] = dirglob_strdup(entry->d_name);
+        node->discovery_indices[node->count] = ++g_global_discovery_counter;
+        node->count++;
+    }
+
+    closedir(dir);
+    return node;
+}
+
 void glob_results_init(glob_results_t *results)
 {
     results->items = NULL;
+    results->discovery_indices = NULL;
     results->count = 0;
     results->capacity = 0;
 }
 
-int glob_results_add(glob_results_t *results, const char *path)
+static int glob_results_add_internal(glob_results_t *results, const char *path, size_t index)
 {
     if (!results || !path)
     {
@@ -46,7 +133,17 @@ int glob_results_add(glob_results_t *results, const char *path)
             errno = ENOMEM;
             return -1;
         }
+        size_t *new_indices = realloc(results->discovery_indices, new_capacity * sizeof(size_t));
+        if (!new_indices)
+        {
+            /* Note: new_items is already reallocated, but we can't easily undo it.
+             * We'll just update results->items to keep it consistent. */
+            results->items = new_items;
+            errno = ENOMEM;
+            return -1;
+        }
         results->items = new_items;
+        results->discovery_indices = new_indices;
         results->capacity = new_capacity;
     }
 
@@ -58,47 +155,44 @@ int glob_results_add(glob_results_t *results, const char *path)
         return -1;
     }
 
-    results->items[results->count++] = dup;
+    results->items[results->count] = dup;
+    results->discovery_indices[results->count] = index;
+    /* printf("DEBUG: add %s index %zu\n", dup, index); */
+    results->count++;
     return 0;
 }
 
-static int glob_char_priority(char c)
+int glob_results_add(glob_results_t *results, const char *path)
 {
-    /* In Ruby's Dir.glob sorting, '/' has higher priority than other characters
-     * This ensures that "a/a.txt" comes before "a.txt"
-     */
-    if (c == '/')
-        return 0; /* Highest priority */
-    return (unsigned char)c + 1;
+    return glob_results_add_internal(results, path, g_global_discovery_counter);
+}
+
+int glob_results_add_with_index(glob_results_t *results, const char *path, size_t index)
+{
+    return glob_results_add_internal(results, path, index);
 }
 
 static int compare_strings(const void *a, const void *b)
 {
     const char *s1 = *(const char **)a;
     const char *s2 = *(const char **)b;
-
-    /* Compare character by character with special handling for '/' */
-    while (*s1 && *s2)
-    {
-        int p1 = glob_char_priority(*s1);
-        int p2 = glob_char_priority(*s2);
-
-        if (p1 != p2)
-            return p1 - p2;
-
-        s1++;
-        s2++;
-    }
-
-    /* Handle case where one string is a prefix of the other */
-    return glob_char_priority(*s1) - glob_char_priority(*s2);
+    return dirglob_compare_paths(s1, s2);
 }
 
 void glob_results_sort(glob_results_t *results)
 {
     if (!results || results->count == 0)
         return;
+    /* Note: This only sorts items, discovery_indices will be out of sync.
+     * But sort: true doesn't need discovery_indices. */
     qsort(results->items, results->count, sizeof(char *), compare_strings);
+}
+
+void glob_results_sort_array(char **items, size_t count)
+{
+    if (!items || count == 0)
+        return;
+    qsort(items, count, sizeof(char *), compare_strings);
 }
 
 void glob_results_deduplicate(glob_results_t *results)
@@ -106,14 +200,25 @@ void glob_results_deduplicate(glob_results_t *results)
     if (!results || results->count <= 1)
         return;
 
-    size_t write_idx = 0;
-    for (size_t read_idx = 0; read_idx < results->count; read_idx++)
+    size_t write_idx = 1;
+    for (size_t read_idx = 1; read_idx < results->count; read_idx++)
     {
-        if (read_idx == 0 || strcmp(results->items[read_idx], results->items[write_idx - 1]) != 0)
+        bool is_duplicate = false;
+        for (size_t i = 0; i < write_idx; i++)
+        {
+            if (strcmp(results->items[read_idx], results->items[i]) == 0)
+            {
+                is_duplicate = true;
+                break;
+            }
+        }
+
+        if (!is_duplicate)
         {
             if (read_idx != write_idx)
             {
                 results->items[write_idx] = results->items[read_idx];
+                results->discovery_indices[write_idx] = results->discovery_indices[read_idx];
             }
             write_idx++;
         }
@@ -136,8 +241,10 @@ void glob_results_clear(glob_results_t *results)
         free(results->items[i]);
     }
     free(results->items);
+    free(results->discovery_indices);
 
     results->items = NULL;
+    results->discovery_indices = NULL;
     results->count = 0;
     results->capacity = 0;
 }
@@ -147,13 +254,11 @@ void glob_results_clear(glob_results_t *results)
 int traverse_directory(const char *pattern, const char *base,
                        unsigned flags, glob_results_t *results)
 {
-    DIR *dir;
-    struct dirent *entry;
     const char *dir_path = base ? base : ".";
     int pattern_starts_with_dot = (pattern && pattern[0] == '.');
 
-    dir = opendir(dir_path);
-    if (!dir)
+    dir_cache_node_t *dir_cache = get_cached_dir(dir_path);
+    if (!dir_cache)
     {
         /* If directory doesn't exist, that's not an error for glob */
         if (errno == ENOENT || errno == ENOTDIR)
@@ -163,9 +268,10 @@ int traverse_directory(const char *pattern, const char *base,
         return -1;
     }
 
-    while ((entry = readdir(dir)) != NULL)
+    for (size_t i = 0; i < dir_cache->count; i++)
     {
-        const char *name = entry->d_name;
+        const char *name = dir_cache->entries[i];
+        size_t discovery_index = dir_cache->discovery_indices[i];
 
         /* Always skip .. */
         if (strcmp(name, "..") == 0)
@@ -179,8 +285,8 @@ int traverse_directory(const char *pattern, const char *base,
             continue;
         }
 
-        /* Skip . unless FNM_DOTMATCH is set */
-        if (strcmp(name, ".") == 0 && !(flags & FNM_DOTMATCH))
+        /* Skip . unless FNM_DOTMATCH is set or pattern starts with . */
+        if (strcmp(name, ".") == 0 && !(flags & FNM_DOTMATCH) && !pattern_starts_with_dot)
         {
             continue;
         }
@@ -194,31 +300,16 @@ int traverse_directory(const char *pattern, const char *base,
         /* Check if name matches pattern */
         if (dirglob_fnmatch(pattern, name, flags) == 0)
         {
-            /* For base != NULL, result should be relative to base (just the name)
-             * For base == NULL, result should be the full path from current directory */
-            const char *result_path;
-            if (base && base[0] != '\0')
-            {
-                /* base is specified: return relative path (name only) */
-                result_path = name;
-            }
-            else
-            {
-                /* no base: return full path (which is just the name in current dir) */
-                result_path = name;
-            }
-
-            int ret = glob_results_add(results, result_path);
+            const char *result_path = name;
+            int ret = glob_results_add_with_index(results, result_path, discovery_index);
 
             if (ret != 0)
             {
-                closedir(dir);
                 return -1;
             }
         }
     }
 
-    closedir(dir);
     return 0;
 }
 
@@ -325,11 +416,11 @@ int traverse_directory(const char *pattern, const char *base,
 
 /* Forward declaration for recursion */
 int traverse_directory_recursive(const char *dir_pattern, const char *file_pattern,
-                                 const char *base, unsigned flags, glob_results_t *results);
+                                 const char *base, unsigned flags, glob_results_t *results, int sort_flag);
 
 /* Helper to process pattern (simplified version for recursion) */
 static int process_file_pattern(const char *pattern, const char *base,
-                                unsigned flags, glob_results_t *results)
+                                unsigned flags, glob_results_t *results, int sort_flag)
 {
     /* Handle literal paths and simple patterns */
     if (!has_glob_pattern(pattern))
@@ -381,7 +472,7 @@ static int process_file_pattern(const char *pattern, const char *base,
     int ret;
     if (has_glob_pattern(first_component))
     {
-        ret = traverse_directory_recursive(first_component, rest, base, flags, results);
+        ret = traverse_directory_recursive(first_component, rest, base, flags, results, sort_flag);
     }
     else
     {
@@ -396,7 +487,7 @@ static int process_file_pattern(const char *pattern, const char *base,
         struct stat st;
         if (stat(new_base, &st) == 0 && S_ISDIR(st.st_mode))
         {
-            ret = process_file_pattern(rest, new_base, flags, results);
+            ret = process_file_pattern(rest, new_base, flags, results, sort_flag);
         }
         else
         {
@@ -413,7 +504,7 @@ static int process_file_pattern(const char *pattern, const char *base,
  * @brief Recursively traverse directories matching dir_pattern and apply file_pattern
  */
 int traverse_directory_recursive(const char *dir_pattern, const char *file_pattern,
-                                 const char *base, unsigned flags, glob_results_t *results)
+                                 const char *base, unsigned flags, glob_results_t *results, int sort_flag)
 {
 #ifndef _WIN32
     DIR *dir;
@@ -432,10 +523,20 @@ int traverse_directory_recursive(const char *dir_pattern, const char *file_patte
         return -1;
     }
 
+    /* Collect all entries first to allow sorting */
+    size_t count = 0;
+    size_t capacity = 32;
+    char **entries = malloc(capacity * sizeof(char *));
+    if (!entries)
+    {
+        closedir(dir);
+        return -1;
+    }
+
     while ((entry = readdir(dir)) != NULL)
     {
         const char *name = entry->d_name;
-        struct stat st;
+        g_global_discovery_counter++;
 
         /* Always skip .. */
         if (strcmp(name, "..") == 0)
@@ -455,6 +556,37 @@ int traverse_directory_recursive(const char *dir_pattern, const char *file_patte
             continue;
         }
 
+        if (count >= capacity)
+        {
+            capacity *= 2;
+            char **new_entries = realloc(entries, capacity * sizeof(char *));
+            if (!new_entries)
+            {
+                for (size_t i = 0; i < count; i++)
+                    free(entries[i]);
+                free(entries);
+                closedir(dir);
+                return -1;
+            }
+            entries = new_entries;
+        }
+        entries[count++] = strdup(name);
+    }
+    closedir(dir);
+
+    /* Sort entries if requested */
+    if (sort_flag)
+    {
+        glob_results_sort_array(entries, count);
+    }
+
+    /* Process entries in order */
+    int ret = 0;
+    for (size_t i = 0; i < count; i++)
+    {
+        char *name = entries[i];
+        struct stat st;
+
         /* Check if name matches directory pattern */
         if (dirglob_fnmatch(dir_pattern, name, flags) == 0)
         {
@@ -462,9 +594,8 @@ int traverse_directory_recursive(const char *dir_pattern, const char *file_patte
             char *full_path = path_join(base, name);
             if (!full_path)
             {
-                closedir(dir);
-                errno = ENOMEM;
-                return -1;
+                ret = -1;
+                break;
             }
 
             /* Check if it's a directory */
@@ -477,45 +608,39 @@ int traverse_directory_recursive(const char *dir_pattern, const char *file_patte
 
                 /* Set FNM_SKIP_DOT_DIR to prevent matching . in subdirs */
                 unsigned subflags = flags | FNM_SKIP_DOT_DIR;
-                int ret = process_file_pattern(file_pattern, full_path, subflags, &subresults);
+                int sub_ret = process_file_pattern(file_pattern, full_path, subflags, &subresults, sort_flag);
 
-                if (ret == 0)
+                if (sub_ret == 0)
                 {
                     /* Prepend directory name to all results */
-                    for (size_t i = 0; i < subresults.count; i++)
+                    for (size_t j = 0; j < subresults.count; j++)
                     {
-                        char *prefixed_path = path_join(name, subresults.items[i]);
+                        char *prefixed_path = path_join(name, subresults.items[j]);
                         if (prefixed_path)
                         {
                             glob_results_add(results, prefixed_path);
                             free(prefixed_path);
                         }
-                        free(subresults.items[i]);
+                        free(subresults.items[j]);
                     }
                     free(subresults.items);
                 }
                 else
                 {
                     glob_results_clear(&subresults);
-                }
-
-                free(full_path);
-
-                if (ret != 0)
-                {
-                    closedir(dir);
-                    return -1;
+                    ret = -1;
                 }
             }
-            else
-            {
-                free(full_path);
-            }
+            free(full_path);
+            if (ret != 0)
+                break;
         }
     }
 
-    closedir(dir);
-    return 0;
+    for (size_t i = 0; i < count; i++)
+        free(entries[i]);
+    free(entries);
+    return ret;
 
 #else
     /* Windows implementation */
@@ -554,6 +679,16 @@ int traverse_directory_recursive(const char *dir_pattern, const char *file_patte
         return -1;
     }
 
+    /* Collect all entries first to allow sorting */
+    size_t count = 0;
+    size_t capacity = 32;
+    char **entries = malloc(capacity * sizeof(char *));
+    if (!entries)
+    {
+        FindClose(hFind);
+        return -1;
+    }
+
     do
     {
         const char *name = find_data.cFileName;
@@ -576,62 +711,88 @@ int traverse_directory_recursive(const char *dir_pattern, const char *file_patte
             continue;
         }
 
+        if (count >= capacity)
+        {
+            capacity *= 2;
+            char **new_entries = realloc(entries, capacity * sizeof(char *));
+            if (!new_entries)
+            {
+                for (size_t i = 0; i < count; i++)
+                    free(entries[i]);
+                free(entries);
+                FindClose(hFind);
+                return -1;
+            }
+            entries = new_entries;
+        }
+        entries[count++] = strdup(name);
+    } while (FindNextFileA(hFind, &find_data));
+
+    FindClose(hFind);
+
+    /* Sort entries if requested */
+    if (sort_flag)
+    {
+        glob_results_sort_array(entries, count);
+    }
+
+    /* Process entries in order */
+    int ret = 0;
+    for (size_t i = 0; i < count; i++)
+    {
+        char *name = entries[i];
+
         /* Check if name matches directory pattern */
         if (dirglob_fnmatch(dir_pattern, name, flags) == 0)
         {
-            /* Check if it's a directory */
-            if (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+            char *full_path = path_join(base, name);
+            if (!full_path)
             {
-                char *full_path = path_join(base, name);
-                if (!full_path)
-                {
-                    FindClose(hFind);
-                    errno = ENOMEM;
-                    return -1;
-                }
+                ret = -1;
+                break;
+            }
 
+            /* Check if it's a directory */
+            DWORD attrs = GetFileAttributesA(full_path);
+            if (attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_DIRECTORY))
+            {
                 /* Process file_pattern in this directory */
-                /* Collect results and prepend directory name */
                 glob_results_t subresults;
                 glob_results_init(&subresults);
 
-                /* Set FNM_SKIP_DOT_DIR to prevent matching . in subdirs */
                 unsigned subflags = flags | FNM_SKIP_DOT_DIR;
-                int ret = process_file_pattern(file_pattern, full_path, subflags, &subresults);
+                int sub_ret = process_file_pattern(file_pattern, full_path, subflags, &subresults, sort_flag);
 
-                if (ret == 0)
+                if (sub_ret == 0)
                 {
-                    /* Prepend directory name to all results */
-                    for (size_t i = 0; i < subresults.count; i++)
+                    for (size_t j = 0; j < subresults.count; j++)
                     {
-                        char *prefixed_path = path_join(name, subresults.items[i]);
+                        char *prefixed_path = path_join(name, subresults.items[j]);
                         if (prefixed_path)
                         {
                             glob_results_add(results, prefixed_path);
                             free(prefixed_path);
                         }
-                        free(subresults.items[i]);
+                        free(subresults.items[j]);
                     }
                     free(subresults.items);
                 }
                 else
                 {
                     glob_results_clear(&subresults);
-                }
-
-                free(full_path);
-
-                if (ret != 0)
-                {
-                    FindClose(hFind);
-                    return -1;
+                    ret = -1;
                 }
             }
+            free(full_path);
+            if (ret != 0)
+                break;
         }
-    } while (FindNextFileA(hFind, &find_data));
+    }
 
-    FindClose(hFind);
-    return 0;
+    for (size_t i = 0; i < count; i++)
+        free(entries[i]);
+    free(entries);
+    return ret;
 #endif
 }
 
@@ -644,112 +805,179 @@ int traverse_directory_recursive(const char *dir_pattern, const char *file_patte
  * - dir/file.txt (in any subdirectory)
  * - dir/subdir/file.txt (in any nested subdirectory)
  *
- * NOTE: Results are added breadth-first (current directory first, then subdirectories)
+ * NOTE: Results are added in natural order (interleaved) to match Ruby's behavior.
  */
 int traverse_recursive_glob(const char *pattern, const char *base,
-                            unsigned flags, glob_results_t *results)
+                            unsigned flags, glob_results_t *results, int sort_flag, bool is_initial)
 {
-    /* First, match pattern in current directory */
-    glob_results_t current_results;
-    glob_results_init(&current_results);
-
-    if (process_file_pattern(pattern, base, flags, &current_results) != 0)
-    {
-        glob_results_clear(&current_results);
-        return -1;
-    }
-
-    /* Add results from current directory */
-    for (size_t i = 0; i < current_results.count; i++)
-    {
-        glob_results_add(results, current_results.items[i]);
-        free(current_results.items[i]);
-    }
-    free(current_results.items);
-
-    /* Then, recursively search all subdirectories */
 #ifndef _WIN32
-    DIR *dir;
-    struct dirent *entry;
+    /* POSIX Implementation with caching */
     const char *dir_path = base ? base : ".";
 
-    dir = opendir(dir_path);
-    if (!dir)
+    dir_cache_node_t *dir_cache = get_cached_dir(dir_path);
+    if (!dir_cache)
     {
         /* If directory doesn't exist, that's not an error for glob */
         if (errno == ENOENT || errno == ENOTDIR)
-        {
             return 0;
-        }
         return -1;
     }
 
-    while ((entry = readdir(dir)) != NULL)
+    /* Iterate in sorted or unsorted order */
+    size_t *iteration_order = malloc(dir_cache->count * sizeof(size_t));
+    if (!iteration_order)
+        return -1;
+
+    for (size_t k = 0; k < dir_cache->count; k++)
+        iteration_order[k] = k;
+
+    if (sort_flag)
     {
-        const char *name = entry->d_name;
+        /* Simple sort */
+        for (size_t i = 0; i < dir_cache->count; i++)
+        {
+            for (size_t j = i + 1; j < dir_cache->count; j++)
+            {
+                if (dirglob_compare_paths(dir_cache->entries[iteration_order[i]],
+                                          dir_cache->entries[iteration_order[j]]) > 0)
+                {
+                    size_t tmp = iteration_order[i];
+                    iteration_order[i] = iteration_order[j];
+                    iteration_order[j] = tmp;
+                }
+            }
+        }
+    }
 
-        /* Skip . and .. */
+    /* Process entries in order */
+    int ret = 0;
+
+    /* 1. Zero-directory match */
+    if (is_initial && pattern)
+    {
+        if (pattern[0] == '\0')
+        {
+            /* Trailing slash logic - can match . if dir */
+        }
+        else if (dirglob_fnmatch(pattern, ".", flags) == 0)
+        {
+            glob_results_add(results, ".");
+        }
+    }
+
+    for (size_t k = 0; k < dir_cache->count; k++)
+    {
+        size_t i = iteration_order[k];
+        char *name = dir_cache->entries[i];
+        size_t discovery_index = dir_cache->discovery_indices[i];
+
         if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
-        {
             continue;
-        }
 
-        /* Skip dot files/directories unless FNM_DOTMATCH is set */
-        if (!(flags & FNM_DOTMATCH) && name[0] == '.')
-        {
-            continue;
-        }
-
-        /* Build full path */
         char *full_path = path_join(base, name);
         if (!full_path)
         {
-            closedir(dir);
-            errno = ENOMEM;
-            return -1;
+            ret = -1;
+            break;
         }
 
-        /* Check if it's a directory */
         struct stat st;
-        if (stat(full_path, &st) == 0 && S_ISDIR(st.st_mode))
+        int exists = (stat(full_path, &st) == 0);
+        int is_dir = (exists && S_ISDIR(st.st_mode));
+
+        /* 2. Match pattern against current entry */
+        if (pattern && pattern[0] != '\0')
         {
-            /* Recursively search this directory */
+            const char *slash = strchr(pattern, '/');
+            if (slash == NULL)
+            {
+                if (dirglob_fnmatch(pattern, name, flags) == 0)
+                {
+                    glob_results_add_with_index(results, name, discovery_index);
+                }
+            }
+            else
+            {
+                size_t first_len = slash - pattern;
+                char *first = malloc(first_len + 1);
+                if (first)
+                {
+                    memcpy(first, pattern, first_len);
+                    first[first_len] = '\0';
+
+                    if (dirglob_fnmatch(first, name, flags) == 0 && is_dir)
+                    {
+                        const char *rest = slash + 1;
+                        while (*rest == '/')
+                            rest++;
+
+                        glob_results_t match_results;
+                        glob_results_init(&match_results);
+                        if (process_file_pattern(rest, full_path, flags, &match_results, sort_flag) == 0)
+                        {
+                            for (size_t j = 0; j < match_results.count; j++)
+                            {
+                                char *prefixed = path_join(name, match_results.items[j]);
+                                if (prefixed)
+                                {
+                                    glob_results_add_with_index(results, prefixed, match_results.discovery_indices[j]);
+                                    free(prefixed);
+                                }
+                                free(match_results.items[j]);
+                            }
+                            free(match_results.items);
+                            free(match_results.discovery_indices);
+                        }
+                        else
+                        {
+                            glob_results_clear(&match_results);
+                        }
+                    }
+                    free(first);
+                }
+            }
+        }
+        else if (pattern && pattern[0] == '\0')
+        {
+            if (is_dir)
+            {
+                glob_results_add_with_index(results, name, discovery_index);
+            }
+        }
+
+        /* 3. Recurse into subdirectories for ** */
+        if (is_dir && (name[0] != '.' || (flags & FNM_DOTMATCH)))
+        {
             glob_results_t subresults;
             glob_results_init(&subresults);
-
-            int ret = traverse_recursive_glob(pattern, full_path, flags, &subresults);
-
-            if (ret == 0)
+            if (traverse_recursive_glob(pattern, full_path, flags, &subresults, sort_flag, false) == 0)
             {
-                /* Prepend directory name to all results */
-                for (size_t i = 0; i < subresults.count; i++)
+                for (size_t j = 0; j < subresults.count; j++)
                 {
-                    char *prefixed_path = path_join(name, subresults.items[i]);
-                    if (prefixed_path)
+                    char *prefixed = path_join(name, subresults.items[j]);
+                    if (prefixed)
                     {
-                        glob_results_add(results, prefixed_path);
-                        free(prefixed_path);
+                        glob_results_add_with_index(results, prefixed, subresults.discovery_indices[j]);
+                        free(prefixed);
                     }
-                    free(subresults.items[i]);
+                    free(subresults.items[j]);
                 }
                 free(subresults.items);
+                free(subresults.discovery_indices);
             }
             else
             {
                 glob_results_clear(&subresults);
-                free(full_path);
-                closedir(dir);
-                return -1;
             }
         }
 
         free(full_path);
+        if (ret != 0)
+            break;
     }
 
-    closedir(dir);
-
-    return 0;
-
+    free(iteration_order);
+    return ret;
 #else
     /* Windows implementation */
     WIN32_FIND_DATAA find_data;
@@ -785,6 +1013,16 @@ int traverse_recursive_glob(const char *pattern, const char *base,
         return -1;
     }
 
+    /* Collect all entries first to allow sorting and interleaving */
+    size_t count = 0;
+    size_t capacity = 32;
+    char **entries = malloc(capacity * sizeof(char *));
+    if (!entries)
+    {
+        FindClose(hFind);
+        return -1;
+    }
+
     do
     {
         const char *name = find_data.cFileName;
@@ -795,57 +1033,257 @@ int traverse_recursive_glob(const char *pattern, const char *base,
             continue;
         }
 
-        /* Skip dot files/directories unless FNM_DOTMATCH is set */
-        if (!(flags & FNM_DOTMATCH) && name[0] == '.')
+        if (count >= capacity)
         {
-            continue;
-        }
-
-        /* Check if it's a directory */
-        if (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-        {
-            char *full_path = path_join(base, name);
-            if (!full_path)
+            capacity *= 2;
+            char **new_entries = realloc(entries, capacity * sizeof(char *));
+            if (!new_entries)
             {
+                for (size_t i = 0; i < count; i++)
+                    free(entries[i]);
+                free(entries);
                 FindClose(hFind);
-                errno = ENOMEM;
                 return -1;
             }
+            entries = new_entries;
+        }
+        entries[count++] = strdup(name);
+    } while (FindNextFileA(hFind, &find_data));
 
-            /* Recursively search this directory */
+    FindClose(hFind);
+
+    /* Sort entries if requested */
+    if (sort_flag)
+    {
+        glob_results_sort_array(entries, count);
+    }
+
+    /* Process entries in order */
+    int ret = 0;
+
+    /* 1. Zero-directory match */
+    if (is_initial && pattern)
+    {
+        if (pattern[0] == '\0')
+        {
+            /* Trailing slash case */
+        }
+        else if (dirglob_fnmatch(pattern, ".", flags) == 0)
+        {
+            glob_results_add(results, ".");
+        }
+    }
+
+    for (size_t i = 0; i < count; i++)
+    {
+        char *name = entries[i];
+        char *full_path = path_join(base, name);
+        if (!full_path)
+        {
+            ret = -1;
+            break;
+        }
+
+        /* Check attributes */
+        DWORD attrs = GetFileAttributesA(full_path);
+        int exists = (attrs != INVALID_FILE_ATTRIBUTES);
+        int is_dir = (exists && (attrs & FILE_ATTRIBUTE_DIRECTORY));
+
+        /* 2. Recurse into subdirectories for ** */
+        if (is_dir && (name[0] != '.' || (flags & FNM_DOTMATCH)))
+        {
             glob_results_t subresults;
             glob_results_init(&subresults);
-
-            int ret = traverse_recursive_glob(pattern, full_path, flags, &subresults);
-
-            if (ret == 0)
+            if (traverse_recursive_glob(pattern, full_path, flags, &subresults, sort_flag, false) == 0)
             {
-                /* Prepend directory name to all results */
-                for (size_t i = 0; i < subresults.count; i++)
+                for (size_t j = 0; j < subresults.count; j++)
                 {
-                    char *prefixed_path = path_join(name, subresults.items[i]);
-                    if (prefixed_path)
+                    char *prefixed = path_join(name, subresults.items[j]);
+                    if (prefixed)
                     {
-                        glob_results_add(results, prefixed_path);
-                        free(prefixed_path);
+                        glob_results_add(results, prefixed);
+                        free(prefixed);
                     }
-                    free(subresults.items[i]);
+                    free(subresults.items[j]);
                 }
                 free(subresults.items);
             }
             else
             {
                 glob_results_clear(&subresults);
-                free(full_path);
-                FindClose(hFind);
-                return -1;
+                ret = -1;
             }
-
-            free(full_path);
         }
-    } while (FindNextFileA(hFind, &find_data));
 
-    FindClose(hFind);
-    return 0;
+        /* 3. Match pattern in current entry */
+        if (pattern && pattern[0] != '\0')
+        {
+            const char *slash = strchr(pattern, '/');
+            if (slash == NULL)
+            {
+                if (dirglob_fnmatch(pattern, name, flags) == 0)
+                {
+                    glob_results_add(results, name);
+                }
+            }
+            else
+            {
+                size_t first_len = slash - pattern;
+                char *first = malloc(first_len + 1);
+                if (first)
+                {
+                    memcpy(first, pattern, first_len);
+                    first[first_len] = '\0';
+
+                    if (dirglob_fnmatch(first, name, flags) == 0 && is_dir)
+                    {
+                        const char *rest = slash + 1;
+                        while (*rest == '/')
+                            rest++;
+
+                        glob_results_t match_results;
+                        glob_results_init(&match_results);
+                        if (process_file_pattern(rest, full_path, flags, &match_results, sort_flag) == 0)
+                        {
+                            for (size_t j = 0; j < match_results.count; j++)
+                            {
+                                char *prefixed = path_join(name, match_results.items[j]);
+                                if (prefixed)
+                                {
+                                    glob_results_add(results, prefixed);
+                                    free(prefixed);
+                                }
+                                free(match_results.items[j]);
+                            }
+                            free(match_results.items);
+                        }
+                        else
+                        {
+                            glob_results_clear(&match_results);
+                        }
+                    }
+                    free(first);
+                }
+            }
+        }
+        else if (pattern && pattern[0] == '\0')
+        {
+            if (is_dir)
+            {
+                glob_results_add(results, name);
+            }
+        }
+
+        free(full_path);
+        if (ret != 0)
+            break;
+    }
+
+    for (size_t i = 0; i < count; i++)
+        free(entries[i]);
+    free(entries);
+
+    return ret;
 #endif
+}
+
+int dirglob_compare_filesystem_order(const char *a, const char *b)
+{
+    char *dupA = strdup(a); // POSIX
+    char *dupB = strdup(b);
+    if (!dupA || !dupB) {
+        free(dupA); free(dupB);
+        return 0; // Error fallback
+    }
+
+    char *current_dir = strdup(".");
+    if (!current_dir) {
+        free(dupA); free(dupB);
+        return 0;
+    }
+
+    char *pA = dupA;
+    char *pB = dupB;
+    int result = 0;
+
+    /* Handle empty paths or . */
+    
+    while (*pA != '\0' && *pB != '\0')
+    {
+        /* Find next component */
+        char *endA = strchr(pA, '/');
+        if (endA) *endA = '\0';
+        
+        char *endB = strchr(pB, '/');
+        if (endB) *endB = '\0';
+        
+        char *compA = pA;
+        char *compB = pB;
+        
+        if (strcmp(compA, compB) == 0)
+        {
+            /* Check if we entered a directory */
+            char *next = path_join(current_dir, compA);
+            free(current_dir);
+            current_dir = next;
+            if (!current_dir) { result = 0; goto cleanup; } // ENOMEM
+            
+            /* Advance */
+            if (endA) { 
+                *endA = '/'; // restore
+                pA = endA + 1; 
+                while (*pA == '/') pA++; 
+            } else {
+                pA += strlen(pA);
+            }
+            
+            if (endB) { 
+                *endB = '/'; 
+                pB = endB + 1; 
+                while (*pB == '/') pB++; 
+            } else {
+                pB += strlen(pB);
+            }
+            continue;
+        }
+
+        /* Components differ. Compare indices in current_dir */
+        dir_cache_node_t *cache = get_cached_dir(current_dir);
+        if (!cache) {
+             /* Cache missing? Fallback to string compare */
+             result = strcmp(compA, compB);
+             goto cleanup;
+        }
+        
+        size_t idxA = (size_t)-1;
+        size_t idxB = (size_t)-1;
+        
+        /* O(N) scan */
+        for (size_t i=0; i < cache->count; i++) {
+             if (strcmp(cache->entries[i], compA) == 0) idxA = i;
+             if (strcmp(cache->entries[i], compB) == 0) idxB = i;
+        }
+        
+        /* Handle . and .. if they appear */
+        if (strcmp(compA, ".") == 0) idxA = 0; // Conceptual 'before'
+        if (strcmp(compB, ".") == 0) idxB = 0;
+        
+        if (idxA == (size_t)-1 && idxB == (size_t)-1) result = strcmp(compA, compB);
+        else if (idxA == (size_t)-1) result = 1; /* A not found > B found */
+        else if (idxB == (size_t)-1) result = -1;
+        else result = (idxA < idxB) ? -1 : 1;
+        
+        goto cleanup;
+    }
+    
+    /* One ended */
+    if (*pA == '\0' && *pB == '\0') result = 0;
+    else if (*pA == '\0') result = -1; /* A is prefix of B, A < B */
+    else result = 1;
+
+cleanup:
+    free(dupA);
+    free(dupB);
+    free(current_dir);
+    return result;
 }

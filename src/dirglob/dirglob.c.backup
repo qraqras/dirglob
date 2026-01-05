@@ -1,0 +1,665 @@
+#include <dirglob/dirglob.h>
+#include <dirglob/internal/fnmatch.h>
+#include <dirglob/internal/traverse.h>
+#include <dirglob/internal/utils.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+#include <stdio.h>
+
+#ifdef _WIN32
+#include <sys/stat.h>
+#define stat _stat
+#else
+#include <sys/stat.h>
+#include <unistd.h>
+#endif
+
+/**
+ * @brief Return library version string.
+ */
+const char *
+dirglob_version(void)
+{
+  return "0.1.0";
+}
+
+/**
+ * @brief Check if a path exists (file or directory)
+ */
+static bool path_exists(const char *path)
+{
+  struct stat st;
+  return stat(path, &st) == 0;
+}
+
+/**
+ * @brief Extract directory part from a path (e.g., "a/b.txt" -> "a", "./b.txt" -> ".")
+ */
+static char *get_directory_part(const char *path)
+{
+  const char *slash = strrchr(path, '/');
+  if (!slash)
+  {
+    /* No slash - current directory */
+    return strdup(".");
+  }
+  
+  size_t dirlen = slash - path;
+  if (dirlen == 0)
+  {
+    /* Leading slash */
+    return strdup("/");
+  }
+  
+  char *dir = malloc(dirlen + 1);
+  if (dir)
+  {
+    memcpy(dir, path, dirlen);
+    dir[dirlen] = '\0';
+  }
+  return dir;
+}
+
+/**
+ * @brief Process a single pattern and collect matches
+ */
+static int process_pattern(const char *pattern, const char *base,
+                           unsigned flags, glob_results_t *results)
+{
+  if (!pattern)
+  {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Handle empty pattern */
+  if (pattern[0] == '\0')
+  {
+    return 0;
+  }
+
+  /* Check if pattern contains glob metacharacters */
+  if (!has_glob_pattern(pattern))
+  {
+    /* Literal path - check if it exists */
+    char *full_path = path_join(base, pattern);
+    if (!full_path)
+    {
+      errno = ENOMEM;
+      return -1;
+    }
+
+    if (path_exists(full_path))
+    {
+      /* For base != NULL, result should be relative to base */
+      const char *result_path = (base && base[0] != '\0') ? pattern : full_path;
+      int ret = glob_results_add(results, result_path);
+      free(full_path);
+      return ret;
+    }
+
+    free(full_path);
+    return 0; /* No match is not an error */
+  }
+
+  /* Handle patterns with directory components */
+  const char *slash = strchr(pattern, '/');
+  if (slash == NULL)
+  {
+    /* Simple filename pattern - no directory component */
+    return traverse_directory(pattern, base, flags, results);
+  }
+
+  /* Pattern has directory component: dir/file or dir/wildcard/file etc. */
+  /* Split pattern into first component and rest */
+  size_t first_len = slash - pattern;
+  char *first_component = malloc(first_len + 1);
+  if (!first_component)
+  {
+    errno = ENOMEM;
+    return -1;
+  }
+  memcpy(first_component, pattern, first_len);
+  first_component[first_len] = '\0';
+
+  /* Rest of pattern (after the slash) */
+  const char *rest_pattern = slash + 1;
+
+  /* Skip multiple slashes */
+  while (*rest_pattern == '/')
+  {
+    rest_pattern++;
+  }
+
+  int ret;
+
+  /* Check for ** (recursive glob) */
+  if (strcmp(first_component, "**") == 0)
+  {
+    /* Recursive directory traversal */
+    ret = traverse_recursive_glob(rest_pattern, base, flags, results);
+    free(first_component);
+    return ret;
+  }
+
+  if (has_glob_pattern(first_component))
+  {
+    /* First component has wildcards - need to match directories */
+    ret = traverse_directory_recursive(first_component, rest_pattern, base, flags, results);
+  }
+  else
+  {
+    /* First component is literal - check if directory exists and recurse */
+    char *new_base = path_join(base, first_component);
+    if (!new_base)
+    {
+      free(first_component);
+      errno = ENOMEM;
+      return -1;
+    }
+
+    /* Check if directory exists */
+    struct stat st;
+    if (stat(new_base, &st) == 0 && S_ISDIR(st.st_mode))
+    {
+      /* Collect results from subdirectory and prepend directory name */
+      glob_results_t subresults;
+      glob_results_init(&subresults);
+
+      ret = process_pattern(rest_pattern, new_base, flags, &subresults);
+
+      if (ret == 0)
+      {
+        /* Prepend directory name to all results */
+        for (size_t i = 0; i < subresults.count; i++)
+        {
+          char *prefixed_path = path_join(first_component, subresults.items[i]);
+          if (prefixed_path)
+          {
+            glob_results_add(results, prefixed_path);
+            free(prefixed_path);
+          }
+          free(subresults.items[i]);
+        }
+        free(subresults.items);
+      }
+      else
+      {
+        glob_results_clear(&subresults);
+      }
+    }
+    else
+    {
+      /* Directory doesn't exist - no matches */
+      ret = 0;
+    }
+    free(new_base);
+  }
+
+  free(first_component);
+  return ret;
+}
+
+/**
+ * @brief Perform glob pattern matching
+ */
+bool dirglob(const char **patterns, size_t npatterns, unsigned flags,
+             const char *base, int sort_flag, char ***out, size_t *count)
+{
+  if (!out || !count)
+  {
+    errno = EINVAL;
+    return false;
+  }
+
+  if (!patterns || npatterns == 0)
+  {
+    *count = 0;
+    *out = NULL;
+    return true;
+  }
+
+  /* Initialize result collector */
+  glob_results_t results;
+  glob_results_init(&results);
+
+  /* Track whether any simple brace expansion occurred (no directory component) */
+  bool has_simple_brace_expansion = false;
+  bool has_directory_brace_expansion = false;
+
+  /* For directory+brace patterns, collect results per expanded pattern separately */
+  glob_results_t *brace_pattern_results = NULL;
+  size_t total_expanded_count = 0;
+
+  /* Process each pattern */
+  for (size_t i = 0; i < npatterns; i++)
+  {
+    /* Expand braces first */
+    char **expanded = NULL;
+    size_t expanded_count = 0;
+
+    if (expand_braces(patterns[i], &expanded, &expanded_count) != 0)
+    {
+      glob_results_clear(&results);
+      if (brace_pattern_results)
+      {
+        for (size_t x = 0; x < total_expanded_count; x++)
+        {
+          glob_results_clear(&brace_pattern_results[x]);
+        }
+        free(brace_pattern_results);
+      }
+      return false;
+    }
+
+    /* Check if this is a simple brace expansion (no directory separator) */
+    bool is_simple_brace = (expanded_count > 1 && strchr(patterns[i], '/') == NULL);
+    bool is_directory_brace = (expanded_count > 1 && strchr(patterns[i], '/') != NULL);
+    
+    if (is_simple_brace)
+    {
+      has_simple_brace_expansion = true;
+    }
+    if (is_directory_brace)
+    {
+      has_directory_brace_expansion = true;
+    }
+
+    /* For directory+brace patterns, collect separately */
+    if (is_directory_brace)
+    {
+      /* Allocate storage for each expanded pattern's results */
+      if (brace_pattern_results == NULL)
+      {
+        brace_pattern_results = calloc(expanded_count, sizeof(glob_results_t));
+        if (!brace_pattern_results)
+        {
+          for (size_t j = 0; j < expanded_count; j++)
+            free(expanded[j]);
+          free(expanded);
+          glob_results_clear(&results);
+          return false;
+        }
+        total_expanded_count = expanded_count;
+        for (size_t x = 0; x < total_expanded_count; x++)
+        {
+          glob_results_init(&brace_pattern_results[x]);
+        }
+      }
+      else
+      {
+        /* Reallocate to accommodate more patterns */
+        size_t new_count = total_expanded_count + expanded_count;
+        glob_results_t *new_array = realloc(brace_pattern_results, new_count * sizeof(glob_results_t));
+        if (!new_array)
+        {
+          for (size_t j = 0; j < expanded_count; j++)
+            free(expanded[j]);
+          free(expanded);
+          for (size_t x = 0; x < total_expanded_count; x++)
+          {
+            glob_results_clear(&brace_pattern_results[x]);
+          }
+          free(brace_pattern_results);
+          glob_results_clear(&results);
+          return false;
+        }
+        brace_pattern_results = new_array;
+        for (size_t x = total_expanded_count; x < new_count; x++)
+        {
+          glob_results_init(&brace_pattern_results[x]);
+        }
+        total_expanded_count = new_count;
+      }
+
+      /* Process each expanded pattern and store separately */
+      for (size_t j = 0; j < expanded_count; j++)
+      {
+        size_t idx = total_expanded_count - expanded_count + j;
+        if (process_pattern(expanded[j], base, flags, &brace_pattern_results[idx]) != 0)
+        {
+          /* Cleanup */
+          for (size_t k = 0; k < expanded_count; k++)
+            free(expanded[k]);
+          free(expanded);
+          for (size_t x = 0; x < total_expanded_count; x++)
+          {
+            glob_results_clear(&brace_pattern_results[x]);
+          }
+          free(brace_pattern_results);
+          glob_results_clear(&results);
+          return false;
+        }
+        /* Sort each pattern's results if sort_flag is set */
+        if (sort_flag)
+        {
+          glob_results_sort(&brace_pattern_results[idx]);
+        }
+      }
+    }
+    else
+    {
+      /* Process each expanded pattern normally */
+      for (size_t j = 0; j < expanded_count; j++)
+      {
+        /* Collect results for this specific expanded pattern */
+        glob_results_t pattern_results;
+        glob_results_init(&pattern_results);
+
+        if (process_pattern(expanded[j], base, flags, &pattern_results) != 0)
+        {
+          /* Cleanup */
+          glob_results_clear(&pattern_results);
+          for (size_t k = 0; k < expanded_count; k++)
+            free(expanded[k]);
+          free(expanded);
+          if (brace_pattern_results)
+          {
+            for (size_t x = 0; x < total_expanded_count; x++)
+            {
+              glob_results_clear(&brace_pattern_results[x]);
+            }
+            free(brace_pattern_results);
+          }
+          glob_results_clear(&results);
+          return false;
+        }
+
+        /* Sort this pattern's results if requested
+         * NOTE: Skip sorting for simple brace-expanded patterns (no directory component)
+         * to preserve brace expansion order (Ruby behavior)
+         */
+        if (sort_flag && !is_simple_brace)
+        {
+          glob_results_sort(&pattern_results);
+        }
+
+        /* Merge into main results (preserving brace expansion order) */
+        for (size_t k = 0; k < pattern_results.count; k++)
+        {
+          glob_results_add(&results, pattern_results.items[k]);
+          free(pattern_results.items[k]);
+        }
+        free(pattern_results.items);
+      }
+    }
+
+    /* Cleanup expanded patterns */
+    for (size_t j = 0; j < expanded_count; j++)
+      free(expanded[j]);
+    free(expanded);
+  }
+
+  /* Merge directory+brace results by directory grouping */
+  if (has_directory_brace_expansion && brace_pattern_results)
+  {
+    /* Directory-grouped merge: group by directory, then interleave patterns */
+    /* Algorithm:
+     * 1. Extract all unique directories from all pattern results
+     * 2. Sort directories (if sort_flag is set)
+     * 3. For each directory, add matches from each pattern in brace order
+     */
+    
+    /* Collect all unique directories */
+    char **unique_dirs = NULL;
+    size_t unique_dir_count = 0;
+    size_t unique_dir_capacity = 0;
+    
+    /* For sort_flag=false, preserve directory order from first pattern
+     * For sort_flag=true, collect all directories then sort */
+    for (size_t i = 0; i < total_expanded_count; i++)
+    {
+      for (size_t j = 0; j < brace_pattern_results[i].count; j++)
+      {
+        char *dir = get_directory_part(brace_pattern_results[i].items[j]);
+        if (!dir)
+          continue;
+        
+        /* Check if directory already in list */
+        bool found = false;
+        for (size_t k = 0; k < unique_dir_count; k++)
+        {
+          if (strcmp(unique_dirs[k], dir) == 0)
+          {
+            found = true;
+            break;
+          }
+        }
+        
+        if (!found)
+        {
+          /* Add to list */
+          if (unique_dir_count >= unique_dir_capacity)
+          {
+            unique_dir_capacity = unique_dir_capacity == 0 ? 16 : unique_dir_capacity * 2;
+            char **new_dirs = realloc(unique_dirs, unique_dir_capacity * sizeof(char *));
+            if (!new_dirs)
+            {
+              free(dir);
+              for (size_t x = 0; x < unique_dir_count; x++)
+                free(unique_dirs[x]);
+              free(unique_dirs);
+              for (size_t x = 0; x < total_expanded_count; x++)
+              {
+                glob_results_clear(&brace_pattern_results[x]);
+              }
+              free(brace_pattern_results);
+              glob_results_clear(&results);
+              return false;
+            }
+            unique_dirs = new_dirs;
+          }
+          unique_dirs[unique_dir_count++] = dir;
+        }
+        else
+        {
+          free(dir);
+        }
+      }
+      
+      /* For sort_flag=false, only process first pattern to get directory order
+       * Other patterns will contribute matches to these directories */
+      if (!sort_flag && i == 0)
+      {
+        break;
+      }
+    }
+    
+    /* If sort_flag=true, ensure all directories from all patterns are included */
+    if (sort_flag)
+    {
+      /* Already collected all directories above, now add any missing from other patterns */
+      for (size_t i = 1; i < total_expanded_count; i++)
+      {
+        for (size_t j = 0; j < brace_pattern_results[i].count; j++)
+        {
+          char *dir = get_directory_part(brace_pattern_results[i].items[j]);
+          if (!dir)
+            continue;
+          
+          bool found = false;
+          for (size_t k = 0; k < unique_dir_count; k++)
+          {
+            if (strcmp(unique_dirs[k], dir) == 0)
+            {
+              found = true;
+              break;
+            }
+          }
+          
+          if (!found)
+          {
+            if (unique_dir_count >= unique_dir_capacity)
+            {
+              unique_dir_capacity = unique_dir_capacity == 0 ? 16 : unique_dir_capacity * 2;
+              char **new_dirs = realloc(unique_dirs, unique_dir_capacity * sizeof(char *));
+              if (!new_dirs)
+              {
+                free(dir);
+                for (size_t x = 0; x < unique_dir_count; x++)
+                  free(unique_dirs[x]);
+                free(unique_dirs);
+                for (size_t x = 0; x < total_expanded_count; x++)
+                {
+                  glob_results_clear(&brace_pattern_results[x]);
+                }
+                free(brace_pattern_results);
+                glob_results_clear(&results);
+                return false;
+              }
+              unique_dirs = new_dirs;
+            }
+            unique_dirs[unique_dir_count++] = dir;
+          }
+          else
+          {
+            free(dir);
+          }
+        }
+      }
+    }
+    else
+    {
+      /* For sort_flag=false, collect directories from all patterns in discovery order */
+      for (size_t i = 1; i < total_expanded_count; i++)
+      {
+        for (size_t j = 0; j < brace_pattern_results[i].count; j++)
+        {
+          char *dir = get_directory_part(brace_pattern_results[i].items[j]);
+          if (!dir)
+            continue;
+          
+          bool found = false;
+          for (size_t k = 0; k < unique_dir_count; k++)
+          {
+            if (strcmp(unique_dirs[k], dir) == 0)
+            {
+              found = true;
+              break;
+            }
+          }
+          
+          if (!found)
+          {
+            if (unique_dir_count >= unique_dir_capacity)
+            {
+              unique_dir_capacity = unique_dir_capacity == 0 ? 16 : unique_dir_capacity * 2;
+              char **new_dirs = realloc(unique_dirs, unique_dir_capacity * sizeof(char *));
+              if (!new_dirs)
+              {
+                free(dir);
+                for (size_t x = 0; x < unique_dir_count; x++)
+                  free(unique_dirs[x]);
+                free(unique_dirs);
+                for (size_t x = 0; x < total_expanded_count; x++)
+                {
+                  glob_results_clear(&brace_pattern_results[x]);
+                }
+                free(brace_pattern_results);
+                glob_results_clear(&results);
+                return false;
+              }
+              unique_dirs = new_dirs;
+            }
+            unique_dirs[unique_dir_count++] = dir;
+          }
+          else
+          {
+            free(dir);
+          }
+        }
+      }
+    }
+    
+    /* Sort unique directories if sort_flag is set */
+    if (sort_flag)
+    {
+      glob_results_sort_array(unique_dirs, unique_dir_count);
+    }
+    
+    /* For each directory, add all matches from all patterns in brace order */
+    for (size_t dir_idx = 0; dir_idx < unique_dir_count; dir_idx++)
+    {
+      const char *current_dir = unique_dirs[dir_idx];
+      
+      /* Iterate through each brace pattern */
+      for (size_t pattern_idx = 0; pattern_idx < total_expanded_count; pattern_idx++)
+      {
+        /* Find matches in this pattern that belong to current_dir */
+        for (size_t match_idx = 0; match_idx < brace_pattern_results[pattern_idx].count; match_idx++)
+        {
+          char *match_dir = get_directory_part(brace_pattern_results[pattern_idx].items[match_idx]);
+          if (match_dir && strcmp(match_dir, current_dir) == 0)
+          {
+            /* Add this match to results */
+            glob_results_add(&results, brace_pattern_results[pattern_idx].items[match_idx]);
+          }
+          free(match_dir);
+        }
+      }
+    }
+    
+    /* Cleanup */
+    for (size_t i = 0; i < unique_dir_count; i++)
+      free(unique_dirs[i]);
+    free(unique_dirs);
+    
+    for (size_t i = 0; i < total_expanded_count; i++)
+    {
+      for (size_t j = 0; j < brace_pattern_results[i].count; j++)
+      {
+        free(brace_pattern_results[i].items[j]);
+      }
+      free(brace_pattern_results[i].items);
+    }
+    free(brace_pattern_results);
+  }
+
+  /* Sort and deduplicate results if requested
+   * NOTE: Skip final sort if simple brace expansion occurred (no directory component)
+   * to preserve brace expansion order
+   */
+  if (sort_flag && !has_simple_brace_expansion)
+  {
+    glob_results_sort(&results);
+  }
+  glob_results_deduplicate(&results);
+
+  /* Return results */
+  *count = results.count;
+  *out = results.items;
+
+  /* Don't call glob_results_clear() - caller owns the items array */
+  return true;
+}
+
+/**
+ * @brief Free memory allocated by dirglob
+ */
+void dirglob_free(char **list, size_t count)
+{
+  if (!list)
+  {
+    return;
+  }
+
+  for (size_t i = 0; i < count; i++)
+  {
+    free(list[i]);
+  }
+  free(list);
+}
+
+/**
+ * @brief Test if a path matches a glob pattern
+ */
+int dirglob_match(const char *pattern, unsigned flags, const char *path)
+{
+  if (!pattern || !path)
+  {
+    return -1;
+  }
+
+  return dirglob_fnmatch(pattern, path, flags);
+}
