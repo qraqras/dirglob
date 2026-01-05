@@ -62,9 +62,36 @@ int glob_results_add(glob_results_t *results, const char *path)
     return 0;
 }
 
+static int glob_char_priority(char c)
+{
+    /* In Ruby's Dir.glob sorting, '/' has higher priority than other characters
+     * This ensures that "a/a.txt" comes before "a.txt"
+     */
+    if (c == '/')
+        return 0; /* Highest priority */
+    return (unsigned char)c + 1;
+}
+
 static int compare_strings(const void *a, const void *b)
 {
-    return strcmp(*(const char **)a, *(const char **)b);
+    const char *s1 = *(const char **)a;
+    const char *s2 = *(const char **)b;
+
+    /* Compare character by character with special handling for '/' */
+    while (*s1 && *s2)
+    {
+        int p1 = glob_char_priority(*s1);
+        int p2 = glob_char_priority(*s2);
+
+        if (p1 != p2)
+            return p1 - p2;
+
+        s1++;
+        s2++;
+    }
+
+    /* Handle case where one string is a prefix of the other */
+    return glob_char_priority(*s1) - glob_char_priority(*s2);
 }
 
 void glob_results_sort(glob_results_t *results)
@@ -616,31 +643,31 @@ int traverse_directory_recursive(const char *dir_pattern, const char *file_patte
  * - file.txt (in current directory)
  * - dir/file.txt (in any subdirectory)
  * - dir/subdir/file.txt (in any nested subdirectory)
+ *
+ * NOTE: Results are added breadth-first (current directory first, then subdirectories)
  */
 int traverse_recursive_glob(const char *pattern, const char *base,
                             unsigned flags, glob_results_t *results)
 {
-    /* First, try to match pattern in current directory */
+    /* First, match pattern in current directory */
     glob_results_t current_results;
     glob_results_init(&current_results);
 
-    if (process_file_pattern(pattern, base, flags, &current_results) == 0)
-    {
-        /* Add results from current directory */
-        for (size_t i = 0; i < current_results.count; i++)
-        {
-            glob_results_add(results, current_results.items[i]);
-            free(current_results.items[i]);
-        }
-        free(current_results.items);
-    }
-    else
+    if (process_file_pattern(pattern, base, flags, &current_results) != 0)
     {
         glob_results_clear(&current_results);
         return -1;
     }
 
-    /* Now recursively search all subdirectories */
+    /* Add results from current directory */
+    for (size_t i = 0; i < current_results.count; i++)
+    {
+        glob_results_add(results, current_results.items[i]);
+        free(current_results.items[i]);
+    }
+    free(current_results.items);
+
+    /* Then, recursively search all subdirectories */
 #ifndef _WIN32
     DIR *dir;
     struct dirent *entry;
@@ -720,6 +747,7 @@ int traverse_recursive_glob(const char *pattern, const char *base,
     }
 
     closedir(dir);
+
     return 0;
 
 #else

@@ -196,6 +196,9 @@ bool dirglob(const char **patterns, size_t npatterns, unsigned flags,
   glob_results_t results;
   glob_results_init(&results);
 
+  /* Track whether any simple brace expansion occurred (no directory component) */
+  bool has_simple_brace_expansion = false;
+
   /* Process each pattern */
   for (size_t i = 0; i < npatterns; i++)
   {
@@ -207,6 +210,12 @@ bool dirglob(const char **patterns, size_t npatterns, unsigned flags,
     {
       glob_results_clear(&results);
       return false;
+    }
+
+    /* Check if this is a simple brace expansion (no directory separator) */
+    if (expanded_count > 1 && strchr(patterns[i], '/') == NULL)
+    {
+      has_simple_brace_expansion = true;
     }
 
     /* Process each expanded pattern */
@@ -227,7 +236,16 @@ bool dirglob(const char **patterns, size_t npatterns, unsigned flags,
         return false;
       }
 
-      /* Merge into main results (sorting will be done later) */
+      /* Sort this pattern's results if requested
+       * NOTE: Skip sorting for simple brace-expanded patterns (no directory component)
+       * to preserve brace expansion order (Ruby behavior)
+       */
+      if (sort_flag && !(expanded_count > 1 && strchr(patterns[i], '/') == NULL))
+      {
+        glob_results_sort(&pattern_results);
+      }
+
+      /* Merge into main results (preserving brace expansion order) */
       for (size_t k = 0; k < pattern_results.count; k++)
       {
         glob_results_add(&results, pattern_results.items[k]);
@@ -242,13 +260,14 @@ bool dirglob(const char **patterns, size_t npatterns, unsigned flags,
     free(expanded);
   }
 
-  /* Sort all results if requested */
-  if (sort_flag)
+  /* Sort and deduplicate results if requested
+   * NOTE: Skip final sort if simple brace expansion occurred (no directory component)
+   * to preserve brace expansion order
+   */
+  if (sort_flag && !has_simple_brace_expansion)
   {
     glob_results_sort(&results);
   }
-
-  /* Remove duplicates (after sorting if needed) */
   glob_results_deduplicate(&results);
 
   /* Return results */
