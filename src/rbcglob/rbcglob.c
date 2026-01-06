@@ -215,7 +215,11 @@ bool rbcglob_dirglob(const char **patterns, size_t npatterns, unsigned flags,
   for (size_t i = 0; i < npatterns; i++)
   {
     /* Tilde expansion (Ruby Dir.glob behavior) */
-    const char *p = rbcglob_expand_tilde_arena(&ctx->arena, patterns[i]);
+    const char *p = patterns[i];
+    if (p[0] == '~')
+    {
+      p = rbcglob_expand_path_arena(p, NULL, &ctx->arena);
+    }
 
     /* Expand braces first */
     char **expanded = NULL;
@@ -377,6 +381,8 @@ bool rbcglob_dirglob(const char **patterns, size_t npatterns, unsigned flags,
 
 void rbcglob_free(char **list, size_t count, size_t *lengths)
 {
+  (void)count;
+  (void)lengths;
   if (!list)
     return;
 

@@ -1,5 +1,6 @@
 #include <rbcglob/internal/utils.h>
 #include <rbcglob/internal/arena.h>
+#include <rbcglob/rbcglob.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -35,38 +36,6 @@ bool rbcglob_has_glob_pattern(const char *str)
     return false;
 }
 
-char *rbcglob_path_join_arena(rbcglob_arena_t *arena, const char *base, const char *name)
-{
-    if (!name)
-        return NULL;
-    if (!base || base[0] == '\0')
-        return rbcglob_arena_strdup(arena, name);
-
-    size_t base_len = strlen(base);
-    size_t name_len = strlen(name);
-
-    /* Check if base already ends with separator */
-    bool needs_sep = (base_len > 0 && base[base_len - 1] != '/' && base[base_len - 1] != '\\');
-
-    size_t total = base_len + (needs_sep ? 1 : 0) + name_len + 1;
-    char *result = rbcglob_arena_alloc(arena, total);
-    if (!result)
-        return NULL;
-
-    memcpy(result, base, base_len);
-    if (needs_sep)
-    {
-        result[base_len] = '/';
-        memcpy(result + base_len + 1, name, name_len + 1);
-    }
-    else
-    {
-        memcpy(result + base_len, name, name_len + 1);
-    }
-
-    return result;
-}
-
 char *rbcglob_strdup(const char *str)
 {
     if (!str)
@@ -81,43 +50,14 @@ char *rbcglob_strdup(const char *str)
     return dup;
 }
 
-char *rbcglob_path_join(const char *base, const char *name)
-{
-    if (!name)
-        return NULL;
-    if (!base || base[0] == '\0')
-        return rbcglob_strdup(name);
-
-    size_t base_len = strlen(base);
-    size_t name_len = strlen(name);
-
-    /* Check if base already ends with separator */
-    bool needs_sep = (base_len > 0 && base[base_len - 1] != '/' && base[base_len - 1] != '\\');
-
-    size_t total = base_len + (needs_sep ? 1 : 0) + name_len + 1;
-    char *result = malloc(total);
-    if (!result)
-        return NULL;
-
-    memcpy(result, base, base_len);
-    if (needs_sep)
-    {
-        result[base_len] = '/';
-        memcpy(result + base_len + 1, name, name_len + 1);
-    }
-    else
-    {
-        memcpy(result + base_len, name, name_len + 1);
-    }
-
-    return result;
-}
-
 int rbcglob_compare_paths(const char *s1_in, const char *s2_in)
 {
     /* P12 Optimization: Inline fast path for common cases */
     const unsigned char *s1 = (const unsigned char *)s1_in;
     const unsigned char *s2 = (const unsigned char *)s2_in;
+
+    if (!s1_in || !s2_in)
+        return (s1_in == s2_in) ? 0 : (s1_in ? 1 : -1);
 
     /* Fast path: check first characters */
     if (*s1 != *s2)
@@ -127,63 +67,4 @@ int rbcglob_compare_paths(const char *s1_in, const char *s2_in)
 
     /* Fall back to strcmp for rest */
     return strcmp(s1_in, s2_in);
-}
-
-char *rbcglob_expand_tilde_arena(rbcglob_arena_t *arena, const char *path)
-{
-    if (!path || path[0] != '~')
-        return (char *)path;
-
-    const char *sep = strchr(path, '/');
-    size_t user_len = sep ? (size_t)(sep - path - 1) : strlen(path + 1);
-    char *home = NULL;
-
-    if (user_len == 0)
-    {
-        /* Case: ~/path or ~ */
-        home = getenv("HOME");
-#ifdef _WIN32
-        if (!home)
-            home = getenv("USERPROFILE");
-#else
-        if (!home)
-        {
-            struct passwd *pw = getpwuid(getuid());
-            if (pw)
-                home = pw->pw_dir;
-        }
-#endif
-    }
-    else
-    {
-        /* Case: ~user/path or ~user */
-        char user[256];
-        if (user_len < sizeof(user))
-        {
-            memcpy(user, path + 1, user_len);
-            user[user_len] = '\0';
-#ifndef _WIN32
-            struct passwd *pw = getpwnam(user);
-            if (pw)
-                home = pw->pw_dir;
-#endif
-        }
-    }
-
-    if (!home)
-        return (char *)path;
-
-    size_t home_len = strlen(home);
-    size_t rest_len = sep ? strlen(sep) : 0;
-    char *result = (char *)rbcglob_arena_alloc(arena, home_len + rest_len + 1);
-    if (!result)
-        return (char *)path;
-
-    memcpy(result, home, home_len);
-    if (sep)
-        memcpy(result + home_len, sep, rest_len + 1);
-    else
-        result[home_len] = '\0';
-
-    return result;
 }

@@ -1,6 +1,6 @@
 # プロジェクト概要
 このプロジェクト(rbcglob)はRuby4.0.0のDir.globをC99で完全再現するライブラリです。
-同じくFile.fnmatchとFile.joinの挙動も再現します。
+同じくFile.fnmatchなどの関連機能も提供します。
 Linux/Mac/Windowsのクロスプラットフォームで動作します。
 高速軽量を目指し、依存ライブラリなしが理想です。
 Rubyやglob(3)で実装されていない最適化も取り込みます。
@@ -11,10 +11,15 @@ Rubyやglob(3)で実装されていない最適化も取り込みます。
   - Documentation: https://docs.ruby-lang.org/en/4.0/Dir.html#method-c-glob
 - fnmatchの仕様はRuby4.0のFile.fnmatchに準拠します
   - Documentation: https://docs.ruby-lang.org/en/4.0/File.html#method-c-fnmatch
+- joinの仕様はRuby4.0のFile.joinに準拠します
+  - Documentation: https://docs.ruby-lang.org/en/4.0/File.html#method-c-join
+- expand_pathの仕様はRuby4.0のFile.expand_pathに準拠します
+  - Documentation: https://docs.ruby-lang.org/en/4.0/File.html#method-c-expand_path
 
 # 実装
 - プレフィックスはrbcglob_*です(内部実装にも使用します)
 - 戻り値や引数はなるべくbool型やsize_t型を使います
+- Ruby互換APIは引数名まで一致させてください
 - Ruby(MRI)のDir.glob/File.fnmatchのロジックを参考にします
 - Rustのglobクレートの実装を参考にします
 

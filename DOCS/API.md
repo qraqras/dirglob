@@ -1,51 +1,97 @@
-# dirglob C API 使用方法（概要）
+# rbcglob C API 使用方法
 
-このドキュメントは、`dirglob` ライブラリの公開 C API の利用方法を簡潔にまとめたものです。
-目的は **Ruby の `Dir.glob` と互換のある機能を C から利用する** ための手順と注意点を示すことです。
+このドキュメントは、`rbcglob` ライブラリの公開 C API の利用方法をまとめたものです。
+Ruby 4.0 の `Dir.glob` および関連する `File` クラスの機能を C から利用できます。
 
 ---
 
-## 主な API（要点）
+## 主な API
 
-- 複数パターン版（推奨）
+### 1. Dir.glob 相当 (rbcglob_dirglob)
 
 ```c
-/* patterns: 配列（長さは npatterns）
- * flags: ビットフラグ（下記参照）
- * base: 相対検索の基準ディレクトリ（NULL でカレント）
- * sort: `1` = Ruby の sort=true 相当（既定の振る舞いを再現）、`0` = ソートしない
- * out: 出力パラメータ（マッチしたパスの配列へのポインタ）
- * count: 出力パラメータ（返却配列の長さ）
- * 戻り値: true = 成功、false = エラー
+/**
+ * patterns: パターン配列
+ * npatterns: パターン数
+ * flags: RBCGLOB_FNM_* フラグ
+ * base: 検索基準ディレクトリ (NULL で CWD)
+ * sort: 1 で Ruby compatible sort を実行
+ * out_list: マッチしたパス配列を受け取るポインタ
+ * out_count: マッチ数を受け取るポインタ
+ * out_lengths: (任意) 各パスの長さ配列を受け取るポインタ
+ * 戻り値: true で成功
  */
-bool dirglob(const char **patterns, size_t npatterns, unsigned flags, const char *base, int sort, char ***out, size_t *count);
+bool rbcglob_dirglob(const char **patterns, size_t npatterns, unsigned flags,
+                     const char *base, int sort,
+                     char ***out_list, size_t *out_count, size_t **out_lengths);
 
 /* 結果の解放 */
-void dirglob_free(char **list, size_t count);
-
-/* パターンと単一パスのマッチ判定（0 = match, 1 = no match, 負値 = error） */
-int dirglob_match(const char *pattern, unsigned flags, const char *path);
-
-/* ライブラリバージョン */
-const char *dirglob_version(void);
+void rbcglob_free(char **list, size_t count, size_t *lengths);
 ```
 
+### 2. File.fnmatch 相当 (rbcglob_fnmatch)
+
+```c
+/* 戻り値: true でマッチ、false で不一致 */
+bool rbcglob_fnmatch(const char *pattern, const char *path, unsigned flags);
+```
+
+### 3. File.join 相当 (rbcglob_join)
+
+```c
+/* 複数のパス成分を Ruby 流に結合 */
+char *rbcglob_join(const char **args, size_t count);
+```
+
+### 4. File.expand_path 相当 (rbcglob_expand_path)
+
+```c
+/* ~展開や相対パスの解決 */
+char *rbcglob_expand_path(const char *file_name, const char *dir_string);
+```
+
+### 5. File.dirname 相当 (rbcglob_dirname)
+
+```c
+/**
+ * file_name: パス
+ * level: 削除する末尾コンポーネント数 (デフォルト: 1)
+ * 戻り値: 新規に割り当てられた文字列 (free()で解放)
+ */
+char *rbcglob_dirname(const char *file_name, int level);
+```
+
+### 6. File.basename 相当 (rbcglob_basename)
+
+```c
+/**
+ * file_name: パス
+ * suffix: 削除する拡張子 (NULL または "" で削除なし、".*" で任意の拡張子を削除)
+ * 戻り値: 新規に割り当てられた文字列 (free()で解放)
+ */
+char *rbcglob_basename(const char *file_name, const char *suffix);
+```
+
+### 7. File.extname 相当 (rbcglob_extname)
+
+```c
+/**
+ * path: パス
+ * 戻り値: 拡張子 (ドットを含む)、拡張子がない場合は空文字列
+ */
+char *rbcglob_extname(const char *path);
+```
 
 ---
 
-## フラグ（サポート）
+## 主要フラグ (RBCGLOB_FNM_*)
 
-このライブラリは **Ruby の `File::FNM_*` で定義されるフラグ群をすべてサポートします**。
-以下は主要フラグと C 側の定数名の対応例です（完全な互換を目指して実装します）。
+- `RBCGLOB_FNM_NOESCAPE`: `\` をエスケープ文字として扱わない
+- `RBCGLOB_FNM_PATHNAME`: `*` を `/` にマッチさせない
+- `RBCGLOB_FNM_DOTMATCH`: `.` で始まるファイルを含める
+- `RBCGLOB_FNM_CASEFOLD`: 大文字小文字を区別しない
+- `RBCGLOB_FNM_SYSCASE`: OS のデフォルト（Win/MacはFold）に従う
 
-- DIRGLOB_F_NOESCAPE : `File::FNM_NOESCAPE` 相当（バックスラッシュによるエスケープを無効にする）
-- DIRGLOB_F_PATHNAME : `File::FNM_PATHNAME` 相当（`/` がワイルドカードにマッチしない）
-- DIRGLOB_F_DOTMATCH  : `File::FNM_DOTMATCH` 相当（先頭 `.` のファイルを含める）
-- DIRGLOB_F_CASEFOLD  : `File::FNM_CASEFOLD` 相当（大文字小文字を無視）
-- DIRGLOB_F_EXTGLOB   : `File::FNM_EXTGLOB` 相当（拡張グロブをサポート）
-- DIRGLOB_F_LEADING_DIR : `File::FNM_LEADING_DIR` 相当（途中のディレクトリ名でマッチを許す）
-
-（上記以外の `File::FNM_*` フラグも Ruby と同様にサポートされます。）
 
 実装では、これらのフラグの意味を Ruby の仕様どおり再現し、`dirglob` の `flags` 引数でビットフラグとして指定できるようにします。
 

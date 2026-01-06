@@ -17,17 +17,6 @@ bool rbcglob_has_glob_pattern(const char *str);
 char *rbcglob_strdup(const char *str);
 
 /**
- * @brief Join two path components using arena allocation
- */
-char *rbcglob_path_join_arena(rbcglob_arena_t *arena, const char *base, const char *name);
-
-/**
- * @brief Join two path components
- * @return Newly allocated string, caller must free
- */
-char *rbcglob_path_join(const char *base, const char *name);
-
-/**
  * @brief Expand brace expressions in a pattern
  * @param pattern Input pattern with braces like "{a,b}.txt"
  * @param expanded Output array of expanded patterns
@@ -45,7 +34,11 @@ int rbcglob_compare_paths(const char *s1, const char *s2);
 #endif /* RBCGLOB_INTERNAL_UTILS_H */
 
 /**
- * @brief Expand tilde (~) in path using arena allocation
- * Supports ~/ and ~user/ formats.
+ * @brief Expand a path using arena allocation
  */
-char *rbcglob_expand_tilde_arena(rbcglob_arena_t *arena, const char *path);
+char *rbcglob_expand_path_arena(const char *file_name, const char *dir_string, rbcglob_arena_t *arena);
+
+/**
+ * @brief Join multiple path components using arena allocation
+ */
+char *rbcglob_join_arena(const char **args, size_t count, rbcglob_arena_t *arena);
