@@ -74,18 +74,18 @@ static ssize_t get_cached_dir_index(const char *path)
     return (ssize_t)idx;
 }
 
-static bool match_tokens(const glob_segment_t *seg, const char *str, unsigned flags);
+static bool match_tokens(const rbcglob_segment_t *seg, const char *str, unsigned flags);
 
-static bool match_recursive(const glob_token_t *tokens, size_t t_idx, size_t t_count, const char *str, size_t s_idx, unsigned flags)
+static bool match_recursive(const rbcglob_token_t *tokens, size_t t_idx, size_t t_count, const char *str, size_t s_idx, unsigned flags)
 {
     if (t_idx == t_count)
         return str[s_idx] == '\0';
 
-    const glob_token_t *tok = &tokens[t_idx];
-    if (tok->type == TOKEN_ANY_SEQUENCE)
+    const rbcglob_token_t *tok = &tokens[t_idx];
+    if (tok->token_type == RBCGLOB_TOKEN_ANY_SEQUENCE)
     {
         /* Optimize: multiple * behave like one */
-        while (t_idx + 1 < t_count && tokens[t_idx + 1].type == TOKEN_ANY_SEQUENCE)
+        while (t_idx + 1 < t_count && tokens[t_idx + 1].token_type == RBCGLOB_TOKEN_ANY_SEQUENCE)
             t_idx++;
 
         /* Try matching 0 to remaining chars */
@@ -101,13 +101,13 @@ static bool match_recursive(const glob_token_t *tokens, size_t t_idx, size_t t_c
         return false;
 
     char c = str[s_idx];
-    switch (tok->type)
+    switch (tok->token_type)
     {
-    case TOKEN_CHAR:
+    case RBCGLOB_TOKEN_CHAR:
     {
         char tc = tok->c;
         if (flags & 4)
-        { /* FNM_CASEFOLD is 4 */
+        { /* RBCGLOB_FNM_CASEFOLD is 4 */
             if (c >= 'A' && c <= 'Z')
                 c += 32;
             if (tc >= 'A' && tc <= 'Z')
@@ -117,10 +117,10 @@ static bool match_recursive(const glob_token_t *tokens, size_t t_idx, size_t t_c
             return false;
         break;
     }
-    case TOKEN_ANY_CHAR:
+    case RBCGLOB_TOKEN_ANY_CHAR:
         break;
-    case TOKEN_ANY_WITHIN:
-    case TOKEN_ANY_EXCEPT:
+    case RBCGLOB_TOKEN_ANY_WITHIN:
+    case RBCGLOB_TOKEN_ANY_EXCEPT:
     {
         bool found = false;
         char lc = c;
@@ -143,9 +143,9 @@ static bool match_recursive(const glob_token_t *tokens, size_t t_idx, size_t t_c
                 break;
             }
         }
-        if (tok->type == TOKEN_ANY_WITHIN && !found)
+        if (tok->token_type == RBCGLOB_TOKEN_ANY_WITHIN && !found)
             return false;
-        if (tok->type == TOKEN_ANY_EXCEPT && found)
+        if (tok->token_type == RBCGLOB_TOKEN_ANY_EXCEPT && found)
             return false;
         break;
     }
@@ -155,15 +155,15 @@ static bool match_recursive(const glob_token_t *tokens, size_t t_idx, size_t t_c
     return match_recursive(tokens, t_idx + 1, t_count, str, s_idx + 1, flags);
 }
 
-static bool match_tokens(const glob_segment_t *seg, const char *str, unsigned flags)
+static bool match_tokens(const rbcglob_segment_t *seg, const char *str, unsigned flags)
 {
     if (str[0] == '.')
     {
-        if (seg->token_count > 0 && seg->tokens[0].type == TOKEN_CHAR && seg->tokens[0].c == '.')
+        if (seg->token_count > 0 && seg->tokens[0].token_type == RBCGLOB_TOKEN_CHAR && seg->tokens[0].c == '.')
         {
             /* OK: explicitly matching dot */
         }
-        else if (!(flags & FNM_DOTMATCH))
+        else if (!(flags & RBCGLOB_FNM_DOTMATCH))
         {
             return false;
         }
@@ -171,16 +171,16 @@ static bool match_tokens(const glob_segment_t *seg, const char *str, unsigned fl
     return match_recursive(seg->tokens, 0, seg->token_count, str, 0, flags);
 }
 
-static int execute_step(compiled_pattern_t *cp, size_t seg_idx, const char *rel_path, const char *search_base, bool is_after_wildcard, glob_results_t *results)
+static int execute_step(rbcglob_compiled_pattern_t *cp, size_t seg_idx, const char *rel_path, const char *search_base, bool is_after_wildcard, glob_results_t *results)
 {
     if (seg_idx >= cp->count)
     {
         return glob_results_add(results, rel_path ? rel_path : ".");
     }
 
-    glob_segment_t *seg = &cp->segments[seg_idx];
+    rbcglob_segment_t *seg = &cp->segments[seg_idx];
 
-    if (seg->type == SEGMENT_RECURSIVE)
+    if (seg->type == RBCGLOB_SEGMENT_RECURSIVE)
     {
         /* Ruby ** matches zero or more directories.
            First, try skipping ** and moving to next instruction. */
@@ -203,7 +203,7 @@ static int execute_step(compiled_pattern_t *cp, size_t seg_idx, const char *rel_
             if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
                 continue;
             if (name[0] == '.' && !(cp->flags & 8))
-                continue; /* 8 is FNM_DOTMATCH */
+                continue; /* 8 is RBCGLOB_FNM_DOTMATCH */
 
             char *next_rel = path_join(rel_path, name);
             if (!next_rel)
@@ -213,8 +213,8 @@ static int execute_step(compiled_pattern_t *cp, size_t seg_idx, const char *rel_
             struct stat st;
             if (next_full && lstat(next_full, &st) == 0 && S_ISDIR(st.st_mode))
             {
-                /* Stay on SEGMENT_RECURSIVE to find deeper matches.
-                   Next instruction will still see is_after_wildcard=true because we moved through SEGMENT_RECURSIVE. */
+                /* Stay on RBCGLOB_SEGMENT_RECURSIVE to find deeper matches.
+                   Next instruction will still see is_after_wildcard=true because we moved through RBCGLOB_SEGMENT_RECURSIVE. */
                 ret = execute_step(cp, seg_idx, next_rel, search_base, true, results);
                 free(next_rel);
                 free(next_full);
@@ -230,7 +230,7 @@ static int execute_step(compiled_pattern_t *cp, size_t seg_idx, const char *rel_
         return 0;
     }
 
-    if (seg->type == SEGMENT_LITERAL)
+    if (seg->type == RBCGLOB_SEGMENT_LITERAL)
     {
         char *next_rel = path_join(rel_path, seg->pattern);
         if (!next_rel)
@@ -321,7 +321,7 @@ static int execute_step(compiled_pattern_t *cp, size_t seg_idx, const char *rel_
     return 0;
 }
 
-int rbcglob_execute(compiled_pattern_t *cp, const char *base, glob_results_t *results)
+int rbcglob_execute(rbcglob_compiled_pattern_t *cp, const char *base, glob_results_t *results)
 {
     if (!cp)
         return -1;

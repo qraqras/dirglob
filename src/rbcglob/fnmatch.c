@@ -25,9 +25,9 @@ static int match_recursive(const char *pattern, const char *string, unsigned fla
         {
         case '*':
         {
-            /* FNM_DOTMATCH controls whether * matches leading dot */
-            if (!(flags & FNM_DOTMATCH) && *s == '.' &&
-                (s == string || ((flags & FNM_PATHNAME) && s > string && s[-1] == '/')))
+            /* RBCGLOB_FNM_DOTMATCH controls whether * matches leading dot */
+            if (!(flags & RBCGLOB_FNM_DOTMATCH) && *s == '.' &&
+                (s == string || ((flags & RBCGLOB_FNM_PATHNAME) && s > string && s[-1] == '/')))
             {
                 return 1;
             }
@@ -39,8 +39,8 @@ static int match_recursive(const char *pattern, const char *string, unsigned fla
             /* Trailing * matches everything */
             if (*p == '\0')
             {
-                /* But check FNM_PATHNAME: * doesn't match / */
-                if (flags & FNM_PATHNAME)
+                /* But check RBCGLOB_FNM_PATHNAME: * doesn't match / */
+                if (flags & RBCGLOB_FNM_PATHNAME)
                 {
                     while (*s)
                     {
@@ -59,8 +59,8 @@ static int match_recursive(const char *pattern, const char *string, unsigned fla
                 {
                     return 0;
                 }
-                /* FNM_PATHNAME: * doesn't match / */
-                if ((flags & FNM_PATHNAME) && *s == '/')
+                /* RBCGLOB_FNM_PATHNAME: * doesn't match / */
+                if ((flags & RBCGLOB_FNM_PATHNAME) && *s == '/')
                 {
                     return 1;
                 }
@@ -70,14 +70,14 @@ static int match_recursive(const char *pattern, const char *string, unsigned fla
         }
 
         case '?':
-            /* ? matches any single character except / (if FNM_PATHNAME) */
+            /* ? matches any single character except / (if RBCGLOB_FNM_PATHNAME) */
             if (*s == '\0')
                 return 1;
-            if ((flags & FNM_PATHNAME) && *s == '/')
+            if ((flags & RBCGLOB_FNM_PATHNAME) && *s == '/')
                 return 1;
-            /* FNM_DOTMATCH controls whether ? matches leading dot */
-            if (!(flags & FNM_DOTMATCH) && *s == '.' &&
-                (s == string || ((flags & FNM_PATHNAME) && s[-1] == '/')))
+            /* RBCGLOB_FNM_DOTMATCH controls whether ? matches leading dot */
+            if (!(flags & RBCGLOB_FNM_DOTMATCH) && *s == '.' &&
+                (s == string || ((flags & RBCGLOB_FNM_PATHNAME) && s[-1] == '/')))
             {
                 return 1;
             }
@@ -90,12 +90,12 @@ static int match_recursive(const char *pattern, const char *string, unsigned fla
             /* Character class */
             if (*s == '\0')
                 return 1;
-            /* FNM_PATHNAME: [...] doesn't match / */
-            if ((flags & FNM_PATHNAME) && *s == '/')
+            /* RBCGLOB_FNM_PATHNAME: [...] doesn't match / */
+            if ((flags & RBCGLOB_FNM_PATHNAME) && *s == '/')
                 return 1;
-            /* FNM_DOTMATCH controls whether [...] matches leading dot */
-            if (!(flags & FNM_DOTMATCH) && *s == '.' &&
-                (s == string || ((flags & FNM_PATHNAME) && s[-1] == '/')))
+            /* RBCGLOB_FNM_DOTMATCH controls whether [...] matches leading dot */
+            if (!(flags & RBCGLOB_FNM_DOTMATCH) && *s == '.' &&
+                (s == string || ((flags & RBCGLOB_FNM_PATHNAME) && s[-1] == '/')))
             {
                 return 1;
             }
@@ -111,7 +111,7 @@ static int match_recursive(const char *pattern, const char *string, unsigned fla
 
         case '\\':
             /* Backslash escaping */
-            if (!(flags & FNM_NOESCAPE) && p[1] != '\0')
+            if (!(flags & RBCGLOB_FNM_NOESCAPE) && p[1] != '\0')
             {
                 p++; /* Skip backslash, use next char literally */
             }
@@ -124,8 +124,8 @@ static int match_recursive(const char *pattern, const char *string, unsigned fla
             char pc = *p;
             char sc = *s;
 
-            /* FNM_CASEFOLD: case-insensitive comparison */
-            if (flags & FNM_CASEFOLD)
+            /* RBCGLOB_FNM_CASEFOLD: case-insensitive comparison */
+            if (flags & RBCGLOB_FNM_CASEFOLD)
             {
                 pc = tolower((unsigned char)pc);
                 sc = tolower((unsigned char)sc);
@@ -135,8 +135,8 @@ static int match_recursive(const char *pattern, const char *string, unsigned fla
                 return 1;
 
             /* Check for leading dot */
-            if (!(flags & FNM_DOTMATCH) && *s == '.' &&
-                (s == string || ((flags & FNM_PATHNAME) && s > string && s[-1] == '/')))
+            if (!(flags & RBCGLOB_FNM_DOTMATCH) && *s == '.' &&
+                (s == string || ((flags & RBCGLOB_FNM_PATHNAME) && s > string && s[-1] == '/')))
             {
                 /* Pattern must explicitly match leading dot */
                 if (*p != '.')
@@ -171,7 +171,7 @@ static int match_bracket(const char **pattern, char c, unsigned flags)
     if (*p == ']')
     {
         p++;
-        if (flags & FNM_CASEFOLD)
+        if (flags & RBCGLOB_FNM_CASEFOLD)
         {
             matched = (tolower((unsigned char)c) == tolower((unsigned char)']'));
         }
@@ -191,7 +191,7 @@ static int match_bracket(const char **pattern, char c, unsigned flags)
             char start = prev;
             char end = *p;
 
-            if (flags & FNM_CASEFOLD)
+            if (flags & RBCGLOB_FNM_CASEFOLD)
             {
                 c = tolower((unsigned char)c);
                 start = tolower((unsigned char)start);
@@ -210,7 +210,7 @@ static int match_bracket(const char **pattern, char c, unsigned flags)
             char pc = *p;
             char cc = c;
 
-            if (flags & FNM_CASEFOLD)
+            if (flags & RBCGLOB_FNM_CASEFOLD)
             {
                 pc = tolower((unsigned char)pc);
                 cc = tolower((unsigned char)cc);

@@ -73,7 +73,7 @@ void glob_results_clear(glob_results_t *results);
  *
  * @param pattern Pattern to match
  * @param base Base directory (NULL for current)
- * @param flags FNM_* flags
+ * @param flags RBCGLOB_FNM_* flags
  * @param results Result collector
  * @return 0 on success, -1 on error
  */
@@ -86,7 +86,7 @@ int traverse_directory(const char *pattern, const char *base,
  * @param dir_pattern Pattern for directory names
  * @param file_pattern Pattern for files/subdirs within matched directories
  * @param base Base directory (NULL for current)
- * @param flags FNM_* flags
+ * @param flags RBCGLOB_FNM_* flags
  * @param results Result collector
  * @param sort_flag Whether to sort entries at each level
  * @return 0 on success, -1 on error
@@ -99,7 +99,7 @@ int traverse_directory_recursive(const char *dir_pattern, const char *file_patte
  *
  * @param pattern Pattern to match in each directory
  * @param base Base directory (NULL for current)
- * @param flags FNM_* flags
+ * @param flags RBCGLOB_FNM_* flags
  * @param results Result collector
  * @param sort_flag Whether to sort entries at each level
  * @param is_initial Whether this is the initial call for **
@@ -116,6 +116,6 @@ int traverse_recursive_glob(const char *pattern, const char *base,
  * @param results Result collector
  * @return 0 on success, -1 on error
  */
-int rbcglob_execute(compiled_pattern_t *cp, const char *base, glob_results_t *results);
+int rbcglob_execute(rbcglob_compiled_pattern_t *cp, const char *base, glob_results_t *results);
 
 #endif /* DIRGLOB_INTERNAL_TRAVERSE_H */

@@ -34,7 +34,7 @@ int main()
     char **results = NULL;
     size_t count = 0;
 
-    printf("Running dirglob for {a,b}/{a,b} with base=. and FNM_CASEFOLD\n");
+    printf("Running dirglob for {a,b}/{a,b} with base=. and RBCGLOB_FNM_CASEFOLD\n");
     bool success = dirglob(patterns, 1, 8, ".", 1, &results, &count);
 
     if (!success)

@@ -4,11 +4,11 @@
 #include <string.h>
 #include <errno.h>
 
-static void parse_segment_tokens(glob_segment_t *seg)
+static void parse_segment_tokens(rbcglob_segment_t *seg)
 {
     const char *p = seg->pattern;
     size_t capacity = 8;
-    seg->tokens = malloc(sizeof(glob_token_t) * capacity);
+    seg->tokens = malloc(sizeof(rbcglob_token_t) * capacity);
     seg->token_count = 0;
 
     while (*p)
@@ -16,20 +16,20 @@ static void parse_segment_tokens(glob_segment_t *seg)
         if (seg->token_count >= capacity)
         {
             capacity *= 2;
-            seg->tokens = realloc(seg->tokens, sizeof(glob_token_t) * capacity);
+            seg->tokens = realloc(seg->tokens, sizeof(rbcglob_token_t) * capacity);
         }
-        glob_token_t *tok = &seg->tokens[seg->token_count++];
+        rbcglob_token_t *tok = &seg->tokens[seg->token_count++];
         tok->ranges = NULL;
         tok->range_count = 0;
 
         switch (*p)
         {
         case '?':
-            tok->type = TOKEN_ANY_CHAR;
+            tok->token_type = RBCGLOB_TOKEN_ANY_CHAR;
             p++;
             break;
         case '*':
-            tok->type = TOKEN_ANY_SEQUENCE;
+            tok->token_type = RBCGLOB_TOKEN_ANY_SEQUENCE;
             p++;
             break;
         case '[':
@@ -37,21 +37,21 @@ static void parse_segment_tokens(glob_segment_t *seg)
             p++;
             if (*p == '!' || *p == '^')
             {
-                tok->type = TOKEN_ANY_EXCEPT;
+                tok->token_type = RBCGLOB_TOKEN_ANY_EXCEPT;
                 p++;
             }
             else
             {
-                tok->type = TOKEN_ANY_WITHIN;
+                tok->token_type = RBCGLOB_TOKEN_ANY_WITHIN;
             }
 
             size_t r_cap = 4;
-            tok->ranges = malloc(sizeof(glob_range_t) * r_cap);
+            tok->ranges = malloc(sizeof(rbcglob_range_t) * r_cap);
 
             /* Special case: ] as first char */
             if (*p == ']')
             {
-                tok->ranges[tok->range_count++] = (glob_range_t){']', ']'};
+                tok->ranges[tok->range_count++] = (rbcglob_range_t){']', ']'};
                 p++;
             }
 
@@ -60,7 +60,7 @@ static void parse_segment_tokens(glob_segment_t *seg)
                 if (tok->range_count >= r_cap)
                 {
                     r_cap *= 2;
-                    tok->ranges = realloc(tok->ranges, sizeof(glob_range_t) * r_cap);
+                    tok->ranges = realloc(tok->ranges, sizeof(rbcglob_range_t) * r_cap);
                 }
                 char start = *p++;
                 char end = start;
@@ -69,14 +69,14 @@ static void parse_segment_tokens(glob_segment_t *seg)
                     p++;
                     end = *p++;
                 }
-                tok->ranges[tok->range_count++] = (glob_range_t){start, end};
+                tok->ranges[tok->range_count++] = (rbcglob_range_t){start, end};
             }
             if (*p == ']')
                 p++;
             break;
         }
         case '\\':
-            tok->type = TOKEN_CHAR;
+            tok->token_type = RBCGLOB_TOKEN_CHAR;
             p++;
             if (*p)
                 tok->c = *p++;
@@ -84,14 +84,14 @@ static void parse_segment_tokens(glob_segment_t *seg)
                 tok->c = '\\';
             break;
         default:
-            tok->type = TOKEN_CHAR;
+            tok->token_type = RBCGLOB_TOKEN_CHAR;
             tok->c = *p++;
             break;
         }
     }
 }
 
-static void extract_prefix(glob_segment_t *seg)
+static void extract_prefix(rbcglob_segment_t *seg)
 {
     const char *p = seg->pattern;
     size_t len = 0;
@@ -138,7 +138,7 @@ static void extract_prefix(glob_segment_t *seg)
     }
 }
 
-static void extract_suffix(glob_segment_t *seg)
+static void extract_suffix(rbcglob_segment_t *seg)
 {
     size_t pattern_len = strlen(seg->pattern);
     if (pattern_len == 0)
@@ -193,16 +193,16 @@ static void extract_suffix(glob_segment_t *seg)
     }
 }
 
-compiled_pattern_t *rbcglob_compile(const char *pattern, unsigned flags)
+rbcglob_compiled_pattern_t *rbcglob_compile(const char *pattern, unsigned flags)
 {
     if (!pattern)
         return NULL;
-    compiled_pattern_t *cp = malloc(sizeof(compiled_pattern_t));
+    rbcglob_compiled_pattern_t *cp = malloc(sizeof(rbcglob_compiled_pattern_t));
     if (!cp)
         return NULL;
     cp->flags = flags;
     cp->is_absolute = (pattern[0] == '/');
-    cp->sort_order = GLOB_SORT_ASCENDING;
+    cp->sort_order = RBCGLOB_SORT_ASCENDING;
 
     /* Check for trailing slash */
     size_t pattern_len = strlen(pattern);
@@ -212,7 +212,7 @@ compiled_pattern_t *rbcglob_compile(const char *pattern, unsigned flags)
     for (const char *p = pattern; *p; p++)
         if (*p == '/')
             segment_count++;
-    cp->segments = calloc(segment_count + 1, sizeof(glob_segment_t));
+    cp->segments = calloc(segment_count + 1, sizeof(rbcglob_segment_t));
 
     size_t idx = 0;
     const char *start = pattern;
@@ -232,37 +232,37 @@ compiled_pattern_t *rbcglob_compile(const char *pattern, unsigned flags)
             continue;
         }
 
-        glob_segment_t *seg = &cp->segments[idx];
+        rbcglob_segment_t *seg = &cp->segments[idx];
         seg->pattern = malloc(len + 1);
         memcpy(seg->pattern, start, len);
         seg->pattern[len] = '\0';
 
         if (strcmp(seg->pattern, "**") == 0)
         {
-            seg->type = SEGMENT_RECURSIVE;
+            seg->type = RBCGLOB_SEGMENT_RECURSIVE;
         }
         else if (has_glob_pattern(seg->pattern))
         {
-            seg->type = SEGMENT_WILDCARD;
+            seg->type = RBCGLOB_SEGMENT_WILDCARD;
             parse_segment_tokens(seg);
             extract_prefix(seg);
             extract_suffix(seg);
         }
         else
         {
-            seg->type = SEGMENT_LITERAL;
+            seg->type = RBCGLOB_SEGMENT_LITERAL;
         }
         idx++;
         if (!end)
             break;
         start = end + 1;
     }
-    cp->segments[idx].type = SEGMENT_END;
+    cp->segments[idx].type = RBCGLOB_SEGMENT_END;
     cp->count = idx;
     return cp;
 }
 
-void rbcglob_compiled_free(compiled_pattern_t *cp)
+void rbcglob_compiled_pattern_free(rbcglob_compiled_pattern_t *cp)
 {
     if (!cp)
         return;
@@ -284,7 +284,7 @@ void rbcglob_compiled_free(compiled_pattern_t *cp)
     free(cp);
 }
 
-compiled_glob_t *rbcglob_compile_glob(const char *pattern, unsigned flags)
+rbcglob_compiled_glob_t *rbcglob_compile_glob(const char *pattern, unsigned flags)
 {
     if (!pattern)
     {
@@ -292,7 +292,7 @@ compiled_glob_t *rbcglob_compile_glob(const char *pattern, unsigned flags)
         return NULL;
     }
 
-    compiled_glob_t *cg = malloc(sizeof(compiled_glob_t));
+    rbcglob_compiled_glob_t *cg = malloc(sizeof(rbcglob_compiled_glob_t));
     if (!cg)
     {
         errno = ENOMEM;
@@ -310,7 +310,7 @@ compiled_glob_t *rbcglob_compile_glob(const char *pattern, unsigned flags)
     }
 
     /* Compile each expanded pattern */
-    cg->patterns = malloc(sizeof(compiled_pattern_t *) * expanded_count);
+    cg->patterns = malloc(sizeof(rbcglob_compiled_pattern_t *) * expanded_count);
     if (!cg->patterns)
     {
         for (size_t i = 0; i < expanded_count; i++)
@@ -324,12 +324,12 @@ compiled_glob_t *rbcglob_compile_glob(const char *pattern, unsigned flags)
     cg->pattern_count = 0;
     for (size_t i = 0; i < expanded_count; i++)
     {
-        compiled_pattern_t *cp = rbcglob_compile(expanded[i], flags);
+        rbcglob_compiled_pattern_t *cp = rbcglob_compile(expanded[i], flags);
         if (!cp)
         {
             /* Cleanup on error */
             for (size_t j = 0; j < cg->pattern_count; j++)
-                rbcglob_compiled_free(cg->patterns[j]);
+                rbcglob_compiled_pattern_free(cg->patterns[j]);
             free(cg->patterns);
             for (size_t j = i; j < expanded_count; j++)
                 free(expanded[j]);
@@ -345,14 +345,14 @@ compiled_glob_t *rbcglob_compile_glob(const char *pattern, unsigned flags)
     return cg;
 }
 
-void rbcglob_compiled_glob_free(compiled_glob_t *cg)
+void rbcglob_compiled_glob_free(rbcglob_compiled_glob_t *cg)
 {
     if (!cg)
         return;
 
     for (size_t i = 0; i < cg->pattern_count; i++)
     {
-        rbcglob_compiled_free(cg->patterns[i]);
+        rbcglob_compiled_pattern_free(cg->patterns[i]);
     }
     free(cg->patterns);
     free(cg);

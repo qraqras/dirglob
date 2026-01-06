@@ -8,7 +8,7 @@
  *
  * @param pattern Glob pattern
  * @param string String to match against pattern
- * @param flags FNM_* flags
+ * @param flags RBCGLOB_FNM_* flags
  * @return 0 if match, non-zero if no match
  */
 int rbcglob_fnmatch(const char *pattern, const char *string, unsigned flags);

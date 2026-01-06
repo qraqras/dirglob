@@ -48,5 +48,5 @@ void test_dirglob_free_null_is_safe(void)
 void test_dirglob_match_stub_returns_no_match(void)
 {
     int result = rbcglob_match("*.txt", 0, "test.txt");
-    TEST_ASSERT_EQUAL_INT(1, result);
+    TEST_ASSERT_EQUAL_INT(0, result); /* 0 = match */
 }

@@ -222,11 +222,11 @@ bool dirglob(const char **patterns, size_t npatterns, unsigned flags,
       for (size_t j = 0; j < expanded_count; j++)
       {
         glob_results_init(&brace_pattern_results[j]);
-        compiled_pattern_t *cp = rbcglob_compile(expanded[j], flags);
+        rbcglob_compiled_pattern_t *cp = rbcglob_compile(expanded[j], flags);
         if (!cp || rbcglob_execute(cp, base, &brace_pattern_results[j]) != 0)
         {
           if (cp)
-            rbcglob_compiled_free(cp);
+            rbcglob_compiled_pattern_free(cp);
           for (size_t k = 0; k <= j; k++)
             glob_results_clear(&brace_pattern_results[k]);
           free(brace_pattern_results);
@@ -238,7 +238,7 @@ bool dirglob(const char **patterns, size_t npatterns, unsigned flags,
           ;
           return false;
         }
-        rbcglob_compiled_free(cp);
+        rbcglob_compiled_pattern_free(cp);
         if (sort_flag)
           glob_results_sort(&brace_pattern_results[j]);
       }
@@ -269,11 +269,11 @@ bool dirglob(const char **patterns, size_t npatterns, unsigned flags,
       /* No brace expansion */
       glob_results_t pattern_results;
       glob_results_init(&pattern_results);
-      compiled_pattern_t *cp = rbcglob_compile(expanded[0], flags);
+      rbcglob_compiled_pattern_t *cp = rbcglob_compile(expanded[0], flags);
       if (!cp || rbcglob_execute(cp, base, &pattern_results) != 0)
       {
         if (cp)
-          rbcglob_compiled_free(cp);
+          rbcglob_compiled_pattern_free(cp);
         glob_results_clear(&pattern_results);
         for (size_t j = 0; j < expanded_count; j++)
           free(expanded[j]);
@@ -283,7 +283,7 @@ bool dirglob(const char **patterns, size_t npatterns, unsigned flags,
         ;
         return false;
       }
-      rbcglob_compiled_free(cp);
+      rbcglob_compiled_pattern_free(cp);
 
       if (sort_flag)
         glob_results_sort(&pattern_results);
@@ -307,9 +307,22 @@ bool dirglob(const char **patterns, size_t npatterns, unsigned flags,
   }
   glob_results_deduplicate(&results);
 
-  /* Return results */
+  /* Return results - ensure non-NULL for empty results (Ruby compatibility) */
   *count = results.count;
-  *out = results.items;
+  if (results.count == 0 && results.items == NULL)
+  {
+    /* Allocate empty array instead of returning NULL */
+    *out = malloc(sizeof(char *));
+    if (!*out)
+    {
+      glob_results_clear_cache();
+      return false;
+    }
+  }
+  else
+  {
+    *out = results.items;
+  }
   glob_results_clear_cache();
   ;
   return true;
