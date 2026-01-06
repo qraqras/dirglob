@@ -17,7 +17,7 @@ void test_dirglob_returns_empty_for_no_matches(void)
     char **result = NULL;
     size_t *lengths = NULL;
     size_t count = 0;
-    bool success = dirglob(patterns, 1, 0, NULL, 1, &result, &count, &lengths);
+    bool success = rbcglob_dirglob(patterns, 1, 0, NULL, 1, &result, &count, &lengths);
 
     TEST_ASSERT_TRUE(success);
     TEST_ASSERT_NOT_NULL(result);
@@ -33,10 +33,10 @@ void test_dirglob_null_params_return_error(void)
     size_t count = 0;
 
     /* NULL out parameter */
-    TEST_ASSERT_FALSE(dirglob(patterns, 1, 0, NULL, 1, NULL, &count, NULL));
+    TEST_ASSERT_FALSE(rbcglob_dirglob(patterns, 1, 0, NULL, 1, NULL, &count, NULL));
 
     /* NULL count parameter */
-    TEST_ASSERT_FALSE(dirglob(patterns, 1, 0, NULL, 1, &result, NULL, NULL));
+    TEST_ASSERT_FALSE(rbcglob_dirglob(patterns, 1, 0, NULL, 1, &result, NULL, NULL));
 }
 
 void test_dirglob_free_null_is_safe(void)

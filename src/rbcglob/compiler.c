@@ -4,7 +4,7 @@
 #include <string.h>
 #include <errno.h>
 
-static void parse_segment_tokens(rbcglob_segment_t *seg)
+static void rbcglob_compiler_parse_segment_tokens(rbcglob_segment_t *seg)
 {
     const char *p = seg->pattern;
     size_t capacity = 8;
@@ -91,7 +91,7 @@ static void parse_segment_tokens(rbcglob_segment_t *seg)
     }
 }
 
-static void extract_prefix(rbcglob_segment_t *seg)
+static void rbcglob_compiler_extract_prefix(rbcglob_segment_t *seg)
 {
     const char *p = seg->pattern;
     size_t len = 0;
@@ -138,7 +138,7 @@ static void extract_prefix(rbcglob_segment_t *seg)
     }
 }
 
-static void extract_suffix(rbcglob_segment_t *seg)
+static void rbcglob_compiler_extract_suffix(rbcglob_segment_t *seg)
 {
     size_t pattern_len = strlen(seg->pattern);
     if (pattern_len == 0)
@@ -193,7 +193,7 @@ static void extract_suffix(rbcglob_segment_t *seg)
     }
 }
 
-rbcglob_compiled_pattern_t *rbcglob_compile(const char *pattern, unsigned flags)
+rbcglob_compiled_pattern_t *rbcglob_compiler_compile(const char *pattern, unsigned flags)
 {
     if (!pattern)
         return NULL;
@@ -212,7 +212,7 @@ rbcglob_compiled_pattern_t *rbcglob_compile(const char *pattern, unsigned flags)
     for (const char *p = pattern; *p; p++)
         if (*p == '/')
             segment_count++;
-    cp->segments = calloc(segment_count + 1, sizeof(rbcglob_segment_t));
+    cp->segments = calloc(segment_count, sizeof(rbcglob_segment_t));
 
     size_t idx = 0;
     const char *start = pattern;
@@ -241,12 +241,12 @@ rbcglob_compiled_pattern_t *rbcglob_compile(const char *pattern, unsigned flags)
         {
             seg->type = RBCGLOB_SEGMENT_RECURSIVE;
         }
-        else if (has_glob_pattern(seg->pattern))
+        else if (rbcglob_has_glob_pattern(seg->pattern))
         {
             seg->type = RBCGLOB_SEGMENT_WILDCARD;
-            parse_segment_tokens(seg);
-            extract_prefix(seg);
-            extract_suffix(seg);
+            rbcglob_compiler_parse_segment_tokens(seg);
+            rbcglob_compiler_extract_prefix(seg);
+            rbcglob_compiler_extract_suffix(seg);
         }
         else
         {
@@ -257,7 +257,6 @@ rbcglob_compiled_pattern_t *rbcglob_compile(const char *pattern, unsigned flags)
             break;
         start = end + 1;
     }
-    cp->segments[idx].type = RBCGLOB_SEGMENT_END;
     cp->count = idx;
 
     /* P2 Optimization: Analyze pattern for directory traversal pruning */
@@ -281,7 +280,7 @@ rbcglob_compiled_pattern_t *rbcglob_compile(const char *pattern, unsigned flags)
     return cp;
 }
 
-void rbcglob_compiled_pattern_free(rbcglob_compiled_pattern_t *cp)
+void rbcglob_compiler_compiled_pattern_free(rbcglob_compiled_pattern_t *cp)
 {
     if (!cp)
         return;
@@ -321,7 +320,7 @@ rbcglob_compiled_glob_t *rbcglob_compile_glob(const char *pattern, unsigned flag
     /* Expand braces */
     char **expanded = NULL;
     size_t expanded_count = 0;
-    if (expand_braces(pattern, &expanded, &expanded_count) != 0)
+    if (rbcglob_brace_expand(pattern, &expanded, &expanded_count) != 0)
     {
         free(cg);
         errno = ENOMEM;
@@ -343,12 +342,12 @@ rbcglob_compiled_glob_t *rbcglob_compile_glob(const char *pattern, unsigned flag
     cg->pattern_count = 0;
     for (size_t i = 0; i < expanded_count; i++)
     {
-        rbcglob_compiled_pattern_t *cp = rbcglob_compile(expanded[i], flags);
+        rbcglob_compiled_pattern_t *cp = rbcglob_compiler_compile(expanded[i], flags);
         if (!cp)
         {
             /* Cleanup on error */
             for (size_t j = 0; j < cg->pattern_count; j++)
-                rbcglob_compiled_pattern_free(cg->patterns[j]);
+                rbcglob_compiler_compiled_pattern_free(cg->patterns[j]);
             free(cg->patterns);
             for (size_t j = i; j < expanded_count; j++)
                 free(expanded[j]);
@@ -371,7 +370,7 @@ void rbcglob_compiled_glob_free(rbcglob_compiled_glob_t *cg)
 
     for (size_t i = 0; i < cg->pattern_count; i++)
     {
-        rbcglob_compiled_pattern_free(cg->patterns[i]);
+        rbcglob_compiler_compiled_pattern_free(cg->patterns[i]);
     }
     free(cg->patterns);
     free(cg);

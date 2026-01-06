@@ -12,8 +12,8 @@ typedef enum rbcglob_token_type_e
     RBCGLOB_TOKEN_CHAR,         /* `t`, `o`, `k`, `e`, `n` */
     RBCGLOB_TOKEN_ANY_CHAR,     /* `?` */
     RBCGLOB_TOKEN_ANY_SEQUENCE, /* `*` */
-    RBCGLOB_TOKEN_ANY_WITHIN,   /* [token]` */
-    RBCGLOB_TOKEN_ANY_EXCEPT    /* [^token]`, `[!token]` */
+    RBCGLOB_TOKEN_ANY_WITHIN,   /* `[token]` */
+    RBCGLOB_TOKEN_ANY_EXCEPT    /* `[^token]`, `[!token]` */
 } rbcglob_token_type_t;
 
 /**
@@ -44,7 +44,6 @@ typedef enum rbcglob_segment_type_e
     RBCGLOB_SEGMENT_LITERAL,   /* `segment` */
     RBCGLOB_SEGMENT_WILDCARD,  /* `*egment` */
     RBCGLOB_SEGMENT_RECURSIVE, /* `**` */
-    RBCGLOB_SEGMENT_END        /* MARKER */
 } rbcglob_segment_type_t;
 
 /**
@@ -82,9 +81,8 @@ typedef struct rbcglob_compiled_pattern_s
     bool is_absolute;                /* Whether the pattern is absolute (starts with /) */
     bool has_trailing_slash;         /* Whether pattern ends with / (directory required) */
     rbcglob_sort_order_t sort_order; /* Sort order for results */
-    /* P2 Optimization: Directory traversal pruning */
-    bool has_recursive_segment;   /* Whether pattern contains ** */
-    size_t leading_literal_count; /* Number of leading literal segments */
+    bool has_recursive_segment;      /* Whether pattern contains ** */
+    size_t leading_literal_count;    /* Number of leading literal segments */
 } rbcglob_compiled_pattern_t;
 
 /**
@@ -110,7 +108,7 @@ struct rbcglob_compiled_glob_s
  *       Compiles a single pattern without brace expansion.
  *       For public API, use rbcglob_compile_glob() instead.
  */
-rbcglob_compiled_pattern_t *rbcglob_compile(const char *pattern, unsigned flags);
+rbcglob_compiled_pattern_t *rbcglob_compiler_compile(const char *pattern, unsigned flags);
 
 /**
  * @brief Compile a glob pattern with brace expansion (public API declared in rbcglob.h).
@@ -124,7 +122,7 @@ rbcglob_compiled_glob_t *rbcglob_compile_glob(const char *pattern, unsigned flag
  *
  * @param cp Compiled pattern to free (NULL is safe to pass)
  */
-void rbcglob_compiled_pattern_free(rbcglob_compiled_pattern_t *cp);
+void rbcglob_compiler_compiled_pattern_free(rbcglob_compiled_pattern_t *cp);
 
 /**
  * @brief Free a compiled glob bundle (public API declared in rbcglob.h)

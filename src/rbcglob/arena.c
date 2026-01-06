@@ -1,136 +1,148 @@
 #include <rbcglob/internal/arena.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
+#include <stdarg.h>
 
-/* Default block size: 64KB */
-#define DEFAULT_BLOCK_SIZE (64 * 1024)
+/* Default block size: 128KB */
+#define DEFAULT_BLOCK_SIZE (128 * 1024)
 
 /* Align allocations to 8 bytes for performance */
 #define ALIGN_SIZE 8
 #define ALIGN_UP(n) (((n) + ALIGN_SIZE - 1) & ~(ALIGN_SIZE - 1))
 
-void arena_init(arena_t *arena, size_t initial_size)
+static rbcglob_arena_block_t *rbcglob_arena_new_block(size_t size)
 {
+    /* Single block allocation for header and data to improve cache locality */
+    rbcglob_arena_block_t *block = malloc(sizeof(rbcglob_arena_block_t) + size);
+    if (!block)
+        return NULL;
+    block->size = size;
+    block->used = 0;
+    block->next = NULL;
+    return block;
+}
+
+void rbcglob_arena_init(rbcglob_arena_t *arena, size_t initial_size)
+{
+    if (!arena)
+        return;
     if (initial_size == 0)
         initial_size = DEFAULT_BLOCK_SIZE;
 
-    arena_block_t *block = malloc(sizeof(arena_block_t));
-    if (!block)
-    {
-        arena->current = NULL;
-        arena->first = NULL;
-        arena->block_size = initial_size;
-        return;
-    }
-
-    block->data = malloc(initial_size);
-    if (!block->data)
-    {
-        free(block);
-        arena->current = NULL;
-        arena->first = NULL;
-        arena->block_size = initial_size;
-        return;
-    }
-
-    block->size = initial_size;
-    block->used = 0;
-    block->next = NULL;
-
-    arena->current = block;
+    rbcglob_arena_block_t *block = rbcglob_arena_new_block(initial_size);
     arena->first = block;
+    arena->current = block;
     arena->block_size = initial_size;
 }
 
-void *arena_alloc(arena_t *arena, size_t size)
+void *rbcglob_arena_alloc(rbcglob_arena_t *arena, size_t size)
 {
     if (!arena || !arena->current || size == 0)
         return NULL;
 
-    /* Align size */
     size = ALIGN_UP(size);
 
-    /* Check if current block has enough space */
-    arena_block_t *block = arena->current;
-    if (block->used + size <= block->size)
+    /* Try current block */
+    if (arena->current->used + size <= arena->current->size)
     {
-        void *ptr = block->data + block->used;
-        block->used += size;
+        void *ptr = &arena->current->data[arena->current->used];
+        arena->current->used += size;
         return ptr;
     }
 
-    /* Need a new block */
-    size_t new_block_size = arena->block_size;
-    /* If requested size is larger than standard block, allocate larger block */
-    if (size > new_block_size)
-        new_block_size = size * 2;
-
-    arena_block_t *new_block = malloc(sizeof(arena_block_t));
-    if (!new_block)
-        return NULL;
-
-    new_block->data = malloc(new_block_size);
-    if (!new_block->data)
+    /* Current block exhausted, look for usable next block (from previous reset) */
+    if (arena->current->next && size <= arena->current->next->size)
     {
-        free(new_block);
-        return NULL;
+        arena->current = arena->current->next;
+        arena->current->used = size;
+        return arena->current->data;
     }
 
-    new_block->size = new_block_size;
-    new_block->used = size;
-    new_block->next = NULL;
+    /* Allocate new block */
+    size_t next_size = (size > arena->block_size) ? ALIGN_UP(size) : arena->block_size;
+    rbcglob_arena_block_t *block = rbcglob_arena_new_block(next_size);
+    if (!block)
+        return NULL;
 
-    /* Link new block */
-    arena->current->next = new_block;
-    arena->current = new_block;
+    block->used = size;
+    /* Insert into chain after current block */
+    block->next = arena->current->next;
+    arena->current->next = block;
+    arena->current = block;
 
-    return new_block->data;
+    return block->data;
 }
 
-char *arena_strdup(arena_t *arena, const char *str)
+void *rbcglob_arena_memdup(rbcglob_arena_t *arena, const void *ptr, size_t size)
 {
-    if (!str)
+    if (!ptr || size == 0)
         return NULL;
-
-    size_t len = strlen(str);
-    char *dup = arena_alloc(arena, len + 1);
-    if (!dup)
-        return NULL;
-
-    memcpy(dup, str, len + 1);
+    void *dup = rbcglob_arena_alloc(arena, size);
+    if (dup)
+        memcpy(dup, ptr, size);
     return dup;
 }
 
-void arena_reset(arena_t *arena)
+char *rbcglob_arena_strdup(rbcglob_arena_t *arena, const char *str)
 {
-    if (!arena || !arena->first)
-        return;
+    if (!str)
+        return NULL;
+    size_t len = strlen(str);
+    return (char *)rbcglob_arena_memdup(arena, str, len + 1);
+}
 
-    /* Reset all blocks to unused state */
-    arena_block_t *block = arena->first;
+char *rbcglob_arena_printf(rbcglob_arena_t *arena, const char *fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+
+    /* Determine required size */
+    va_list args_copy;
+    va_copy(args_copy, args);
+    int len = vsnprintf(NULL, 0, fmt, args_copy);
+    va_end(args_copy);
+
+    if (len < 0)
+    {
+        va_end(args);
+        return NULL;
+    }
+
+    char *str = rbcglob_arena_alloc(arena, (size_t)len + 1);
+    if (str)
+    {
+        vsnprintf(str, (size_t)len + 1, fmt, args);
+    }
+
+    va_end(args);
+    return str;
+}
+
+void rbcglob_arena_reset(rbcglob_arena_t *arena)
+{
+    if (!arena)
+        return;
+    rbcglob_arena_block_t *block = arena->first;
     while (block)
     {
         block->used = 0;
         block = block->next;
     }
-
     arena->current = arena->first;
 }
 
-void arena_destroy(arena_t *arena)
+void rbcglob_arena_destroy(rbcglob_arena_t *arena)
 {
-    if (!arena || !arena->first)
+    if (!arena)
         return;
-
-    arena_block_t *block = arena->first;
+    rbcglob_arena_block_t *block = arena->first;
     while (block)
     {
-        arena_block_t *next = block->next;
-        free(block->data);
+        rbcglob_arena_block_t *next = block->next;
         free(block);
         block = next;
     }
-
-    arena->current = NULL;
     arena->first = NULL;
+    arena->current = NULL;
 }

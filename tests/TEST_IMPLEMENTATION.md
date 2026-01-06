@@ -1,4 +1,4 @@
-# dirglob テスト実装完了
+# rbcglob_dirglob テスト実装完了
 
 ## 実装されたテストシステム
 

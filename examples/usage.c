@@ -15,7 +15,7 @@ int main(int argc, char **argv)
     size_t count = 0;
     const char *patterns[] = {argv[1]};
 
-    if (dirglob(patterns, 1, 0, NULL, 1, &result, &count, &lengths))
+    if (rbcglob_dirglob(patterns, 1, 0, NULL, 1, &result, &count, &lengths))
     {
         for (size_t i = 0; i < count; i++)
         {
@@ -25,7 +25,7 @@ int main(int argc, char **argv)
     }
     else
     {
-        fprintf(stderr, "dirglob failed\n");
+        fprintf(stderr, "rbcglob_dirglob failed\n");
         return 1;
     }
 

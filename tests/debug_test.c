@@ -12,11 +12,11 @@ int main()
     printf("Current directory: %s\n", cwd);
 
     // Simple test: file.txt with no base
-    printf("Before dirglob call\n");
+    printf("Before rbcglob_dirglob call\n");
     fflush(stdout);
     size_t *lengths = NULL;
-    bool ok = dirglob((const char *[]){"file.txt"}, 1, 0, NULL, 1, &result, &count, &lengths);
-    printf("After dirglob call\n");
+    bool ok = rbcglob_dirglob((const char *[]){"file.txt"}, 1, 0, NULL, 1, &result, &count, &lengths);
+    printf("After rbcglob_dirglob call\n");
     fflush(stdout);
 
     printf("Return value: %d\n", ok);

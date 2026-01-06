@@ -15,7 +15,7 @@ double benchmark(const char *pattern, int flags, int iterations)
         size_t count = 0;
         const char *patterns[] = {pattern};
 
-        dirglob(patterns, 1, flags, NULL, 1, &results, &count, &lengths);
+        rbcglob_dirglob(patterns, 1, flags, NULL, 1, &results, &count, &lengths);
         rbcglob_free(results, count, lengths);
     }
 
@@ -34,7 +34,7 @@ int main(void)
     size_t *lengths = NULL;
     size_t count = 0;
     const char *p[] = {pattern};
-    dirglob(p, 1, flags, NULL, 1, &results, &count, &lengths);
+    rbcglob_dirglob(p, 1, flags, NULL, 1, &results, &count, &lengths);
 
     printf("=== Large Pattern Benchmark ===\n\n");
     printf("Pattern: %s\n", pattern);

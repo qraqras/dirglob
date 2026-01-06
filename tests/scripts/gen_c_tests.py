@@ -94,14 +94,14 @@ void test_parity_{case_id}(void) {{
     char **result = NULL;
     size_t count = 0;
 
-    // dirglob実行
-    bool ok = dirglob({pattern_array}, {npatterns}, {flags}, {base}, {sort}, &result, &count);
+    // rbcglob_dirglob実行
+    bool ok = rbcglob_dirglob({pattern_array}, {npatterns}, {flags}, {base}, {sort}, &result, &count);
 
     // 期待出力と比較
     assert_matches_expected(result, count, "{escape_c_string(expected_file)}");
 
     // メモリ解放
-    dirglob_free(result, count);
+    rbcglob_free(result, count);
 }}
 '''
 
@@ -117,7 +117,7 @@ def generate_test_file(test_cases, platform, output_file):
  */
 
 #include <unity.h>
-#include <dirglob/dirglob.h>
+#include <rbcglob_dirglob/rbcglob_dirglob.h>
 #include "test_helpers.h"
 
 '''

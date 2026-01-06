@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-bool has_glob_pattern(const char *str)
+bool rbcglob_has_glob_pattern(const char *str)
 {
     if (!str)
         return false;
@@ -29,12 +29,12 @@ bool has_glob_pattern(const char *str)
     return false;
 }
 
-char *rbcglob_path_join_arena(arena_t *arena, const char *base, const char *name)
+char *rbcglob_path_join_arena(rbcglob_arena_t *arena, const char *base, const char *name)
 {
     if (!name)
         return NULL;
     if (!base || base[0] == '\0')
-        return arena_strdup(arena, name);
+        return rbcglob_arena_strdup(arena, name);
 
     size_t base_len = strlen(base);
     size_t name_len = strlen(name);
@@ -43,7 +43,7 @@ char *rbcglob_path_join_arena(arena_t *arena, const char *base, const char *name
     bool needs_sep = (base_len > 0 && base[base_len - 1] != '/' && base[base_len - 1] != '\\');
 
     size_t total = base_len + (needs_sep ? 1 : 0) + name_len + 1;
-    char *result = arena_alloc(arena, total);
+    char *result = rbcglob_arena_alloc(arena, total);
     if (!result)
         return NULL;
 
@@ -75,7 +75,7 @@ char *rbcglob_strdup(const char *str)
     return dup;
 }
 
-char *path_join(const char *base, const char *name)
+char *rbcglob_path_join(const char *base, const char *name)
 {
     if (!name)
         return NULL;

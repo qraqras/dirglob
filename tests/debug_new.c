@@ -35,12 +35,12 @@ int main()
     size_t *lengths = NULL;
     size_t count = 0;
 
-    printf("Running dirglob for {a,b}/{a,b} with base=. and RBCGLOB_FNM_CASEFOLD\n");
-    bool success = dirglob(patterns, 1, 8, ".", 1, &results, &count, &lengths);
+    printf("Running rbcglob_dirglob for {a,b}/{a,b} with base=. and RBCGLOB_FNM_CASEFOLD\n");
+    bool success = rbcglob_dirglob(patterns, 1, 8, ".", 1, &results, &count, &lengths);
 
     if (!success)
     {
-        printf("dirglob failed\n");
+        printf("rbcglob_dirglob failed\n");
         return 1;
     }
 

@@ -3,7 +3,7 @@
 
 set -e
 
-FIXTURES_DIR="/workspaces/dirglob/tests/fixtures"
+FIXTURES_DIR="/workspaces/rbcglob_dirglob/tests/fixtures"
 
 echo "Creating test fixtures in $FIXTURES_DIR..."
 

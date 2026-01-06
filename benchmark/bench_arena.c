@@ -20,7 +20,7 @@ int main(void)
     const char *p[] = {pattern};
     for (int i = 0; i < 10; i++)
     {
-        dirglob(p, 1, 0, NULL, 1, &results, &count, &lengths);
+        rbcglob_dirglob(p, 1, 0, NULL, 1, &results, &count, &lengths);
         rbcglob_free(results, count, lengths);
     }
 
@@ -28,7 +28,7 @@ int main(void)
     clock_gettime(CLOCK_MONOTONIC, &start);
     for (int i = 0; i < iterations; i++)
     {
-        dirglob(p, 1, 0, NULL, 1, &results, &count, &lengths);
+        rbcglob_dirglob(p, 1, 0, NULL, 1, &results, &count, &lengths);
         rbcglob_free(results, count, lengths);
     }
     clock_gettime(CLOCK_MONOTONIC, &end);

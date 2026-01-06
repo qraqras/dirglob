@@ -9,7 +9,7 @@
 /**
  * @brief Check if pattern contains any glob metacharacters
  */
-bool has_glob_pattern(const char *str);
+bool rbcglob_has_glob_pattern(const char *str);
 
 /**
  * @brief Duplicate a string
@@ -19,13 +19,13 @@ char *rbcglob_strdup(const char *str);
 /**
  * @brief Join two path components using arena allocation
  */
-char *rbcglob_path_join_arena(arena_t *arena, const char *base, const char *name);
+char *rbcglob_path_join_arena(rbcglob_arena_t *arena, const char *base, const char *name);
 
 /**
  * @brief Join two path components
  * @return Newly allocated string, caller must free
  */
-char *path_join(const char *base, const char *name);
+char *rbcglob_path_join(const char *base, const char *name);
 
 /**
  * @brief Expand brace expressions in a pattern
@@ -34,7 +34,7 @@ char *path_join(const char *base, const char *name);
  * @param count Number of expanded patterns
  * @return 0 on success, -1 on error
  */
-int expand_braces(const char *pattern, char ***expanded, size_t *count);
+int rbcglob_brace_expand(const char *pattern, char ***expanded, size_t *count);
 
 /**
  * @brief Compare two paths using Ruby-style sorting rules

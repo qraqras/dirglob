@@ -7,7 +7,7 @@
  * @brief Find matching closing brace, handling nesting
  * @return Pointer to closing brace, or NULL if not found
  */
-static const char *find_closing_brace(const char *str)
+static const char *rbcglob_brace_find_closing_brace(const char *str)
 {
     int depth = 1;
     const char *p = str;
@@ -38,7 +38,7 @@ static const char *find_closing_brace(const char *str)
  * @param count Number of expanded patterns
  * @return 0 on success, -1 on error
  */
-int expand_braces(const char *pattern, char ***expanded, size_t *count)
+int rbcglob_brace_expand(const char *pattern, char ***expanded, size_t *count)
 {
     if (!pattern || !expanded || !count)
     {
@@ -85,7 +85,7 @@ int expand_braces(const char *pattern, char ***expanded, size_t *count)
     }
 
     /* Find matching closing brace */
-    const char *close = find_closing_brace(open + 1);
+    const char *close = rbcglob_brace_find_closing_brace(open + 1);
     if (!close)
     {
         /* No matching brace - return original pattern */
@@ -167,11 +167,8 @@ int expand_braces(const char *pattern, char ***expanded, size_t *count)
             /* Recursively expand in case there are more braces */
             char **sub_expanded = NULL;
             size_t sub_count = 0;
-            if (expand_braces(result, &sub_expanded, &sub_count) == 0)
+            if (rbcglob_brace_expand(result, &sub_expanded, &sub_count) == 0)
             {
-                free(result);
-
-                /* Reallocate to accommodate sub-expanded patterns */
                 size_t new_capacity = *count + sub_count;
                 char **new_expanded = realloc(*expanded, new_capacity * sizeof(char *));
                 if (!new_expanded)

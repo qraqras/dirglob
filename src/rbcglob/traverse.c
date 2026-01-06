@@ -7,87 +7,78 @@
 #include <sys/stat.h>
 #include <errno.h>
 
-/* P13 Optimization: Arena allocator for fast memory management */
-static arena_t g_arena;
-static bool g_arena_initialized = false;
-
-/* P5 Optimization: Hash table for directory cache lookup */
-#define HASH_TABLE_SIZE 1024
-
-/* Simple Directory Cache */
-typedef struct
-{
-    char *path;
-    char **entries;
-    size_t *entry_lens;     /* P18: Pre-calculate lengths to avoid strlen() */
-    unsigned char *d_types; /* P3: d_type from dirent to avoid stat() */
-    size_t count;
-} dir_cache_node_t;
-
-/* P5: Hash table entry for O(1) cache lookup */
-typedef struct cache_hash_entry
-{
-    char *key;
-    size_t cache_index;
-    struct cache_hash_entry *next; /* Chaining for collision resolution */
-} cache_hash_entry_t;
-
-static dir_cache_node_t *g_dir_cache = NULL;
-static size_t g_dir_cache_count = 0;
-static cache_hash_entry_t *g_cache_hash[HASH_TABLE_SIZE] = {NULL}; /* P5: Hash table */
-
 /* P5: djb2 hash function */
-static unsigned long hash_string(const char *str)
+static unsigned long rbcglob_traverse_hash_string(const char *str)
 {
     unsigned long hash = 5381;
     int c;
     while ((c = *str++))
         hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
-    return hash % HASH_TABLE_SIZE;
+    return hash % RBCGLOB_HASH_TABLE_SIZE;
 }
 
-void glob_results_clear_cache(void)
+void rbcglob_ctx_init(rbcglob_ctx_t *ctx)
 {
-    if (!g_dir_cache)
+    rbcglob_arena_init(&ctx->arena, 0); /* Use default block size (128KB) */
+    ctx->dir_cache = NULL;
+    ctx->dir_cache_count = 0;
+    for (size_t i = 0; i < RBCGLOB_HASH_TABLE_SIZE; i++)
+    {
+        ctx->cache_hash[i] = NULL;
+    }
+    ctx->discovery_counter = 0;
+}
+
+void rbcglob_results_clear_cache(rbcglob_ctx_t *ctx)
+{
+    if (!ctx->dir_cache)
         return;
 
     /* P13: Free non-arena memory (entries/d_types arrays and cache structure) */
-    for (size_t i = 0; i < g_dir_cache_count; i++)
+    for (size_t i = 0; i < ctx->dir_cache_count; i++)
     {
-        free(g_dir_cache[i].entries);
-        free(g_dir_cache[i].entry_lens);
-        free(g_dir_cache[i].d_types);
+        free(ctx->dir_cache[i].entries);
+        free(ctx->dir_cache[i].entry_lens);
+        free(ctx->dir_cache[i].d_types);
     }
-    free(g_dir_cache);
-    g_dir_cache = NULL;
-    g_dir_cache_count = 0;
+    free(ctx->dir_cache);
+    ctx->dir_cache = NULL;
+    ctx->dir_cache_count = 0;
 
     /* P5: Clear hash table (structure only, strings are in arena) */
-    for (size_t i = 0; i < HASH_TABLE_SIZE; i++)
+    for (size_t i = 0; i < RBCGLOB_HASH_TABLE_SIZE; i++)
     {
-        g_cache_hash[i] = NULL;
+        ctx->cache_hash[i] = NULL;
     }
 
-    /* P13: Destroy arena (frees all strings at once) */
-    if (g_arena_initialized)
-    {
-        arena_destroy(&g_arena);
-        g_arena_initialized = false;
-    }
+    /* P13: Re-initialize arena (frees all strings at once) */
+    rbcglob_arena_destroy(&ctx->arena);
+    rbcglob_arena_init(&ctx->arena, 0);
 }
 
-static ssize_t get_cached_dir_index(const char *path)
+void rbcglob_ctx_free(rbcglob_ctx_t *ctx)
 {
-    /* P13: Initialize arena on first use */
-    if (!g_arena_initialized)
-    {
-        arena_init(&g_arena, 128 * 1024); /* 128KB initial size */
-        g_arena_initialized = true;
-    }
+    if (!ctx)
+        return;
 
+    if (ctx->dir_cache)
+    {
+        for (size_t i = 0; i < ctx->dir_cache_count; i++)
+        {
+            free(ctx->dir_cache[i].entries);
+            free(ctx->dir_cache[i].entry_lens);
+            free(ctx->dir_cache[i].d_types);
+        }
+        free(ctx->dir_cache);
+    }
+    rbcglob_arena_destroy(&ctx->arena);
+}
+
+static ssize_t rbcglob_traverse_get_cached_dir_index(rbcglob_ctx_t *ctx, const char *path)
+{
     /* P5 Optimization: Hash table lookup O(1) instead of linear search O(n) */
-    unsigned long h = hash_string(path);
-    cache_hash_entry_t *entry = g_cache_hash[h];
+    unsigned long h = rbcglob_traverse_hash_string(path);
+    rbcglob_cache_hash_entry_t *entry = ctx->cache_hash[h];
 
     while (entry)
     {
@@ -101,35 +92,35 @@ static ssize_t get_cached_dir_index(const char *path)
     if (!dir)
         return -1;
 
-    size_t idx = g_dir_cache_count++;
-    dir_cache_node_t *new_cache = realloc(g_dir_cache, sizeof(dir_cache_node_t) * g_dir_cache_count);
+    size_t idx = ctx->dir_cache_count++;
+    rbcglob_dir_cache_node_t *new_cache = realloc(ctx->dir_cache, sizeof(rbcglob_dir_cache_node_t) * ctx->dir_cache_count);
     if (!new_cache)
     {
         closedir(dir);
-        g_dir_cache_count--;
+        ctx->dir_cache_count--;
         return -1;
     }
-    g_dir_cache = new_cache;
+    ctx->dir_cache = new_cache;
 
     /* P13: Use arena for path string */
-    g_dir_cache[idx].path = arena_strdup(&g_arena, path);
-    g_dir_cache[idx].entries = NULL;
-    g_dir_cache[idx].entry_lens = NULL;
-    g_dir_cache[idx].d_types = NULL;
-    g_dir_cache[idx].count = 0;
+    ctx->dir_cache[idx].path = rbcglob_arena_strdup(&ctx->arena, path);
+    ctx->dir_cache[idx].entries = NULL;
+    ctx->dir_cache[idx].entry_lens = NULL;
+    ctx->dir_cache[idx].d_types = NULL;
+    ctx->dir_cache[idx].count = 0;
 
     /* P4 Optimization: Pre-allocate space for entries */
     size_t entries_capacity = 64; /* Initial capacity */
-    g_dir_cache[idx].entries = malloc(sizeof(char *) * entries_capacity);
-    g_dir_cache[idx].entry_lens = malloc(sizeof(size_t) * entries_capacity);
-    g_dir_cache[idx].d_types = malloc(sizeof(unsigned char) * entries_capacity);
-    if (!g_dir_cache[idx].entries || !g_dir_cache[idx].entry_lens || !g_dir_cache[idx].d_types)
+    ctx->dir_cache[idx].entries = malloc(sizeof(char *) * entries_capacity);
+    ctx->dir_cache[idx].entry_lens = malloc(sizeof(size_t) * entries_capacity);
+    ctx->dir_cache[idx].d_types = malloc(sizeof(unsigned char) * entries_capacity);
+    if (!ctx->dir_cache[idx].entries || !ctx->dir_cache[idx].entry_lens || !ctx->dir_cache[idx].d_types)
     {
-        free(g_dir_cache[idx].entries);
-        free(g_dir_cache[idx].entry_lens);
-        free(g_dir_cache[idx].d_types);
+        free(ctx->dir_cache[idx].entries);
+        free(ctx->dir_cache[idx].entry_lens);
+        free(ctx->dir_cache[idx].d_types);
         closedir(dir);
-        g_dir_cache_count--;
+        ctx->dir_cache_count--;
         return -1;
     }
 
@@ -147,50 +138,53 @@ static ssize_t get_cached_dir_index(const char *path)
         }
 
         /* P4: Grow capacity when needed */
-        if (g_dir_cache[idx].count >= entries_capacity)
+        if (ctx->dir_cache[idx].count >= entries_capacity)
         {
             entries_capacity *= 2;
-            char **new_entries = realloc(g_dir_cache[idx].entries, sizeof(char *) * entries_capacity);
-            size_t *new_lens = realloc(g_dir_cache[idx].entry_lens, sizeof(size_t) * entries_capacity);
-            unsigned char *new_types = realloc(g_dir_cache[idx].d_types, sizeof(unsigned char) * entries_capacity);
+            char **new_entries = realloc(ctx->dir_cache[idx].entries, sizeof(char *) * entries_capacity);
+            size_t *new_lens = realloc(ctx->dir_cache[idx].entry_lens, sizeof(size_t) * entries_capacity);
+            unsigned char *new_types = realloc(ctx->dir_cache[idx].d_types, sizeof(unsigned char) * entries_capacity);
             if (!new_entries || !new_lens || !new_types)
             {
-                free(new_entries);
-                free(new_lens);
-                free(new_types);
+                if (new_entries)
+                    ctx->dir_cache[idx].entries = new_entries;
+                if (new_lens)
+                    ctx->dir_cache[idx].entry_lens = new_lens;
+                if (new_types)
+                    ctx->dir_cache[idx].d_types = new_types;
                 break;
             }
-            g_dir_cache[idx].entries = new_entries;
-            g_dir_cache[idx].entry_lens = new_lens;
-            g_dir_cache[idx].d_types = new_types;
+            ctx->dir_cache[idx].entries = new_entries;
+            ctx->dir_cache[idx].entry_lens = new_lens;
+            ctx->dir_cache[idx].d_types = new_types;
         }
 
         /* P13: Use arena for entry names */
         size_t name_len = strlen(name);
-        g_dir_cache[idx].entries[g_dir_cache[idx].count] = arena_alloc(&g_arena, name_len + 1);
-        memcpy(g_dir_cache[idx].entries[g_dir_cache[idx].count], name, name_len + 1);
-        g_dir_cache[idx].entry_lens[g_dir_cache[idx].count] = name_len;
-        g_dir_cache[idx].d_types[g_dir_cache[idx].count] = entry_ptr->d_type;
-        g_dir_cache[idx].count++;
+        ctx->dir_cache[idx].entries[ctx->dir_cache[idx].count] = rbcglob_arena_alloc(&ctx->arena, name_len + 1);
+        memcpy(ctx->dir_cache[idx].entries[ctx->dir_cache[idx].count], name, name_len + 1);
+        ctx->dir_cache[idx].entry_lens[ctx->dir_cache[idx].count] = name_len;
+        ctx->dir_cache[idx].d_types[ctx->dir_cache[idx].count] = entry_ptr->d_type;
+        ctx->dir_cache[idx].count++;
     }
     closedir(dir);
 
     /* P5/P13: Add to hash table using arena memory */
-    cache_hash_entry_t *new_entry = arena_alloc(&g_arena, sizeof(cache_hash_entry_t));
+    rbcglob_cache_hash_entry_t *new_entry = rbcglob_arena_alloc(&ctx->arena, sizeof(rbcglob_cache_hash_entry_t));
     if (new_entry)
     {
-        new_entry->key = arena_strdup(&g_arena, path);
+        new_entry->key = rbcglob_arena_strdup(&ctx->arena, path);
         new_entry->cache_index = idx;
-        new_entry->next = g_cache_hash[h];
-        g_cache_hash[h] = new_entry;
+        new_entry->next = ctx->cache_hash[h];
+        ctx->cache_hash[h] = new_entry;
     }
 
     return (ssize_t)idx;
 }
 
-static bool match_tokens(const rbcglob_segment_t *seg, const char *str, unsigned flags);
+static bool rbcglob_traverse_match_tokens(const rbcglob_segment_t *seg, const char *str, unsigned flags);
 
-static bool match_recursive(const rbcglob_token_t *tokens, size_t t_idx, size_t t_count, const char *str, size_t s_idx, unsigned flags)
+static bool rbcglob_traverse_match_recursive(const rbcglob_token_t *tokens, size_t t_idx, size_t t_count, const char *str, size_t s_idx, unsigned flags)
 {
     if (t_idx == t_count)
         return str[s_idx] == '\0';
@@ -205,10 +199,10 @@ static bool match_recursive(const rbcglob_token_t *tokens, size_t t_idx, size_t 
         /* Try matching 0 to remaining chars */
         for (size_t i = s_idx; str[i] != '\0'; i++)
         {
-            if (match_recursive(tokens, t_idx + 1, t_count, str, i, flags))
+            if (rbcglob_traverse_match_recursive(tokens, t_idx + 1, t_count, str, i, flags))
                 return true;
         }
-        return match_recursive(tokens, t_idx + 1, t_count, str, strlen(str), flags);
+        return rbcglob_traverse_match_recursive(tokens, t_idx + 1, t_count, str, strlen(str), flags);
     }
 
     if (str[s_idx] == '\0')
@@ -220,8 +214,8 @@ static bool match_recursive(const rbcglob_token_t *tokens, size_t t_idx, size_t 
     case RBCGLOB_TOKEN_CHAR:
     {
         char tc = tok->c;
-        if (flags & 4)
-        { /* RBCGLOB_FNM_CASEFOLD is 4 */
+        if (flags & RBCGLOB_FNM_CASEFOLD)
+        {
             if (c >= 'A' && c <= 'Z')
                 c += 32;
             if (tc >= 'A' && tc <= 'Z')
@@ -238,13 +232,13 @@ static bool match_recursive(const rbcglob_token_t *tokens, size_t t_idx, size_t 
     {
         bool found = false;
         char lc = c;
-        if (flags & 4 && lc >= 'A' && lc <= 'Z')
+        if (flags & RBCGLOB_FNM_CASEFOLD && lc >= 'A' && lc <= 'Z')
             lc += 32;
         for (size_t i = 0; i < tok->range_count; i++)
         {
             char start = tok->ranges[i].start;
             char end = tok->ranges[i].end;
-            if (flags & 4)
+            if (flags & RBCGLOB_FNM_CASEFOLD)
             {
                 if (start >= 'A' && start <= 'Z')
                     start += 32;
@@ -266,10 +260,10 @@ static bool match_recursive(const rbcglob_token_t *tokens, size_t t_idx, size_t 
     default:
         return false;
     }
-    return match_recursive(tokens, t_idx + 1, t_count, str, s_idx + 1, flags);
+    return rbcglob_traverse_match_recursive(tokens, t_idx + 1, t_count, str, s_idx + 1, flags);
 }
 
-static bool match_tokens(const rbcglob_segment_t *seg, const char *str, unsigned flags)
+static bool rbcglob_traverse_match_tokens(const rbcglob_segment_t *seg, const char *str, unsigned flags)
 {
     /* P14 Optimization: Fast path for common "*" case */
     if (seg->token_count == 1 && seg->tokens[0].token_type == RBCGLOB_TOKEN_ANY_SEQUENCE)
@@ -322,14 +316,14 @@ static bool match_tokens(const rbcglob_segment_t *seg, const char *str, unsigned
             return false;
         }
     }
-    return match_recursive(seg->tokens, 0, seg->token_count, str, 0, flags);
+    return rbcglob_traverse_match_recursive(seg->tokens, 0, seg->token_count, str, 0, flags);
 }
 
-static int execute_step(rbcglob_compiled_pattern_t *cp, size_t seg_idx, const char *rel_path, const char *search_base, bool is_after_wildcard, glob_results_t *results)
+static int rbcglob_traverse_execute_step(rbcglob_ctx_t *ctx, rbcglob_compiled_pattern_t *cp, size_t seg_idx, const char *rel_path, const char *search_base, bool is_after_wildcard, rbcglob_results_t *results)
 {
     if (seg_idx >= cp->count)
     {
-        return glob_results_add(results, rel_path ? rel_path : ".");
+        return rbcglob_results_add(results, rel_path ? rel_path : ".");
     }
 
     rbcglob_segment_t *seg = &cp->segments[seg_idx];
@@ -338,28 +332,28 @@ static int execute_step(rbcglob_compiled_pattern_t *cp, size_t seg_idx, const ch
     {
         /* Ruby ** matches zero or more directories.
            First, try skipping ** and moving to next instruction. */
-        int ret = execute_step(cp, seg_idx + 1, rel_path, search_base, is_after_wildcard, results);
+        int ret = rbcglob_traverse_execute_step(ctx, cp, seg_idx + 1, rel_path, search_base, is_after_wildcard, results);
         if (ret != 0)
             return ret;
 
         /* Then, descend into directories. */
-        char *full_dir_to_open = rbcglob_path_join_arena(&g_arena, search_base, rel_path);
+        char *full_dir_to_open = rbcglob_path_join_arena(&ctx->arena, search_base, rel_path);
         const char *dir_to_open = full_dir_to_open ? full_dir_to_open : (search_base ? search_base : ".");
 
-        ssize_t cache_idx = get_cached_dir_index(dir_to_open);
+        ssize_t cache_idx = rbcglob_traverse_get_cached_dir_index(ctx, dir_to_open);
         if (cache_idx < 0)
             return 0;
 
-        for (size_t i = 0; i < g_dir_cache[cache_idx].count; i++)
+        for (size_t i = 0; i < ctx->dir_cache[cache_idx].count; i++)
         {
-            const char *name = g_dir_cache[cache_idx].entries[i];
+            const char *name = ctx->dir_cache[cache_idx].entries[i];
             if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
                 continue;
-            if (name[0] == '.' && !(cp->flags & 8))
-                continue; /* 8 is RBCGLOB_FNM_DOTMATCH */
+            if (name[0] == '.' && !(cp->flags & RBCGLOB_FNM_DOTMATCH))
+                continue;
 
             /* P3 Optimization: Use d_type to avoid stat() when possible */
-            unsigned char d_type = g_dir_cache[cache_idx].d_types[i];
+            unsigned char d_type = ctx->dir_cache[cache_idx].d_types[i];
             bool is_dir = false;
 
             /* P4 Optimization: Build path once and reuse */
@@ -373,10 +367,10 @@ static int execute_step(rbcglob_compiled_pattern_t *cp, size_t seg_idx, const ch
             else if (d_type == DT_UNKNOWN || d_type == DT_LNK)
             {
                 /* Fall back to stat() only for unknown types or symlinks */
-                next_rel = rbcglob_path_join_arena(&g_arena, rel_path, name);
+                next_rel = rbcglob_path_join_arena(&ctx->arena, rel_path, name);
                 if (!next_rel)
                     return -1;
-                next_full = rbcglob_path_join_arena(&g_arena, search_base, next_rel);
+                next_full = rbcglob_path_join_arena(&ctx->arena, search_base, next_rel);
                 struct stat st;
                 if (next_full && lstat(next_full, &st) == 0 && S_ISDIR(st.st_mode))
                 {
@@ -389,13 +383,13 @@ static int execute_step(rbcglob_compiled_pattern_t *cp, size_t seg_idx, const ch
                 /* Reuse next_rel if already built */
                 if (!next_rel)
                 {
-                    next_rel = rbcglob_path_join_arena(&g_arena, rel_path, name);
+                    next_rel = rbcglob_path_join_arena(&ctx->arena, rel_path, name);
                     if (!next_rel)
                         return -1;
                 }
                 /* Stay on RBCGLOB_SEGMENT_RECURSIVE to find deeper matches.
                    Next instruction will still see is_after_wildcard=true because we moved through RBCGLOB_SEGMENT_RECURSIVE. */
-                ret = execute_step(cp, seg_idx, next_rel, search_base, true, results);
+                ret = rbcglob_traverse_execute_step(ctx, cp, seg_idx, next_rel, search_base, true, results);
                 if (ret != 0)
                     return ret;
             }
@@ -405,10 +399,10 @@ static int execute_step(rbcglob_compiled_pattern_t *cp, size_t seg_idx, const ch
 
     if (seg->type == RBCGLOB_SEGMENT_LITERAL)
     {
-        char *next_rel = rbcglob_path_join_arena(&g_arena, rel_path, seg->pattern);
+        char *next_rel = rbcglob_path_join_arena(&ctx->arena, rel_path, seg->pattern);
         if (!next_rel)
             return -1;
-        char *next_full = rbcglob_path_join_arena(&g_arena, search_base, next_rel);
+        char *next_full = rbcglob_path_join_arena(&ctx->arena, search_base, next_rel);
         struct stat st;
         if (next_full && stat(next_full, &st) == 0)
         {
@@ -419,22 +413,22 @@ static int execute_step(rbcglob_compiled_pattern_t *cp, size_t seg_idx, const ch
                 return 0;
             }
             /* Literals don't trigger is_after_wildcard, but they propagate it */
-            int ret = execute_step(cp, seg_idx + 1, next_rel, search_base, is_after_wildcard, results);
+            int ret = rbcglob_traverse_execute_step(ctx, cp, seg_idx + 1, next_rel, search_base, is_after_wildcard, results);
             return ret;
         }
         return 0;
     }
 
     /* Wildcard match */
-    char *full_dir_to_open = rbcglob_path_join_arena(&g_arena, search_base, rel_path);
+    char *full_dir_to_open = rbcglob_path_join_arena(&ctx->arena, search_base, rel_path);
     const char *dir_to_open = full_dir_to_open ? full_dir_to_open : (search_base ? search_base : ".");
-    ssize_t cache_idx = get_cached_dir_index(dir_to_open);
+    ssize_t cache_idx = rbcglob_traverse_get_cached_dir_index(ctx, dir_to_open);
     if (cache_idx < 0)
         return 0;
 
-    for (size_t i = 0; i < g_dir_cache[cache_idx].count; i++)
+    for (size_t i = 0; i < ctx->dir_cache[cache_idx].count; i++)
     {
-        const char *name = g_dir_cache[cache_idx].entries[i];
+        const char *name = ctx->dir_cache[cache_idx].entries[i];
 
         /* Ruby parity: if we relate to a wildcard-matched directory,
            wildcard segments in the current level should not match "." or ".." */
@@ -470,16 +464,16 @@ static int execute_step(rbcglob_compiled_pattern_t *cp, size_t seg_idx, const ch
 
         if (seg->suffix)
         {
-            size_t name_len = g_dir_cache[cache_idx].entry_lens[i];
+            size_t name_len = ctx->dir_cache[cache_idx].entry_lens[i];
             if (name_len < seg->suffix_len || strcmp(name + name_len - seg->suffix_len, seg->suffix) != 0)
             {
                 continue;
             }
         }
 
-        if (match_tokens(seg, name, cp->flags))
+        if (rbcglob_traverse_match_tokens(seg, name, cp->flags))
         {
-            char *next_rel = rbcglob_path_join_arena(&g_arena, rel_path, name);
+            char *next_rel = rbcglob_path_join_arena(&ctx->arena, rel_path, name);
             if (!next_rel)
                 return -1;
 
@@ -488,7 +482,7 @@ static int execute_step(rbcglob_compiled_pattern_t *cp, size_t seg_idx, const ch
             if (must_be_directory)
             {
                 /* P3 Optimization: Use d_type first, fall back to stat() if needed */
-                unsigned char d_type = g_dir_cache[cache_idx].d_types[i];
+                unsigned char d_type = ctx->dir_cache[cache_idx].d_types[i];
                 bool is_dir = false;
 
                 if (d_type == DT_DIR)
@@ -498,7 +492,7 @@ static int execute_step(rbcglob_compiled_pattern_t *cp, size_t seg_idx, const ch
                 else if (d_type == DT_UNKNOWN || d_type == DT_LNK)
                 {
                     /* Fall back to stat() for unknown types or symlinks */
-                    char *next_full = rbcglob_path_join_arena(&g_arena, search_base, next_rel);
+                    char *next_full = rbcglob_path_join_arena(&ctx->arena, search_base, next_rel);
                     struct stat st;
                     if (next_full && stat(next_full, &st) == 0 && S_ISDIR(st.st_mode))
                     {
@@ -511,7 +505,7 @@ static int execute_step(rbcglob_compiled_pattern_t *cp, size_t seg_idx, const ch
                     continue;
                 }
             }
-            int ret = execute_step(cp, seg_idx + 1, next_rel, search_base, true, results);
+            int ret = rbcglob_traverse_execute_step(ctx, cp, seg_idx + 1, next_rel, search_base, true, results);
             if (ret != 0)
                 return ret;
         }
@@ -519,18 +513,10 @@ static int execute_step(rbcglob_compiled_pattern_t *cp, size_t seg_idx, const ch
     return 0;
 }
 
-int rbcglob_execute(rbcglob_compiled_pattern_t *cp, const char *base, glob_results_t *results)
+int rbcglob_execute(rbcglob_ctx_t *ctx, rbcglob_compiled_pattern_t *cp, const char *base, rbcglob_results_t *results)
 {
-    if (!cp)
+    if (!cp || !ctx)
         return -1;
-
-    /* P13: Initialize arena at the start of execution if not already done.
-     * This is needed because path joining and result adding use the arena. */
-    if (!g_arena_initialized)
-    {
-        arena_init(&g_arena, 128 * 1024); /* 128KB initial size */
-        g_arena_initialized = true;
-    }
 
     const char *search_base = (base && base[0] != '\0') ? base : NULL;
     if (cp->is_absolute)
@@ -543,7 +529,7 @@ int rbcglob_execute(rbcglob_compiled_pattern_t *cp, const char *base, glob_resul
         char *literal_path = NULL;
         for (size_t i = 0; i < cp->leading_literal_count; i++)
         {
-            char *next_path = rbcglob_path_join_arena(&g_arena,
+            char *next_path = rbcglob_path_join_arena(&ctx->arena,
                                                       literal_path ? literal_path : (search_base ? search_base : "."),
                                                       cp->segments[i].pattern);
             literal_path = next_path;
@@ -558,7 +544,6 @@ int rbcglob_execute(rbcglob_compiled_pattern_t *cp, const char *base, glob_resul
         struct stat st;
         if (stat(literal_path, &st) != 0)
         {
-            /* DEBUG: printf("Stat failed for: %s (base: %s)\n", literal_path, search_base ? search_base : "NULL"); */
             return 0; /* Path doesn't exist */
         }
 
@@ -587,7 +572,7 @@ int rbcglob_execute(rbcglob_compiled_pattern_t *cp, const char *base, glob_resul
                 }
             }
 
-            int ret = glob_results_add(results, rel_start);
+            int ret = rbcglob_results_add(results, rel_start);
             return ret;
         }
 
@@ -614,20 +599,19 @@ int rbcglob_execute(rbcglob_compiled_pattern_t *cp, const char *base, glob_resul
         }
 
         /* Continue from first wildcard segment */
-        int ret = execute_step(cp, cp->leading_literal_count, rel_start, search_base, false, results);
+        int ret = rbcglob_traverse_execute_step(ctx, cp, cp->leading_literal_count, rel_start, search_base, false, results);
         return ret;
     }
 
-    return execute_step(cp, 0, NULL, search_base, false, results);
+    return rbcglob_traverse_execute_step(ctx, cp, 0, NULL, search_base, false, results);
 }
 
-static size_t g_discovery_counter = 0;
-void glob_results_reset_discovery_counter(void) { g_discovery_counter = 0; }
+void rbcglob_results_reset_discovery_counter(rbcglob_ctx_t *ctx) { ctx->discovery_counter = 0; }
 
 /* P1 Optimization: Initial capacity for result array */
 #define INITIAL_RESULT_CAPACITY 64
 
-void glob_results_init(glob_results_t *results)
+void rbcglob_results_init(rbcglob_results_t *results, rbcglob_ctx_t *ctx)
 {
     /* P1-1: Pre-allocate result array to reduce realloc() calls */
     results->capacity = INITIAL_RESULT_CAPACITY;
@@ -635,6 +619,7 @@ void glob_results_init(glob_results_t *results)
     results->lengths = malloc(sizeof(size_t) * results->capacity);
     results->discovery_indices = malloc(sizeof(size_t) * results->capacity);
     results->count = 0;
+    results->ctx = ctx;
 
     /* Handle allocation failure gracefully */
     if (!results->items || !results->lengths || !results->discovery_indices)
@@ -648,7 +633,8 @@ void glob_results_init(glob_results_t *results)
         results->capacity = 0;
     }
 }
-void glob_results_clear(glob_results_t *results)
+
+void rbcglob_results_clear(rbcglob_results_t *results)
 {
     if (!results)
         return;
@@ -663,7 +649,8 @@ void glob_results_clear(glob_results_t *results)
     results->count = 0;
     results->capacity = 0;
 }
-int glob_results_add_with_index(glob_results_t *results, const char *path, size_t index)
+
+int rbcglob_results_add_with_index(rbcglob_results_t *results, const char *path, size_t index)
 {
     if (results->count >= results->capacity)
     {
@@ -685,41 +672,42 @@ int glob_results_add_with_index(glob_results_t *results, const char *path, size_
     /* P13: Use arena for result strings */
     const char *p = path ? path : ".";
     size_t len = strlen(p);
-    results->items[results->count] = arena_alloc(&g_arena, len + 1);
+    results->items[results->count] = rbcglob_arena_alloc(&results->ctx->arena, len + 1);
     memcpy(results->items[results->count], p, len + 1);
     results->lengths[results->count] = len;
     results->discovery_indices[results->count] = index;
     results->count++;
     return 0;
 }
-int glob_results_add(glob_results_t *results, const char *path)
+
+int rbcglob_results_add(rbcglob_results_t *results, const char *path)
 {
-    return glob_results_add_with_index(results, path, g_discovery_counter++);
+    return rbcglob_results_add_with_index(results, path, results->ctx->discovery_counter++);
 }
 
 /* P10 Optimization: Helper structure for qsort() */
-typedef struct
+typedef struct rbcglob_traverse_sort_pair_s
 {
     char *path;
     size_t length;
     size_t discovery_index;
-} sort_pair_t;
+} rbcglob_traverse_sort_pair_t;
 
 /* P10: Comparison function for qsort() */
-static int compare_sort_pairs(const void *a, const void *b)
+static int rbcglob_traverse_compare_sort_pairs(const void *a, const void *b)
 {
-    const sort_pair_t *pa = (const sort_pair_t *)a;
-    const sort_pair_t *pb = (const sort_pair_t *)b;
+    const rbcglob_traverse_sort_pair_t *pa = (const rbcglob_traverse_sort_pair_t *)a;
+    const rbcglob_traverse_sort_pair_t *pb = (const rbcglob_traverse_sort_pair_t *)b;
     return rbcglob_compare_paths(pa->path, pb->path);
 }
 
-void glob_results_sort(glob_results_t *results)
+void rbcglob_results_sort(rbcglob_results_t *results)
 {
     if (results->count <= 1)
         return;
 
     /* P10: Use qsort() instead of O(n²) bubble sort */
-    sort_pair_t *pairs = malloc(sizeof(sort_pair_t) * results->count);
+    rbcglob_traverse_sort_pair_t *pairs = malloc(sizeof(rbcglob_traverse_sort_pair_t) * results->count);
     if (!pairs)
         return; /* Fallback: keep unsorted */
 
@@ -730,7 +718,7 @@ void glob_results_sort(glob_results_t *results)
         pairs[i].discovery_index = results->discovery_indices[i];
     }
 
-    qsort(pairs, results->count, sizeof(sort_pair_t), compare_sort_pairs);
+    qsort(pairs, results->count, sizeof(rbcglob_traverse_sort_pair_t), rbcglob_traverse_compare_sort_pairs);
 
     for (size_t i = 0; i < results->count; i++)
     {
@@ -741,7 +729,8 @@ void glob_results_sort(glob_results_t *results)
 
     free(pairs);
 }
-void glob_results_deduplicate(glob_results_t *results)
+
+void rbcglob_results_deduplicate(rbcglob_results_t *results)
 {
     if (results->count <= 1)
         return;
@@ -763,12 +752,12 @@ void glob_results_deduplicate(glob_results_t *results)
             }
             write_idx++;
         }
-        else
-        {
-            /* P13: Duplicate - skip (arena will free all at once) */
-            /* No need to free(results->items[read_idx]); */
-        }
     }
     results->count = write_idx;
 }
-int rbcglob_compare_filesystem_order(const char *a, const char *b) { return strcmp(a, b); }
+
+int rbcglob_compare_filesystem_order(rbcglob_ctx_t *ctx, const char *a, const char *b)
+{
+    (void)ctx;
+    return strcmp(a, b);
+}

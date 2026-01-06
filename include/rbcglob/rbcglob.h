@@ -17,8 +17,8 @@
  */
 #define RBCGLOB_FNM_NOESCAPE (1U << 0)
 #define RBCGLOB_FNM_PATHNAME (1U << 1)
-#define RBCGLOB_FNM_CASEFOLD (1U << 2)
-#define RBCGLOB_FNM_DOTMATCH (1U << 3)
+#define RBCGLOB_FNM_DOTMATCH (1U << 2)
+#define RBCGLOB_FNM_CASEFOLD (1U << 3)
 #define RBCGLOB_FNM_EXTGLOB (1U << 4)
 /**
  * @}
@@ -37,8 +37,8 @@
  * @param lengths Output parameter for array of path lengths (optional, caller must free with rbcglob_free)
  * @return true on success, false on error (check errno for details)
  */
-bool dirglob(const char **patterns, size_t npatterns, unsigned flags,
-             const char *base, int sort, char ***out, size_t *count, size_t **lengths);
+bool rbcglob_dirglob(const char **patterns, size_t npatterns, unsigned flags,
+                     const char *base, int sort, char ***out, size_t *count, size_t **lengths);
 
 /**
  * @brief Free memory allocated by dirglob

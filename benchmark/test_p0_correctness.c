@@ -12,11 +12,11 @@ int test_pattern(const char *pattern, const char *description, size_t expected_m
 
     printf("Testing: %s - %s\n", pattern, description);
 
-    bool success = dirglob(patterns, 1, RBCGLOB_FNM_DOTMATCH, NULL, 1, &results, &count, &lengths);
+    bool success = rbcglob_dirglob(patterns, 1, RBCGLOB_FNM_DOTMATCH, NULL, 1, &results, &count, &lengths);
 
     if (!success)
     {
-        printf("  ❌ FAILED: dirglob returned false\n");
+        printf("  ❌ FAILED: rbcglob_dirglob returned false\n");
         return 1;
     }
 
