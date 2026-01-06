@@ -43,3 +43,9 @@ int rbcglob_brace_expand(const char *pattern, char ***expanded, size_t *count);
 int rbcglob_compare_paths(const char *s1, const char *s2);
 
 #endif /* RBCGLOB_INTERNAL_UTILS_H */
+
+/**
+ * @brief Expand tilde (~) in path using arena allocation
+ * Supports ~/ and ~user/ formats.
+ */
+char *rbcglob_expand_tilde_arena(rbcglob_arena_t *arena, const char *path);

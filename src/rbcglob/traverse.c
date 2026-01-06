@@ -1,6 +1,7 @@
 #include <rbcglob/internal/traverse.h>
 #include <rbcglob/internal/utils.h>
 #include <rbcglob/internal/arena.h>
+#include <rbcglob/internal/fnmatch.h>
 #include <stdlib.h>
 #include <string.h>
 #include <dirent.h>
@@ -182,143 +183,6 @@ static ssize_t rbcglob_traverse_get_cached_dir_index(rbcglob_ctx_t *ctx, const c
     return (ssize_t)idx;
 }
 
-static bool rbcglob_traverse_match_tokens(const rbcglob_segment_t *seg, const char *str, unsigned flags);
-
-static bool rbcglob_traverse_match_recursive(const rbcglob_token_t *tokens, size_t t_idx, size_t t_count, const char *str, size_t s_idx, unsigned flags)
-{
-    if (t_idx == t_count)
-        return str[s_idx] == '\0';
-
-    const rbcglob_token_t *tok = &tokens[t_idx];
-    if (tok->token_type == RBCGLOB_TOKEN_ANY_SEQUENCE)
-    {
-        /* Optimize: multiple * behave like one */
-        while (t_idx + 1 < t_count && tokens[t_idx + 1].token_type == RBCGLOB_TOKEN_ANY_SEQUENCE)
-            t_idx++;
-
-        /* Try matching 0 to remaining chars */
-        for (size_t i = s_idx; str[i] != '\0'; i++)
-        {
-            if (rbcglob_traverse_match_recursive(tokens, t_idx + 1, t_count, str, i, flags))
-                return true;
-        }
-        return rbcglob_traverse_match_recursive(tokens, t_idx + 1, t_count, str, strlen(str), flags);
-    }
-
-    if (str[s_idx] == '\0')
-        return false;
-
-    char c = str[s_idx];
-    switch (tok->token_type)
-    {
-    case RBCGLOB_TOKEN_CHAR:
-    {
-        char tc = tok->c;
-        if (flags & RBCGLOB_FNM_CASEFOLD)
-        {
-            if (c >= 'A' && c <= 'Z')
-                c += 32;
-            if (tc >= 'A' && tc <= 'Z')
-                tc += 32;
-        }
-        if (c != tc)
-            return false;
-        break;
-    }
-    case RBCGLOB_TOKEN_ANY_CHAR:
-        break;
-    case RBCGLOB_TOKEN_ANY_WITHIN:
-    case RBCGLOB_TOKEN_ANY_EXCEPT:
-    {
-        bool found = false;
-        char lc = c;
-        if (flags & RBCGLOB_FNM_CASEFOLD && lc >= 'A' && lc <= 'Z')
-            lc += 32;
-        for (size_t i = 0; i < tok->range_count; i++)
-        {
-            char start = tok->ranges[i].start;
-            char end = tok->ranges[i].end;
-            if (flags & RBCGLOB_FNM_CASEFOLD)
-            {
-                if (start >= 'A' && start <= 'Z')
-                    start += 32;
-                if (end >= 'A' && end <= 'Z')
-                    end += 32;
-            }
-            if (lc >= start && lc <= end)
-            {
-                found = true;
-                break;
-            }
-        }
-        if (tok->token_type == RBCGLOB_TOKEN_ANY_WITHIN && !found)
-            return false;
-        if (tok->token_type == RBCGLOB_TOKEN_ANY_EXCEPT && found)
-            return false;
-        break;
-    }
-    default:
-        return false;
-    }
-    return rbcglob_traverse_match_recursive(tokens, t_idx + 1, t_count, str, s_idx + 1, flags);
-}
-
-static bool rbcglob_traverse_match_tokens(const rbcglob_segment_t *seg, const char *str, unsigned flags)
-{
-    /* P14 Optimization: Fast path for common "*" case */
-    if (seg->token_count == 1 && seg->tokens[0].token_type == RBCGLOB_TOKEN_ANY_SEQUENCE)
-    {
-        if (str[0] == '.')
-        {
-            return (flags & RBCGLOB_FNM_DOTMATCH) != 0;
-        }
-        return true;
-    }
-
-    /* P0 Optimization: Fast path for literal segments */
-    if (seg->type == RBCGLOB_SEGMENT_LITERAL)
-    {
-        if (flags & RBCGLOB_FNM_CASEFOLD)
-        {
-            /* Case-insensitive comparison */
-            const char *p = seg->pattern;
-            const char *s = str;
-            while (*p && *s)
-            {
-                char pc = *p;
-                char sc = *s;
-                if (pc >= 'A' && pc <= 'Z')
-                    pc += 32;
-                if (sc >= 'A' && sc <= 'Z')
-                    sc += 32;
-                if (pc != sc)
-                    return false;
-                p++;
-                s++;
-            }
-            return (*p == '\0' && *s == '\0');
-        }
-        else
-        {
-            /* Case-sensitive: direct strcmp */
-            return strcmp(seg->pattern, str) == 0;
-        }
-    }
-
-    if (str[0] == '.')
-    {
-        if (seg->token_count > 0 && seg->tokens[0].token_type == RBCGLOB_TOKEN_CHAR && seg->tokens[0].c == '.')
-        {
-            /* OK: explicitly matching dot */
-        }
-        else if (!(flags & RBCGLOB_FNM_DOTMATCH))
-        {
-            return false;
-        }
-    }
-    return rbcglob_traverse_match_recursive(seg->tokens, 0, seg->token_count, str, 0, flags);
-}
-
 static int rbcglob_traverse_execute_step(rbcglob_ctx_t *ctx, rbcglob_compiled_pattern_t *cp, size_t seg_idx, const char *rel_path, const char *search_base, bool is_after_wildcard, rbcglob_results_t *results)
 {
     if (seg_idx >= cp->count)
@@ -471,7 +335,7 @@ static int rbcglob_traverse_execute_step(rbcglob_ctx_t *ctx, rbcglob_compiled_pa
             }
         }
 
-        if (rbcglob_traverse_match_tokens(seg, name, cp->flags))
+        if (rbcglob_token_match_segment(seg, name, cp->flags))
         {
             char *next_rel = rbcglob_path_join_arena(&ctx->arena, rel_path, name);
             if (!next_rel)

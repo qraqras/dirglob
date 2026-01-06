@@ -4,7 +4,7 @@
 #include <string.h>
 #include <errno.h>
 
-static void rbcglob_compiler_parse_segment_tokens(rbcglob_segment_t *seg)
+static void rbcglob_compiler_parse_segment_tokens(rbcglob_segment_t *seg, unsigned flags)
 {
     const char *p = seg->pattern;
     size_t capacity = 8;
@@ -76,12 +76,20 @@ static void rbcglob_compiler_parse_segment_tokens(rbcglob_segment_t *seg)
             break;
         }
         case '\\':
-            tok->token_type = RBCGLOB_TOKEN_CHAR;
-            p++;
-            if (*p)
-                tok->c = *p++;
+            if (!(flags & RBCGLOB_FNM_NOESCAPE))
+            {
+                tok->token_type = RBCGLOB_TOKEN_CHAR;
+                p++;
+                if (*p)
+                    tok->c = *p++;
+                else
+                    tok->c = '\\';
+            }
             else
-                tok->c = '\\';
+            {
+                tok->token_type = RBCGLOB_TOKEN_CHAR;
+                tok->c = *p++;
+            }
             break;
         default:
             tok->token_type = RBCGLOB_TOKEN_CHAR;
@@ -209,53 +217,72 @@ rbcglob_compiled_pattern_t *rbcglob_compiler_compile(const char *pattern, unsign
     cp->has_trailing_slash = (pattern_len > 0 && pattern[pattern_len - 1] == '/');
 
     size_t segment_count = 1;
-    for (const char *p = pattern; *p; p++)
-        if (*p == '/')
-            segment_count++;
+    if (flags & RBCGLOB_FNM_PATHNAME)
+    {
+        for (const char *p = pattern; *p; p++)
+            if (*p == '/')
+                segment_count++;
+    }
     cp->segments = calloc(segment_count, sizeof(rbcglob_segment_t));
 
     size_t idx = 0;
     const char *start = pattern;
-    if (cp->is_absolute)
+    if (flags & RBCGLOB_FNM_PATHNAME)
     {
-        while (*start == '/')
-            start++; /* Skip leading slashes */
-    }
-
-    while (*start)
-    {
-        const char *end = strchr(start, '/');
-        size_t len = end ? (size_t)(end - start) : strlen(start);
-        if (len == 0 && end)
+        if (cp->is_absolute)
         {
+            while (*start == '/')
+                start++; /* Skip leading slashes */
+        }
+
+        while (*start)
+        {
+            const char *end = strchr(start, '/');
+            size_t len = end ? (size_t)(end - start) : strlen(start);
+            if (len == 0 && end)
+            {
+                start = end + 1;
+                continue;
+            }
+
+            rbcglob_segment_t *seg = &cp->segments[idx];
+            seg->pattern = malloc(len + 1);
+            memcpy(seg->pattern, start, len);
+            seg->pattern[len] = '\0';
+
+            if (strcmp(seg->pattern, "**") == 0)
+            {
+                seg->type = RBCGLOB_SEGMENT_RECURSIVE;
+            }
+            else if (rbcglob_has_glob_pattern(seg->pattern))
+            {
+                seg->type = RBCGLOB_SEGMENT_WILDCARD;
+                rbcglob_compiler_parse_segment_tokens(seg, flags);
+                rbcglob_compiler_extract_prefix(seg);
+                rbcglob_compiler_extract_suffix(seg);
+            }
+            else
+            {
+                seg->type = RBCGLOB_SEGMENT_LITERAL;
+            }
+            idx++;
+            if (!end)
+                break;
             start = end + 1;
-            continue;
         }
-
-        rbcglob_segment_t *seg = &cp->segments[idx];
-        seg->pattern = malloc(len + 1);
-        memcpy(seg->pattern, start, len);
-        seg->pattern[len] = '\0';
-
-        if (strcmp(seg->pattern, "**") == 0)
-        {
-            seg->type = RBCGLOB_SEGMENT_RECURSIVE;
-        }
-        else if (rbcglob_has_glob_pattern(seg->pattern))
-        {
-            seg->type = RBCGLOB_SEGMENT_WILDCARD;
-            rbcglob_compiler_parse_segment_tokens(seg);
-            rbcglob_compiler_extract_prefix(seg);
-            rbcglob_compiler_extract_suffix(seg);
-        }
-        else
-        {
-            seg->type = RBCGLOB_SEGMENT_LITERAL;
-        }
-        idx++;
-        if (!end)
-            break;
-        start = end + 1;
+    }
+    else
+    {
+        /* Non-pathname: treat whole pattern as one wildcard segment */
+        rbcglob_segment_t *seg = &cp->segments[0];
+        seg->pattern = strdup(pattern);
+        seg->type = RBCGLOB_SEGMENT_WILDCARD;
+        rbcglob_compiler_parse_segment_tokens(seg, flags);
+        seg->prefix = NULL;
+        seg->prefix_len = 0;
+        seg->suffix = NULL;
+        seg->suffix_len = 0;
+        idx = 1;
     }
     cp->count = idx;
 

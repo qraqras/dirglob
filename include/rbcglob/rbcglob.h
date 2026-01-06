@@ -6,7 +6,7 @@
 #include <stdint.h>
 
 /**
- * @brief Library version string
+ * @brief Library version path
  */
 #define RBCGLOB_VERSION "0.1.0"
 
@@ -20,9 +20,27 @@
 #define RBCGLOB_FNM_DOTMATCH (1U << 2)
 #define RBCGLOB_FNM_CASEFOLD (1U << 3)
 #define RBCGLOB_FNM_EXTGLOB (1U << 4)
+#define RBCGLOB_FNM_SHORTNAME (1U << 5)
+
+/**
+ * @brief System-default case sensitivity (matches Ruby File::FNM_SYSCASE)
+ * On Windows/macOS, this is equivalent to RBCGLOB_FNM_CASEFOLD.
+ * On Linux, this is 0.
+ */
+#if defined(_WIN32) || defined(__APPLE__)
+#define RBCGLOB_FNM_SYSCASE RBCGLOB_FNM_CASEFOLD
+#else
+#define RBCGLOB_FNM_SYSCASE 0
+#endif
+
 /**
  * @}
  */
+
+/**
+ * @brief Opaque type for compiled glob patterns with brace expansion
+ */
+typedef struct rbcglob_compiled_glob_s rbcglob_compiled_glob_t;
 
 /**
  * @brief Perform glob pattern matching and return matching paths
@@ -31,14 +49,14 @@
  * @param npatterns Number of patterns in the array
  * @param flags Bitwise OR of RBCGLOB_FNM_* flags to control matching behavior
  * @param base Base directory for relative path resolution (NULL for current directory)
- * @param sort 1 to sort results (Ruby default), 0 to skip sorting
+ * @param sort true to sort results (Ruby default), false to skip sorting
  * @param out Output parameter for array of matched paths (caller must free with rbcglob_free)
  * @param count Output parameter for number of results returned
  * @param lengths Output parameter for array of path lengths (optional, caller must free with rbcglob_free)
  * @return true on success, false on error (check errno for details)
  */
 bool rbcglob_dirglob(const char **patterns, size_t npatterns, unsigned flags,
-                     const char *base, int sort, char ***out, size_t *count, size_t **lengths);
+                     const char *base, bool sort, char ***out, size_t *count, size_t **lengths);
 
 /**
  * @brief Free memory allocated by dirglob
@@ -50,19 +68,28 @@ bool rbcglob_dirglob(const char **patterns, size_t npatterns, unsigned flags,
 void rbcglob_free(char **list, size_t count, size_t *lengths);
 
 /**
- * @brief Test if a path matches a glob pattern
+ * @brief Match a path against a glob pattern (Ruby File.fnmatch equivalent)
  *
- * @param pattern Glob pattern to match against
- * @param flags Bitwise OR of RBCGLOB_FNM_* flags to control matching behavior
- * @param path Path to test
- * @return 0 if path matches pattern, 1 if no match, negative value on error
+ * @param pattern Glob pattern
+ * @param path String to match
+ * @param flags Bitwise OR of RBCGLOB_FNM_* flags
+ * @return true if match, false if no match or error
  */
-int rbcglob_match(const char *pattern, unsigned flags, const char *path);
+bool rbcglob_fnmatch(const char *pattern, const char *path, unsigned flags);
 
 /**
- * @brief Get the library version string
+ * @brief Match a path against a precompiled glob pattern (fnmatch compiled version)
  *
- * @return A null-terminated string containing the library version
+ * @param cg Precompiled glob bundle
+ * @param path Path to test
+ * @return true if match, false if no match or error
+ */
+bool rbcglob_fnmatch_compiled(const rbcglob_compiled_glob_t *cg, const char *path);
+
+/**
+ * @brief Get the library version path
+ *
+ * @return A null-terminated path containing the library version
  */
 const char *rbcglob_version(void);
 
@@ -73,7 +100,6 @@ const char *rbcglob_version(void);
  * for multiple glob operations. Use rbcglob_compile_glob() to create
  * and rbcglob_compiled_glob_free() to destroy.
  */
-typedef struct rbcglob_compiled_glob_s rbcglob_compiled_glob_t;
 
 /**
  * @brief Compile a glob pattern for reuse
@@ -86,7 +112,7 @@ typedef struct rbcglob_compiled_glob_s rbcglob_compiled_glob_t;
  *   "*.{c,h}"     → expands to ["*.c", "*.h"]
  *   "test_{a,b}" → expands to ["test_a", "test_b"]
  *
- * @param pattern Glob pattern string (may contain braces)
+ * @param pattern Glob pattern path (may contain braces)
  * @param flags Bitwise OR of RBCGLOB_FNM_* flags
  * @return Pointer to compiled glob, or NULL on error (errno set to EINVAL or ENOMEM)
  */

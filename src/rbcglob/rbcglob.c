@@ -163,7 +163,7 @@ static int rbcglob_merge_ruby_style(rbcglob_ctx_t *ctx,
  * @brief Perform glob pattern matching
  */
 bool rbcglob_dirglob(const char **patterns, size_t npatterns, unsigned flags,
-                     const char *base, int sort_flag, char ***out, size_t *count, size_t **lengths)
+                     const char *base, bool sort_flag, char ***out, size_t *count, size_t **lengths)
 {
   if (!out || !count)
   {
@@ -179,6 +179,9 @@ bool rbcglob_dirglob(const char **patterns, size_t npatterns, unsigned flags,
     return false;
   }
   rbcglob_ctx_init(ctx);
+
+  /* Dir.glob always operates in pathname mode */
+  flags |= RBCGLOB_FNM_PATHNAME;
 
   if (!patterns || npatterns == 0)
   {
@@ -211,11 +214,14 @@ bool rbcglob_dirglob(const char **patterns, size_t npatterns, unsigned flags,
   /* Process each pattern */
   for (size_t i = 0; i < npatterns; i++)
   {
+    /* Tilde expansion (Ruby Dir.glob behavior) */
+    const char *p = rbcglob_expand_tilde_arena(&ctx->arena, patterns[i]);
+
     /* Expand braces first */
     char **expanded = NULL;
     size_t expanded_count = 0;
 
-    if (rbcglob_brace_expand(patterns[i], &expanded, &expanded_count) != 0)
+    if (rbcglob_brace_expand(p, &expanded, &expanded_count) != 0)
     {
       rbcglob_results_clear(&results);
       rbcglob_ctx_free(ctx);
@@ -264,7 +270,7 @@ bool rbcglob_dirglob(const char **patterns, size_t npatterns, unsigned flags,
           rbcglob_results_sort(&brace_pattern_results[j]);
       }
 
-      if (rbcglob_merge_ruby_style(ctx, patterns[i], brace_pattern_results, expanded_count, sort_flag, &results) != 0)
+      if (rbcglob_merge_ruby_style(ctx, p, brace_pattern_results, expanded_count, sort_flag, &results) != 0)
       {
         for (size_t j = 0; j < expanded_count; j++)
           rbcglob_results_clear(&brace_pattern_results[j]);
@@ -386,36 +392,4 @@ void rbcglob_free(char **list, size_t count, size_t *lengths)
   free(package);
   if (lengths)
     free(lengths);
-}
-
-int rbcglob_match(const char *pattern, unsigned flags, const char *path)
-{
-  if (!pattern || !path)
-    return -1;
-
-  if (flags & RBCGLOB_FNM_EXTGLOB)
-  {
-    char **expanded = NULL;
-    size_t expanded_count = 0;
-    if (rbcglob_brace_expand(pattern, &expanded, &expanded_count) == 0)
-    {
-      int matched = 1;
-      for (size_t i = 0; i < expanded_count; i++)
-      {
-        if (rbcglob_fnmatch(expanded[i], path, flags) == 0)
-        {
-          matched = 0;
-          break;
-        }
-      }
-      for (size_t i = 0; i < expanded_count; i++)
-      {
-        free(expanded[i]);
-      }
-      free(expanded);
-      return matched;
-    }
-  }
-
-  return rbcglob_fnmatch(pattern, path, flags);
 }

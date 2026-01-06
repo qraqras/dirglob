@@ -4,6 +4,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#ifndef _WIN32
+#include <sys/types.h>
+#include <pwd.h>
+#include <unistd.h>
+#endif
+
 bool rbcglob_has_glob_pattern(const char *str)
 {
     if (!str)
@@ -121,4 +127,63 @@ int rbcglob_compare_paths(const char *s1_in, const char *s2_in)
 
     /* Fall back to strcmp for rest */
     return strcmp(s1_in, s2_in);
+}
+
+char *rbcglob_expand_tilde_arena(rbcglob_arena_t *arena, const char *path)
+{
+    if (!path || path[0] != '~')
+        return (char *)path;
+
+    const char *sep = strchr(path, '/');
+    size_t user_len = sep ? (size_t)(sep - path - 1) : strlen(path + 1);
+    char *home = NULL;
+
+    if (user_len == 0)
+    {
+        /* Case: ~/path or ~ */
+        home = getenv("HOME");
+#ifdef _WIN32
+        if (!home)
+            home = getenv("USERPROFILE");
+#else
+        if (!home)
+        {
+            struct passwd *pw = getpwuid(getuid());
+            if (pw)
+                home = pw->pw_dir;
+        }
+#endif
+    }
+    else
+    {
+        /* Case: ~user/path or ~user */
+        char user[256];
+        if (user_len < sizeof(user))
+        {
+            memcpy(user, path + 1, user_len);
+            user[user_len] = '\0';
+#ifndef _WIN32
+            struct passwd *pw = getpwnam(user);
+            if (pw)
+                home = pw->pw_dir;
+#endif
+        }
+    }
+
+    if (!home)
+        return (char *)path;
+
+    size_t home_len = strlen(home);
+    size_t rest_len = sep ? strlen(sep) : 0;
+    char *result = (char *)rbcglob_arena_alloc(arena, home_len + rest_len + 1);
+    if (!result)
+        return (char *)path;
+
+    memcpy(result, home, home_len);
+    if (sep)
+        memcpy(result + home_len, sep, rest_len + 1);
+    else
+        result[home_len] = '\0';
+
+    return result;
 }
