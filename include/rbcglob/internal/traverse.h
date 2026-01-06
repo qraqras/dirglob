@@ -11,6 +11,7 @@
 typedef struct
 {
     char **items;
+    size_t *lengths; /* P19: Pre-calculated lengths to avoid strlen in C extension */
     size_t *discovery_indices;
     size_t count;
     size_t capacity;

@@ -11,16 +11,17 @@ int main(int argc, char **argv)
     }
 
     char **result = NULL;
+    size_t *lengths = NULL;
     size_t count = 0;
     const char *patterns[] = {argv[1]};
 
-    if (dirglob(patterns, 1, 0, NULL, 1, &result, &count))
+    if (dirglob(patterns, 1, 0, NULL, 1, &result, &count, &lengths))
     {
         for (size_t i = 0; i < count; i++)
         {
-            printf("%s\n", result[i]);
+            printf("%s (len: %zu)\n", result[i], lengths[i]);
         }
-        rbcglob_free(result, count);
+        rbcglob_free(result, count, lengths);
     }
     else
     {

@@ -6,6 +6,7 @@ add_library(rbcglob
   rbcglob/utils.c
   rbcglob/brace.c
   rbcglob/compiler.c
+  rbcglob/arena.c
 )
 
 target_include_directories(rbcglob

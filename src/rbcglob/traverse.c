@@ -1,10 +1,15 @@
 #include <rbcglob/internal/traverse.h>
 #include <rbcglob/internal/utils.h>
+#include <rbcglob/internal/arena.h>
 #include <stdlib.h>
 #include <string.h>
 #include <dirent.h>
 #include <sys/stat.h>
 #include <errno.h>
+
+/* P13 Optimization: Arena allocator for fast memory management */
+static arena_t g_arena;
+static bool g_arena_initialized = false;
 
 /* P5 Optimization: Hash table for directory cache lookup */
 #define HASH_TABLE_SIZE 1024
@@ -14,6 +19,7 @@ typedef struct
 {
     char *path;
     char **entries;
+    size_t *entry_lens;     /* P18: Pre-calculate lengths to avoid strlen() */
     unsigned char *d_types; /* P3: d_type from dirent to avoid stat() */
     size_t count;
 } dir_cache_node_t;
@@ -44,37 +50,41 @@ void glob_results_clear_cache(void)
 {
     if (!g_dir_cache)
         return;
+
+    /* P13: Free non-arena memory (entries/d_types arrays and cache structure) */
     for (size_t i = 0; i < g_dir_cache_count; i++)
     {
-        free(g_dir_cache[i].path);
-        for (size_t j = 0; j < g_dir_cache[i].count; j++)
-        {
-            free(g_dir_cache[i].entries[j]);
-        }
         free(g_dir_cache[i].entries);
-        free(g_dir_cache[i].d_types); /* P3: Free d_type cache */
+        free(g_dir_cache[i].entry_lens);
+        free(g_dir_cache[i].d_types);
     }
     free(g_dir_cache);
     g_dir_cache = NULL;
     g_dir_cache_count = 0;
 
-    /* P5: Clear hash table */
+    /* P5: Clear hash table (structure only, strings are in arena) */
     for (size_t i = 0; i < HASH_TABLE_SIZE; i++)
     {
-        cache_hash_entry_t *entry = g_cache_hash[i];
-        while (entry)
-        {
-            cache_hash_entry_t *next = entry->next;
-            free(entry->key);
-            free(entry);
-            entry = next;
-        }
         g_cache_hash[i] = NULL;
+    }
+
+    /* P13: Destroy arena (frees all strings at once) */
+    if (g_arena_initialized)
+    {
+        arena_destroy(&g_arena);
+        g_arena_initialized = false;
     }
 }
 
 static ssize_t get_cached_dir_index(const char *path)
 {
+    /* P13: Initialize arena on first use */
+    if (!g_arena_initialized)
+    {
+        arena_init(&g_arena, 128 * 1024); /* 128KB initial size */
+        g_arena_initialized = true;
+    }
+
     /* P5 Optimization: Hash table lookup O(1) instead of linear search O(n) */
     unsigned long h = hash_string(path);
     cache_hash_entry_t *entry = g_cache_hash[h];
@@ -101,18 +111,22 @@ static ssize_t get_cached_dir_index(const char *path)
     }
     g_dir_cache = new_cache;
 
-    g_dir_cache[idx].path = strdup(path);
+    /* P13: Use arena for path string */
+    g_dir_cache[idx].path = arena_strdup(&g_arena, path);
     g_dir_cache[idx].entries = NULL;
+    g_dir_cache[idx].entry_lens = NULL;
     g_dir_cache[idx].d_types = NULL;
     g_dir_cache[idx].count = 0;
 
     /* P4 Optimization: Pre-allocate space for entries */
     size_t entries_capacity = 64; /* Initial capacity */
     g_dir_cache[idx].entries = malloc(sizeof(char *) * entries_capacity);
+    g_dir_cache[idx].entry_lens = malloc(sizeof(size_t) * entries_capacity);
     g_dir_cache[idx].d_types = malloc(sizeof(unsigned char) * entries_capacity);
-    if (!g_dir_cache[idx].entries || !g_dir_cache[idx].d_types)
+    if (!g_dir_cache[idx].entries || !g_dir_cache[idx].entry_lens || !g_dir_cache[idx].d_types)
     {
         free(g_dir_cache[idx].entries);
+        free(g_dir_cache[idx].entry_lens);
         free(g_dir_cache[idx].d_types);
         closedir(dir);
         g_dir_cache_count--;
@@ -137,28 +151,35 @@ static ssize_t get_cached_dir_index(const char *path)
         {
             entries_capacity *= 2;
             char **new_entries = realloc(g_dir_cache[idx].entries, sizeof(char *) * entries_capacity);
+            size_t *new_lens = realloc(g_dir_cache[idx].entry_lens, sizeof(size_t) * entries_capacity);
             unsigned char *new_types = realloc(g_dir_cache[idx].d_types, sizeof(unsigned char) * entries_capacity);
-            if (!new_entries || !new_types)
+            if (!new_entries || !new_lens || !new_types)
             {
                 free(new_entries);
+                free(new_lens);
                 free(new_types);
                 break;
             }
             g_dir_cache[idx].entries = new_entries;
+            g_dir_cache[idx].entry_lens = new_lens;
             g_dir_cache[idx].d_types = new_types;
         }
 
-        g_dir_cache[idx].entries[g_dir_cache[idx].count] = strdup(name);
+        /* P13: Use arena for entry names */
+        size_t name_len = strlen(name);
+        g_dir_cache[idx].entries[g_dir_cache[idx].count] = arena_alloc(&g_arena, name_len + 1);
+        memcpy(g_dir_cache[idx].entries[g_dir_cache[idx].count], name, name_len + 1);
+        g_dir_cache[idx].entry_lens[g_dir_cache[idx].count] = name_len;
         g_dir_cache[idx].d_types[g_dir_cache[idx].count] = entry_ptr->d_type;
         g_dir_cache[idx].count++;
     }
     closedir(dir);
 
-    /* P5: Add to hash table for O(1) future lookups */
-    cache_hash_entry_t *new_entry = malloc(sizeof(cache_hash_entry_t));
+    /* P5/P13: Add to hash table using arena memory */
+    cache_hash_entry_t *new_entry = arena_alloc(&g_arena, sizeof(cache_hash_entry_t));
     if (new_entry)
     {
-        new_entry->key = strdup(path);
+        new_entry->key = arena_strdup(&g_arena, path);
         new_entry->cache_index = idx;
         new_entry->next = g_cache_hash[h];
         g_cache_hash[h] = new_entry;
@@ -250,6 +271,16 @@ static bool match_recursive(const rbcglob_token_t *tokens, size_t t_idx, size_t 
 
 static bool match_tokens(const rbcglob_segment_t *seg, const char *str, unsigned flags)
 {
+    /* P14 Optimization: Fast path for common "*" case */
+    if (seg->token_count == 1 && seg->tokens[0].token_type == RBCGLOB_TOKEN_ANY_SEQUENCE)
+    {
+        if (str[0] == '.')
+        {
+            return (flags & RBCGLOB_FNM_DOTMATCH) != 0;
+        }
+        return true;
+    }
+
     /* P0 Optimization: Fast path for literal segments */
     if (seg->type == RBCGLOB_SEGMENT_LITERAL)
     {
@@ -312,11 +343,10 @@ static int execute_step(rbcglob_compiled_pattern_t *cp, size_t seg_idx, const ch
             return ret;
 
         /* Then, descend into directories. */
-        char *full_dir_to_open = path_join(search_base, rel_path);
+        char *full_dir_to_open = rbcglob_path_join_arena(&g_arena, search_base, rel_path);
         const char *dir_to_open = full_dir_to_open ? full_dir_to_open : (search_base ? search_base : ".");
 
         ssize_t cache_idx = get_cached_dir_index(dir_to_open);
-        free(full_dir_to_open);
         if (cache_idx < 0)
             return 0;
 
@@ -343,17 +373,15 @@ static int execute_step(rbcglob_compiled_pattern_t *cp, size_t seg_idx, const ch
             else if (d_type == DT_UNKNOWN || d_type == DT_LNK)
             {
                 /* Fall back to stat() only for unknown types or symlinks */
-                next_rel = path_join(rel_path, name);
+                next_rel = rbcglob_path_join_arena(&g_arena, rel_path, name);
                 if (!next_rel)
                     return -1;
-                next_full = path_join(search_base, next_rel);
+                next_full = rbcglob_path_join_arena(&g_arena, search_base, next_rel);
                 struct stat st;
                 if (next_full && lstat(next_full, &st) == 0 && S_ISDIR(st.st_mode))
                 {
                     is_dir = true;
                 }
-                free(next_full);
-                next_full = NULL; /* Will rebuild if needed */
             }
 
             if (is_dir)
@@ -361,20 +389,15 @@ static int execute_step(rbcglob_compiled_pattern_t *cp, size_t seg_idx, const ch
                 /* Reuse next_rel if already built */
                 if (!next_rel)
                 {
-                    next_rel = path_join(rel_path, name);
+                    next_rel = rbcglob_path_join_arena(&g_arena, rel_path, name);
                     if (!next_rel)
                         return -1;
                 }
                 /* Stay on RBCGLOB_SEGMENT_RECURSIVE to find deeper matches.
                    Next instruction will still see is_after_wildcard=true because we moved through RBCGLOB_SEGMENT_RECURSIVE. */
                 ret = execute_step(cp, seg_idx, next_rel, search_base, true, results);
-                free(next_rel);
                 if (ret != 0)
                     return ret;
-            }
-            else
-            {
-                free(next_rel);
             }
         }
         return 0;
@@ -382,10 +405,10 @@ static int execute_step(rbcglob_compiled_pattern_t *cp, size_t seg_idx, const ch
 
     if (seg->type == RBCGLOB_SEGMENT_LITERAL)
     {
-        char *next_rel = path_join(rel_path, seg->pattern);
+        char *next_rel = rbcglob_path_join_arena(&g_arena, rel_path, seg->pattern);
         if (!next_rel)
             return -1;
-        char *next_full = path_join(search_base, next_rel);
+        char *next_full = rbcglob_path_join_arena(&g_arena, search_base, next_rel);
         struct stat st;
         if (next_full && stat(next_full, &st) == 0)
         {
@@ -393,26 +416,19 @@ static int execute_step(rbcglob_compiled_pattern_t *cp, size_t seg_idx, const ch
             bool must_be_directory = (seg_idx + 1 < cp->count) || cp->has_trailing_slash;
             if (must_be_directory && !S_ISDIR(st.st_mode))
             {
-                free(next_rel);
-                free(next_full);
                 return 0;
             }
             /* Literals don't trigger is_after_wildcard, but they propagate it */
             int ret = execute_step(cp, seg_idx + 1, next_rel, search_base, is_after_wildcard, results);
-            free(next_rel);
-            free(next_full);
             return ret;
         }
-        free(next_rel);
-        free(next_full);
         return 0;
     }
 
     /* Wildcard match */
-    char *full_dir_to_open = path_join(search_base, rel_path);
+    char *full_dir_to_open = rbcglob_path_join_arena(&g_arena, search_base, rel_path);
     const char *dir_to_open = full_dir_to_open ? full_dir_to_open : (search_base ? search_base : ".");
     ssize_t cache_idx = get_cached_dir_index(dir_to_open);
-    free(full_dir_to_open);
     if (cache_idx < 0)
         return 0;
 
@@ -454,7 +470,7 @@ static int execute_step(rbcglob_compiled_pattern_t *cp, size_t seg_idx, const ch
 
         if (seg->suffix)
         {
-            size_t name_len = strlen(name);
+            size_t name_len = g_dir_cache[cache_idx].entry_lens[i];
             if (name_len < seg->suffix_len || strcmp(name + name_len - seg->suffix_len, seg->suffix) != 0)
             {
                 continue;
@@ -463,7 +479,7 @@ static int execute_step(rbcglob_compiled_pattern_t *cp, size_t seg_idx, const ch
 
         if (match_tokens(seg, name, cp->flags))
         {
-            char *next_rel = path_join(rel_path, name);
+            char *next_rel = rbcglob_path_join_arena(&g_arena, rel_path, name);
             if (!next_rel)
                 return -1;
 
@@ -482,23 +498,20 @@ static int execute_step(rbcglob_compiled_pattern_t *cp, size_t seg_idx, const ch
                 else if (d_type == DT_UNKNOWN || d_type == DT_LNK)
                 {
                     /* Fall back to stat() for unknown types or symlinks */
-                    char *next_full = path_join(search_base, next_rel);
+                    char *next_full = rbcglob_path_join_arena(&g_arena, search_base, next_rel);
                     struct stat st;
                     if (next_full && stat(next_full, &st) == 0 && S_ISDIR(st.st_mode))
                     {
                         is_dir = true;
                     }
-                    free(next_full);
                 }
 
                 if (!is_dir)
                 {
-                    free(next_rel);
                     continue;
                 }
             }
             int ret = execute_step(cp, seg_idx + 1, next_rel, search_base, true, results);
-            free(next_rel);
             if (ret != 0)
                 return ret;
         }
@@ -510,6 +523,15 @@ int rbcglob_execute(rbcglob_compiled_pattern_t *cp, const char *base, glob_resul
 {
     if (!cp)
         return -1;
+
+    /* P13: Initialize arena at the start of execution if not already done.
+     * This is needed because path joining and result adding use the arena. */
+    if (!g_arena_initialized)
+    {
+        arena_init(&g_arena, 128 * 1024); /* 128KB initial size */
+        g_arena_initialized = true;
+    }
+
     const char *search_base = (base && base[0] != '\0') ? base : NULL;
     if (cp->is_absolute)
         search_base = "/";
@@ -521,9 +543,9 @@ int rbcglob_execute(rbcglob_compiled_pattern_t *cp, const char *base, glob_resul
         char *literal_path = NULL;
         for (size_t i = 0; i < cp->leading_literal_count; i++)
         {
-            char *next_path = path_join(literal_path ? literal_path : (search_base ? search_base : "."),
-                                        cp->segments[i].pattern);
-            free(literal_path);
+            char *next_path = rbcglob_path_join_arena(&g_arena,
+                                                      literal_path ? literal_path : (search_base ? search_base : "."),
+                                                      cp->segments[i].pattern);
             literal_path = next_path;
             if (!literal_path)
                 return -1;
@@ -536,7 +558,7 @@ int rbcglob_execute(rbcglob_compiled_pattern_t *cp, const char *base, glob_resul
         struct stat st;
         if (stat(literal_path, &st) != 0)
         {
-            free(literal_path);
+            /* DEBUG: printf("Stat failed for: %s (base: %s)\n", literal_path, search_base ? search_base : "NULL"); */
             return 0; /* Path doesn't exist */
         }
 
@@ -546,7 +568,6 @@ int rbcglob_execute(rbcglob_compiled_pattern_t *cp, const char *base, glob_resul
             /* Check trailing slash requirement */
             if (cp->has_trailing_slash && !S_ISDIR(st.st_mode))
             {
-                free(literal_path);
                 return 0;
             }
 
@@ -567,14 +588,12 @@ int rbcglob_execute(rbcglob_compiled_pattern_t *cp, const char *base, glob_resul
             }
 
             int ret = glob_results_add(results, rel_start);
-            free(literal_path);
             return ret;
         }
 
         /* Not final segment - must be a directory to continue */
         if (!S_ISDIR(st.st_mode))
         {
-            free(literal_path);
             return 0;
         }
 
@@ -594,15 +613,8 @@ int rbcglob_execute(rbcglob_compiled_pattern_t *cp, const char *base, glob_resul
             }
         }
 
-        char *rel_path = strdup(rel_start);
-        free(literal_path);
-
-        if (!rel_path)
-            return -1;
-
         /* Continue from first wildcard segment */
-        int ret = execute_step(cp, cp->leading_literal_count, rel_path, search_base, false, results);
-        free(rel_path);
+        int ret = execute_step(cp, cp->leading_literal_count, rel_start, search_base, false, results);
         return ret;
     }
 
@@ -620,15 +632,18 @@ void glob_results_init(glob_results_t *results)
     /* P1-1: Pre-allocate result array to reduce realloc() calls */
     results->capacity = INITIAL_RESULT_CAPACITY;
     results->items = malloc(sizeof(char *) * results->capacity);
+    results->lengths = malloc(sizeof(size_t) * results->capacity);
     results->discovery_indices = malloc(sizeof(size_t) * results->capacity);
     results->count = 0;
 
     /* Handle allocation failure gracefully */
-    if (!results->items || !results->discovery_indices)
+    if (!results->items || !results->lengths || !results->discovery_indices)
     {
         free(results->items);
+        free(results->lengths);
         free(results->discovery_indices);
         results->items = NULL;
+        results->lengths = NULL;
         results->discovery_indices = NULL;
         results->capacity = 0;
     }
@@ -637,11 +652,13 @@ void glob_results_clear(glob_results_t *results)
 {
     if (!results)
         return;
-    for (size_t i = 0; i < results->count; i++)
-        free(results->items[i]);
+    /* P13: Strings are in arena, no need to free individually */
+    /* Only free the arrays themselves */
     free(results->items);
+    free(results->lengths);
     free(results->discovery_indices);
     results->items = NULL;
+    results->lengths = NULL;
     results->discovery_indices = NULL;
     results->count = 0;
     results->capacity = 0;
@@ -655,13 +672,22 @@ int glob_results_add_with_index(glob_results_t *results, const char *path, size_
         if (!new_items)
             return -1;
         results->items = new_items;
+        size_t *new_lens = realloc(results->lengths, sizeof(size_t) * new_cap);
+        if (!new_lens)
+            return -1;
+        results->lengths = new_lens;
         size_t *new_indices = realloc(results->discovery_indices, sizeof(size_t) * new_cap);
         if (!new_indices)
             return -1;
         results->discovery_indices = new_indices;
         results->capacity = new_cap;
     }
-    results->items[results->count] = strdup(path ? path : ".");
+    /* P13: Use arena for result strings */
+    const char *p = path ? path : ".";
+    size_t len = strlen(p);
+    results->items[results->count] = arena_alloc(&g_arena, len + 1);
+    memcpy(results->items[results->count], p, len + 1);
+    results->lengths[results->count] = len;
     results->discovery_indices[results->count] = index;
     results->count++;
     return 0;
@@ -675,6 +701,7 @@ int glob_results_add(glob_results_t *results, const char *path)
 typedef struct
 {
     char *path;
+    size_t length;
     size_t discovery_index;
 } sort_pair_t;
 
@@ -699,6 +726,7 @@ void glob_results_sort(glob_results_t *results)
     for (size_t i = 0; i < results->count; i++)
     {
         pairs[i].path = results->items[i];
+        pairs[i].length = results->lengths[i];
         pairs[i].discovery_index = results->discovery_indices[i];
     }
 
@@ -707,6 +735,7 @@ void glob_results_sort(glob_results_t *results)
     for (size_t i = 0; i < results->count; i++)
     {
         results->items[i] = pairs[i].path;
+        results->lengths[i] = pairs[i].length;
         results->discovery_indices[i] = pairs[i].discovery_index;
     }
 
@@ -716,27 +745,28 @@ void glob_results_deduplicate(glob_results_t *results)
 {
     if (results->count <= 1)
         return;
+
+    /* P11 Optimization: O(n) deduplication for sorted array
+     * Only compare adjacent elements instead of O(n²) full scan */
     size_t write_idx = 1;
     for (size_t read_idx = 1; read_idx < results->count; read_idx++)
     {
-        bool duplicate = false;
-        for (size_t k = 0; k < write_idx; k++)
+        /* Compare only with previous element (array is sorted) */
+        if (strcmp(results->items[read_idx], results->items[write_idx - 1]) != 0)
         {
-            if (strcmp(results->items[read_idx], results->items[k]) == 0)
+            /* Different from previous - keep it */
+            if (write_idx != read_idx)
             {
-                duplicate = true;
-                break;
+                results->items[write_idx] = results->items[read_idx];
+                results->lengths[write_idx] = results->lengths[read_idx];
+                results->discovery_indices[write_idx] = results->discovery_indices[read_idx];
             }
-        }
-        if (!duplicate)
-        {
-            results->items[write_idx] = results->items[read_idx];
-            results->discovery_indices[write_idx] = results->discovery_indices[read_idx];
             write_idx++;
         }
         else
         {
-            free(results->items[read_idx]);
+            /* P13: Duplicate - skip (arena will free all at once) */
+            /* No need to free(results->items[read_idx]); */
         }
     }
     results->count = write_idx;

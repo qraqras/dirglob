@@ -163,7 +163,7 @@ static int merge_ruby_style(const char *original_pattern,
  * @brief Perform glob pattern matching
  */
 bool dirglob(const char **patterns, size_t npatterns, unsigned flags,
-             const char *base, int sort_flag, char ***out, size_t *count)
+             const char *base, int sort_flag, char ***out, size_t *count, size_t **lengths)
 {
   if (!out || !count)
   {
@@ -171,10 +171,15 @@ bool dirglob(const char **patterns, size_t npatterns, unsigned flags,
     return false;
   }
 
+  /* Clear previous cache and arena to manage memory */
+  glob_results_clear_cache();
+
   if (!patterns || npatterns == 0)
   {
     *count = 0;
     *out = NULL;
+    if (lengths)
+      *lengths = NULL;
     return true;
   }
 
@@ -307,7 +312,9 @@ bool dirglob(const char **patterns, size_t npatterns, unsigned flags,
   }
   glob_results_deduplicate(&results);
 
-  /* Return results - ensure non-NULL for empty results (Ruby compatibility) */
+  /* P13: Return arena memory directly (performance priority) */
+  /* NOTE: Directory cache arena is NOT cleared here to keep result strings valid.
+   * It will be cleared on next dirglob() call or explicit rbcglob_clear_cache(). */
   *count = results.count;
   if (results.count == 0 && results.items == NULL)
   {
@@ -315,26 +322,54 @@ bool dirglob(const char **patterns, size_t npatterns, unsigned flags,
     *out = malloc(sizeof(char *));
     if (!*out)
     {
-      glob_results_clear_cache();
+      glob_results_clear(&results);
       return false;
+    }
+    if (lengths)
+    {
+      *lengths = malloc(sizeof(size_t));
+      if (!*lengths)
+      {
+        free(*out);
+        *out = NULL;
+        glob_results_clear(&results);
+        return false;
+      }
     }
   }
   else
   {
     *out = results.items;
+    if (lengths)
+    {
+      *lengths = results.lengths;
+    }
   }
-  glob_results_clear_cache();
-  ;
+
+  /* Do NOT clear cache here - results point to arena memory.
+   * Clear فقط labels that are NOT the items or lengths arrays. */
+  free(results.discovery_indices);
+  /* Note: items and lengths are returned to the caller, so we only free the result struct's own pointers
+   * if we were to clear it, but here we just leave them.
+   * Actually, glob_results_clear would free them. We want to keep them.
+   * So we just don't call glob_results_clear(&results). */
+
   return true;
 }
 
-void rbcglob_free(char **list, size_t count)
+void rbcglob_free(char **list, size_t count, size_t *lengths)
 {
   if (!list)
     return;
-  for (size_t i = 0; i < count; i++)
-    free(list[i]);
+  /* P13: Strings are arena-allocated, only free the arrays themselves */
+  /* Arena memory is cleared on next dirglob() call */
+  (void)count; /* Unused */
   free(list);
+  if (lengths)
+    free(lengths);
+
+  /* Clear the directory cache and arena now that results are consumed */
+  glob_results_clear_cache();
 }
 
 int rbcglob_match(const char *pattern, unsigned flags, const char *path)

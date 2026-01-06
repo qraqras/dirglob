@@ -32,10 +32,11 @@ int main()
 
     const char *patterns[] = {"{a,b}/{a,b}"};
     char **results = NULL;
+    size_t *lengths = NULL;
     size_t count = 0;
 
     printf("Running dirglob for {a,b}/{a,b} with base=. and RBCGLOB_FNM_CASEFOLD\n");
-    bool success = dirglob(patterns, 1, 8, ".", 1, &results, &count);
+    bool success = dirglob(patterns, 1, 8, ".", 1, &results, &count, &lengths);
 
     if (!success)
     {
@@ -49,7 +50,7 @@ int main()
         printf("  %s\n", results[i]);
     }
 
-    rbcglob_free(results, count);
+    rbcglob_free(results, count, lengths);
 
     chdir("..");
     return 0;

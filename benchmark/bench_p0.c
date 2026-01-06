@@ -11,11 +11,12 @@ double benchmark(const char *pattern, int flags, int iterations)
     for (int i = 0; i < iterations; i++)
     {
         char **results = NULL;
+        size_t *lengths = NULL;
         size_t count = 0;
         const char *patterns[] = {pattern};
 
-        dirglob(patterns, 1, flags, NULL, 1, &results, &count);
-        rbcglob_free(results, count);
+        dirglob(patterns, 1, flags, NULL, 1, &results, &count, &lengths);
+        rbcglob_free(results, count, lengths);
     }
 
     clock_t end = clock();
@@ -51,9 +52,10 @@ int main(void)
         const char *description = descriptions[i];
 
         char **results = NULL;
+        size_t *lengths = NULL;
         size_t count = 0;
         const char *p[] = {pattern};
-        dirglob(p, 1, flags, NULL, 1, &results, &count);
+        dirglob(p, 1, flags, NULL, 1, &results, &count, &lengths);
 
         printf("Pattern: %s - %s\n", pattern, description);
         printf("  Matches: %zu\n", count);
@@ -61,7 +63,7 @@ int main(void)
         double avg_time = benchmark(pattern, flags, iterations);
         printf("  Average time: %.2fms\n\n", avg_time);
 
-        rbcglob_free(results, count);
+        rbcglob_free(results, count, lengths);
     }
 
     return 0;

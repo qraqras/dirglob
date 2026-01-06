@@ -34,18 +34,20 @@
  * @param sort 1 to sort results (Ruby default), 0 to skip sorting
  * @param out Output parameter for array of matched paths (caller must free with rbcglob_free)
  * @param count Output parameter for number of results returned
+ * @param lengths Output parameter for array of path lengths (optional, caller must free with rbcglob_free)
  * @return true on success, false on error (check errno for details)
  */
 bool dirglob(const char **patterns, size_t npatterns, unsigned flags,
-             const char *base, int sort, char ***out, size_t *count);
+             const char *base, int sort, char ***out, size_t *count, size_t **lengths);
 
 /**
  * @brief Free memory allocated by dirglob
  *
  * @param list Array returned by dirglob
  * @param count Number of elements in the array
+ * @param lengths Array of lengths returned by dirglob (NULL if not returned)
  */
-void rbcglob_free(char **list, size_t count);
+void rbcglob_free(char **list, size_t count, size_t *lengths);
 
 /**
  * @brief Test if a path matches a glob pattern

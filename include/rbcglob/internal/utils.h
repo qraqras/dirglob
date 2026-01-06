@@ -4,6 +4,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include <rbcglob/internal/arena.h>
+
 /**
  * @brief Check if pattern contains any glob metacharacters
  */
@@ -13,6 +15,11 @@ bool has_glob_pattern(const char *str);
  * @brief Duplicate a string
  */
 char *rbcglob_strdup(const char *str);
+
+/**
+ * @brief Join two path components using arena allocation
+ */
+char *rbcglob_path_join_arena(arena_t *arena, const char *base, const char *name);
 
 /**
  * @brief Join two path components

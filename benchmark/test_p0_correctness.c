@@ -6,12 +6,13 @@
 int test_pattern(const char *pattern, const char *description, size_t expected_min)
 {
     char **results = NULL;
+    size_t *lengths = NULL;
     size_t count = 0;
     const char *patterns[] = {pattern};
 
     printf("Testing: %s - %s\n", pattern, description);
 
-    bool success = dirglob(patterns, 1, RBCGLOB_FNM_DOTMATCH, NULL, 1, &results, &count);
+    bool success = dirglob(patterns, 1, RBCGLOB_FNM_DOTMATCH, NULL, 1, &results, &count, &lengths);
 
     if (!success)
     {
@@ -23,7 +24,7 @@ int test_pattern(const char *pattern, const char *description, size_t expected_m
     if (expected_min > 0 && count < expected_min)
     {
         printf(" (expected at least %zu) ❌\n", expected_min);
-        rbcglob_free(results, count);
+        rbcglob_free(results, count, lengths);
         return 1;
     }
     printf(" ✓\n");
@@ -38,7 +39,7 @@ int test_pattern(const char *pattern, const char *description, size_t expected_m
         }
     }
 
-    rbcglob_free(results, count);
+    rbcglob_free(results, count, lengths);
     return 0;
 }
 
