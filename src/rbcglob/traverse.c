@@ -6,6 +6,9 @@
 #include <sys/stat.h>
 #include <errno.h>
 
+/* P5 Optimization: Hash table for directory cache lookup */
+#define HASH_TABLE_SIZE 1024
+
 /* Simple Directory Cache */
 typedef struct
 {
@@ -15,8 +18,27 @@ typedef struct
     size_t count;
 } dir_cache_node_t;
 
+/* P5: Hash table entry for O(1) cache lookup */
+typedef struct cache_hash_entry
+{
+    char *key;
+    size_t cache_index;
+    struct cache_hash_entry *next; /* Chaining for collision resolution */
+} cache_hash_entry_t;
+
 static dir_cache_node_t *g_dir_cache = NULL;
 static size_t g_dir_cache_count = 0;
+static cache_hash_entry_t *g_cache_hash[HASH_TABLE_SIZE] = {NULL}; /* P5: Hash table */
+
+/* P5: djb2 hash function */
+static unsigned long hash_string(const char *str)
+{
+    unsigned long hash = 5381;
+    int c;
+    while ((c = *str++))
+        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+    return hash % HASH_TABLE_SIZE;
+}
 
 void glob_results_clear_cache(void)
 {
@@ -35,16 +57,36 @@ void glob_results_clear_cache(void)
     free(g_dir_cache);
     g_dir_cache = NULL;
     g_dir_cache_count = 0;
+
+    /* P5: Clear hash table */
+    for (size_t i = 0; i < HASH_TABLE_SIZE; i++)
+    {
+        cache_hash_entry_t *entry = g_cache_hash[i];
+        while (entry)
+        {
+            cache_hash_entry_t *next = entry->next;
+            free(entry->key);
+            free(entry);
+            entry = next;
+        }
+        g_cache_hash[i] = NULL;
+    }
 }
 
 static ssize_t get_cached_dir_index(const char *path)
 {
-    for (size_t i = 0; i < g_dir_cache_count; i++)
+    /* P5 Optimization: Hash table lookup O(1) instead of linear search O(n) */
+    unsigned long h = hash_string(path);
+    cache_hash_entry_t *entry = g_cache_hash[h];
+
+    while (entry)
     {
-        if (strcmp(g_dir_cache[i].path, path) == 0)
-            return (ssize_t)i;
+        if (strcmp(entry->key, path) == 0)
+            return (ssize_t)entry->cache_index;
+        entry = entry->next;
     }
 
+    /* Cache miss - read directory and add to cache */
     DIR *dir = opendir(path);
     if (!dir)
         return -1;
@@ -64,25 +106,64 @@ static ssize_t get_cached_dir_index(const char *path)
     g_dir_cache[idx].d_types = NULL;
     g_dir_cache[idx].count = 0;
 
-    struct dirent *entry;
-    while ((entry = readdir(dir)) != NULL)
+    /* P4 Optimization: Pre-allocate space for entries */
+    size_t entries_capacity = 64; /* Initial capacity */
+    g_dir_cache[idx].entries = malloc(sizeof(char *) * entries_capacity);
+    g_dir_cache[idx].d_types = malloc(sizeof(unsigned char) * entries_capacity);
+    if (!g_dir_cache[idx].entries || !g_dir_cache[idx].d_types)
     {
-        char **new_entries = realloc(g_dir_cache[idx].entries, sizeof(char *) * (g_dir_cache[idx].count + 1));
-        if (!new_entries)
-            break;
-        g_dir_cache[idx].entries = new_entries;
+        free(g_dir_cache[idx].entries);
+        free(g_dir_cache[idx].d_types);
+        closedir(dir);
+        g_dir_cache_count--;
+        return -1;
+    }
 
-        /* P3 Optimization: Cache d_type to avoid stat() calls */
-        unsigned char *new_types = realloc(g_dir_cache[idx].d_types, sizeof(unsigned char) * (g_dir_cache[idx].count + 1));
-        if (!new_types)
-            break;
-        g_dir_cache[idx].d_types = new_types;
+    struct dirent *entry_ptr;
+    while ((entry_ptr = readdir(dir)) != NULL)
+    {
+        /* P7 Optimization: Skip "." and ".." early */
+        const char *name = entry_ptr->d_name;
+        if (name[0] == '.')
+        {
+            if (name[1] == '\0')
+                continue; /* "." */
+            if (name[1] == '.' && name[2] == '\0')
+                continue; /* ".." */
+        }
 
-        g_dir_cache[idx].entries[g_dir_cache[idx].count] = strdup(entry->d_name);
-        g_dir_cache[idx].d_types[g_dir_cache[idx].count] = entry->d_type;
+        /* P4: Grow capacity when needed */
+        if (g_dir_cache[idx].count >= entries_capacity)
+        {
+            entries_capacity *= 2;
+            char **new_entries = realloc(g_dir_cache[idx].entries, sizeof(char *) * entries_capacity);
+            unsigned char *new_types = realloc(g_dir_cache[idx].d_types, sizeof(unsigned char) * entries_capacity);
+            if (!new_entries || !new_types)
+            {
+                free(new_entries);
+                free(new_types);
+                break;
+            }
+            g_dir_cache[idx].entries = new_entries;
+            g_dir_cache[idx].d_types = new_types;
+        }
+
+        g_dir_cache[idx].entries[g_dir_cache[idx].count] = strdup(name);
+        g_dir_cache[idx].d_types[g_dir_cache[idx].count] = entry_ptr->d_type;
         g_dir_cache[idx].count++;
     }
     closedir(dir);
+
+    /* P5: Add to hash table for O(1) future lookups */
+    cache_hash_entry_t *new_entry = malloc(sizeof(cache_hash_entry_t));
+    if (new_entry)
+    {
+        new_entry->key = strdup(path);
+        new_entry->cache_index = idx;
+        new_entry->next = g_cache_hash[h];
+        g_cache_hash[h] = new_entry;
+    }
+
     return (ssize_t)idx;
 }
 
@@ -251,6 +332,10 @@ static int execute_step(rbcglob_compiled_pattern_t *cp, size_t seg_idx, const ch
             unsigned char d_type = g_dir_cache[cache_idx].d_types[i];
             bool is_dir = false;
 
+            /* P4 Optimization: Build path once and reuse */
+            char *next_rel = NULL;
+            char *next_full = NULL;
+
             if (d_type == DT_DIR)
             {
                 is_dir = true;
@@ -258,30 +343,38 @@ static int execute_step(rbcglob_compiled_pattern_t *cp, size_t seg_idx, const ch
             else if (d_type == DT_UNKNOWN || d_type == DT_LNK)
             {
                 /* Fall back to stat() only for unknown types or symlinks */
-                char *next_rel = path_join(rel_path, name);
+                next_rel = path_join(rel_path, name);
                 if (!next_rel)
                     return -1;
-                char *next_full = path_join(search_base, next_rel);
+                next_full = path_join(search_base, next_rel);
                 struct stat st;
                 if (next_full && lstat(next_full, &st) == 0 && S_ISDIR(st.st_mode))
                 {
                     is_dir = true;
                 }
-                free(next_rel);
                 free(next_full);
+                next_full = NULL; /* Will rebuild if needed */
             }
 
             if (is_dir)
             {
-                char *next_rel = path_join(rel_path, name);
+                /* Reuse next_rel if already built */
                 if (!next_rel)
-                    return -1;
+                {
+                    next_rel = path_join(rel_path, name);
+                    if (!next_rel)
+                        return -1;
+                }
                 /* Stay on RBCGLOB_SEGMENT_RECURSIVE to find deeper matches.
                    Next instruction will still see is_after_wildcard=true because we moved through RBCGLOB_SEGMENT_RECURSIVE. */
                 ret = execute_step(cp, seg_idx, next_rel, search_base, true, results);
                 free(next_rel);
                 if (ret != 0)
                     return ret;
+            }
+            else
+            {
+                free(next_rel);
             }
         }
         return 0;
@@ -577,23 +670,47 @@ int glob_results_add(glob_results_t *results, const char *path)
 {
     return glob_results_add_with_index(results, path, g_discovery_counter++);
 }
+
+/* P10 Optimization: Helper structure for qsort() */
+typedef struct
+{
+    char *path;
+    size_t discovery_index;
+} sort_pair_t;
+
+/* P10: Comparison function for qsort() */
+static int compare_sort_pairs(const void *a, const void *b)
+{
+    const sort_pair_t *pa = (const sort_pair_t *)a;
+    const sort_pair_t *pb = (const sort_pair_t *)b;
+    return rbcglob_compare_paths(pa->path, pb->path);
+}
+
 void glob_results_sort(glob_results_t *results)
 {
+    if (results->count <= 1)
+        return;
+
+    /* P10: Use qsort() instead of O(n²) bubble sort */
+    sort_pair_t *pairs = malloc(sizeof(sort_pair_t) * results->count);
+    if (!pairs)
+        return; /* Fallback: keep unsorted */
+
     for (size_t i = 0; i < results->count; i++)
     {
-        for (size_t j = i + 1; j < results->count; j++)
-        {
-            if (rbcglob_compare_paths(results->items[i], results->items[j]) > 0)
-            {
-                char *tmp = results->items[i];
-                results->items[i] = results->items[j];
-                results->items[j] = tmp;
-                size_t itmp = results->discovery_indices[i];
-                results->discovery_indices[i] = results->discovery_indices[j];
-                results->discovery_indices[j] = itmp;
-            }
-        }
+        pairs[i].path = results->items[i];
+        pairs[i].discovery_index = results->discovery_indices[i];
     }
+
+    qsort(pairs, results->count, sizeof(sort_pair_t), compare_sort_pairs);
+
+    for (size_t i = 0; i < results->count; i++)
+    {
+        results->items[i] = pairs[i].path;
+        results->discovery_indices[i] = pairs[i].discovery_index;
+    }
+
+    free(pairs);
 }
 void glob_results_deduplicate(glob_results_t *results)
 {
