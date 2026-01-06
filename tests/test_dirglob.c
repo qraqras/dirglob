@@ -1,14 +1,14 @@
 #include <stdbool.h>
 #include <string.h>
 #include <unity.h>
-#include <dirglob/dirglob.h>
+#include <rbcglob/rbcglob.h>
 
 void setUp(void) {}
 void tearDown(void) {}
 
 void test_dirglob_version(void)
 {
-    TEST_ASSERT_EQUAL_STRING(DIRGLOB_VERSION, dirglob_version());
+    TEST_ASSERT_EQUAL_STRING(RBCGLOB_VERSION, rbcglob_version());
 }
 
 void test_dirglob_returns_empty_for_no_matches(void)
@@ -22,7 +22,7 @@ void test_dirglob_returns_empty_for_no_matches(void)
     TEST_ASSERT_NOT_NULL(result);
     TEST_ASSERT_EQUAL_UINT(0, count);
 
-    dirglob_free(result, count);
+    rbcglob_free(result, count);
 }
 
 void test_dirglob_null_params_return_error(void)
@@ -41,12 +41,12 @@ void test_dirglob_null_params_return_error(void)
 void test_dirglob_free_null_is_safe(void)
 {
     /* Should not crash */
-    dirglob_free(NULL, 0);
+    rbcglob_free(NULL, 0);
     TEST_ASSERT_TRUE(1);
 }
 
 void test_dirglob_match_stub_returns_no_match(void)
 {
-    int result = dirglob_match("*.txt", 0, "test.txt");
+    int result = rbcglob_match("*.txt", 0, "test.txt");
     TEST_ASSERT_EQUAL_INT(1, result);
 }

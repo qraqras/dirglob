@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(dirglob LANGUAGES C)
+project(rbcglob LANGUAGES C)
 
 # Options
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
@@ -27,8 +27,8 @@ endif()
 
 # Install
 include(GNUInstallDirs)
-install(TARGETS dirglob
-  EXPORT dirglobTargets
+install(TARGETS rbcglob
+  EXPORT rbcglobTargets
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
@@ -36,13 +36,13 @@ install(TARGETS dirglob
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 # Export config
-install(EXPORT dirglobTargets FILE dirglobTargets.cmake NAMESPACE dirglob:: DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/dirglob/cmake)
+install(EXPORT rbcglobTargets FILE rbcglobTargets.cmake NAMESPACE rbcglob:: DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/rbcglob/cmake)
 
 # Package config (basic)
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
-  "${CMAKE_CURRENT_BINARY_DIR}/dirglobConfigVersion.cmake"
+  "${CMAKE_CURRENT_BINARY_DIR}/rbcglobConfigVersion.cmake"
   VERSION 0.1.0
   COMPATIBILITY AnyNewerVersion
 )
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/dirglobConfigVersion.cmake" DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/dirglob/cmake)
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/rbcglobConfigVersion.cmake" DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/rbcglob/cmake)

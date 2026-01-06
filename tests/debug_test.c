@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <unistd.h>
-#include <dirglob/dirglob.h>
+#include <rbcglob/rbcglob.h>
 
 int main()
 {
@@ -26,7 +26,7 @@ int main()
         printf("Result[%zu]: %s\n", i, result[i]);
     }
 
-    dirglob_free(result, count);
+    rbcglob_free(result, count);
 
     return 0;
 }

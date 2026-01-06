@@ -1,5 +1,5 @@
-#ifndef DIRGLOB_DIRGLOB_DIRGLOB_H
-#define DIRGLOB_DIRGLOB_DIRGLOB_H
+#ifndef RBCGLOB_RBCGLOB_RBCGLOB_H
+#define RBCGLOB_RBCGLOB_RBCGLOB_H
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -8,7 +8,7 @@
 /**
  * @brief Library version string
  */
-#define DIRGLOB_VERSION "0.1.0"
+#define RBCGLOB_VERSION "0.1.0"
 
 /**
  * @defgroup fnm_flags Pattern matching flags
@@ -42,7 +42,7 @@
  * @param flags Bitwise OR of FNM_* flags to control matching behavior
  * @param base Base directory for relative path resolution (NULL for current directory)
  * @param sort 1 to sort results (Ruby default), 0 to skip sorting
- * @param out Output parameter for array of matched paths (caller must free with dirglob_free)
+ * @param out Output parameter for array of matched paths (caller must free with rbcglob_free)
  * @param count Output parameter for number of results returned
  * @return true on success, false on error (check errno for details)
  */
@@ -55,7 +55,7 @@ bool dirglob(const char **patterns, size_t npatterns, unsigned flags,
  * @param list Array returned by dirglob
  * @param count Number of elements in the array
  */
-void dirglob_free(char **list, size_t count);
+void rbcglob_free(char **list, size_t count);
 
 /**
  * @brief Test if a path matches a glob pattern
@@ -65,13 +65,13 @@ void dirglob_free(char **list, size_t count);
  * @param path Path to test
  * @return 0 if path matches pattern, 1 if no match, negative value on error
  */
-int dirglob_match(const char *pattern, unsigned flags, const char *path);
+int rbcglob_match(const char *pattern, unsigned flags, const char *path);
 
 /**
  * @brief Get the library version string
  *
  * @return A null-terminated string containing the library version
  */
-const char *dirglob_version(void);
+const char *rbcglob_version(void);
 
-#endif /* DIRGLOB_DIRGLOB_DIRGLOB_H */
+#endif /* RBCGLOB_RBCGLOB_RBCGLOB_H */

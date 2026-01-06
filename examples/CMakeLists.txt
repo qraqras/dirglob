@@ -1,8 +1,8 @@
 # examples/CMakeLists.txt
-add_executable(dirglob_example usage.c)
+add_executable(rbcglob_example usage.c)
 
-target_include_directories(dirglob_example PRIVATE "${PROJECT_SOURCE_DIR}/include")
+target_include_directories(rbcglob_example PRIVATE "${PROJECT_SOURCE_DIR}/include")
 
-target_link_libraries(dirglob_example PRIVATE dirglob)
+target_link_libraries(rbcglob_example PRIVATE rbcglob)
 
-install(TARGETS dirglob_example RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(TARGETS rbcglob_example RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

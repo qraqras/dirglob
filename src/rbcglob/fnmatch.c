@@ -1,4 +1,4 @@
-#include <dirglob/internal/fnmatch.h>
+#include <rbcglob/internal/fnmatch.h>
 #include <string.h>
 #include <ctype.h>
 #include <stdbool.h>
@@ -7,7 +7,7 @@
 static int match_bracket(const char **pattern, char c, unsigned flags);
 static int match_recursive(const char *pattern, const char *string, unsigned flags);
 
-int dirglob_fnmatch(const char *pattern, const char *string, unsigned flags)
+int rbcglob_fnmatch(const char *pattern, const char *string, unsigned flags)
 {
     if (!pattern || !string)
         return 1;

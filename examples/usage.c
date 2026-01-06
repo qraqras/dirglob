@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "dirglob/dirglob.h"
+#include "rbcglob/rbcglob.h"
 
 int main(int argc, char **argv)
 {
@@ -20,7 +20,7 @@ int main(int argc, char **argv)
         {
             printf("%s\n", result[i]);
         }
-        dirglob_free(result, count);
+        rbcglob_free(result, count);
     }
     else
     {

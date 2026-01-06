@@ -1,4 +1,4 @@
-#include <dirglob/internal/utils.h>
+#include <rbcglob/internal/utils.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -73,7 +73,7 @@ int expand_braces(const char *pattern, char ***expanded, size_t *count)
         if (!*expanded)
             return -1;
 
-        (*expanded)[0] = dirglob_strdup(pattern);
+        (*expanded)[0] = rbcglob_strdup(pattern);
         if (!(*expanded)[0])
         {
             free(*expanded);
@@ -93,7 +93,7 @@ int expand_braces(const char *pattern, char ***expanded, size_t *count)
         if (!*expanded)
             return -1;
 
-        (*expanded)[0] = dirglob_strdup(pattern);
+        (*expanded)[0] = rbcglob_strdup(pattern);
         if (!(*expanded)[0])
         {
             free(*expanded);

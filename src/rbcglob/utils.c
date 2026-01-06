@@ -1,4 +1,4 @@
-#include <dirglob/internal/utils.h>
+#include <rbcglob/internal/utils.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -28,7 +28,7 @@ bool has_glob_pattern(const char *str)
     return false;
 }
 
-char *dirglob_strdup(const char *str)
+char *rbcglob_strdup(const char *str)
 {
     if (!str)
         return NULL;
@@ -47,7 +47,7 @@ char *path_join(const char *base, const char *name)
     if (!name)
         return NULL;
     if (!base || base[0] == '\0')
-        return dirglob_strdup(name);
+        return rbcglob_strdup(name);
 
     size_t base_len = strlen(base);
     size_t name_len = strlen(name);
@@ -74,29 +74,7 @@ char *path_join(const char *base, const char *name)
     return result;
 }
 
-int dirglob_compare_paths(const char *s1_in, const char *s2_in)
+int rbcglob_compare_paths(const char *s1_in, const char *s2_in)
 {
-    const unsigned char *s1 = (const unsigned char *)s1_in;
-    const unsigned char *s2 = (const unsigned char *)s2_in;
-
-    while (*s1 && *s1 == *s2)
-    {
-        s1++;
-        s2++;
-    }
-
-    if (*s1 == *s2)
-        return 0;
-
-    /* Priority: '\0' < '/' < others */
-    if (*s1 == '\0')
-        return -1;
-    if (*s2 == '\0')
-        return 1;
-    if (*s1 == '/')
-        return -1;
-    if (*s2 == '/')
-        return 1;
-
-    return (*s1 < *s2) ? -1 : 1;
+    return strcmp(s1_in, s2_in);
 }

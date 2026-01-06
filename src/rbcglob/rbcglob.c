@@ -1,7 +1,7 @@
-#include <dirglob/dirglob.h>
-#include <dirglob/internal/fnmatch.h>
-#include <dirglob/internal/traverse.h>
-#include <dirglob/internal/utils.h>
+#include <rbcglob/rbcglob.h>
+#include <rbcglob/internal/fnmatch.h>
+#include <rbcglob/internal/traverse.h>
+#include <rbcglob/internal/utils.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
@@ -19,46 +19,9 @@
  * @brief Return library version string.
  */
 const char *
-dirglob_version(void)
+rbcglob_version(void)
 {
-  return "0.1.0";
-}
-
-/**
- * @brief Check if a path exists (file or directory)
- */
-static bool path_exists(const char *path)
-{
-  struct stat st;
-  return stat(path, &st) == 0;
-}
-
-/**
- * @brief Extract directory part from a path (e.g., "a/b.txt" -> "a", "./b.txt" -> ".")
- */
-static char *get_directory_part(const char *path)
-{
-  const char *slash = strrchr(path, '/');
-  if (!slash)
-  {
-    /* No slash - current directory */
-    return strdup(".");
-  }
-
-  size_t dirlen = slash - path;
-  if (dirlen == 0)
-  {
-    /* Leading slash */
-    return strdup("/");
-  }
-
-  char *dir = malloc(dirlen + 1);
-  if (dir)
-  {
-    memcpy(dir, path, dirlen);
-    dir[dirlen] = '\0';
-  }
-  return dir;
+  return RBCGLOB_VERSION;
 }
 
 /**
@@ -89,7 +52,7 @@ static int compare_brace_matches_no_wildcards(const void *a, const void *b)
 
   if (g_sort_flag)
   {
-    return dirglob_compare_paths(m1->path, m2->path);
+    return rbcglob_compare_paths(m1->path, m2->path);
   }
   else
   {
@@ -107,12 +70,12 @@ static int compare_brace_matches_with_wildcards(const void *a, const void *b)
 
   if (g_sort_flag)
   {
-    return dirglob_compare_paths(m1->path, m2->path);
+    return rbcglob_compare_paths(m1->path, m2->path);
   }
   else
   {
     /* Use filesystem order comparison */
-    int fs_cmp = dirglob_compare_filesystem_order(m1->path, m2->path);
+    int fs_cmp = rbcglob_compare_filesystem_order(m1->path, m2->path);
     if (fs_cmp != 0)
       return fs_cmp;
 
@@ -197,152 +160,6 @@ static int merge_ruby_style(const char *original_pattern,
 }
 
 /**
- * @brief Process a single pattern and collect matches
- */
-static int process_pattern(const char *pattern, const char *base,
-                           unsigned flags, glob_results_t *results, int sort_flag);
-
-/**
- * @brief Process a single pattern and collect matches
- */
-static int process_pattern(const char *pattern, const char *base,
-                           unsigned flags, glob_results_t *results, int sort_flag)
-{
-  if (!pattern)
-  {
-    errno = EINVAL;
-    return -1;
-  }
-
-  /* Handle empty pattern */
-  if (pattern[0] == '\0')
-  {
-    return 0;
-  }
-
-  /* Check if pattern contains glob metacharacters */
-  if (!has_glob_pattern(pattern))
-  {
-    /* Literal path - check if it exists */
-    char *full_path = path_join(base, pattern);
-    if (!full_path)
-    {
-      errno = ENOMEM;
-      return -1;
-    }
-
-    if (path_exists(full_path))
-    {
-      /* For base != NULL, result should be relative to base */
-      const char *result_path = (base && base[0] != '\0') ? pattern : full_path;
-      int ret = glob_results_add(results, result_path);
-      free(full_path);
-      return ret;
-    }
-
-    free(full_path);
-    return 0; /* No match is not an error */
-  }
-
-  /* Handle patterns with directory components */
-  const char *slash = strchr(pattern, '/');
-  if (slash == NULL)
-  {
-    /* Simple filename pattern - no directory component */
-    return traverse_directory(pattern, base, flags, results);
-  }
-
-  /* Pattern has directory component: dir/file or dir/wildcard/file etc. */
-  /* Split pattern into first component and rest */
-  size_t first_len = slash - pattern;
-  char *first_component = malloc(first_len + 1);
-  if (!first_component)
-  {
-    errno = ENOMEM;
-    return -1;
-  }
-  memcpy(first_component, pattern, first_len);
-  first_component[first_len] = '\0';
-
-  /* Rest of pattern (after the slash) */
-  const char *rest_pattern = slash + 1;
-
-  /* Skip multiple slashes */
-  while (*rest_pattern == '/')
-  {
-    rest_pattern++;
-  }
-
-  int ret;
-
-  /* Check for ** (recursive glob) */
-  if (strcmp(first_component, "**") == 0)
-  {
-    /* Recursive directory traversal */
-    ret = traverse_recursive_glob(rest_pattern, base, flags, results, sort_flag, true);
-    free(first_component);
-    return ret;
-  }
-
-  if (has_glob_pattern(first_component))
-  {
-    /* First component has wildcards - need to match directories */
-    ret = traverse_directory_recursive(first_component, rest_pattern, base, flags, results, sort_flag);
-  }
-  else
-  {
-    /* First component is literal - check if directory exists and recurse */
-    char *new_base = path_join(base, first_component);
-    if (!new_base)
-    {
-      free(first_component);
-      errno = ENOMEM;
-      return -1;
-    }
-
-    /* Check if directory exists */
-    struct stat st;
-    if (stat(new_base, &st) == 0 && S_ISDIR(st.st_mode))
-    {
-      /* Collect results from subdirectory and prepend directory name */
-      glob_results_t subresults;
-      glob_results_init(&subresults);
-
-      ret = process_pattern(rest_pattern, new_base, flags, &subresults, sort_flag);
-
-      if (ret == 0)
-      {
-        /* Prepend directory name to all results */
-        for (size_t i = 0; i < subresults.count; i++)
-        {
-          char *prefixed_path = path_join(first_component, subresults.items[i]);
-          if (prefixed_path)
-          {
-            glob_results_add(results, prefixed_path);
-            free(prefixed_path);
-          }
-          free(subresults.items[i]);
-        }
-        free(subresults.items);
-      }
-      else
-      {
-        glob_results_clear(&subresults);
-      }
-    }
-    else
-    {
-      /* Directory doesn't exist - no matches */
-      ret = 0;
-    }
-    free(new_base);
-  }
-
-  free(first_component);
-  return ret;
-}
-
-/**
  * @brief Perform glob pattern matching
  */
 bool dirglob(const char **patterns, size_t npatterns, unsigned flags,
@@ -381,6 +198,7 @@ bool dirglob(const char **patterns, size_t npatterns, unsigned flags,
     {
       glob_results_clear(&results);
       glob_results_clear_cache();
+      ;
       return false;
     }
 
@@ -397,14 +215,18 @@ bool dirglob(const char **patterns, size_t npatterns, unsigned flags,
         free(expanded);
         glob_results_clear(&results);
         glob_results_clear_cache();
+        ;
         return false;
       }
 
       for (size_t j = 0; j < expanded_count; j++)
       {
         glob_results_init(&brace_pattern_results[j]);
-        if (process_pattern(expanded[j], base, flags, &brace_pattern_results[j], sort_flag) != 0)
+        compiled_pattern_t *cp = rbcglob_compile(expanded[j], flags);
+        if (!cp || rbcglob_execute(cp, base, &brace_pattern_results[j]) != 0)
         {
+          if (cp)
+            rbcglob_compiled_free(cp);
           for (size_t k = 0; k <= j; k++)
             glob_results_clear(&brace_pattern_results[k]);
           free(brace_pattern_results);
@@ -413,8 +235,10 @@ bool dirglob(const char **patterns, size_t npatterns, unsigned flags,
           free(expanded);
           glob_results_clear(&results);
           glob_results_clear_cache();
+          ;
           return false;
         }
+        rbcglob_compiled_free(cp);
         if (sort_flag)
           glob_results_sort(&brace_pattern_results[j]);
       }
@@ -429,15 +253,14 @@ bool dirglob(const char **patterns, size_t npatterns, unsigned flags,
         free(expanded);
         glob_results_clear(&results);
         glob_results_clear_cache();
+        ;
         return false;
       }
 
       /* Cleanup brace results */
       for (size_t j = 0; j < expanded_count; j++)
       {
-        for (size_t k = 0; k < brace_pattern_results[j].count; k++)
-          free(brace_pattern_results[j].items[k]);
-        free(brace_pattern_results[j].items);
+        glob_results_clear(&brace_pattern_results[j]);
       }
       free(brace_pattern_results);
     }
@@ -446,23 +269,29 @@ bool dirglob(const char **patterns, size_t npatterns, unsigned flags,
       /* No brace expansion */
       glob_results_t pattern_results;
       glob_results_init(&pattern_results);
-      if (process_pattern(expanded[0], base, flags, &pattern_results, sort_flag) != 0)
+      compiled_pattern_t *cp = rbcglob_compile(expanded[0], flags);
+      if (!cp || rbcglob_execute(cp, base, &pattern_results) != 0)
       {
+        if (cp)
+          rbcglob_compiled_free(cp);
         glob_results_clear(&pattern_results);
-        free(expanded[0]);
+        for (size_t j = 0; j < expanded_count; j++)
+          free(expanded[j]);
         free(expanded);
         glob_results_clear(&results);
         glob_results_clear_cache();
+        ;
         return false;
       }
+      rbcglob_compiled_free(cp);
+
       if (sort_flag)
         glob_results_sort(&pattern_results);
       for (size_t k = 0; k < pattern_results.count; k++)
       {
         glob_results_add_with_index(&results, pattern_results.items[k], pattern_results.discovery_indices[k]);
-        free(pattern_results.items[k]);
       }
-      free(pattern_results.items);
+      glob_results_clear(&pattern_results);
     }
 
     /* Cleanup expanded patterns */
@@ -482,35 +311,22 @@ bool dirglob(const char **patterns, size_t npatterns, unsigned flags,
   *count = results.count;
   *out = results.items;
   glob_results_clear_cache();
+  ;
   return true;
 }
 
-/**
- * @brief Free memory allocated by dirglob
- */
-void dirglob_free(char **list, size_t count)
+void rbcglob_free(char **list, size_t count)
 {
   if (!list)
-  {
     return;
-  }
-
   for (size_t i = 0; i < count; i++)
-  {
     free(list[i]);
-  }
   free(list);
 }
 
-/**
- * @brief Test if a path matches a glob pattern
- */
-int dirglob_match(const char *pattern, unsigned flags, const char *path)
+int rbcglob_match(const char *pattern, unsigned flags, const char *path)
 {
   if (!pattern || !path)
-  {
     return -1;
-  }
-
-  return dirglob_fnmatch(pattern, path, flags);
+  return rbcglob_fnmatch(pattern, path, flags);
 }

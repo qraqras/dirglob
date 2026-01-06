@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <stdbool.h>
+#include <rbcglob/internal/compiler.h>
 
 /**
  * @brief Result collector for glob matches
@@ -33,7 +34,7 @@ void glob_results_clear_cache(void);
 /**
  * @brief Compare two paths based on cached filesystem order
  */
-int dirglob_compare_filesystem_order(const char *a, const char *b);
+int rbcglob_compare_filesystem_order(const char *a, const char *b);
 
 /**
  * @brief Add a path to results (duplicates string)
@@ -106,5 +107,15 @@ int traverse_directory_recursive(const char *dir_pattern, const char *file_patte
  */
 int traverse_recursive_glob(const char *pattern, const char *base,
                             unsigned flags, glob_results_t *results, int sort_flag, bool is_initial);
+
+/**
+ * @brief Execute a compiled glob pattern
+ *
+ * @param cp Compiled pattern
+ * @param base Base directory
+ * @param results Result collector
+ * @return 0 on success, -1 on error
+ */
+int rbcglob_execute(compiled_pattern_t *cp, const char *base, glob_results_t *results);
 
 #endif /* DIRGLOB_INTERNAL_TRAVERSE_H */

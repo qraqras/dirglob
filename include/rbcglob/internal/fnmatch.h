@@ -1,7 +1,7 @@
 #ifndef DIRGLOB_INTERNAL_FNMATCH_H
 #define DIRGLOB_INTERNAL_FNMATCH_H
 
-#include <dirglob/dirglob.h>
+#include <rbcglob/rbcglob.h>
 
 /**
  * @brief Pattern matching function compatible with fnmatch(3)
@@ -11,6 +11,6 @@
  * @param flags FNM_* flags
  * @return 0 if match, non-zero if no match
  */
-int dirglob_fnmatch(const char *pattern, const char *string, unsigned flags);
+int rbcglob_fnmatch(const char *pattern, const char *string, unsigned flags);
 
 #endif /* DIRGLOB_INTERNAL_FNMATCH_H */

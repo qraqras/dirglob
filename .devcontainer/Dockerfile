@@ -4,11 +4,12 @@ FROM ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install minimal packages required for C99 development
-RUN apt update && apt install -y --no-install-recommends \
+RUN apt update \
+    && apt install -y --no-install-recommends \
+    software-properties-common \
     ca-certificates \
     git \
     python3 \
-    ruby-full \
     gcc \
     make \
     cmake \

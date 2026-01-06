@@ -1,5 +1,5 @@
-#ifndef DIRGLOB_INTERNAL_UTILS_H
-#define DIRGLOB_INTERNAL_UTILS_H
+#ifndef RBCGLOB_INTERNAL_UTILS_H
+#define RBCGLOB_INTERNAL_UTILS_H
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -12,7 +12,7 @@ bool has_glob_pattern(const char *str);
 /**
  * @brief Duplicate a string
  */
-char *dirglob_strdup(const char *str);
+char *rbcglob_strdup(const char *str);
 
 /**
  * @brief Join two path components
@@ -33,6 +33,6 @@ int expand_braces(const char *pattern, char ***expanded, size_t *count);
  * @brief Compare two paths using Ruby-style sorting rules
  * @return <0 if s1 < s2, 0 if s1 == s2, >0 if s1 > s2
  */
-int dirglob_compare_paths(const char *s1, const char *s2);
+int rbcglob_compare_paths(const char *s1, const char *s2);
 
-#endif /* DIRGLOB_INTERNAL_UTILS_H */
+#endif /* RBCGLOB_INTERNAL_UTILS_H */
