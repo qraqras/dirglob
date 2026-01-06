@@ -259,6 +259,25 @@ rbcglob_compiled_pattern_t *rbcglob_compile(const char *pattern, unsigned flags)
     }
     cp->segments[idx].type = RBCGLOB_SEGMENT_END;
     cp->count = idx;
+
+    /* P2 Optimization: Analyze pattern for directory traversal pruning */
+    cp->has_recursive_segment = false;
+    cp->leading_literal_count = 0;
+    for (size_t i = 0; i < cp->count; i++)
+    {
+        if (cp->segments[i].type == RBCGLOB_SEGMENT_RECURSIVE)
+        {
+            cp->has_recursive_segment = true;
+        }
+        if (i < cp->count && cp->segments[i].type == RBCGLOB_SEGMENT_LITERAL)
+        {
+            if (i == cp->leading_literal_count)
+            {
+                cp->leading_literal_count++;
+            }
+        }
+    }
+
     return cp;
 }
 

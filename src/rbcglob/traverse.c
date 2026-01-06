@@ -11,6 +11,7 @@ typedef struct
 {
     char *path;
     char **entries;
+    unsigned char *d_types; /* P3: d_type from dirent to avoid stat() */
     size_t count;
 } dir_cache_node_t;
 
@@ -29,6 +30,7 @@ void glob_results_clear_cache(void)
             free(g_dir_cache[i].entries[j]);
         }
         free(g_dir_cache[i].entries);
+        free(g_dir_cache[i].d_types); /* P3: Free d_type cache */
     }
     free(g_dir_cache);
     g_dir_cache = NULL;
@@ -59,6 +61,7 @@ static ssize_t get_cached_dir_index(const char *path)
 
     g_dir_cache[idx].path = strdup(path);
     g_dir_cache[idx].entries = NULL;
+    g_dir_cache[idx].d_types = NULL;
     g_dir_cache[idx].count = 0;
 
     struct dirent *entry;
@@ -68,7 +71,16 @@ static ssize_t get_cached_dir_index(const char *path)
         if (!new_entries)
             break;
         g_dir_cache[idx].entries = new_entries;
-        g_dir_cache[idx].entries[g_dir_cache[idx].count++] = strdup(entry->d_name);
+
+        /* P3 Optimization: Cache d_type to avoid stat() calls */
+        unsigned char *new_types = realloc(g_dir_cache[idx].d_types, sizeof(unsigned char) * (g_dir_cache[idx].count + 1));
+        if (!new_types)
+            break;
+        g_dir_cache[idx].d_types = new_types;
+
+        g_dir_cache[idx].entries[g_dir_cache[idx].count] = strdup(entry->d_name);
+        g_dir_cache[idx].d_types[g_dir_cache[idx].count] = entry->d_type;
+        g_dir_cache[idx].count++;
     }
     closedir(dir);
     return (ssize_t)idx;
@@ -157,6 +169,36 @@ static bool match_recursive(const rbcglob_token_t *tokens, size_t t_idx, size_t 
 
 static bool match_tokens(const rbcglob_segment_t *seg, const char *str, unsigned flags)
 {
+    /* P0 Optimization: Fast path for literal segments */
+    if (seg->type == RBCGLOB_SEGMENT_LITERAL)
+    {
+        if (flags & RBCGLOB_FNM_CASEFOLD)
+        {
+            /* Case-insensitive comparison */
+            const char *p = seg->pattern;
+            const char *s = str;
+            while (*p && *s)
+            {
+                char pc = *p;
+                char sc = *s;
+                if (pc >= 'A' && pc <= 'Z')
+                    pc += 32;
+                if (sc >= 'A' && sc <= 'Z')
+                    sc += 32;
+                if (pc != sc)
+                    return false;
+                p++;
+                s++;
+            }
+            return (*p == '\0' && *s == '\0');
+        }
+        else
+        {
+            /* Case-sensitive: direct strcmp */
+            return strcmp(seg->pattern, str) == 0;
+        }
+    }
+
     if (str[0] == '.')
     {
         if (seg->token_count > 0 && seg->tokens[0].token_type == RBCGLOB_TOKEN_CHAR && seg->tokens[0].c == '.')
@@ -205,26 +247,41 @@ static int execute_step(rbcglob_compiled_pattern_t *cp, size_t seg_idx, const ch
             if (name[0] == '.' && !(cp->flags & 8))
                 continue; /* 8 is RBCGLOB_FNM_DOTMATCH */
 
-            char *next_rel = path_join(rel_path, name);
-            if (!next_rel)
-                return -1;
+            /* P3 Optimization: Use d_type to avoid stat() when possible */
+            unsigned char d_type = g_dir_cache[cache_idx].d_types[i];
+            bool is_dir = false;
 
-            char *next_full = path_join(search_base, next_rel);
-            struct stat st;
-            if (next_full && lstat(next_full, &st) == 0 && S_ISDIR(st.st_mode))
+            if (d_type == DT_DIR)
             {
+                is_dir = true;
+            }
+            else if (d_type == DT_UNKNOWN || d_type == DT_LNK)
+            {
+                /* Fall back to stat() only for unknown types or symlinks */
+                char *next_rel = path_join(rel_path, name);
+                if (!next_rel)
+                    return -1;
+                char *next_full = path_join(search_base, next_rel);
+                struct stat st;
+                if (next_full && lstat(next_full, &st) == 0 && S_ISDIR(st.st_mode))
+                {
+                    is_dir = true;
+                }
+                free(next_rel);
+                free(next_full);
+            }
+
+            if (is_dir)
+            {
+                char *next_rel = path_join(rel_path, name);
+                if (!next_rel)
+                    return -1;
                 /* Stay on RBCGLOB_SEGMENT_RECURSIVE to find deeper matches.
                    Next instruction will still see is_after_wildcard=true because we moved through RBCGLOB_SEGMENT_RECURSIVE. */
                 ret = execute_step(cp, seg_idx, next_rel, search_base, true, results);
                 free(next_rel);
-                free(next_full);
                 if (ret != 0)
                     return ret;
-            }
-            else
-            {
-                free(next_rel);
-                free(next_full);
             }
         }
         return 0;
@@ -280,6 +337,25 @@ static int execute_step(rbcglob_compiled_pattern_t *cp, size_t seg_idx, const ch
         if (strcmp(name, "..") == 0)
             continue;
 
+        /* P0 Optimization: Skip hidden files/directories early if not explicitly matching */
+        if (name[0] == '.' && !(cp->flags & RBCGLOB_FNM_DOTMATCH))
+        {
+            /* Check if segment explicitly starts with '.' */
+            bool explicit_dot = false;
+            if (seg->type == RBCGLOB_SEGMENT_LITERAL && seg->pattern && seg->pattern[0] == '.')
+            {
+                explicit_dot = true;
+            }
+            else if (seg->token_count > 0 && seg->tokens[0].token_type == RBCGLOB_TOKEN_CHAR && seg->tokens[0].c == '.')
+            {
+                explicit_dot = true;
+            }
+            if (!explicit_dot)
+            {
+                continue;
+            }
+        }
+
         if (seg->prefix && strncmp(name, seg->prefix, seg->prefix_len) != 0)
             continue;
 
@@ -302,15 +378,31 @@ static int execute_step(rbcglob_compiled_pattern_t *cp, size_t seg_idx, const ch
             bool must_be_directory = (seg_idx + 1 < cp->count) || cp->has_trailing_slash;
             if (must_be_directory)
             {
-                char *next_full = path_join(search_base, next_rel);
-                struct stat st;
-                if (!next_full || stat(next_full, &st) != 0 || !S_ISDIR(st.st_mode))
+                /* P3 Optimization: Use d_type first, fall back to stat() if needed */
+                unsigned char d_type = g_dir_cache[cache_idx].d_types[i];
+                bool is_dir = false;
+
+                if (d_type == DT_DIR)
+                {
+                    is_dir = true;
+                }
+                else if (d_type == DT_UNKNOWN || d_type == DT_LNK)
+                {
+                    /* Fall back to stat() for unknown types or symlinks */
+                    char *next_full = path_join(search_base, next_rel);
+                    struct stat st;
+                    if (next_full && stat(next_full, &st) == 0 && S_ISDIR(st.st_mode))
+                    {
+                        is_dir = true;
+                    }
+                    free(next_full);
+                }
+
+                if (!is_dir)
                 {
                     free(next_rel);
-                    free(next_full);
                     continue;
                 }
-                free(next_full);
             }
             int ret = execute_step(cp, seg_idx + 1, next_rel, search_base, true, results);
             free(next_rel);
@@ -328,17 +420,125 @@ int rbcglob_execute(rbcglob_compiled_pattern_t *cp, const char *base, glob_resul
     const char *search_base = (base && base[0] != '\0') ? base : NULL;
     if (cp->is_absolute)
         search_base = "/";
+
+    /* P2 Optimization: Skip directly to first wildcard segment if pattern starts with literals */
+    if (cp->leading_literal_count > 0)
+    {
+        /* Build path from leading literal segments */
+        char *literal_path = NULL;
+        for (size_t i = 0; i < cp->leading_literal_count; i++)
+        {
+            char *next_path = path_join(literal_path ? literal_path : (search_base ? search_base : "."),
+                                        cp->segments[i].pattern);
+            free(literal_path);
+            literal_path = next_path;
+            if (!literal_path)
+                return -1;
+        }
+
+        /* Check if this is the final segment (complete pattern is all literals) */
+        bool is_final = (cp->leading_literal_count >= cp->count);
+
+        /* Verify the literal path exists */
+        struct stat st;
+        if (stat(literal_path, &st) != 0)
+        {
+            free(literal_path);
+            return 0; /* Path doesn't exist */
+        }
+
+        /* If this is the final segment and it's a file (or we're matching directories too), add it */
+        if (is_final)
+        {
+            /* Check trailing slash requirement */
+            if (cp->has_trailing_slash && !S_ISDIR(st.st_mode))
+            {
+                free(literal_path);
+                return 0;
+            }
+
+            /* Extract relative path for results */
+            const char *rel_start = literal_path;
+            if (search_base && strncmp(literal_path, search_base, strlen(search_base)) == 0)
+            {
+                rel_start = literal_path + strlen(search_base);
+                while (*rel_start == '/')
+                    rel_start++;
+            }
+            else if (!search_base || search_base[0] == '\0')
+            {
+                if (literal_path[0] == '.' && literal_path[1] == '/')
+                {
+                    rel_start = literal_path + 2;
+                }
+            }
+
+            int ret = glob_results_add(results, rel_start);
+            free(literal_path);
+            return ret;
+        }
+
+        /* Not final segment - must be a directory to continue */
+        if (!S_ISDIR(st.st_mode))
+        {
+            free(literal_path);
+            return 0;
+        }
+
+        /* Extract the relative path portion for results */
+        const char *rel_start = literal_path;
+        if (search_base && strncmp(literal_path, search_base, strlen(search_base)) == 0)
+        {
+            rel_start = literal_path + strlen(search_base);
+            while (*rel_start == '/')
+                rel_start++;
+        }
+        else if (!search_base || search_base[0] == '\0')
+        {
+            if (literal_path[0] == '.' && literal_path[1] == '/')
+            {
+                rel_start = literal_path + 2;
+            }
+        }
+
+        char *rel_path = strdup(rel_start);
+        free(literal_path);
+
+        if (!rel_path)
+            return -1;
+
+        /* Continue from first wildcard segment */
+        int ret = execute_step(cp, cp->leading_literal_count, rel_path, search_base, false, results);
+        free(rel_path);
+        return ret;
+    }
+
     return execute_step(cp, 0, NULL, search_base, false, results);
 }
 
 static size_t g_discovery_counter = 0;
 void glob_results_reset_discovery_counter(void) { g_discovery_counter = 0; }
+
+/* P1 Optimization: Initial capacity for result array */
+#define INITIAL_RESULT_CAPACITY 64
+
 void glob_results_init(glob_results_t *results)
 {
-    results->items = NULL;
-    results->discovery_indices = NULL;
+    /* P1-1: Pre-allocate result array to reduce realloc() calls */
+    results->capacity = INITIAL_RESULT_CAPACITY;
+    results->items = malloc(sizeof(char *) * results->capacity);
+    results->discovery_indices = malloc(sizeof(size_t) * results->capacity);
     results->count = 0;
-    results->capacity = 0;
+
+    /* Handle allocation failure gracefully */
+    if (!results->items || !results->discovery_indices)
+    {
+        free(results->items);
+        free(results->discovery_indices);
+        results->items = NULL;
+        results->discovery_indices = NULL;
+        results->capacity = 0;
+    }
 }
 void glob_results_clear(glob_results_t *results)
 {

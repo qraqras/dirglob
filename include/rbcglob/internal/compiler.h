@@ -82,6 +82,9 @@ typedef struct rbcglob_compiled_pattern_s
     bool is_absolute;                /* Whether the pattern is absolute (starts with /) */
     bool has_trailing_slash;         /* Whether pattern ends with / (directory required) */
     rbcglob_sort_order_t sort_order; /* Sort order for results */
+    /* P2 Optimization: Directory traversal pruning */
+    bool has_recursive_segment;   /* Whether pattern contains ** */
+    size_t leading_literal_count; /* Number of leading literal segments */
 } rbcglob_compiled_pattern_t;
 
 /**
