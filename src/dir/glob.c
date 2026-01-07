@@ -1,6 +1,8 @@
 #include <rbcglob/rbcglob.h>
-#include <rbcglob/internal/fnmatch.h>
+#include <rbcglob/internal/dir.h>
+#include <rbcglob/internal/file.h>
 #include <rbcglob/internal/traverse.h>
+#include <rbcglob/internal/compiler.h>
 #include <rbcglob/internal/utils.h>
 #include <stdlib.h>
 #include <string.h>

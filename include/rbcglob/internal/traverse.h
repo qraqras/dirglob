@@ -9,6 +9,18 @@
 #define RBCGLOB_HASH_TABLE_SIZE 1024
 
 /**
+ * @brief Compare two paths using Ruby-style sorting rules
+ *
+ * Used internally by traverse module for sorting glob results
+ * in Ruby-compatible order.
+ *
+ * @param s1 First path
+ * @param s2 Second path
+ * @return <0 if s1 < s2, 0 if s1 == s2, >0 if s1 > s2
+ */
+int rbcglob_compare_paths(const char *s1, const char *s2);
+
+/**
  * @brief Directory cache entry
  */
 typedef struct rbcglob_dir_cache_node_s

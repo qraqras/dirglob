@@ -2,9 +2,9 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <stdio.h>
-#include "rbcglob/rbcglob.h"
-#include "rbcglob/internal/fnmatch.h"
-#include "rbcglob/internal/compiler.h"
+#include <rbcglob/rbcglob.h>
+#include <rbcglob/internal/file.h>
+#include <rbcglob/internal/compiler.h>
 
 static bool rbcglob_token_match_internal(const rbcglob_token_t *tokens, size_t token_index, size_t token_count, const char *s, size_t pos, unsigned flags)
 {

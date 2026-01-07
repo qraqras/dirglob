@@ -1,12 +1,31 @@
 #include <rbcglob/internal/traverse.h>
-#include <rbcglob/internal/utils.h>
+#include <rbcglob/internal/dir.h>
+#include <rbcglob/internal/file.h>
 #include <rbcglob/internal/arena.h>
-#include <rbcglob/internal/fnmatch.h>
 #include <stdlib.h>
 #include <string.h>
 #include <dirent.h>
 #include <sys/stat.h>
 #include <errno.h>
+
+int rbcglob_compare_paths(const char *s1_in, const char *s2_in)
+{
+    /* P12 Optimization: Inline fast path for common cases */
+    const unsigned char *s1 = (const unsigned char *)s1_in;
+    const unsigned char *s2 = (const unsigned char *)s2_in;
+
+    if (!s1_in || !s2_in)
+        return (s1_in == s2_in) ? 0 : (s1_in ? 1 : -1);
+
+    /* Fast path: check first characters */
+    if (*s1 != *s2)
+        return (int)*s1 - (int)*s2;
+    if (*s1 == '\0')
+        return 0;
+
+    /* Fall back to strcmp for rest */
+    return strcmp(s1_in, s2_in);
+}
 
 /* P5: djb2 hash function */
 static unsigned long rbcglob_traverse_hash_string(const char *str)
@@ -201,7 +220,7 @@ static int rbcglob_traverse_execute_step(rbcglob_ctx_t *ctx, rbcglob_compiled_pa
             return ret;
 
         /* Then, descend into directories. */
-        char *full_dir_to_open = rbcglob_join_arena((const char*[]){ search_base, rel_path  }, 2, &ctx->arena);
+        char *full_dir_to_open = rbcglob_join_arena((const char *[]){search_base, rel_path}, 2, &ctx->arena);
         const char *dir_to_open = full_dir_to_open ? full_dir_to_open : (search_base ? search_base : ".");
 
         ssize_t cache_idx = rbcglob_traverse_get_cached_dir_index(ctx, dir_to_open);
@@ -231,10 +250,10 @@ static int rbcglob_traverse_execute_step(rbcglob_ctx_t *ctx, rbcglob_compiled_pa
             else if (d_type == DT_UNKNOWN || d_type == DT_LNK)
             {
                 /* Fall back to stat() only for unknown types or symlinks */
-                next_rel = rbcglob_join_arena((const char*[]){ rel_path, name  }, 2, &ctx->arena);
+                next_rel = rbcglob_join_arena((const char *[]){rel_path, name}, 2, &ctx->arena);
                 if (!next_rel)
                     return -1;
-                next_full = rbcglob_join_arena((const char*[]){ search_base, next_rel  }, 2, &ctx->arena);
+                next_full = rbcglob_join_arena((const char *[]){search_base, next_rel}, 2, &ctx->arena);
                 struct stat st;
                 if (next_full && lstat(next_full, &st) == 0 && S_ISDIR(st.st_mode))
                 {
@@ -247,7 +266,7 @@ static int rbcglob_traverse_execute_step(rbcglob_ctx_t *ctx, rbcglob_compiled_pa
                 /* Reuse next_rel if already built */
                 if (!next_rel)
                 {
-                    next_rel = rbcglob_join_arena((const char*[]){ rel_path, name  }, 2, &ctx->arena);
+                    next_rel = rbcglob_join_arena((const char *[]){rel_path, name}, 2, &ctx->arena);
                     if (!next_rel)
                         return -1;
                 }
@@ -263,10 +282,10 @@ static int rbcglob_traverse_execute_step(rbcglob_ctx_t *ctx, rbcglob_compiled_pa
 
     if (seg->type == RBCGLOB_SEGMENT_LITERAL)
     {
-        char *next_rel = rbcglob_join_arena((const char*[]){ rel_path, seg->pattern  }, 2, &ctx->arena);
+        char *next_rel = rbcglob_join_arena((const char *[]){rel_path, seg->pattern}, 2, &ctx->arena);
         if (!next_rel)
             return -1;
-        char *next_full = rbcglob_join_arena((const char*[]){ search_base, next_rel  }, 2, &ctx->arena);
+        char *next_full = rbcglob_join_arena((const char *[]){search_base, next_rel}, 2, &ctx->arena);
         struct stat st;
         if (next_full && stat(next_full, &st) == 0)
         {
@@ -284,7 +303,7 @@ static int rbcglob_traverse_execute_step(rbcglob_ctx_t *ctx, rbcglob_compiled_pa
     }
 
     /* Wildcard match */
-    char *full_dir_to_open = rbcglob_join_arena((const char*[]){ search_base, rel_path  }, 2, &ctx->arena);
+    char *full_dir_to_open = rbcglob_join_arena((const char *[]){search_base, rel_path}, 2, &ctx->arena);
     const char *dir_to_open = full_dir_to_open ? full_dir_to_open : (search_base ? search_base : ".");
     ssize_t cache_idx = rbcglob_traverse_get_cached_dir_index(ctx, dir_to_open);
     if (cache_idx < 0)
@@ -337,7 +356,7 @@ static int rbcglob_traverse_execute_step(rbcglob_ctx_t *ctx, rbcglob_compiled_pa
 
         if (rbcglob_token_match_segment(seg, name, cp->flags))
         {
-            char *next_rel = rbcglob_join_arena((const char*[]){ rel_path, name  }, 2, &ctx->arena);
+            char *next_rel = rbcglob_join_arena((const char *[]){rel_path, name}, 2, &ctx->arena);
             if (!next_rel)
                 return -1;
 
@@ -356,7 +375,7 @@ static int rbcglob_traverse_execute_step(rbcglob_ctx_t *ctx, rbcglob_compiled_pa
                 else if (d_type == DT_UNKNOWN || d_type == DT_LNK)
                 {
                     /* Fall back to stat() for unknown types or symlinks */
-                    char *next_full = rbcglob_join_arena((const char*[]){ search_base, next_rel  }, 2, &ctx->arena);
+                    char *next_full = rbcglob_join_arena((const char *[]){search_base, next_rel}, 2, &ctx->arena);
                     struct stat st;
                     if (next_full && stat(next_full, &st) == 0 && S_ISDIR(st.st_mode))
                     {
@@ -393,7 +412,7 @@ int rbcglob_execute(rbcglob_ctx_t *ctx, rbcglob_compiled_pattern_t *cp, const ch
         char *literal_path = NULL;
         for (size_t i = 0; i < cp->leading_literal_count; i++)
         {
-            char *next_path = rbcglob_join_arena((const char*[]){ literal_path ? literal_path : (search_base ? search_base : "."), cp->segments[i].pattern  }, 2, &ctx->arena);
+            char *next_path = rbcglob_join_arena((const char *[]){literal_path ? literal_path : (search_base ? search_base : "."), cp->segments[i].pattern}, 2, &ctx->arena);
             literal_path = next_path;
             if (!literal_path)
                 return -1;

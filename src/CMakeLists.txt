@@ -1,17 +1,22 @@
 # src/CMakeLists.txt
 add_library(rbcglob
-  rbcglob/rbcglob.c
-  rbcglob/fnmatch.c
-  rbcglob/traverse.c
-  rbcglob/utils.c
-  rbcglob/brace.c
-  rbcglob/compiler.c
-  rbcglob/arena.c
-  rbcglob/join.c
-  rbcglob/expand_path.c
-  rbcglob/dirname.c
-  rbcglob/basename.c
-  rbcglob/extname.c
+  # Dir class methods
+  dir/glob.c
+  dir/home.c
+
+  # File class methods
+  file/fnmatch.c
+  file/join.c
+  file/expand_path.c
+  file/dirname.c
+  file/basename.c
+  file/extname.c
+
+  # Internal implementation
+  traverse.c
+  utils.c
+  compiler.c
+  arena.c
 )
 
 target_include_directories(rbcglob

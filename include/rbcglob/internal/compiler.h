@@ -5,6 +5,17 @@
 #include <stdbool.h>
 
 /**
+ * @brief Check if pattern contains any glob metacharacters
+ *
+ * Used during pattern compilation to determine if a segment needs
+ * glob processing or can be treated as a literal.
+ *
+ * @param str Pattern string to check
+ * @return true if contains glob metacharacters (*, ?, [, {), false otherwise
+ */
+bool rbcglob_has_glob_pattern(const char *str);
+
+/**
  * @brief Token types for the glob execution engine.
  */
 typedef enum rbcglob_token_type_e
@@ -109,6 +120,19 @@ struct rbcglob_compiled_glob_s
  *       For public API, use rbcglob_compile_glob() instead.
  */
 rbcglob_compiled_pattern_t *rbcglob_compiler_compile(const char *pattern, unsigned flags);
+
+/**
+ * @brief Expand brace expressions in a pattern
+ *
+ * Expands patterns like "*.{c,h}" into ["*.c", "*.h"].
+ * Used internally by the compiler for pattern preprocessing.
+ *
+ * @param pattern Input pattern with braces like "{a,b}.txt"
+ * @param expanded Output array of expanded patterns (caller must free)
+ * @param count Number of expanded patterns
+ * @return 0 on success, -1 on error
+ */
+int rbcglob_brace_expand(const char *pattern, char ***expanded, size_t *count);
 
 /**
  * @brief Compile a glob pattern with brace expansion (public API declared in rbcglob.h).

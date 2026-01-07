@@ -1,4 +1,5 @@
 #include <rbcglob/rbcglob.h>
+#include <rbcglob/internal/file.h>
 #include <rbcglob/internal/utils.h>
 #include <string.h>
 #include <stdlib.h>
