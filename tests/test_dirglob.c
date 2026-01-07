@@ -3,7 +3,22 @@
 #include <unity.h>
 #include <rbcglob/rbcglob.h>
 
-void setUp(void) {}
+#include <unistd.h>
+
+void setUp(void)
+{
+    // Ensure we are in the fixtures directory for all tests
+    // The relative path depends on where the test runner is executed from.
+    // If run from build/tests, it should be ../../tests/fixtures.
+    // We try multiple levels just in case.
+    if (chdir("../../tests/fixtures") != 0)
+    {
+        if (chdir("../tests/fixtures") != 0)
+        {
+            chdir("tests/fixtures");
+        }
+    }
+}
 void tearDown(void) {}
 
 void test_dirglob_version(void)

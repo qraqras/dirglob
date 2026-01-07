@@ -1,6 +1,7 @@
 ./a
 ./c
 ./b
+a/a
 a/c
 a/b
 dir/a

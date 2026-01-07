@@ -4,6 +4,7 @@
 ./x
 ./b
 ./y
+a/a
 a/c
 a/b
 x/y

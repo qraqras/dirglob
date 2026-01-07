@@ -24,6 +24,7 @@
 .dir/.hidden
 .dir/file.txt
 .dir/sub
+a/a
 a/a.txt
 a/b
 a/c

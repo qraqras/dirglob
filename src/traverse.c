@@ -147,15 +147,10 @@ static ssize_t rbcglob_traverse_get_cached_dir_index(rbcglob_ctx_t *ctx, const c
     struct dirent *entry_ptr;
     while ((entry_ptr = readdir(dir)) != NULL)
     {
-        /* P7 Optimization: Skip "." and ".." early */
+        /* P7 Optimization: Skip only ".." early (keep "." for FNM_DOTMATCH support) */
         const char *name = entry_ptr->d_name;
-        if (name[0] == '.')
-        {
-            if (name[1] == '\0')
-                continue; /* "." */
-            if (name[1] == '.' && name[2] == '\0')
-                continue; /* ".." */
-        }
+        if (name[0] == '.' && name[1] == '.' && name[2] == '\0')
+            continue; /* ".." */
 
         /* P4: Grow capacity when needed */
         if (ctx->dir_cache[idx].count >= entries_capacity)
@@ -202,6 +197,15 @@ static ssize_t rbcglob_traverse_get_cached_dir_index(rbcglob_ctx_t *ctx, const c
     return (ssize_t)idx;
 }
 
+static char *rbcglob_path_join_arena_rel(rbcglob_arena_t *arena, const char *rel_path, const char *name)
+{
+    if (!rel_path || rel_path[0] == '\0')
+    {
+        return rbcglob_arena_strdup(arena, name);
+    }
+    return rbcglob_join_arena((const char *[]){rel_path, name}, 2, arena);
+}
+
 static int rbcglob_traverse_execute_step(rbcglob_ctx_t *ctx, rbcglob_compiled_pattern_t *cp, size_t seg_idx, const char *rel_path, const char *search_base, bool is_after_wildcard, rbcglob_results_t *results)
 {
     if (seg_idx >= cp->count)
@@ -221,7 +225,7 @@ static int rbcglob_traverse_execute_step(rbcglob_ctx_t *ctx, rbcglob_compiled_pa
 
         /* Then, descend into directories. */
         char *full_dir_to_open = rbcglob_join_arena((const char *[]){search_base, rel_path}, 2, &ctx->arena);
-        const char *dir_to_open = full_dir_to_open ? full_dir_to_open : (search_base ? search_base : ".");
+        const char *dir_to_open = (full_dir_to_open && full_dir_to_open[0] != '\0') ? full_dir_to_open : (search_base ? search_base : ".");
 
         ssize_t cache_idx = rbcglob_traverse_get_cached_dir_index(ctx, dir_to_open);
         if (cache_idx < 0)
@@ -230,8 +234,10 @@ static int rbcglob_traverse_execute_step(rbcglob_ctx_t *ctx, rbcglob_compiled_pa
         for (size_t i = 0; i < ctx->dir_cache[cache_idx].count; i++)
         {
             const char *name = ctx->dir_cache[cache_idx].entries[i];
+            /* ** segment NEVER matches "." or ".." to avoid infinite loops and match Ruby behavior */
             if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
                 continue;
+            /* Hidden files (starting with .) are matched only with FNM_DOTMATCH */
             if (name[0] == '.' && !(cp->flags & RBCGLOB_FNM_DOTMATCH))
                 continue;
 
@@ -250,7 +256,7 @@ static int rbcglob_traverse_execute_step(rbcglob_ctx_t *ctx, rbcglob_compiled_pa
             else if (d_type == DT_UNKNOWN || d_type == DT_LNK)
             {
                 /* Fall back to stat() only for unknown types or symlinks */
-                next_rel = rbcglob_join_arena((const char *[]){rel_path, name}, 2, &ctx->arena);
+                next_rel = rbcglob_path_join_arena_rel(&ctx->arena, rel_path, name);
                 if (!next_rel)
                     return -1;
                 next_full = rbcglob_join_arena((const char *[]){search_base, next_rel}, 2, &ctx->arena);
@@ -266,7 +272,7 @@ static int rbcglob_traverse_execute_step(rbcglob_ctx_t *ctx, rbcglob_compiled_pa
                 /* Reuse next_rel if already built */
                 if (!next_rel)
                 {
-                    next_rel = rbcglob_join_arena((const char *[]){rel_path, name}, 2, &ctx->arena);
+                    next_rel = rbcglob_path_join_arena_rel(&ctx->arena, rel_path, name);
                     if (!next_rel)
                         return -1;
                 }
@@ -282,7 +288,7 @@ static int rbcglob_traverse_execute_step(rbcglob_ctx_t *ctx, rbcglob_compiled_pa
 
     if (seg->type == RBCGLOB_SEGMENT_LITERAL)
     {
-        char *next_rel = rbcglob_join_arena((const char *[]){rel_path, seg->pattern}, 2, &ctx->arena);
+        char *next_rel = rbcglob_path_join_arena_rel(&ctx->arena, rel_path, seg->pattern);
         if (!next_rel)
             return -1;
         char *next_full = rbcglob_join_arena((const char *[]){search_base, next_rel}, 2, &ctx->arena);
@@ -304,7 +310,7 @@ static int rbcglob_traverse_execute_step(rbcglob_ctx_t *ctx, rbcglob_compiled_pa
 
     /* Wildcard match */
     char *full_dir_to_open = rbcglob_join_arena((const char *[]){search_base, rel_path}, 2, &ctx->arena);
-    const char *dir_to_open = full_dir_to_open ? full_dir_to_open : (search_base ? search_base : ".");
+    const char *dir_to_open = (full_dir_to_open && full_dir_to_open[0] != '\0') ? full_dir_to_open : (search_base ? search_base : ".");
     ssize_t cache_idx = rbcglob_traverse_get_cached_dir_index(ctx, dir_to_open);
     if (cache_idx < 0)
         return 0;
@@ -313,18 +319,13 @@ static int rbcglob_traverse_execute_step(rbcglob_ctx_t *ctx, rbcglob_compiled_pa
     {
         const char *name = ctx->dir_cache[cache_idx].entries[i];
 
-        /* Ruby parity: if we relate to a wildcard-matched directory,
-           wildcard segments in the current level should not match "." or ".." */
-        if (is_after_wildcard && (strcmp(name, ".") == 0 || strcmp(name, "..") == 0))
-        {
-            continue;
-        }
-
+        /* Ruby parity: Never match ".." */
         if (strcmp(name, "..") == 0)
             continue;
 
-        /* P0 Optimization: Skip hidden files/directories early if not explicitly matching */
-        if (name[0] == '.' && !(cp->flags & RBCGLOB_FNM_DOTMATCH))
+        /* P0 Optimization: Skip hidden files/directories early if not explicitly matching.
+           Special case: "." is handled separately below. */
+        if (name[0] == '.' && name[1] != '\0' && !(cp->flags & RBCGLOB_FNM_DOTMATCH))
         {
             /* Check if segment explicitly starts with '.' */
             bool explicit_dot = false;
@@ -342,6 +343,36 @@ static int rbcglob_traverse_execute_step(rbcglob_ctx_t *ctx, rbcglob_compiled_pa
             }
         }
 
+        /* Ruby parity: "." matching rules:
+           1. Never match "." if a wildcard came before this segment (is_after_wildcard)
+           2. Without FNM_DOTMATCH: Match "." only if pattern explicitly starts with '.'
+           3. With FNM_DOTMATCH: Always match "." (unless is_after_wildcard) */
+        if (strcmp(name, ".") == 0)
+        {
+            if (is_after_wildcard)
+            {
+                continue; /* Never match "." after wildcard segments */
+            }
+            if (!(cp->flags & RBCGLOB_FNM_DOTMATCH))
+            {
+                /* Check if pattern explicitly starts with '.' */
+                bool explicit_dot = false;
+                if (seg->type == RBCGLOB_SEGMENT_LITERAL && seg->pattern && seg->pattern[0] == '.')
+                {
+                    explicit_dot = true;
+                }
+                else if (seg->token_count > 0 && seg->tokens[0].token_type == RBCGLOB_TOKEN_CHAR && seg->tokens[0].c == '.')
+                {
+                    explicit_dot = true;
+                }
+                if (!explicit_dot)
+                {
+                    continue; /* Skip "." if pattern doesn't start with '.' */
+                }
+            }
+            /* Otherwise, allow "." to be matched */
+        }
+
         if (seg->prefix && strncmp(name, seg->prefix, seg->prefix_len) != 0)
             continue;
 
@@ -356,7 +387,7 @@ static int rbcglob_traverse_execute_step(rbcglob_ctx_t *ctx, rbcglob_compiled_pa
 
         if (rbcglob_token_match_segment(seg, name, cp->flags))
         {
-            char *next_rel = rbcglob_join_arena((const char *[]){rel_path, name}, 2, &ctx->arena);
+            char *next_rel = rbcglob_path_join_arena_rel(&ctx->arena, rel_path, name);
             if (!next_rel)
                 return -1;
 
@@ -412,7 +443,7 @@ int rbcglob_execute(rbcglob_ctx_t *ctx, rbcglob_compiled_pattern_t *cp, const ch
         char *literal_path = NULL;
         for (size_t i = 0; i < cp->leading_literal_count; i++)
         {
-            char *next_path = rbcglob_join_arena((const char *[]){literal_path ? literal_path : (search_base ? search_base : "."), cp->segments[i].pattern}, 2, &ctx->arena);
+            char *next_path = rbcglob_join_arena((const char *[]){literal_path ? literal_path : search_base, cp->segments[i].pattern}, 2, &ctx->arena);
             literal_path = next_path;
             if (!literal_path)
                 return -1;

@@ -21,6 +21,7 @@
 ./y
 ./z
 ./z.txt
+a/a
 a/a.txt
 a/b
 a/c

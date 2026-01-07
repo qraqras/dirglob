@@ -75,8 +75,7 @@ static bool rbcglob_dirglob_compiled_internal(const rbcglob_compiled_glob_t *cg,
         free(brace_pattern_results);
         return false;
       }
-      if (sort_flag)
-        rbcglob_results_sort(&brace_pattern_results[j]);
+      /* Don't sort individual patterns - sort after merging all patterns */
     }
 
     if (rbcglob_merge_ruby_style(brace_pattern_results, cg->pattern_count, results) != 0)
@@ -105,11 +104,14 @@ static bool rbcglob_dirglob_compiled_internal(const rbcglob_compiled_glob_t *cg,
       return false;
     }
 
-    if (sort_flag)
-      rbcglob_results_sort(&pattern_results);
+    /* Don't sort here - sort at the end after deduplication */
     for (size_t k = 0; k < pattern_results.count; k++)
     {
-      rbcglob_results_add_with_index(results, pattern_results.items[k], pattern_results.discovery_indices[k]);
+      if (rbcglob_results_add_with_index(results, pattern_results.items[k], pattern_results.discovery_indices[k]) != 0)
+      {
+        rbcglob_results_clear(&pattern_results);
+        return false;
+      }
     }
     rbcglob_results_clear(&pattern_results);
   }
@@ -154,8 +156,8 @@ bool rbcglob_dirglob_compiled(const rbcglob_compiled_glob_t *cg, const char *bas
     return false;
   }
 
-  /* Final sort and deduplicate if no brace expansion occurred */
-  if (sort_flag && !has_brace_expansion)
+  /* Final sort and deduplicate */
+  if (sort_flag)
   {
     rbcglob_results_sort(&results);
   }
@@ -294,8 +296,8 @@ bool rbcglob_dirglob(const char **patterns,
     rbcglob_compiled_glob_free(cg);
   }
 
-  /* Final sort and deduplicate if no brace expansion occurred */
-  if (sort_flag && !has_brace_expansion)
+  /* Final sort and deduplicate */
+  if (sort_flag)
   {
     rbcglob_results_sort(&results);
   }
