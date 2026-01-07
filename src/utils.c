@@ -1,6 +1,15 @@
+#include <rbcglob/rbcglob.h>
 #include <rbcglob/internal/utils.h>
 #include <string.h>
 #include <stdlib.h>
+
+/**
+ * @brief Return library version string.
+ */
+const char *rbcglob_version(void)
+{
+    return RBCGLOB_VERSION;
+}
 
 char *rbcglob_strdup(const char *str)
 {

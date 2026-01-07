@@ -15,7 +15,9 @@ def convert_flags_to_c(flags_str):
     if flags_str == '0':
         return '0'
 
-    # 複数フラグの組み合わせ対応（将来用）
+    # Ruby FNM_* -> RBCGLOB_FNM_* 変換
+    flags_str = flags_str.replace('FNM_', 'RBCGLOB_FNM_')
+
     return flags_str
 
 
@@ -93,15 +95,16 @@ def generate_test_function(test_case, platform):
 void test_parity_{case_id}(void) {{
     char **result = NULL;
     size_t count = 0;
+    size_t *lengths = NULL;
 
     // rbcglob_dirglob実行
-    bool ok = rbcglob_dirglob({pattern_array}, {npatterns}, {flags}, {base}, {sort}, &result, &count);
+    bool ok = rbcglob_dirglob({pattern_array}, {npatterns}, {flags}, {base}, {sort}, &result, &count, &lengths);
 
     // 期待出力と比較
     assert_matches_expected(result, count, "{escape_c_string(expected_file)}");
 
     // メモリ解放
-    rbcglob_free(result, count);
+    rbcglob_free(result, count, lengths);
 }}
 '''
 
@@ -117,7 +120,7 @@ def generate_test_file(test_cases, platform, output_file):
  */
 
 #include <unity.h>
-#include <rbcglob_dirglob/rbcglob_dirglob.h>
+#include <rbcglob/rbcglob.h>
 #include "test_helpers.h"
 
 '''

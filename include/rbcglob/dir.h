@@ -27,6 +27,23 @@ bool rbcglob_dirglob(const char **patterns, size_t npatterns, unsigned flags,
                      const char *base, bool sort, char ***out, size_t *count, size_t **lengths);
 
 /**
+ * @brief Perform glob matching with a precompiled pattern
+ *
+ * More efficient than rbcglob_dirglob() when the same pattern is used multiple times.
+ * The pattern should be compiled once with rbcglob_compile_glob() and reused.
+ *
+ * @param cg Precompiled glob pattern (must not be NULL)
+ * @param base Base directory for relative path resolution (NULL for current directory)
+ * @param sort true to sort results (Ruby default), false to skip sorting
+ * @param out Output parameter for array of matched paths (caller must free with rbcglob_free)
+ * @param count Output parameter for number of results returned
+ * @param lengths Output parameter for array of path lengths (optional, caller must free with rbcglob_free)
+ * @return true on success, false on error (check errno for details)
+ */
+bool rbcglob_dirglob_compiled(const rbcglob_compiled_glob_t *cg, const char *base, bool sort,
+                              char ***out, size_t *count, size_t **lengths);
+
+/**
  * @brief Free memory allocated by dirglob
  *
  * @param list Array returned by dirglob
