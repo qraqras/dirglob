@@ -15,8 +15,12 @@ add_library(rbcglob
   # Internal implementation
   traverse.c
   utils.c
-  compiler.c
   arena.c
+
+  # NFA Graph implementation
+  graph/node.c
+  graph/compiler.c
+  graph/executor.c
 )
 
 target_include_directories(rbcglob

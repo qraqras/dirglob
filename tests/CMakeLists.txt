@@ -55,7 +55,7 @@ endif()
 add_custom_command(
   OUTPUT ${GENERATED_RUNNER}
   COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/gen_unity_runner.py ${CMAKE_CURRENT_SOURCE_DIR} ${GENERATED_RUNNER}
-  DEPENDS ${TEST_IMPLS} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/gen_unity_runner.py
+  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/scripts/gen_unity_runner.py
   COMMENT "Generating Unity test runner (Python)"
   VERBATIM
 )

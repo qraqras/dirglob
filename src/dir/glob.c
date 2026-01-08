@@ -1,366 +1,235 @@
 #include <rbcglob/rbcglob.h>
-#include <rbcglob/internal/dir.h>
-#include <rbcglob/internal/file.h>
+#include <rbcglob/internal/graph.h>
 #include <rbcglob/internal/traverse.h>
-#include <rbcglob/internal/compiler.h>
 #include <rbcglob/internal/utils.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include <stdio.h>
 
-#ifdef _WIN32
-#include <sys/stat.h>
-#define stat _stat
-#else
-#include <sys/stat.h>
-#include <unistd.h>
-#endif
-
-/**
- * @brief Merge results from multiple expanded patterns using Ruby-style rules
- *
- * Ruby simply concatenates results in brace expansion order.
- * For example, *.{c,h} returns all *.c results first, then all *.h results.
- */
-static int rbcglob_merge_ruby_style(rbcglob_results_t *brace_results,
-                                    size_t count,
-                                    rbcglob_results_t *final_results)
+/* Defines the opaque struct from types.h */
+struct rbcglob_compiled_glob_s
 {
-  /* Simply concatenate results in brace expansion order */
-  for (size_t i = 0; i < count; i++)
-  {
-    for (size_t j = 0; j < brace_results[i].count; j++)
+    rbcglob_ctx_t *ctx;
+    rbcglob_node_t *graph;
+    unsigned flags; /* Store flags during compilation if needed */
+};
+
+/* Result collection callback for NFA executor */
+typedef struct
+{
+    rbcglob_results_t *results;
+    const char *base_strip; /* If set, strip this prefix from results */
+    size_t base_len;
+} callback_ctx_t;
+
+static void nfa_match_callback(const char *path, void *user_data)
+{
+    callback_ctx_t *ctx = (callback_ctx_t *)user_data;
+
+    const char *add_path = path;
+
+    // Handle stripping base path to match Ruby's 'base:' behavior
+    // If base_strip is "foo", and path is "foo/bar", result should be "bar".
+    if (ctx->base_strip && ctx->base_len > 0)
     {
-      if (rbcglob_results_add_with_index(final_results,
-                                         brace_results[i].items[j],
-                                         brace_results[i].discovery_indices[j]) != 0)
-      {
-        return -1;
-      }
+        if (strncmp(path, ctx->base_strip, ctx->base_len) == 0)
+        {
+            if (path[ctx->base_len] == '/')
+            {
+                add_path = path + ctx->base_len + 1;
+            }
+            else if (path[ctx->base_len] == '\0')
+            {
+                add_path = "."; // base itself
+            }
+        }
     }
-  }
-  return 0;
+
+    rbcglob_results_add(ctx->results, add_path);
 }
 
-/**
- * @brief Execute a compiled glob pattern (internal helper)
- */
-static bool rbcglob_dirglob_compiled_internal(const rbcglob_compiled_glob_t *cg,
-                                              const char *base,
-                                              bool sort_flag,
-                                              rbcglob_ctx_t *ctx,
-                                              rbcglob_results_t *results,
-                                              bool *has_brace_expansion)
+rbcglob_compiled_glob_t *rbcglob_compile_glob(const char *pattern, unsigned flags)
 {
-  if (cg->pattern_count > 1)
-  {
-    *has_brace_expansion = true;
+    if (!pattern)
+        return NULL;
 
-    /* Ruby-style merge for brace expansion: simply concatenate in expansion order */
-    rbcglob_results_t *brace_pattern_results = calloc(cg->pattern_count, sizeof(rbcglob_results_t));
-    if (!brace_pattern_results)
+    rbcglob_compiled_glob_t *cg = malloc(sizeof(rbcglob_compiled_glob_t));
+    if (!cg)
+        return NULL;
+
+    cg->ctx = malloc(sizeof(rbcglob_ctx_t));
+    if (!cg->ctx)
     {
-      errno = ENOMEM;
-      return false;
+        free(cg);
+        return NULL;
     }
 
-    for (size_t j = 0; j < cg->pattern_count; j++)
+    rbcglob_ctx_init(cg->ctx);
+    cg->flags = flags;
+
+    cg->graph = rbcglob_nfa_compile(&cg->ctx->arena, pattern);
+
+    if (!cg->graph)
     {
-      rbcglob_results_init(&brace_pattern_results[j], ctx);
-      if (rbcglob_execute(ctx, cg->patterns[j], base, &brace_pattern_results[j]) != 0)
-      {
-        for (size_t k = 0; k <= j; k++)
-          rbcglob_results_clear(&brace_pattern_results[k]);
-        free(brace_pattern_results);
-        return false;
-      }
-      /* Don't sort individual patterns - sort after merging all patterns */
+        rbcglob_compiled_glob_free(cg);
+        return NULL;
     }
 
-    if (rbcglob_merge_ruby_style(brace_pattern_results, cg->pattern_count, results) != 0)
-    {
-      for (size_t j = 0; j < cg->pattern_count; j++)
-        rbcglob_results_clear(&brace_pattern_results[j]);
-      free(brace_pattern_results);
-      return false;
-    }
-
-    /* Cleanup brace results */
-    for (size_t j = 0; j < cg->pattern_count; j++)
-    {
-      rbcglob_results_clear(&brace_pattern_results[j]);
-    }
-    free(brace_pattern_results);
-  }
-  else
-  {
-    /* No brace expansion */
-    rbcglob_results_t pattern_results;
-    rbcglob_results_init(&pattern_results, ctx);
-    if (rbcglob_execute(ctx, cg->patterns[0], base, &pattern_results) != 0)
-    {
-      rbcglob_results_clear(&pattern_results);
-      return false;
-    }
-
-    /* Don't sort here - sort at the end after deduplication */
-    for (size_t k = 0; k < pattern_results.count; k++)
-    {
-      if (rbcglob_results_add_with_index(results, pattern_results.items[k], pattern_results.discovery_indices[k]) != 0)
-      {
-        rbcglob_results_clear(&pattern_results);
-        return false;
-      }
-    }
-    rbcglob_results_clear(&pattern_results);
-  }
-
-  return true;
+    return cg;
 }
 
-/**
- * @brief Perform glob matching with a precompiled pattern
- */
-bool rbcglob_dirglob_compiled(const rbcglob_compiled_glob_t *cg, const char *base, bool sort_flag,
+void rbcglob_compiled_glob_free(rbcglob_compiled_glob_t *cg)
+{
+    if (!cg)
+        return;
+    if (cg->ctx)
+    {
+        rbcglob_ctx_free(cg->ctx);
+        free(cg->ctx);
+    }
+    free(cg);
+}
+
+bool rbcglob_dirglob_compiled(const rbcglob_compiled_glob_t *cg, const char *base, bool sort,
                               char ***out, size_t *count, size_t **lengths)
 {
-  if (!cg || !out || !count)
-  {
-    errno = EINVAL;
-    return false;
-  }
+    if (!cg || !out || !count)
+        return false;
 
-  /* Allocate and initialize context for thread-safety */
-  rbcglob_ctx_t *ctx = malloc(sizeof(rbcglob_ctx_t));
-  if (!ctx)
-  {
-    errno = ENOMEM;
-    return false;
-  }
-  rbcglob_ctx_init(ctx);
+    rbcglob_ctx_t *run_ctx = malloc(sizeof(rbcglob_ctx_t));
+    if (!run_ctx)
+        return false;
+    rbcglob_ctx_init(run_ctx);
 
-  rbcglob_results_reset_discovery_counter(ctx);
+    rbcglob_results_t results;
+    rbcglob_results_init(&results, run_ctx);
 
-  /* Initialize result collector */
-  rbcglob_results_t results;
-  rbcglob_results_init(&results, ctx);
+    callback_ctx_t cb_ctx;
+    cb_ctx.results = &results;
+    cb_ctx.base_strip = base;
+    cb_ctx.base_len = base ? strlen(base) : 0;
 
-  bool has_brace_expansion = false;
+    rbcglob_nfa_execute(cg->graph, base, cg->flags, nfa_match_callback, &cb_ctx);
 
-  if (!rbcglob_dirglob_compiled_internal(cg, base, sort_flag, ctx, &results, &has_brace_expansion))
-  {
-    rbcglob_results_clear(&results);
-    rbcglob_ctx_free(ctx);
-    free(ctx);
-    return false;
-  }
+    if (sort)
+    {
+        rbcglob_results_sort(&results);
+    }
+    rbcglob_results_deduplicate(&results);
 
-  /* Final sort and deduplicate */
-  if (sort_flag)
-  {
-    rbcglob_results_sort(&results);
-  }
-  rbcglob_results_deduplicate(&results);
-
-  /* Packaging for the caller */
-  *count = results.count;
-  void **package = malloc(sizeof(void *) + (results.count + 1) * sizeof(char *));
-  if (!package)
-  {
-    rbcglob_results_clear(&results);
-    rbcglob_ctx_free(ctx);
-    free(ctx);
-    return false;
-  }
-
-  package[0] = ctx;
-  char **pkg_items = (char **)&package[1];
-
-  if (results.count > 0)
-  {
-    memcpy(pkg_items, results.items, results.count * sizeof(char *));
-  }
-  pkg_items[results.count] = NULL; /* Null-terminate for safety */
-
-  *out = pkg_items;
-
-  if (lengths)
-  {
-    *lengths = results.lengths;
-  }
-  else
-  {
-    if (results.lengths)
-      free(results.lengths);
-  }
-
-  /* Free temporary result collector buffers (but not the items or lengths we've moved/copied) */
-  if (results.items)
-    free(results.items);
-  if (results.discovery_indices)
-    free(results.discovery_indices);
-
-  return true;
-}
-
-/**
- * @brief Perform glob pattern matching
- */
-bool rbcglob_dirglob(const char **patterns,
-                     size_t npatterns,
-                     unsigned flags,
-                     const char *base,
-                     bool sort_flag,
-                     char ***out,
-                     size_t *count,
-                     size_t **lengths)
-{
-  if (!out || !count)
-  {
-    errno = EINVAL;
-    return false;
-  }
-
-  /* Allocate and initialize context for thread-safety */
-  rbcglob_ctx_t *ctx = malloc(sizeof(rbcglob_ctx_t));
-  if (!ctx)
-  {
-    errno = ENOMEM;
-    return false;
-  }
-  rbcglob_ctx_init(ctx);
-
-  /* Dir.glob always operates in pathname mode */
-  flags |= RBCGLOB_FNM_PATHNAME;
-
-  if (!patterns || npatterns == 0)
-  {
-    *count = 0;
-    void **package = malloc(sizeof(void *) + sizeof(char *));
+    // Packaging
+    *count = results.count;
+    void **package = malloc(sizeof(void *) + (results.count + 1) * sizeof(char *));
     if (!package)
     {
-      rbcglob_ctx_free(ctx);
-      free(ctx);
-      errno = ENOMEM;
-      return false;
+        rbcglob_results_clear(&results);
+        rbcglob_ctx_free(run_ctx);
+        free(run_ctx);
+        return false;
     }
-    package[0] = ctx;
-    package[1] = NULL;
-    *out = (char **)&package[1];
+
+    package[0] = run_ctx;
+    char **pkg_items = (char **)&package[1];
+    if (results.count > 0)
+    {
+        memcpy(pkg_items, results.items, results.count * sizeof(char *));
+    }
+    pkg_items[results.count] = NULL;
+
+    *out = pkg_items;
     if (lengths)
-      *lengths = NULL;
+        *lengths = results.lengths;
+    else if (results.lengths)
+        free(results.lengths);
+
+    if (results.items)
+        free(results.items);
+    if (results.discovery_indices)
+        free(results.discovery_indices);
+
     return true;
-  }
+}
 
-  rbcglob_results_reset_discovery_counter(ctx);
+bool rbcglob_dirglob(const char **patterns, size_t npatterns, unsigned flags,
+                     const char *base, bool sort, char ***out, size_t *count, size_t **lengths)
+{
 
-  /* Initialize result collector */
-  rbcglob_results_t results;
-  rbcglob_results_init(&results, ctx);
+    if (!out || !count)
+        return false;
 
-  /* Track whether any brace expansion occurred */
-  bool has_brace_expansion = false;
+    rbcglob_ctx_t *ctx = malloc(sizeof(rbcglob_ctx_t));
+    if (!ctx)
+        return false;
+    rbcglob_ctx_init(ctx);
 
-  /* Process each pattern */
-  for (size_t i = 0; i < npatterns; i++)
-  {
-    /* Tilde expansion (Ruby Dir.glob behavior) */
-    const char *p = patterns[i];
-    if (p[0] == '~')
+    rbcglob_results_t results;
+    rbcglob_results_init(&results, ctx);
+
+    callback_ctx_t cb_ctx;
+    cb_ctx.results = &results;
+    cb_ctx.base_strip = base;
+    cb_ctx.base_len = base ? strlen(base) : 0;
+
+    for (size_t i = 0; i < npatterns; i++)
     {
-      p = rbcglob_expand_path_arena(p, NULL, &ctx->arena);
+        if (!patterns[i])
+            continue;
+        rbcglob_node_t *graph = rbcglob_nfa_compile(&ctx->arena, patterns[i]);
+        if (graph)
+        {
+            rbcglob_nfa_execute(graph, base, flags, nfa_match_callback, &cb_ctx);
+        }
     }
 
-    /* Compile with brace expansion */
-    rbcglob_compiled_glob_t *cg = rbcglob_compile_glob(p, flags);
-    if (!cg)
+    if (sort)
     {
-      rbcglob_results_clear(&results);
-      rbcglob_ctx_free(ctx);
-      free(ctx);
-      return false;
+        rbcglob_results_sort(&results);
+    }
+    rbcglob_results_deduplicate(&results);
+
+    // Packaging
+    *count = results.count;
+    void **package = malloc(sizeof(void *) + (results.count + 1) * sizeof(char *));
+    if (!package)
+    {
+        rbcglob_results_clear(&results);
+        rbcglob_ctx_free(ctx);
+        free(ctx);
+        return false;
     }
 
-    /* Execute compiled pattern */
-    if (!rbcglob_dirglob_compiled_internal(cg, base, sort_flag, ctx, &results, &has_brace_expansion))
+    package[0] = ctx;
+    char **pkg_items = (char **)&package[1];
+    if (results.count > 0)
     {
-      rbcglob_compiled_glob_free(cg);
-      rbcglob_results_clear(&results);
-      rbcglob_ctx_free(ctx);
-      free(ctx);
-      return false;
+        memcpy(pkg_items, results.items, results.count * sizeof(char *));
     }
+    pkg_items[results.count] = NULL;
 
-    /* Cleanup compiled glob */
-    rbcglob_compiled_glob_free(cg);
-  }
+    *out = pkg_items;
+    if (lengths)
+        *lengths = results.lengths;
+    else if (results.lengths)
+        free(results.lengths);
 
-  /* Final sort and deduplicate */
-  if (sort_flag)
-  {
-    rbcglob_results_sort(&results);
-  }
-  rbcglob_results_deduplicate(&results);
+    if (results.items)
+        free(results.items);
+    if (results.discovery_indices)
+        free(results.discovery_indices);
 
-  /* Packaging for the caller */
-  *count = results.count;
-  void **package = malloc(sizeof(void *) + (results.count + 1) * sizeof(char *));
-  if (!package)
-  {
-    rbcglob_results_clear(&results);
-    rbcglob_ctx_free(ctx);
-    free(ctx);
-    return false;
-  }
-
-  package[0] = ctx;
-  char **pkg_items = (char **)&package[1];
-
-  if (results.count > 0)
-  {
-    memcpy(pkg_items, results.items, results.count * sizeof(char *));
-  }
-  pkg_items[results.count] = NULL; /* Null-terminate for safety */
-
-  *out = pkg_items;
-
-  if (lengths)
-  {
-    *lengths = results.lengths;
-  }
-  else
-  {
-    if (results.lengths)
-      free(results.lengths);
-  }
-
-  /* Free temporary result collector buffers (but not the items or lengths we've moved/copied) */
-  if (results.items)
-    free(results.items);
-  if (results.discovery_indices)
-    free(results.discovery_indices);
-
-  return true;
+    return true;
 }
 
 void rbcglob_free(char **list, size_t count, size_t *lengths)
 {
-  (void)count;
-  (void)lengths;
-  if (!list)
-    return;
-
-  /* Extract context from package */
-  void **package = (void **)list - 1;
-  rbcglob_ctx_t *ctx = (rbcglob_ctx_t *)package[0];
-
-  /* Free context and its associated memory (arena, cache) */
-  rbcglob_ctx_free(ctx);
-  free(ctx);
-
-  /* Free the results package and optional lengths array */
-  free(package);
-  if (lengths)
-    free(lengths);
+    (void)count;
+    if (!list)
+        return;
+    void **package = (void **)list - 1;
+    rbcglob_ctx_t *ctx = (rbcglob_ctx_t *)package[0];
+    rbcglob_ctx_free(ctx);
+    free(ctx);
+    free(package);
+    if (lengths)
+        free(lengths);
 }
