@@ -1,118 +1,113 @@
-# NFA (グラフベース) Glob エンジン設計書
+# Segment-Based NFA Engine Design
 
-## 1. 概要
-            VVVVVVVVVM** 方式へのアーキテクチャ移行について記述します。continue;
-/workspaces/dirglob/DOCS/NFA_DESIGN.md Ruby (MRI) との <<<<
+## 1. Overview
+This document outlines the architecture for the enhanced "Segment-Based NFA" engine.
+This evolution moves from a character-based NFA to a **path-segment-based NFA**, significantly improving performance by reducing graph size and enabling powerful optimizations like literal prefix/suffix filtering inside wildcards.
 
-## 2. モチベーション (移行の理由)
+## 2. Motivation
+The initial character-based NFA successfully replicated Ruby's logic but had performance overheads:
+- **Optimization Difficulty**: Optimizing `*.c` (suffix check) was hard because `*` and `.` and `c` were separate nodes.
+- **Overhead**: Traversing the graph for every single character in every filename is CPU intensive.
 
-### 現在の方式 (静的)
-- **手法**: `{a,b}{c,d}` を実行前に `["ac", "ad", "bc", "bd"]` の文字列リストに全展開する。
-- **課題1 (順序)**: Rubyの  順序（ディレクトリ順 × ブレース記述順）を再現するために、実行後に複雑なマージ処
-- **課題2 (性能)**: 入れ子のブレースにより **組み合わせ爆発** が発生しCPUリソースを浪費する (O(N^M))。
-#- **課題3 (最適化)**: 共通プレフ
-: `src/{a,b}/...`）のIOコストを共有することが構造的に難しい。
+The **Segment-Based Approach** treats a whole path component (e.g., `src`, `*.c`, `**`) as a single unit of work, allowing hybrid execution: "Graph Traversal for Directories, Native String operations for Filenames".
 
-### 新方式 (NFA/VM)
-DFS（深さ優先探索）でトラバースしながら実行する。
-- **解決策**:
-**: MRIの再帰的な実行順序を、グラフ探索の順序として自然に再現できる。
-    - **メモリ効率**: メモリ使用量はパターンの長さに比例する線形 (O(N)) になり、爆発しない。
-    - **高速化**: ディレクトリ構造を一度だけスキャンする **シングルパス (Single-Pass Scan)** が可能になる。
+## 3. Architecture
 
-## 3. アーキテクチャ
-
- **コン (Compilation)** と **実行 (Execution)** の2フェーズに分離<<
-
-### 3.1 データ構造 (OpCodes)
-
-#
-<<
+### 3.1 Segment Graph (AST)
+The compiler parses the glob pattern into a graph of "Segments".
+A Segment corresponds to one level of directory depth or a control structure.
 
 ```c
 typedef enum {
-    OP_MATCH_LITERAL, // 文字列一致 (例: "src")
-    OP_MATCH_STAR,    // ワイルドカード "*" (現在のディレクトリ内の走査)
-            continue; "**"
-    OP_MATCH_QMARK,   // 一文字一致 "?"
-    OP_MATCH_CLASS,   // 文字クラス "[...]"
-    OP_FORK,          // 分岐 (ブレース展開)
-    OP_JUMP,          // 合流 (制御フロー)
-    OP_ACCEPT,        // マッチ成立
-    OP_EOS            // 終端
-} rbcglob_opcode_type_t;
+    SEG_LITERAL,   // Exact match: "src", "include"
+    SEG_WILDCARD,  // Glob match: "*.c", "test_??"
+    SEG_RECURSIVE, // Recursive match: "**"
+    SEG_BRANCH,    // Brace expansion control: "{...}"
+} seg_type_t;
 
-typedef struct rbcglob_node_t {
-    rbcglob_opcode_type_t type;
+struct rbcglob_segment_t {
+    seg_type_t type;
+    
     union {
-        const char *literal;     // OP_MATCH_LITERAL 用
-        struct {                 // OP_FORK (ブレース展開) 用
-            struct rbcglob_node_t *next; // 最初の分岐 (例: "a")
-            struct rbcglob_node_t *alt;  // 次の選択肢へのリンク (例: "b")
+        // SEG_LITERAL
+        char *literal_path; 
+
+        // SEG_WILDCARD
+        struct {
+            char *raw_pattern;
+            
+            // --- Optimization Flags (The "Fast Path") ---
+            char *must_start;    // e.g., "test_" for "test_*.c"
+            size_t start_len;
+            char *must_end;      // e.g., ".c" for "*.c"
+            size_t end_len;
+            
+            // --- Detailed Matching (The "Slow Path") ---
+            // A mini, character-based NFA dedicated ONLY to matching 
+            // the name string against the generalized pattern.
+            // Directory operations (opendir) logic is NOT included here.
+            rbcglob_node_t *local_nfa_root; 
+        } glob;
+
+        // SEG_BRANCH
+        struct {
+            struct rbcglob_segment_t *branches; // Linked list of alternatives
         } branch;
-    } data;
-    struct rbcglob_node_t *next; // 通常の次のノードへのポインタ
-} rbcglob_node_t;
+    };
+
+    struct rbcglob_segment_t *next; // Next segment in the path
+};
 ```
 
-### 3.2 コンパイラ (Compiler)
-Glob文字列を解析し、グラフを構築し<<
-- `src/{a,b}/*.c` のような文字列をパースします。
-            `a` + `b`）を事前に結合します。
-- この段階ではファイルアクセスは発生しま
+### 3.2 Compiler Strategy
+The compiler logic splits the input pattern by `/`.
 
-**グラフ構造の例**: `src/{a,b}/*.c`
-```mermaid
-[Start] -> [LITERAL "src"] -> [FORK] --(next)--> [LITERAL "a"] --+
-                                 |                               |
-                                 +--(alt)----> [LITERAL "b"] --(JUMP)
-                                                                 |
-               [ACCEPT] <- [LITERAL ".c"] <- [WILDCARD "*"] <----+
-```
+**Example**: `src/{a,b}/test_*.c`
 
-### 3.3 VM / エグゼキュータ (Executor)
-<<
+1. **Segment 1**: `SEG_LITERAL` ("src")
+   - Next -> Branch
 
-- **入力**: 現在のディレクトリパス、現在のグラフノード
-- **アルゴリズム**: 再帰的深さ優先探索 (Recursive DFS)
-- **状態**: 現在構築中のパスを管理します。
+2. **Segment 2**: `SEG_BRANCH`
+   - Alt 1: `SEG_LITERAL` ("a") -> Next -> Wildcard
+   - Alt 2: `SEG_LITERAL` ("b") -> Next -> Wildcard
 
-## 4. Ruby互換性の実現
+3. **Segment 3**: `SEG_WILDCARD` ("test_*.c")
+   - `must_start`: "test_"
+   - `must_end`: ".c"
+   - `local_nfa`: (Compiled NFA for `test_*.c`)
 
-### 4.1 ソート順序 (`sort: true`)
-#Rubyは「各
-<<
+### 3.3 Executor Strategy
+The executor functions as a hybrid VM.
 
-**実装**:
-VMが `OP_MATCH_STAR` (*) ノードに到達した際:
-#1. `readdir()` で
+#### Phase 1: Graph Traversal (Directory Navigation)
+- Follows `SEG_LITERAL` nodes by checking `stat()`. Efficiently skips `opendir`.
+- Handles `SEG_BRANCH` by recursively exploring paths (Depth First).
+- Handles `SEG_RECURSIVE` (`**`) by invoking the standard recursive directory walker.
 
-2. **メモリ上で即座にソート**を実行。
-CMakeCache.txt CMakeFiles CTestTestfile.cmake DartConfiguration.tcl Makefile Testing _deps bench_vs_glob3 benchmark cmake_install.cmake examples include rbcglobConfigVersion.cmake src test_a_bz test_a_bz.c test_ab_dot test_ab_dot.c test_dotpattern test_dotpattern.c test_fb3 test_fnmatch_parity test_matrix.json test_p0050 test_p0050.c test_p1004 test_p1004.c test_p1004_full test_p1004_full.c test_p1100 test_p1100.c test_p4737 test_p4737.c test_p4737_debug test_p4737_debug.c test_phase1 test_ruby_fnmatch.rb test_ruby_fnmatch_2.rb test_star test_star.c test_star2 test_star2.c test_v2 test_xyz test_xyz.c tests :
-   - パスを構築。
-   - VMを次のノード (`node->next`) に進めて再帰呼び出し。
+#### Phase 2: Directory Enumeration & Filtering (Leaf Processing)
+When the executor hits a `SEG_WILDCARD`:
+1. **Open Directory**: `opendir()`
+2. **Read Loop**: `readdir()`
+3. **Fast Filter**: 
+   - Check `strncmp(name, seg->must_start)`
+   - Check `suffix(name, seg->must_end)`
+   - **Performance Win**: This eliminates 99% of candidates using cheap CPU instructions.
+4. **Detailed Match**:
+   - If filters pass, execute the `local_nfa` (or a helper function for simpler globs).
+5. **Next Step**:
+   - If matched, construct path and recurse to `seg->next`.
 
-: ディレクトリ構造に基づく自然な順序（例: `dir1/*` の結果は全て `dir2/*` より先に出る）が保証されます。
+## 4. Advantages over Previous Design
 
-### 4.2 ブレース展開の順序
-Rubyはブレース内の選択肢を記述順に処理します。
+| Feature | Old Character-NFA | New Segment-NFA |
+| :--- | :--- | :--- |
+| **Graph Size** | Huge (Nodes per Char) | Tiny (Nodes per Directory) |
+| **Prefix Opt** | Possible (implemented) | Trivial & Native |
+| **Suffix Opt** | Very Hard | Trivial |
+| **Filename Check**| Cycle-heavy Graph Walk | Native String Ops |
+| **Memory** | High (State Set allocation) | Low (Stack recursion) |
 
-**実装**:
-VMが `OP_FORK` ノードに到達した際:
-1. まず `node->data.branch.next` (分岐A) を再帰的に呼び出す。
-2. 次に `node->data.branch.B) を再帰的に呼び出す。
-
-: `*/{a,b}` は自然に `dir1/a`, `dir1/b`, `dir2/a`, `dir2/b` の順序になります。
-/workspaces/dirglob/DOCS/NFA_DESIGN.md <<
-
-## 5. 最適化のメリット
-
-1.  **シングルパス・スキャン**:
-    `src/{a,b,c}/*.txt` のようなパターンにおいて、`src` ディレクトリのスキャ1回で済みます。
-    現在の実装では3回スキャンが必要でした。
-
-2.  **メモリ安全性**:
-    組み合わせ爆発によるメモリ枯渇を防ぎます。
-
-3.  **プレフィックス最適化**:
-    `long/fixed/path/{a,b}` のようなケースで、共通部分の `stat()` やディレクトリ移動コストが最小化されます。
+## 5. Implementation Roadmap
+1. **Refactor Compiler**: Update `compiler.c` to generate `rbcglob_segment_t` structures.
+2. **Implement Local NFA**: Re-purpose the existing `compiler.c` logic to generate "fragment NFAs" for the `SEG_WILDCARD` nodes.
+3. **Rewrite Executor**: Replace `executor.c` with the new segment-walking logic.

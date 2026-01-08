@@ -4,23 +4,21 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <stdbool.h>
-#include <limits.h>
-#include <rbcglob/file.h>
+#include <unistd.h>
+#include <errno.h>
 
 #include "rbcglob/internal/graph.h"
 #include "rbcglob/internal/traverse.h"
+#include "rbcglob/file.h"
 
-#ifndef PATH_MAX
-#define PATH_MAX 4096
-#endif
-
-// --- State Management ---
+/******************************************************************************
+ * Local NFA Executor (for matching filenames within SEG_WILDCARD)
+ ******************************************************************************/
 
 typedef struct
 {
     rbcglob_node_t *node;
     int lit_offset;
-    bool is_literal_match;
 } nfa_state_t;
 
 typedef struct
@@ -28,43 +26,50 @@ typedef struct
     nfa_state_t *states;
     size_t count;
     size_t capacity;
+    nfa_state_t *heap_ptr;
 } state_set_t;
 
-static void state_set_init(state_set_t *set)
+static void state_set_init(state_set_t *set, nfa_state_t *buf, size_t cap)
 {
-    set->states = NULL;
+    set->states = buf;
     set->count = 0;
-    set->capacity = 0;
+    set->capacity = cap;
+    set->heap_ptr = NULL;
 }
 
 static void state_set_free(state_set_t *set)
 {
-    free(set->states);
+    if (set->heap_ptr)
+        free(set->heap_ptr);
 }
 
-static void state_set_add(state_set_t *set, rbcglob_node_t *node, int offset, bool is_literal_match)
+static void state_set_add(state_set_t *set, rbcglob_node_t *node, int offset)
 {
     for (size_t i = 0; i < set->count; i++)
     {
         if (set->states[i].node == node && set->states[i].lit_offset == offset)
-        {
-            set->states[i].is_literal_match = set->states[i].is_literal_match || is_literal_match;
             return;
-        }
     }
-
     if (set->count == set->capacity)
     {
-        set->capacity = set->capacity ? set->capacity * 2 : 16;
-        set->states = realloc(set->states, set->capacity * sizeof(nfa_state_t));
+        size_t new_cap = set->capacity ? set->capacity * 2 : 16;
+        nfa_state_t *new_ptr = malloc(new_cap * sizeof(nfa_state_t));
+        if (!new_ptr)
+            return; // Silent fail on OOM
+
+        memcpy(new_ptr, set->states, set->count * sizeof(nfa_state_t));
+        if (set->heap_ptr)
+            free(set->heap_ptr);
+
+        set->states = new_ptr;
+        set->heap_ptr = new_ptr;
+        set->capacity = new_cap;
     }
     set->states[set->count].node = node;
     set->states[set->count].lit_offset = offset;
-    set->states[set->count].is_literal_match = is_literal_match;
     set->count++;
 }
 
-// Compute Epsilon Closure (but don't expand ** to avoid losing it)
 static void epsilon_closure(state_set_t *set)
 {
     for (size_t i = 0; i < set->count; i++)
@@ -78,86 +83,67 @@ static void epsilon_closure(state_set_t *set)
         {
             if (s.lit_offset == 0 && n->data.literal[0] == '\0')
             {
-                state_set_add(set, n->next, 0, s.is_literal_match);
+                state_set_add(set, n->next, 0);
             }
-            continue;
         }
-
-        if (n->type == OP_JUMP)
+        else if (n->type == OP_JUMP)
         {
-            state_set_add(set, n->next, 0, s.is_literal_match);
+            state_set_add(set, n->next, 0);
         }
         else if (n->type == OP_FORK)
         {
             if (n->data.branch.next)
-                state_set_add(set, n->data.branch.next, 0, s.is_literal_match);
+                state_set_add(set, n->data.branch.next, 0);
             if (n->data.branch.alt)
-                state_set_add(set, n->data.branch.alt, 0, s.is_literal_match);
+                state_set_add(set, n->data.branch.alt, 0);
         }
         else if (n->type == OP_MATCH_STAR)
         {
-            // Even if STAR matches empty string, the presence of STAR means
-            // the pattern is not fully literal (it's a wildcard match of size 0).
-            // This is crucial for 'parent_wild' logic in file recursion guard.
-            state_set_add(set, n->next, 0, false);
+            state_set_add(set, n->next, 0);
         }
-        // DON'T expand OP_MATCH_STAR2 here - we need to keep it for directory recursion
     }
 }
 
-static void step_char(state_set_t *current, char c, bool allow_wildcard, state_set_t *next_set)
+static bool local_nfa_match(const char *text, rbcglob_node_t *start_node)
 {
-    for (size_t i = 0; i < current->count; i++)
-    {
-        nfa_state_t s = current->states[i];
-        rbcglob_node_t *n = s.node;
-        if (!n)
-            continue;
+    nfa_state_t buf1[32];
+    nfa_state_t buf2[32];
+    state_set_t current, next;
+    state_set_init(&current, buf1, 32);
+    state_set_init(&next, buf2, 32);
 
-        if (n->type == OP_MATCH_LITERAL)
+    state_set_add(&current, start_node, 0);
+    epsilon_closure(&current);
+
+    for (const char *p = text; *p; p++)
+    {
+        char c = *p;
+        next.count = 0;
+
+        for (size_t i = 0; i < current.count; i++)
         {
-            if (n->data.literal[s.lit_offset] == c)
+            nfa_state_t s = current.states[i];
+            rbcglob_node_t *n = s.node;
+            if (!n)
+                continue;
+
+            if (n->type == OP_MATCH_LITERAL)
             {
-                if (n->data.literal[s.lit_offset + 1] == '\0')
+                if (n->data.literal[s.lit_offset] == c)
                 {
-                    state_set_add(next_set, n->next, 0, s.is_literal_match);
-                }
-                else
-                {
-                    state_set_add(next_set, n, s.lit_offset + 1, s.is_literal_match);
-                }
-            }
-        }
-        else if (n->type == OP_MATCH_DOT)
-        {
-            if (c == '.')
-            {
-                state_set_add(next_set, n->next, 0, s.is_literal_match);
-            }
-        }
-        else if (n->type == OP_MATCH_DOTDOT)
-        {
-            if (c == '.')
-            {
-                if (s.lit_offset == 0)
-                {
-                    state_set_add(next_set, n, 1, s.is_literal_match);
-                }
-                else if (s.lit_offset == 1)
-                {
-                    state_set_add(next_set, n->next, 0, s.is_literal_match);
+                    if (n->data.literal[s.lit_offset + 1] == '\0')
+                        state_set_add(&next, n->next, 0);
+                    else
+                        state_set_add(&next, n, s.lit_offset + 1);
                 }
             }
-        }
-        else if (allow_wildcard)
-        {
-            if (n->type == OP_MATCH_STAR)
+            else if (n->type == OP_MATCH_STAR)
             {
-                state_set_add(next_set, n, 0, false);
+                state_set_add(&next, n, 0);
             }
             else if (n->type == OP_MATCH_QMARK)
             {
-                state_set_add(next_set, n->next, 0, false);
+                state_set_add(&next, n->next, 0);
             }
             else if (n->type == OP_MATCH_CLASS)
             {
@@ -165,42 +151,38 @@ static void step_char(state_set_t *current, char c, bool allow_wildcard, state_s
                 bool match = (n->data.char_class.map[uc / 8] & (1 << (uc % 8))) != 0;
                 if (n->data.char_class.is_negated)
                     match = !match;
-
                 if (match)
-                    state_set_add(next_set, n->next, 0, false);
+                    state_set_add(&next, n->next, 0);
             }
         }
+
+        state_set_t temp = current;
+        current = next;
+        next = temp;
+
+        epsilon_closure(&current);
+        if (current.count == 0)
+            break;
     }
-}
 
-// --- Execution ---
-
-static char *path_join(const char *dir, const char *file)
-{
-    size_t dlen = dir ? strlen(dir) : 0;
-    size_t flen = strlen(file);
-
-    char *res = malloc(dlen + flen + 2);
-    if (!res)
-        return NULL;
-    if (dlen > 0)
+    bool matched = false;
+    for (size_t i = 0; i < current.count; i++)
     {
-        strcpy(res, dir);
-        if (dir[dlen - 1] != '/')
-            strcat(res, "/");
-        strcat(res, file);
+        if (current.states[i].node && current.states[i].node->type == OP_ACCEPT)
+        {
+            matched = true;
+            break;
+        }
     }
-    else
-    {
-        strcpy(res, file);
-    }
-    return res;
+
+    state_set_free(&current);
+    state_set_free(&next);
+    return matched;
 }
 
-static int compare_entries(const void *a, const void *b)
-{
-    return rbcglob_compare_paths(*(const char **)a, *(const char **)b);
-}
+/******************************************************************************
+ * Segment Executor
+ ******************************************************************************/
 
 typedef struct
 {
@@ -210,340 +192,264 @@ typedef struct
     bool sort;
 } exec_ctx_t;
 
-static void execute_recursive(state_set_t *current_states, const char *path, exec_ctx_t *ctx, int depth, bool parent_wild)
+typedef struct segment_stack_s
 {
-    // Limit recursion depth
-    if (depth > 100)
-        return;
+    rbcglob_segment_t *seg;
+    struct segment_stack_s *next;
+} segment_stack_t;
 
-    // Identify ** states before expanding
-    bool has_globstar = false;
-    for (size_t i = 0; i < current_states->count; i++)
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
+
+// Helper to append to buffer
+static size_t buf_append(char *buf, size_t *current_len, const char *str)
+{
+    size_t len = strlen(str);
+    if (*current_len + len + 1 >= PATH_MAX)
+        return 0; // Overflow check
+
+    // Add separator if needed
+    size_t added = 0;
+    if (*current_len > 0 && buf[*current_len - 1] != '/')
     {
-        if (current_states->states[i].node &&
-            current_states->states[i].node->type == OP_MATCH_STAR2)
-        {
-            has_globstar = true;
-            break;
-        }
+        if (*current_len + 1 >= PATH_MAX)
+            return 0;
+        buf[(*current_len)++] = '/';
+        added++;
     }
 
-    // Expand ** for matching in current directory (can match 0 directories)
-    state_set_t expanded;
-    state_set_init(&expanded);
-
-    for (size_t i = 0; i < current_states->count; i++)
-    {
-        nfa_state_t s = current_states->states[i];
-        state_set_add(&expanded, s.node, s.lit_offset, s.is_literal_match);
-
-        // If it's **, also add the next state (** matches 0 directories)
-        if (s.node && s.node->type == OP_MATCH_STAR2)
-        {
-            state_set_add(&expanded, s.node->next, 0, s.is_literal_match);
-        }
-    }
-
-    // Compute epsilon closure
-    epsilon_closure(&expanded);
-
-    // Check for accept state - but don't match the base directory itself
-    bool match_accept = false;
-    for (size_t i = 0; i < expanded.count; i++)
-    {
-        if (expanded.states[i].node && expanded.states[i].node->type == OP_ACCEPT)
-        {
-            match_accept = true;
-            break;
-        }
-    }
-
-    // Only report match if it's not just the base directory
-    if (match_accept && path && *path)
-    {
-        // Check if this is a directory - only match if pattern ends with explicit directory match
-        struct stat st;
-        bool is_match_dir = (stat(path, &st) == 0 && S_ISDIR(st.st_mode));
-
-        // For directories, only match if we're at a terminal state after matching directory name
-        if (!is_match_dir)
-        {
-            ctx->cb(path, ctx->ud);
-        }
-    }
-
-    // Open directory
-    DIR *d = opendir(path && *path ? path : ".");
-    if (!d)
-    {
-        state_set_free(&expanded);
-        return;
-    }
-
-    // Read entries
-    char **entries = NULL;
-    size_t count = 0, cap = 0;
-    struct dirent *de;
-
-    // Determine if we should allow dotfiles
-    // Rule: Allow if DOTMATCH flag OR if we have ONLY a literal starting with '.' (no wildcards before it)
-    bool allow_dotfiles = (ctx->flags & RBCGLOB_FNM_DOTMATCH);
-
-    if (!allow_dotfiles)
-    {
-        // Check if the FIRST matching node in expanded states is a literal starting with '.'
-        for (size_t k = 0; k < expanded.count; k++)
-        {
-            rbcglob_node_t *node = expanded.states[k].node;
-            if (!node)
-                continue;
-
-            // Skip control flow nodes
-            if (node->type == OP_JUMP || node->type == OP_FORK || node->type == OP_ACCEPT ||
-                node->type == OP_MATCH_STAR2)
-                continue;
-
-            // If we hit a wildcard first, don't allow dotfiles
-            if (node->type == OP_MATCH_STAR || node->type == OP_MATCH_QMARK || node->type == OP_MATCH_CLASS)
-            {
-                break;
-            }
-
-            // If we hit a literal, check if it starts with '.'
-            if (node->type == OP_MATCH_LITERAL)
-            {
-                if (node->data.literal && node->data.literal[0] == '.')
-                {
-                    allow_dotfiles = true;
-                }
-                break;
-            }
-            // Explicit dot/dotdot
-            if (node->type == OP_MATCH_DOT || node->type == OP_MATCH_DOTDOT)
-            {
-                allow_dotfiles = true;
-                break;
-            }
-        }
-    }
-
-    while ((de = readdir(d)) != NULL)
-    {
-        bool is_hidden = (de->d_name[0] == '.');
-
-        if (is_hidden && !allow_dotfiles)
-            continue;
-
-        if (count == cap)
-        {
-            cap = cap ? cap * 2 : 16;
-            entries = realloc(entries, cap * sizeof(char *));
-        }
-        entries[count++] = strdup(de->d_name);
-    }
-    closedir(d);
-
-    // Always sort directory entries during traversal for deterministic behavior.
-    // Ruby's Dir.glob behavior with sort: false is technically filesystem dependent.
-    // However, for consistency and to avoid flaky tests due to readdir order,
-    // we sort the entries at each level.
-    // Note: This might make "sort: false" actually sorted in our implementation,
-    // which is compliant since "unsorted" implies "no specific order guaranteed".
-    if (ctx->sort)
-        qsort(entries, count, sizeof(char *), compare_entries);
-
-    for (size_t i = 0; i < count; i++)
-    {
-        char *entry = entries[i];
-        bool is_dot = !strcmp(entry, ".");
-        bool is_dotdot = !strcmp(entry, "..");
-
-        if ((is_dot || is_dotdot) && parent_wild)
-            continue;
-
-        char *next_path = path_join(path, entry);
-        struct stat st;
-        bool is_dir = (stat(next_path, &st) == 0 && S_ISDIR(st.st_mode));
-
-        // Prepare for matches
-        bool entry_match = false;
-        bool entry_was_fully_literal = false;
-        state_set_t passed_nodes;
-        state_set_init(&passed_nodes);
-
-        // Unified Sequence Matching for all files (including . and ..)
-        {
-            state_set_t active, next_step;
-            state_set_init(&active);
-            state_set_init(&next_step);
-
-            // Import expanded states
-            for (size_t k = 0; k < expanded.count; k++)
-            {
-                rbcglob_node_t *n = expanded.states[k].node;
-                if (!n)
-                    continue;
-
-                // Skip non-consuming control nodes.
-                if (n->type == OP_FORK || n->type == OP_JUMP)
-                    continue;
-
-                // SPECIAL FILTER for . and ..
-                // Normally . and .. are NOT matched by *, ?, [..]
-                // Exception: FNM_DOTMATCH allows . to be matched by wildcards
-                // BUT .. is NEVER matched by wildcards even with DOTMATCH (in typical Ruby/Shell usage)
-                if (is_dot || is_dotdot)
-                {
-                    bool is_wildcard = (n->type == OP_MATCH_STAR ||
-                                        n->type == OP_MATCH_STAR2 ||
-                                        n->type == OP_MATCH_QMARK ||
-                                        n->type == OP_MATCH_CLASS);
-
-                    if (is_wildcard)
-                    {
-                        if (is_dot && (ctx->flags & RBCGLOB_FNM_DOTMATCH))
-                        {
-                            // Allow match
-                        }
-                        else
-                        {
-                            // Filter out
-                            continue;
-                        }
-                    }
-                }
-
-                state_set_add(&active, n, expanded.states[k].lit_offset, expanded.states[k].is_literal_match);
-            }
-
-            // NOTE: Do NOT call epsilon_closure(&active) here.
-            // We just constructed 'active' from 'expanded' which was ALREADY closed.
-            // If we call closure again, it might traverse from a consuming node's epsilon transition
-            // (like STAR -> next) back to a node we wanted to filter out (if graph loop? unlikley)
-            // OR more importantly, if we had kept FORK nodes, it would re-expand them.
-            // Since we filtered FORK/JUMP, closure wouldn't help unless consuming nodes have epsilons.
-            // Consuming nodes with epsilons (like STAR) have their targets in 'expanded' already.
-
-            // Step through entry name
-            bool possible = true;
-            for (char *p = entry; *p; p++)
-            {
-                if (active.count == 0)
-                {
-                    possible = false;
-                    break;
-                }
-
-                bool allow_wildcard = true;
-                // Standard dotfile rule: if strictly starting with '.', wildcard not allowed unless DOTMATCH
-                if (p == entry && *p == '.' && !(ctx->flags & RBCGLOB_FNM_DOTMATCH))
-                {
-                    allow_wildcard = false;
-                }
-
-                // .. should NEVER be matched by wildcards (even with DOTMATCH).
-                // It can only be matched by literal ".." or DOTDOT node.
-                if (is_dotdot)
-                {
-                    allow_wildcard = false;
-                }
-
-                step_char(&active, *p, allow_wildcard, &next_step);
-                state_set_free(&active);
-                active = next_step;
-                state_set_init(&next_step);
-                epsilon_closure(&active);
-            }
-
-            // Check if we reached a separator or accept state
-            if (possible && active.count > 0)
-            {
-                for (size_t k = 0; k < active.count; k++)
-                {
-                    nfa_state_t s = active.states[k];
-                    rbcglob_node_t *n = s.node;
-                    if (!n)
-                        continue;
-
-                    // If we reached ACCEPT, it's a match
-                    if (n->type == OP_ACCEPT)
-                    {
-                        entry_match = true;
-                        if (s.is_literal_match)
-                            entry_was_fully_literal = true;
-                    }
-                    // If we reached a SEP, we cross it
-                    else if (n->type == OP_MATCH_SEP)
-                    {
-                        state_set_add(&passed_nodes, n->next, 0, true);
-                        if (s.is_literal_match)
-                            entry_was_fully_literal = true;
-                    }
-                }
-            }
-            state_set_free(&active);
-            state_set_free(&next_step); // Safety
-        }
-
-        // Report match
-        if (entry_match)
-        {
-            ctx->cb(next_path, ctx->ud);
-        }
-
-        // For directories with **, always descend (micromatch-style)
-        // BUT NEVER descend into . or .. via globstar to avoid infinite loops
-        bool is_dot_dir = !strcmp(entry, ".") || !strcmp(entry, "..");
-        if (is_dir && has_globstar && !is_dot_dir)
-        {
-            for (size_t k = 0; k < current_states->count; k++)
-            {
-                rbcglob_node_t *n = current_states->states[k].node;
-                if (n && n->type == OP_MATCH_STAR2)
-                {
-                    state_set_add(&passed_nodes, n, 0, false);
-                }
-            }
-        }
-
-        // Recurse into subdirectory
-        if (is_dir && passed_nodes.count > 0)
-        {
-            execute_recursive(&passed_nodes, next_path, ctx, depth + 1, !entry_was_fully_literal);
-        }
-
-        state_set_free(&passed_nodes);
-        free(next_path);
-    }
-
-    for (size_t i = 0; i < count; i++)
-        free(entries[i]);
-    free(entries);
-    state_set_free(&expanded);
+    strcpy(buf + *current_len, str);
+    *current_len += len;
+    return added + len;
 }
 
-void rbcglob_nfa_execute(
-    rbcglob_node_t *root,
+static void segment_run_recursive(char *path_buf, size_t *path_len, rbcglob_segment_t *seg, segment_stack_t *stack, exec_ctx_t *ctx, bool from_wildcard);
+
+static void run_next_recursive(char *path_buf, size_t *path_len, rbcglob_segment_t *current_seg, segment_stack_t *stack, exec_ctx_t *ctx, bool from_wildcard)
+{
+    if (current_seg && current_seg->next)
+    {
+        segment_run_recursive(path_buf, path_len, current_seg->next, stack, ctx, from_wildcard);
+    }
+    else if (stack)
+    {
+        segment_run_recursive(path_buf, path_len, stack->seg, stack->next, ctx, from_wildcard);
+    }
+    else
+    {
+        ctx->cb(path_buf, ctx->ud);
+    }
+}
+
+static void segment_run_recursive(char *path_buf, size_t *path_len, rbcglob_segment_t *seg, segment_stack_t *stack, exec_ctx_t *ctx, bool from_wildcard)
+{
+    if (!seg)
+    {
+        run_next_recursive(path_buf, path_len, NULL, stack, ctx, from_wildcard);
+        return;
+    }
+
+    if (seg->type == SEG_LITERAL)
+    {
+        size_t original_len = *path_len;
+        if (buf_append(path_buf, path_len, seg->data.literal) == 0)
+            return; // Error or overflow
+
+        struct stat st;
+        if (stat(path_buf, &st) == 0)
+        {
+            bool is_dir = S_ISDIR(st.st_mode);
+            // Check if we need to continue
+            bool has_more = (seg->next != NULL) || (stack != NULL && stack->seg != NULL);
+
+            if (!has_more || is_dir)
+            {
+                run_next_recursive(path_buf, path_len, seg, stack, ctx, false);
+            }
+        }
+
+        // Restore
+        *path_len = original_len;
+        path_buf[*path_len] = '\0';
+    }
+    else if (seg->type == SEG_WILDCARD || seg->type == SEG_RECURSIVE)
+    {
+        // Prepare to read current directory
+        const char *open_path = (*path_len == 0) ? "." : path_buf;
+        DIR *d = opendir(open_path);
+        if (!d)
+            return;
+
+        struct dirent *entry;
+        while ((entry = readdir(d)) != NULL)
+        {
+            const char *name = entry->d_name;
+            if (strcmp(name, "..") == 0)
+                continue;
+            if (strcmp(name, ".") == 0)
+            {
+                if (seg->type == SEG_RECURSIVE)
+                    continue;
+                if (from_wildcard)
+                    continue;
+            }
+
+            // Check d_type to avoid unnecessary recursion or stats
+            unsigned char dtype = entry->d_type;
+            bool is_dir_known = (dtype == DT_DIR);
+            bool is_not_dir_known = (dtype != DT_DIR && dtype != DT_UNKNOWN && dtype != DT_LNK);
+
+            // If next segment requires a directory (and strictly so), we can skip non-dirs.
+            // But next segment might be NULL (file match).
+            // Logic:
+            // - If seg->type is SEG_RECURSIVE (doublestar), we ONLY recurse into directories.
+            if (seg->type == SEG_RECURSIVE)
+            {
+                if (is_not_dir_known)
+                    continue; // Skip files for recursive descent
+                // Note: Symlinks to dirs need to serve as dirs? valid glob usually follows symlinks in recursion?
+                // Ruby's Dir.glob defaults to NOT following symlinks for **?
+                // Actually Ruby Dir.glob follows symlinks if they are explicitly listed but ** recursion usually checks is_directory.
+            }
+
+            bool is_hidden = (name[0] == '.');
+            if (is_hidden && !(ctx->flags & RBCGLOB_FNM_DOTMATCH))
+            {
+                if (seg->type == SEG_WILDCARD)
+                {
+                    if (seg->data.glob.original_pattern[0] != '.')
+                    {
+                        continue;
+                    }
+                }
+                else
+                {
+                    continue;
+                }
+            }
+
+            if (seg->type == SEG_WILDCARD)
+            {
+                if (seg->data.glob.must_start)
+                {
+                    if (strncmp(name, seg->data.glob.must_start, seg->data.glob.start_len) != 0)
+                        continue;
+                }
+                if (seg->data.glob.must_end)
+                {
+                    size_t name_len = strlen(name);
+                    if (name_len < seg->data.glob.end_len)
+                        continue;
+                    if (strcmp(name + name_len - seg->data.glob.end_len, seg->data.glob.must_end) != 0)
+                        continue;
+                }
+
+                if (local_nfa_match(name, seg->data.glob.local_nfa_root))
+                {
+                    size_t original_len = *path_len;
+                    if (buf_append(path_buf, path_len, name) > 0)
+                    {
+                        run_next_recursive(path_buf, path_len, seg, stack, ctx, true);
+
+                        // Restore
+                        *path_len = original_len;
+                        path_buf[*path_len] = '\0';
+                    }
+                }
+            }
+            else if (seg->type == SEG_RECURSIVE)
+            {
+                // Try recursive step
+                size_t original_len = *path_len;
+                if (buf_append(path_buf, path_len, name) > 0)
+                {
+                    bool can_recurse = is_dir_known;
+                    if (!can_recurse && dtype == DT_UNKNOWN)
+                    {
+                        struct stat st;
+                        if (lstat(path_buf, &st) == 0 && S_ISDIR(st.st_mode))
+                        { // Use lstat to avoid following symlinks in ** recursion?
+                            can_recurse = true;
+                        }
+                    }
+                    else if (!can_recurse && dtype == DT_LNK)
+                    {
+                        // For recursive **, usually we do NOT follow symlinks unless FNM_EXTMATCH?
+                        // Ruby documentation: "** matches directories recursively."
+                        // It usually follows physical structure.
+                        // But commonly ** does not traverse symlinks to avoid infinite loops.
+                        // Let's check with stat (follows link) or lstat?
+                        // Ruby File.directory? follows links.
+                        struct stat st;
+                        if (stat(path_buf, &st) == 0 && S_ISDIR(st.st_mode))
+                        {
+                            // Check for infinite loop?
+                            // For now, let's allow it to match behavior of simple recursion
+                            can_recurse = true;
+                        }
+                    }
+                    else if (dtype == DT_DIR)
+                    {
+                        can_recurse = true;
+                    }
+
+                    if (can_recurse)
+                    {
+                        segment_run_recursive(path_buf, path_len, seg, stack, ctx, true);
+                    }
+
+                    // Restore
+                    *path_len = original_len;
+                    path_buf[*path_len] = '\0';
+                }
+            }
+        }
+        closedir(d);
+
+        if (seg->type == SEG_RECURSIVE)
+        {
+            run_next_recursive(path_buf, path_len, seg, stack, ctx, from_wildcard);
+        }
+    }
+    else if (seg->type == SEG_BRANCH)
+    {
+        rbcglob_segment_t *alt = seg->data.branch.head;
+        segment_stack_t new_frame = {seg->next, stack};
+
+        while (alt)
+        {
+            segment_run_recursive(path_buf, path_len, alt, &new_frame, ctx, from_wildcard);
+            alt = alt->next_alt;
+        }
+    }
+}
+
+void rbcglob_execute_segments(
+    rbcglob_segment_t *root,
     const char *base_path,
     unsigned flags,
     bool sort,
     rbcglob_match_callback_t callback,
     void *user_data)
 {
-    state_set_t initial;
-    state_set_init(&initial);
-    state_set_add(&initial, root, 0, true);
-
     exec_ctx_t ctx = {callback, user_data, flags, sort};
 
-    // fprintf(stderr, "[DEBUG] rbcglob_nfa_execute base_path='%s'\n", base_path ? base_path : "NULL");
-    // execute_recursive handles NULL path by treating it as "." for opendir,
-    // but preserving NULL for path construction (path_join) to avoid "./" prefixes.
-    const char *start_path = base_path;
-    if (start_path && strcmp(start_path, ".") == 0)
-        start_path = NULL; // effectively empty prefix
+    char *path_buf = malloc(PATH_MAX);
+    if (!path_buf)
+        return;
 
-    execute_recursive(&initial, start_path, &ctx, 0, false);
+    size_t path_len = 0;
+    path_buf[0] = '\0';
 
-    state_set_free(&initial);
+    if (base_path && *base_path)
+    {
+        strncpy(path_buf, base_path, PATH_MAX - 1);
+        path_buf[PATH_MAX - 1] = '\0';
+        path_len = strlen(path_buf);
+    }
+
+    segment_run_recursive(path_buf, &path_len, root, NULL, &ctx, false);
+
+    free(path_buf);
 }

@@ -1,102 +1,129 @@
-#include <rbcglob/rbcglob.h>
-#include <rbcglob/internal/file.h>
-#include <rbcglob/internal/graph.h>
-#include <rbcglob/internal/traverse.h>
-#include <rbcglob/internal/utils.h>
-#include <stdlib.h>
 #include <string.h>
+#include <stdlib.h>
+#include <stdbool.h>
 #include <ctype.h>
+#include <stdio.h>
 
-static bool nfa_match_recursive(const rbcglob_node_t *node, const char *str, unsigned flags, bool start_of_component);
+#include "rbcglob/rbcglob.h"
+#include "rbcglob/internal/graph.h"
+#include "rbcglob/internal/utils.h"
 
-/* Helper to determine if we update start_of_component logic */
 static bool is_separator(char c)
 {
     return c == '/';
 }
 
-static bool nfa_match_recursive(const rbcglob_node_t *node, const char *str, unsigned flags, bool start_of_component)
+static bool nfa_match_recursive(rbcglob_node_t *node, const char *str, unsigned flags, bool start_of_component)
 {
     if (!node)
         return false;
 
-    // End of graph?
     if (node->type == OP_ACCEPT)
+    {
         return *str == '\0';
+    }
 
     switch (node->type)
     {
     case OP_MATCH_LITERAL:
     {
-        size_t len = strlen(node->data.literal);
-        if (flags & RBCGLOB_FNM_CASEFOLD)
-        {
-            if (strncasecmp(str, node->data.literal, len) != 0)
-                return false;
-        }
-        else
-        {
-            if (strncmp(str, node->data.literal, len) != 0)
-                return false;
-        }
+        const char *lit = node->data.literal;
+        size_t lit_len = strlen(lit);
+        if (lit_len == 0)
+            return nfa_match_recursive(node->next, str, flags, start_of_component);
 
-        // Update start_of_component for next node
-        // Only if FNM_PATHNAME is set do we care about components resetting?
-        // Actually FNM_DOTMATCH check usually applies at path parts.
-        // If we matched a literal '/', next is start of component.
-        bool next_start = false;
-        if (flags & RBCGLOB_FNM_PATHNAME)
+        // Check if string matches literal
+        for (size_t i = 0; i < lit_len; i++)
         {
-            if (len > 0 && is_separator(node->data.literal[len - 1]))
+            if (*str == '\0')
+                return false;
+
+            char c_str = *str;
+            char c_lit = lit[i];
+
+            if (is_separator(c_str))
             {
-                next_start = true;
+                // If we hit a separator, update start_of_component for remainder?
+                // But literal matching implies continuous sequence.
+                // If LITERAL is "a/b", we consume slash.
+                // However, the rule for leading dot check only applies at start of component.
+                // If LITERAL starts with '.', we must check if allowed.
+                if (i == 0 && start_of_component && c_lit == '.' && !(flags & RBCGLOB_FNM_DOTMATCH))
+                    return false;
             }
-        }
-        // If literal did not end in /, next_start is false (unless we are still at start?? no)
-        // Actually, if literal consumes "foo/", next is start.
-        // If literal is ".", next is NOT start.
+            else if (i == 0 && start_of_component && c_lit == '.' && !(flags & RBCGLOB_FNM_DOTMATCH))
+            {
+                return false;
+            }
 
-        return nfa_match_recursive(node->next, str + len, flags, next_start);
+            if (flags & RBCGLOB_FNM_CASEFOLD)
+            {
+                if (tolower((unsigned char)c_str) != tolower((unsigned char)c_lit))
+                    return false;
+            }
+            else
+            {
+                if (c_str != c_lit)
+                    return false;
+            }
+            str++;
+        }
+
+        // After matching literal "foo/", the next component starts if literal ended with /
+        bool new_start = false;
+        if (lit_len > 0 && is_separator(lit[lit_len - 1]))
+            new_start = true;
+
+        // If literal did NOT contain slash, we carry over 'false' (because we are in mid-component)
+        // Unless we just started? No, if we consumed chars, we are not at start anymore.
+
+        return nfa_match_recursive(node->next, str, flags, new_start);
     }
     case OP_MATCH_QMARK:
     {
         if (*str == '\0')
             return false;
-        if (flags & RBCGLOB_FNM_PATHNAME)
-        {
-            if (*str == '/')
-                return false;
-        }
 
         // Dot check
         if (!(flags & RBCGLOB_FNM_DOTMATCH) && start_of_component && *str == '.')
-        {
             return false;
-        }
+
+        // Separator check
+        if ((flags & RBCGLOB_FNM_PATHNAME) && is_separator(*str))
+            return false;
 
         return nfa_match_recursive(node->next, str + 1, flags, false);
     }
     case OP_MATCH_STAR:
     {
-        // Check leading dot constraint for the star itself
-        // Star can match empty string always.
-        // Star can match more characters ONLY IF valid.
+        // Dot check at start
+        if (!(flags & RBCGLOB_FNM_DOTMATCH) && start_of_component && *str == '.')
+            return false;
 
-        // 1. Try match 0 chars (always allowed, does not consume dot)
+        // * matches 0 or more chars
+        // 1. Try match 0 chars
+        if (nfa_match_recursive(node->next, str, flags, false)) // false because if we consume 0, next node continues?
+            // Wait, if we consume 0, next node sees the SAME string.
+            // So start_of_component should be preserved?
+            // Actually, if we consume 0, we are still at start_of_component? Yes.
+            // But if we backtrack, we might loop.
+            // Let's rely on iteration below.
+            return true;
+
+        // 0-match checked above (implied by loop start? No, loop consumes 1..N)
+        // Wait, loop below starts consuming 0? No, pointer p=str. Loop checks *p.
+
+        // Standard backtracking implementation for *
+        // Try consuming 0, 1, 2...
+
+        const char *p = str;
+        // Try 0 match first:
+        // Pass 'false' for start_of_component?
+        // If * consumes nothing, the next node sees 'str' at 'start_of_component'.
+        // So actually we should call:
         if (nfa_match_recursive(node->next, str, flags, start_of_component))
             return true;
 
-        // 2. Prepare to consume chars
-        if (*str == '\0')
-            return false;
-
-        // If leading dot constraint applies, star cannot consume the first char if it is '.'
-        if (!(flags & RBCGLOB_FNM_DOTMATCH) && start_of_component && *str == '.')
-        {
-            return false;
-        }
-
-        const char *p = str;
         while (*p)
         {
             // If PATHNAME, stop at /
@@ -105,58 +132,20 @@ static bool nfa_match_recursive(const rbcglob_node_t *node, const char *str, uns
                 break;
             }
 
-            p++; // Consume one char
-
-            // After consuming at least one char, we are definitely NOT at start of component relative to the STAR's context.
-            // But we pass 'false' to next node?
-            // If STAR consumes "foo", next node sees what follows.
-            // However, if we just consumed, the next state is checked against p.
-            // Does STAR consumption change start_of_component for the *next* node?
-            // No, start_of_component indicates if *str* (current pos) is at start.
-            // If we advance p, recursing with node->next calls with new string position.
-            // If we consumed chars, the next node is NOT at start of component (unless we consumed '/')
-            // But STAR (OP_MATCH_STAR) does not match '/' if PATHNAME is set.
-            // If PATHNAME is NOT set, STAR can consume '/'.
-
-            bool next_start = false;
-            if (!(flags & RBCGLOB_FNM_PATHNAME))
-            {
-                // If not pathname, star can consume anything.
-                // Does it reset component start?
-                // If we invoke next node, we are inside a string.
-                // Usually FNM_DOTMATCH check is only strictly at the beginning of the filename or after /.
-            }
-            // Logic: if we advanced p, we are not at start of component for the remainder?
-            // Unless we crossed a separator.
-
-            if (nfa_match_recursive(node->next, p, flags, next_start))
+            p++;
+            // Consumed one or more chars. Not start of component anymore.
+            if (nfa_match_recursive(node->next, p, flags, false))
                 return true;
         }
         return false;
     }
-    case OP_MATCH_STAR2: // **
+    case OP_MATCH_STAR2:
     {
-        // ** matches everything
-        // 1. Try 0
         if (nfa_match_recursive(node->next, str, flags, start_of_component))
             return true;
 
-        if (*str == '\0')
-            return false;
-
-        // Leading dot check for **?
-        // Ruby: File.fnmatch('**', '.a', 0) => true (Wait, ** matches dotfiles?)
-        // Docs: "** matches recursively".
-        // Ruby check: `File.fnmatch('**', '.a')` -> true in generic sense?
-        // Actually `**` usually implies `*` logic but flexible.
-        // If `**` starts with `.`, does it match?
-        // `Dir.glob` with `**` does NOT match dotfiles unless DOTMATCH.
-        // So I should enforce dot check here too.
-
         if (!(flags & RBCGLOB_FNM_DOTMATCH) && start_of_component && *str == '.')
         {
-            // Cannot consume leading dot?
-            // Actually `**` includes `*`.
             return false;
         }
 
@@ -164,10 +153,9 @@ static bool nfa_match_recursive(const rbcglob_node_t *node, const char *str, uns
         while (*p)
         {
             p++;
-            // Determine if p is now start of component?
-            // If we crossed '/', yes.
             bool is_start = false;
-            if ((flags & RBCGLOB_FNM_PATHNAME) && p > str && is_separator(*(p - 1)))
+            // If we just consumed '/', next is start
+            if ((flags & RBCGLOB_FNM_PATHNAME) && is_separator(*(p - 1)))
             {
                 is_start = true;
             }
@@ -182,23 +170,10 @@ static bool nfa_match_recursive(const rbcglob_node_t *node, const char *str, uns
         if (*str == '\0')
             return false;
 
-        // Dot check
         if (!(flags & RBCGLOB_FNM_DOTMATCH) && start_of_component && *str == '.')
             return false;
 
         unsigned char uc = (unsigned char)*str;
-        // CASEFOLD handling for class map lookup?
-        // If we want correct case folding, we should either fold the map or fold the char.
-        // Assuming map is case-sensitive, and if CASEFOLD is set, we might need to check both lower and upper?
-        // Or compiler handles casefold? Compiler doesn't know flags.
-        // So runtime must handle.
-        // If FNM_CASEFOLD, check both tolower(uc) and toupper(uc) in map?
-
-        // Simplified Logic: Just check char against map.
-        // NOTE: Character range parsing in compiler creates CASE SENSITIVE map currently.
-        // To support FNM_CASEFOLD properly with char class, compiler or executor needs update.
-        // For now, let's fix the structural match.
-
         bool match = (node->data.char_class.map[uc / 8] & (1 << (uc % 8))) != 0;
 
         if (flags & RBCGLOB_FNM_CASEFOLD)
@@ -242,20 +217,18 @@ bool rbcglob_fnmatch(const char *pattern, const char *string, unsigned flags)
     if (!pattern || !string)
         return false;
 
-    rbcglob_ctx_t ctx;
-    rbcglob_ctx_init(&ctx);
+    rbcglob_arena_t arena;
+    rbcglob_arena_init(&arena, 4096);
 
-    // Compile pattern
-    rbcglob_node_t *graph = rbcglob_nfa_compile(&ctx.arena, pattern);
+    rbcglob_node_t *graph = rbcglob_compile_nfa_fragment(&arena, pattern);
     if (!graph)
     {
-        rbcglob_ctx_free(&ctx);
+        rbcglob_arena_destroy(&arena);
         return false;
     }
 
-    // Initial start_of_component is true
     bool match = nfa_match_recursive(graph, string, flags, true);
 
-    rbcglob_ctx_free(&ctx);
+    rbcglob_arena_destroy(&arena);
     return match;
 }

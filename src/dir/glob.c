@@ -10,7 +10,7 @@
 struct rbcglob_compiled_glob_s
 {
     rbcglob_ctx_t *ctx;
-    rbcglob_node_t *graph;
+    rbcglob_segment_t *graph;
     unsigned flags; /* Store flags during compilation if needed */
 };
 
@@ -67,7 +67,7 @@ rbcglob_compiled_glob_t *rbcglob_compile_glob(const char *pattern, unsigned flag
     rbcglob_ctx_init(cg->ctx);
     cg->flags = flags;
 
-    cg->graph = rbcglob_nfa_compile(&cg->ctx->arena, pattern);
+    cg->graph = rbcglob_compile_segments(&cg->ctx->arena, pattern);
 
     if (!cg->graph)
     {
@@ -105,21 +105,14 @@ bool rbcglob_dirglob_compiled(const rbcglob_compiled_glob_t *cg, const char *bas
     rbcglob_results_init(&results, run_ctx);
 
     callback_ctx_t cb_ctx;
-    // Special handling for ".": treat it as empty base for stripping purposes.
-    // If base is ".", executor treats it as NULL/current dir, so generated paths
-    // don't have "." prefix unless matched. Thus we shouldn't strip it.
-    if (base && strcmp(base, ".") == 0)
-    {
-        cb_ctx.base_strip = NULL;
-        cb_ctx.base_len = 0;
-    }
-    else
-    {
-        cb_ctx.base_strip = base;
-        cb_ctx.base_len = base ? strlen(base) : 0;
-    }
+    cb_ctx.results = &results;
 
-    rbcglob_nfa_execute(cg->graph, base, cg->flags, sort, nfa_match_callback, &cb_ctx);
+    // Always set base_strip. Even for ".", we want to strip logical prefix "./"
+    // which is now produced by executor.
+    cb_ctx.base_strip = base;
+    cb_ctx.base_len = base ? strlen(base) : 0;
+
+    rbcglob_execute_segments(cg->graph, base, cg->flags, sort, nfa_match_callback, &cb_ctx);
 
     if (sort)
     {
@@ -178,25 +171,17 @@ bool rbcglob_dirglob(const char **patterns, size_t npatterns, unsigned flags,
     callback_ctx_t cb_ctx;
     cb_ctx.results = &results;
 
-    if (base && strcmp(base, ".") == 0)
-    {
-        cb_ctx.base_strip = NULL;
-        cb_ctx.base_len = 0;
-    }
-    else
-    {
-        cb_ctx.base_strip = base;
-        cb_ctx.base_len = base ? strlen(base) : 0;
-    }
+    cb_ctx.base_strip = base;
+    cb_ctx.base_len = base ? strlen(base) : 0;
 
     for (size_t i = 0; i < npatterns; i++)
     {
         if (!patterns[i])
             continue;
-        rbcglob_node_t *graph = rbcglob_nfa_compile(&ctx->arena, patterns[i]);
+        rbcglob_segment_t *graph = rbcglob_compile_segments(&ctx->arena, patterns[i]);
         if (graph)
         {
-            rbcglob_nfa_execute(graph, base, flags, sort, nfa_match_callback, &cb_ctx);
+            rbcglob_execute_segments(graph, base, flags, sort, nfa_match_callback, &cb_ctx);
         }
     }
 

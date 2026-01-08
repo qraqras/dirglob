@@ -4,13 +4,17 @@
 #include <ctype.h>
 
 #include "rbcglob/internal/graph.h"
-#include "rbcglob/internal/utils.h" /* For utility functions if needed */
+#include "rbcglob/internal/utils.h"
 
-/* Represents a fragment of the graph with open inputs and outputs */
+/******************************************************************************
+ * Part 1: NFA Fragment Compilation (Character-Level)
+ * Used for SEG_WILDCARD internal matching.
+ ******************************************************************************/
+
 typedef struct
 {
     rbcglob_node_t *start;
-    rbcglob_node_t *tail; /* The node where the next node should be attached */
+    rbcglob_node_t *tail;
 } graph_fragment_t;
 
 typedef struct
@@ -19,11 +23,17 @@ typedef struct
     const char *ptr;
 } compiler_ctx_t;
 
-static graph_fragment_t compile_pattern(compiler_ctx_t *ctx, bool inside_brace);
+static graph_fragment_t compile_nfa_recursive(compiler_ctx_t *ctx, bool inside_brace);
 
-/**
- * @brief Helper to connect a new node to a fragment
- */
+/* Create new node helper */
+rbcglob_node_t *rbcglob_graph_new_node(rbcglob_arena_t *arena, rbcglob_opcode_type_t type)
+{
+    rbcglob_node_t *node = rbcglob_arena_alloc(arena, sizeof(rbcglob_node_t));
+    memset(node, 0, sizeof(rbcglob_node_t));
+    node->type = type;
+    return node;
+}
+
 static void fragment_append(graph_fragment_t *frag, rbcglob_node_t *node)
 {
     if (!frag->start)
@@ -33,28 +43,15 @@ static void fragment_append(graph_fragment_t *frag, rbcglob_node_t *node)
     }
     else
     {
-        frag->tail->next = node; // Link matches
+        frag->tail->next = node;
         frag->tail = node;
     }
 }
 
-/**
- * @brief Create a literal node from a string buffer
- */
 static rbcglob_node_t *make_literal(compiler_ctx_t *ctx, const char *start, size_t len)
 {
     if (len == 0)
         return NULL;
-
-    // Check for special path components . and ..
-    if (len == 1 && start[0] == '.')
-    {
-        return rbcglob_graph_new_node(ctx->arena, OP_MATCH_DOT);
-    }
-    if (len == 2 && start[0] == '.' && start[1] == '.')
-    {
-        return rbcglob_graph_new_node(ctx->arena, OP_MATCH_DOTDOT);
-    }
 
     rbcglob_node_t *node = rbcglob_graph_new_node(ctx->arena, OP_MATCH_LITERAL);
     node->data.literal = rbcglob_arena_alloc(ctx->arena, len + 1);
@@ -63,14 +60,9 @@ static rbcglob_node_t *make_literal(compiler_ctx_t *ctx, const char *start, size
     return node;
 }
 
-/**
- * @brief Parse brace expansion {a,b}
- */
 static void parse_and_fill_class(rbcglob_node_t *node, compiler_ctx_t *ctx)
 {
     const char *p = ctx->ptr;
-    // p points to char after '['
-
     memset(node->data.char_class.map, 0, 32);
     node->data.char_class.is_negated = false;
 
@@ -79,16 +71,13 @@ static void parse_and_fill_class(rbcglob_node_t *node, compiler_ctx_t *ctx)
         ctx->ptr = p;
         return;
     }
-
     if (*p == '^' || *p == '!')
     {
         node->data.char_class.is_negated = true;
         p++;
     }
-
     if (*p == ']')
     {
-        // Special case: []...] matches ']'
         unsigned char c = ']';
         node->data.char_class.map[c / 8] |= (1 << (c % 8));
         p++;
@@ -97,10 +86,10 @@ static void parse_and_fill_class(rbcglob_node_t *node, compiler_ctx_t *ctx)
     while (*p && *p != ']')
     {
         unsigned char c1;
-
-        if (*p == '\\' && p[1])
+        if (*p == '\\')
         {
-            p++;
+            if (p[1])
+                p++;
             c1 = (unsigned char)*p;
             p++;
         }
@@ -110,16 +99,14 @@ static void parse_and_fill_class(rbcglob_node_t *node, compiler_ctx_t *ctx)
             p++;
         }
 
-        // Range check
         if (*p == '-' && p[1] && p[1] != ']')
         {
-            // Potential range
-            p++; // consume '-'
-
+            p++;
             unsigned char c2;
-            if (*p == '\\' && p[1])
+            if (*p == '\\')
             {
-                p++;
+                if (p[1])
+                    p++;
                 c2 = (unsigned char)*p;
                 p++;
             }
@@ -132,18 +119,14 @@ static void parse_and_fill_class(rbcglob_node_t *node, compiler_ctx_t *ctx)
             if (c1 <= c2)
             {
                 for (int i = c1; i <= c2; i++)
-                {
                     node->data.char_class.map[i / 8] |= (1 << (i % 8));
-                }
             }
         }
         else
         {
-            // Single char c1
             node->data.char_class.map[c1 / 8] |= (1 << (c1 % 8));
         }
     }
-
     if (*p == ']')
         p++;
     ctx->ptr = p;
@@ -151,55 +134,21 @@ static void parse_and_fill_class(rbcglob_node_t *node, compiler_ctx_t *ctx)
 
 static graph_fragment_t compile_brace(compiler_ctx_t *ctx)
 {
-    // We assume ctx->ptr starts just after '{'
-
     rbcglob_node_t *merge_node = rbcglob_graph_new_node(ctx->arena, OP_JUMP);
-
-    // The brace generates a chain of FORK nodes.
-    // Fork1 -> Option A -> Jump(Merge)
-    //   |
-    // Fork2 -> Option B -> Jump(Merge)
-    //   |
-    // ...
-
-    // We need to keep track of the start of the fork chain
     rbcglob_node_t *fork_head = NULL;
     rbcglob_node_t *fork_curr = NULL;
 
     while (1)
     {
-        // Parse one alternative
-        graph_fragment_t frag = compile_pattern(ctx, true);
-
-        // Connect option to Merge
-        // Two cases:
-        // 1. Option is empty (e.g. {a,}) -> Fragment start is NULL.
-        // 2. Option is non-empty.
-
+        graph_fragment_t frag = compile_nfa_recursive(ctx, true);
         if (frag.start)
-        {
-            // Traverse to the real tail of the fragment (in case it has internal structure)
-            // But our 'fragment_append' logic maintains 'tail' as the last added node.
-            // Check if tail is valid.
-            rbcglob_node_t *t = frag.tail;
-            // If the fragment ended with something that connects to invalid, we connect it to merge.
-            // Note: If frag has internal JUMPs or FORKs, `tail` should point to the node that continues execution.
-            t->next = merge_node;
-        }
+            frag.tail->next = merge_node;
         else
         {
-            // Empty option: Direct jump to merge?
-            // Actually, we need a node to represent "do nothing then jump".
-            // A JUMP node is exactly that.
             rbcglob_node_t *noop = rbcglob_graph_new_node(ctx->arena, OP_JUMP);
             noop->next = merge_node;
             frag.start = noop;
         }
-
-        // Create a FORK node for this option
-        // Wait, the standard way is:
-        // Node -> NEXT(This Option)
-        //      -> ALT(Next Fork)
 
         if (!fork_head)
         {
@@ -208,12 +157,10 @@ static graph_fragment_t compile_brace(compiler_ctx_t *ctx)
         }
         else
         {
-            // Create a new fork and attach it to previous fork's ALT
             rbcglob_node_t *next_fork = rbcglob_graph_new_node(ctx->arena, OP_FORK);
             fork_curr->data.branch.alt = next_fork;
             fork_curr = next_fork;
         }
-
         fork_curr->data.branch.next = frag.start;
 
         if (*ctx->ptr == '}')
@@ -224,42 +171,21 @@ static graph_fragment_t compile_brace(compiler_ctx_t *ctx)
         else if (*ctx->ptr == ',')
         {
             ctx->ptr++;
-            // Continue loop
         }
         else
         {
-            // Unexpected char or EOF
             break;
         }
     }
-
-    // The last fork's ALT is NULL (or could point to nothing/failure).
-    // In glob {a,b}, we have Fork(a, Fork(b, NULL)).
-    // If we run out of ALTs, we fail that path (backtrack).
-    // But `b` should be executed.
-    // Actually, usually the last option is just linked directly, not via Fork.
-    // Fork(a, b).
-    // If 3 options {a,b,c}: Fork(a, Fork(b, c)).
-
-    // Let's optimize the last fork.
-    // Currently loop creates Fork(Option, NULL).
-    // It should be:
-    // If this is the last option, do NOT create a new fork for it?
-    // OR create Fork(Option, NULL) where NULL means "no more matches".
-    // That works if NFA engine treats NULL alt as "fail/backtrack".
-
-    graph_fragment_t result;
-    result.start = fork_head;
-    result.tail = merge_node;
+    graph_fragment_t result = {fork_head, merge_node};
     return result;
 }
 
-static graph_fragment_t compile_pattern(compiler_ctx_t *ctx, bool inside_brace)
+static graph_fragment_t compile_nfa_recursive(compiler_ctx_t *ctx, bool inside_brace)
 {
-    graph_fragment_t current_frag = {0};
+    graph_fragment_t current_frag = {NULL, NULL};
     const char *literal_start = ctx->ptr;
 
-// Helper to flush literal
 #define FLUSH_LITERAL()                                                                       \
     do                                                                                        \
     {                                                                                         \
@@ -273,121 +199,452 @@ static graph_fragment_t compile_pattern(compiler_ctx_t *ctx, bool inside_brace)
     while (*ctx->ptr)
     {
         char c = *ctx->ptr;
-
         if (inside_brace && (c == ',' || c == '}'))
         {
-            // End of this pattern segment
             FLUSH_LITERAL();
             return current_frag;
         }
-
         if (c == '\\')
         {
             if (ctx->ptr[1])
-                ctx->ptr++; // skip backslash, consume next char as literal
+                ctx->ptr++;
             ctx->ptr++;
             continue;
         }
-
-        if (c == '/')
+        if (c == '*')
         {
             FLUSH_LITERAL();
-            // Create explicit node for separator
-            rbcglob_node_t *sep = rbcglob_graph_new_node(ctx->arena, OP_MATCH_SEP);
-            fragment_append(&current_frag, sep);
-
+            rbcglob_node_t *node;
+            if (ctx->ptr[1] == '*')
+            {
+                node = rbcglob_graph_new_node(ctx->arena, OP_MATCH_STAR);
+                ctx->ptr += 2;
+            }
+            else
+            {
+                node = rbcglob_graph_new_node(ctx->arena, OP_MATCH_STAR);
+                ctx->ptr++;
+            }
+            fragment_append(&current_frag, node);
+            literal_start = ctx->ptr;
+            continue;
+        }
+        if (c == '?')
+        {
+            FLUSH_LITERAL();
+            rbcglob_node_t *node = rbcglob_graph_new_node(ctx->arena, OP_MATCH_QMARK);
             ctx->ptr++;
+            fragment_append(&current_frag, node);
             literal_start = ctx->ptr;
             continue;
         }
-
-        if (c == '*' || c == '?' || c == '[' || c == '{')
+        if (c == '[')
         {
             FLUSH_LITERAL();
-
-            rbcglob_node_t *node = NULL;
-            if (c == '*')
-            {
-                if (ctx->ptr[1] == '*')
-                {
-                    node = rbcglob_graph_new_node(ctx->arena, OP_MATCH_STAR2);
-                    ctx->ptr++; // Skip second '*'
-                    ctx->ptr++; // Move past '**'
-
-                    // **/ should skip the '/' as it's a directory separator, not part of pattern
-                    if (*ctx->ptr == '/')
-                    {
-                        ctx->ptr++; // Skip '/'
-                    }
-                    fragment_append(&current_frag, node);
-                    literal_start = ctx->ptr;
-                    continue;
-                }
-                else
-                {
-                    node = rbcglob_graph_new_node(ctx->arena, OP_MATCH_STAR);
-                    ctx->ptr++;
-                }
-            }
-            else if (c == '?')
-            {
-                node = rbcglob_graph_new_node(ctx->arena, OP_MATCH_QMARK);
-                ctx->ptr++;
-            }
-            else if (c == '[')
-            {
-                ctx->ptr++; // skip '['
-                node = rbcglob_graph_new_node(ctx->arena, OP_MATCH_CLASS);
-                parse_and_fill_class(node, ctx);
-            }
-            else if (c == '{')
-            {
-                ctx->ptr++;
-                graph_fragment_t brace_frag = compile_brace(ctx);
-                if (brace_frag.start)
-                {
-                    fragment_append(&current_frag, brace_frag.start);
-                    // The tail of brace_frag is the Merge node.
-                    // We need to update current_frag.tail to be this Merge node
-                    current_frag.tail = brace_frag.tail;
-                    // Note: fragment_append updates tail to brace_frag.start,
-                    // but brace_frag is a subgraph. We need to manually fix tail.
-                    // Actually fragment_append logic: tail->next = node.
-                    // brace_frag.start IS the node we appended.
-                    // But we want subsequent nodes to attach to brace_frag.tail.
-                    current_frag.tail = brace_frag.tail;
-                }
-                // compile_brace ends at }
-                literal_start = ctx->ptr;
-                continue; // Skip literal reset at end of loop
-            }
-
-            if (node)
-                fragment_append(&current_frag, node);
+            ctx->ptr++;
+            rbcglob_node_t *node = rbcglob_graph_new_node(ctx->arena, OP_MATCH_CLASS);
+            parse_and_fill_class(node, ctx);
+            fragment_append(&current_frag, node);
             literal_start = ctx->ptr;
             continue;
         }
-
+        if (c == '{')
+        {
+            FLUSH_LITERAL();
+            ctx->ptr++;
+            graph_fragment_t brace_frag = compile_brace(ctx);
+            if (brace_frag.start)
+            {
+                fragment_append(&current_frag, brace_frag.start);
+                current_frag.tail = brace_frag.tail;
+            }
+            literal_start = ctx->ptr;
+            continue;
+        }
         ctx->ptr++;
     }
-
     FLUSH_LITERAL();
     return current_frag;
 }
 
-rbcglob_node_t *rbcglob_nfa_compile(rbcglob_arena_t *arena, const char *pattern)
+rbcglob_node_t *rbcglob_compile_nfa_fragment(rbcglob_arena_t *arena, const char *pattern)
 {
     if (!pattern)
         return NULL;
-
-    compiler_ctx_t ctx;
-    ctx.arena = arena;
-    ctx.ptr = pattern;
-
-    graph_fragment_t root = compile_pattern(&ctx, false);
-
+    compiler_ctx_t ctx = {arena, pattern};
+    graph_fragment_t root = compile_nfa_recursive(&ctx, false);
     rbcglob_node_t *accept = rbcglob_graph_new_node(arena, OP_ACCEPT);
     fragment_append(&root, accept);
-
     return root.start;
+}
+
+/******************************************************************************
+ * Part 2: Segment Compilation (Path-Level)
+ ******************************************************************************/
+
+rbcglob_segment_t *rbcglob_segment_new(rbcglob_arena_t *arena, rbcglob_seg_type_t type)
+{
+    rbcglob_segment_t *seg = rbcglob_arena_alloc(arena, sizeof(rbcglob_segment_t));
+    memset(seg, 0, sizeof(rbcglob_segment_t));
+    seg->type = type;
+    return seg;
+}
+
+static bool is_simple_literal(const char *s)
+{
+    bool esc = false;
+    for (; *s; s++)
+    {
+        if (esc)
+        {
+            esc = false;
+            continue;
+        }
+        if (*s == '\\')
+        {
+            esc = true;
+            continue;
+        }
+        if (*s == '*' || *s == '?' || *s == '[' || *s == '{')
+            return false;
+    }
+    return true;
+}
+
+static bool is_recursive_wildcard(const char *s)
+{
+    return strcmp(s, "**") == 0;
+}
+
+static void analyze_wildcard_optimization(rbcglob_arena_t *arena, rbcglob_segment_t *seg, const char *pattern)
+{
+    const char *p = pattern;
+    const char *start = p;
+    while (*p && *p != '*' && *p != '?' && *p != '[' && *p != '{' && *p != '\\')
+        p++;
+
+    if (p > start)
+    {
+        size_t len = p - start;
+        seg->data.glob.must_start = rbcglob_arena_alloc(arena, len + 1);
+        memcpy(seg->data.glob.must_start, start, len);
+        seg->data.glob.must_start[len] = '\0';
+        seg->data.glob.start_len = len;
+    }
+
+    size_t total = strlen(pattern);
+    if (total == 0)
+        return;
+
+    const char *last_magic_end = NULL;
+    const char *cursor = pattern;
+    while (*cursor)
+    {
+        if (*cursor == '\\')
+        {
+            cursor++;
+            if (*cursor)
+                cursor++;
+            continue;
+        }
+
+        if (*cursor == '*' || *cursor == '?' || *cursor == '{' || *cursor == '}')
+        {
+            last_magic_end = cursor + 1;
+        }
+        else if (*cursor == '[')
+        {
+            // Scan for closing ]
+            const char *temp = cursor + 1;
+            // Handle negative class [^...] or [!...]
+            if (*temp == '^' || *temp == '!')
+                temp++;
+            // Handle ] at start of class []...]
+            if (*temp == ']')
+                temp++;
+
+            while (*temp && *temp != ']')
+            {
+                if (*temp == '\\' && temp[1])
+                    temp += 2;
+                else
+                    temp++;
+            }
+            if (*temp == ']')
+            {
+                last_magic_end = temp + 1;
+                cursor = temp; // Advance main cursor to ]
+            }
+        }
+        cursor++;
+    }
+
+    // original code had extra check for '}' using strrchr, but we handled it in loop.
+
+    if (last_magic_end)
+    {
+        const char *suffix_start = last_magic_end;
+        if (*suffix_start)
+        {
+            size_t slen = strlen(suffix_start);
+            if (slen > 0)
+            {
+                seg->data.glob.must_end = rbcglob_arena_alloc(arena, slen + 1);
+                strcpy(seg->data.glob.must_end, suffix_start);
+                seg->data.glob.end_len = slen;
+            }
+        }
+    }
+}
+
+static bool brace_contains_slash(const char *str)
+{
+    const char *p = str;
+    int depth = 0;
+    while (*p)
+    {
+        if (*p == '\\')
+        {
+            p += 2;
+            continue;
+        }
+        if (*p == '{')
+        {
+            depth++;
+            p++;
+            while (*p && depth > 0)
+            {
+                if (*p == '\\')
+                {
+                    p += 2;
+                    continue;
+                }
+                if (*p == '{')
+                    depth++;
+                if (*p == '}')
+                    depth--;
+                if (*p == '/' && depth > 0)
+                    return true;
+                if (*p)
+                    p++;
+            }
+            if (depth == 0)
+                continue;
+        }
+        p++;
+    }
+    return false;
+}
+
+static bool contains_brace(const char *str)
+{
+    const char *p = str;
+    while (*p)
+    {
+        if (*p == '\\')
+        {
+            p += 2;
+            continue;
+        }
+        if (*p == '{')
+            return true;
+        p++;
+    }
+    return false;
+}
+
+rbcglob_segment_t *rbcglob_compile_segments(rbcglob_arena_t *arena, const char *pattern)
+{
+    if (!pattern || !*pattern)
+        return NULL;
+
+    rbcglob_segment_t *head = NULL;
+    rbcglob_segment_t *curr = NULL;
+
+    const char *p = pattern;
+    while (*p)
+    {
+        const char *start = p;
+        int depth = 0;
+        while (*p)
+        {
+            if (*p == '\\')
+            {
+                p += 2;
+                continue;
+            }
+            if (*p == '{')
+                depth++;
+            if (*p == '}')
+            {
+                if (depth > 0)
+                    depth--;
+            }
+            if (*p == '/' && depth == 0)
+                break;
+            p++;
+        }
+        size_t len = p - start;
+        bool is_sep = (*p == '/');
+        if (is_sep)
+            p++;
+
+        if (len == 0)
+            continue;
+
+        char *component = rbcglob_arena_alloc(arena, len + 1);
+        memcpy(component, start, len);
+        component[len] = '\0';
+
+        rbcglob_segment_t *seg = NULL;
+
+        bool has_brace = contains_brace(component);
+        bool has_glob = false;
+        const char *tmp_scan = component;
+        while (*tmp_scan)
+        {
+            if (*tmp_scan == '\\')
+            {
+                tmp_scan += 2;
+                continue;
+            }
+            if (*tmp_scan == '*' || *tmp_scan == '?' || *tmp_scan == '[')
+            {
+                has_glob = true;
+                break;
+            }
+            tmp_scan++;
+        }
+
+        if (brace_contains_slash(component) || (has_brace && !has_glob))
+        {
+            // fprintf(stderr, "DEBUG: SEG_BRANCH for %s\n", component);
+            seg = rbcglob_segment_new(arena, SEG_BRANCH);
+
+            char *brace_start = NULL;
+            const char *scanner = component;
+            while (*scanner)
+            {
+                if (*scanner == '{')
+                {
+                    brace_start = (char *)scanner;
+                    break;
+                }
+                scanner++;
+            }
+
+            int prefix_len = brace_start - component;
+            char *prefix = rbcglob_arena_alloc(arena, prefix_len + 1);
+            memcpy(prefix, component, prefix_len);
+            prefix[prefix_len] = '\0';
+
+            char *brace_content = brace_start + 1;
+            char *p_end = brace_content;
+            int bdepth = 1;
+            while (*p_end && bdepth > 0)
+            {
+                if (*p_end == '{')
+                    bdepth++;
+                if (*p_end == '}')
+                    bdepth--;
+                if (bdepth == 0)
+                    break;
+                p_end++;
+            }
+            char *suffix = p_end + 1;
+
+            if (!head)
+                head = seg;
+            else
+                curr->next = seg;
+            curr = seg;
+
+            char *opt_start = brace_content;
+            char *opt_p = opt_start;
+            int b_depth_inner = 0;
+            rbcglob_segment_t *last_alt = NULL;
+
+            while (opt_p < p_end + 1)
+            {
+                bool end = (opt_p == p_end);
+                bool comma = (*opt_p == ',' && b_depth_inner == 0);
+
+                if (*opt_p == '{')
+                    b_depth_inner++;
+                if (*opt_p == '}')
+                    b_depth_inner--;
+
+                if (end || comma)
+                {
+                    size_t opt_len = opt_p - opt_start;
+                    char *opt_str = rbcglob_arena_alloc(arena, opt_len + 1);
+                    memcpy(opt_str, opt_start, opt_len);
+                    opt_str[opt_len] = '\0';
+
+                    char *full_pattern = rbcglob_arena_printf(arena, "%s%s%s", prefix, opt_str, suffix);
+                    rbcglob_segment_t *alt_chain = rbcglob_compile_segments(arena, full_pattern);
+
+                    if (!alt_chain && !*full_pattern)
+                    {
+                        alt_chain = rbcglob_segment_new(arena, SEG_LITERAL);
+                        alt_chain->data.literal = "";
+                    }
+
+                    if (alt_chain)
+                    {
+                        if (!seg->data.branch.head)
+                        {
+                            seg->data.branch.head = alt_chain;
+                        }
+                        else if (last_alt)
+                        {
+                            last_alt->next_alt = alt_chain;
+                        }
+                        last_alt = alt_chain;
+                    }
+
+                    if (end)
+                        break;
+                    opt_start = opt_p + 1;
+                }
+                opt_p++;
+            }
+        }
+        else
+        {
+            if (is_recursive_wildcard(component))
+            {
+                seg = rbcglob_segment_new(arena, SEG_RECURSIVE);
+            }
+            else if (is_simple_literal(component))
+            {
+                seg = rbcglob_segment_new(arena, SEG_LITERAL);
+                seg->data.literal = component;
+            }
+            else
+            {
+                seg = rbcglob_segment_new(arena, SEG_WILDCARD);
+                seg->data.glob.original_pattern = component;
+
+                if (contains_brace(component))
+                {
+                    seg->data.glob.must_start = NULL;
+                    seg->data.glob.must_end = NULL;
+                }
+                else
+                {
+                    analyze_wildcard_optimization(arena, seg, component);
+                }
+
+                seg->data.glob.local_nfa_root = rbcglob_compile_nfa_fragment(arena, component);
+            }
+
+            if (!head)
+                head = seg;
+            else
+                curr->next = seg;
+            curr = seg;
+        }
+    }
+    return head;
 }
