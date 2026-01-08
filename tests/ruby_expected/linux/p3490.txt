@@ -1,4 +1,3 @@
-a/a
 a/a.txt
 a/c
 a/b

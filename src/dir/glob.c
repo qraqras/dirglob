@@ -105,9 +105,19 @@ bool rbcglob_dirglob_compiled(const rbcglob_compiled_glob_t *cg, const char *bas
     rbcglob_results_init(&results, run_ctx);
 
     callback_ctx_t cb_ctx;
-    cb_ctx.results = &results;
-    cb_ctx.base_strip = base;
-    cb_ctx.base_len = base ? strlen(base) : 0;
+    // Special handling for ".": treat it as empty base for stripping purposes.
+    // If base is ".", executor treats it as NULL/current dir, so generated paths
+    // don't have "." prefix unless matched. Thus we shouldn't strip it.
+    if (base && strcmp(base, ".") == 0)
+    {
+        cb_ctx.base_strip = NULL;
+        cb_ctx.base_len = 0;
+    }
+    else
+    {
+        cb_ctx.base_strip = base;
+        cb_ctx.base_len = base ? strlen(base) : 0;
+    }
 
     rbcglob_nfa_execute(cg->graph, base, cg->flags, sort, nfa_match_callback, &cb_ctx);
 
@@ -167,8 +177,17 @@ bool rbcglob_dirglob(const char **patterns, size_t npatterns, unsigned flags,
 
     callback_ctx_t cb_ctx;
     cb_ctx.results = &results;
-    cb_ctx.base_strip = base;
-    cb_ctx.base_len = base ? strlen(base) : 0;
+
+    if (base && strcmp(base, ".") == 0)
+    {
+        cb_ctx.base_strip = NULL;
+        cb_ctx.base_len = 0;
+    }
+    else
+    {
+        cb_ctx.base_strip = base;
+        cb_ctx.base_len = base ? strlen(base) : 0;
+    }
 
     for (size_t i = 0; i < npatterns; i++)
     {

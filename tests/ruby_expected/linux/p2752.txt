@@ -1,4 +1,3 @@
-a/a/f.txt
 a/a.txt
 a/b/file.txt
 a.txt

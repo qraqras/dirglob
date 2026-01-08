@@ -1,6 +1,4 @@
 a
-a/a
-a/a/f.txt
 a/a.txt
 a/b
 a/b/c

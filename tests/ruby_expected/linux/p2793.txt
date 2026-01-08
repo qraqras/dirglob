@@ -6,8 +6,6 @@ file.md
 z.txt
 z
 a
-a/a
-a/a/f.txt
 a/a.txt
 a/c
 a/b

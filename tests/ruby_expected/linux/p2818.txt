@@ -1,5 +1,4 @@
 z.txt
-a/a/f.txt
 a/a.txt
 c.txt
 b.txt
