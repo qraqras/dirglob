@@ -29,3 +29,5 @@ Rubyやglob(3)で実装されていない最適化も取り込みます。
   - Rustの参照実装: https://github.com/rust-lang/glob/blob/master/src/lib.rs
 - NFA(深さ優先探索)ベースのマッチングエンジンを採用します
   - ブレース展開時の列挙順を自然にRuby互換にするため(コンパイル時にブレース展開してしまうとマージが複雑になる)
+- micromatchの最適化技術を参考にします
+  - 参照実装: https://github.com/micromatch/micromatch

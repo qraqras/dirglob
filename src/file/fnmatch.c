@@ -186,15 +186,35 @@ static bool nfa_match_recursive(const rbcglob_node_t *node, const char *str, uns
         if (!(flags & RBCGLOB_FNM_DOTMATCH) && start_of_component && *str == '.')
             return false;
 
-        char c = *str; // Check logic from prev attempt
-        if (flags & RBCGLOB_FNM_CASEFOLD)
-            c = tolower((unsigned char)c);
+        unsigned char uc = (unsigned char)*str;
+        // CASEFOLD handling for class map lookup?
+        // If we want correct case folding, we should either fold the map or fold the char.
+        // Assuming map is case-sensitive, and if CASEFOLD is set, we might need to check both lower and upper?
+        // Or compiler handles casefold? Compiler doesn't know flags.
+        // So runtime must handle.
+        // If FNM_CASEFOLD, check both tolower(uc) and toupper(uc) in map?
 
-        if ((flags & RBCGLOB_FNM_PATHNAME) && c == '/')
+        // Simplified Logic: Just check char against map.
+        // NOTE: Character range parsing in compiler creates CASE SENSITIVE map currently.
+        // To support FNM_CASEFOLD properly with char class, compiler or executor needs update.
+        // For now, let's fix the structural match.
+
+        bool match = (node->data.char_class.map[uc / 8] & (1 << (uc % 8))) != 0;
+
+        if (flags & RBCGLOB_FNM_CASEFOLD)
+        {
+            unsigned char lower = tolower(uc);
+            unsigned char upper = toupper(uc);
+            if ((node->data.char_class.map[lower / 8] & (1 << (lower % 8))))
+                match = true;
+            if ((node->data.char_class.map[upper / 8] & (1 << (upper % 8))))
+                match = true;
+        }
+
+        if ((flags & RBCGLOB_FNM_PATHNAME) && uc == '/')
             return false;
 
-        bool match = true; // Placeholder for class logic
-        if (node->data.char_class.negated)
+        if (node->data.char_class.is_negated)
             match = !match;
 
         if (!match)

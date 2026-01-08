@@ -39,7 +39,7 @@ void rbcglob_graph_dump(const rbcglob_node_t *node)
             printf("QMARK ?");
             break;
         case OP_MATCH_CLASS:
-            printf("CLASS [%s]%s", curr->data.char_class.negated ? "^" : "", curr->data.char_class.chars);
+            printf("CLASS %s[bitmap]", curr->data.char_class.is_negated ? "^" : "");
             break;
         case OP_FORK:
             printf("FORK -> %p | %p", (void *)curr->data.branch.next, (void *)curr->data.branch.alt);

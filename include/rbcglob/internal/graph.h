@@ -11,6 +11,9 @@
 typedef enum
 {
     OP_MATCH_LITERAL, // Exact string match (e.g., "src")
+    OP_MATCH_SEP,     // Directory separator "/"
+    OP_MATCH_DOT,     // Current directory "."
+    OP_MATCH_DOTDOT,  // Parent directory ".."
     OP_MATCH_STAR,    // Wildcard "*" (readdir within current dir)
     OP_MATCH_STAR2,   // Recursive wildcard "**"
     OP_MATCH_QMARK,   // Single char match "?"
@@ -36,9 +39,9 @@ typedef struct rbcglob_node_t
             struct rbcglob_node_t *alt;  // Next alternative (e.g., "b")
         } branch;
         struct
-        {                 // For OP_MATCH_CLASS
-            char *chars;  // Character set
-            bool negated; // Negation flag
+        {                          // For OP_MATCH_CLASS
+            unsigned char map[32]; // 256 bits bitmap for ASCII/byte-matching
+            bool is_negated;       // True if [^...] or [!...]
         } char_class;
     } data;
     struct rbcglob_node_t *next; // Standard next node pointer (success transition)
@@ -75,6 +78,7 @@ void rbcglob_nfa_execute(
     rbcglob_node_t *root,
     const char *base_path,
     unsigned flags,
+    bool sort,
     rbcglob_match_callback_t callback,
     void *user_data);
 

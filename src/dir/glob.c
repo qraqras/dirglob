@@ -109,7 +109,7 @@ bool rbcglob_dirglob_compiled(const rbcglob_compiled_glob_t *cg, const char *bas
     cb_ctx.base_strip = base;
     cb_ctx.base_len = base ? strlen(base) : 0;
 
-    rbcglob_nfa_execute(cg->graph, base, cg->flags, nfa_match_callback, &cb_ctx);
+    rbcglob_nfa_execute(cg->graph, base, cg->flags, sort, nfa_match_callback, &cb_ctx);
 
     if (sort)
     {
@@ -177,7 +177,7 @@ bool rbcglob_dirglob(const char **patterns, size_t npatterns, unsigned flags,
         rbcglob_node_t *graph = rbcglob_nfa_compile(&ctx->arena, patterns[i]);
         if (graph)
         {
-            rbcglob_nfa_execute(graph, base, flags, nfa_match_callback, &cb_ctx);
+            rbcglob_nfa_execute(graph, base, flags, sort, nfa_match_callback, &cb_ctx);
         }
     }
 

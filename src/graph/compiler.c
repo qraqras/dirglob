@@ -45,6 +45,17 @@ static rbcglob_node_t *make_literal(compiler_ctx_t *ctx, const char *start, size
 {
     if (len == 0)
         return NULL;
+
+    // Check for special path components . and ..
+    if (len == 1 && start[0] == '.')
+    {
+        return rbcglob_graph_new_node(ctx->arena, OP_MATCH_DOT);
+    }
+    if (len == 2 && start[0] == '.' && start[1] == '.')
+    {
+        return rbcglob_graph_new_node(ctx->arena, OP_MATCH_DOTDOT);
+    }
+
     rbcglob_node_t *node = rbcglob_graph_new_node(ctx->arena, OP_MATCH_LITERAL);
     node->data.literal = rbcglob_arena_alloc(ctx->arena, len + 1);
     memcpy(node->data.literal, start, len);
@@ -55,6 +66,89 @@ static rbcglob_node_t *make_literal(compiler_ctx_t *ctx, const char *start, size
 /**
  * @brief Parse brace expansion {a,b}
  */
+static void parse_and_fill_class(rbcglob_node_t *node, compiler_ctx_t *ctx)
+{
+    const char *p = ctx->ptr;
+    // p points to char after '['
+
+    memset(node->data.char_class.map, 0, 32);
+    node->data.char_class.is_negated = false;
+
+    if (!*p)
+    {
+        ctx->ptr = p;
+        return;
+    }
+
+    if (*p == '^' || *p == '!')
+    {
+        node->data.char_class.is_negated = true;
+        p++;
+    }
+
+    if (*p == ']')
+    {
+        // Special case: []...] matches ']'
+        unsigned char c = ']';
+        node->data.char_class.map[c / 8] |= (1 << (c % 8));
+        p++;
+    }
+
+    while (*p && *p != ']')
+    {
+        unsigned char c1;
+
+        if (*p == '\\' && p[1])
+        {
+            p++;
+            c1 = (unsigned char)*p;
+            p++;
+        }
+        else
+        {
+            c1 = (unsigned char)*p;
+            p++;
+        }
+
+        // Range check
+        if (*p == '-' && p[1] && p[1] != ']')
+        {
+            // Potential range
+            p++; // consume '-'
+
+            unsigned char c2;
+            if (*p == '\\' && p[1])
+            {
+                p++;
+                c2 = (unsigned char)*p;
+                p++;
+            }
+            else
+            {
+                c2 = (unsigned char)*p;
+                p++;
+            }
+
+            if (c1 <= c2)
+            {
+                for (int i = c1; i <= c2; i++)
+                {
+                    node->data.char_class.map[i / 8] |= (1 << (i % 8));
+                }
+            }
+        }
+        else
+        {
+            // Single char c1
+            node->data.char_class.map[c1 / 8] |= (1 << (c1 % 8));
+        }
+    }
+
+    if (*p == ']')
+        p++;
+    ctx->ptr = p;
+}
+
 static graph_fragment_t compile_brace(compiler_ctx_t *ctx)
 {
     // We assume ctx->ptr starts just after '{'
@@ -199,9 +293,7 @@ static graph_fragment_t compile_pattern(compiler_ctx_t *ctx, bool inside_brace)
         {
             FLUSH_LITERAL();
             // Create explicit node for separator
-            // Usually we treat '/' as just a literal, but ensuring it's a separate node
-            // helps the executor break matching into directory components.
-            rbcglob_node_t *sep = make_literal(ctx, "/", 1);
+            rbcglob_node_t *sep = rbcglob_graph_new_node(ctx->arena, OP_MATCH_SEP);
             fragment_append(&current_frag, sep);
 
             ctx->ptr++;
@@ -244,13 +336,9 @@ static graph_fragment_t compile_pattern(compiler_ctx_t *ctx, bool inside_brace)
             }
             else if (c == '[')
             {
-                // Parse class (simplified)
-                while (*ctx->ptr && *ctx->ptr != ']')
-                    ctx->ptr++;
-                if (*ctx->ptr == ']')
-                    ctx->ptr++;
-                // TODO: store content
+                ctx->ptr++; // skip '['
                 node = rbcglob_graph_new_node(ctx->arena, OP_MATCH_CLASS);
+                parse_and_fill_class(node, ctx);
             }
             else if (c == '{')
             {
