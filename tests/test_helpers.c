@@ -142,6 +142,85 @@ void assert_result_equals(char **actual, size_t actual_count,
     }
 }
 
+static int compare_strings(const void *a, const void *b)
+{
+    const char *sa = *(const char **)a;
+    const char *sb = *(const char **)b;
+    return strcmp(sa, sb);
+}
+
+void assert_result_equals_any_order(char **actual, size_t actual_count, const char **expected, size_t expected_count)
+{
+    // Check count first
+    if (actual_count != expected_count)
+    {
+        fprintf(stderr, "\nResult count mismatch:\n");
+        fprintf(stderr, "  Expected: %zu\n", expected_count);
+        fprintf(stderr, "  Actual:   %zu\n", actual_count);
+
+        // Print content for debugging
+        fprintf(stderr, "Actual results:\n");
+        for (size_t i = 0; i < actual_count; i++)
+        {
+            fprintf(stderr, "  [%zu] %s\n", i, actual[i]);
+        }
+        fprintf(stderr, "Expected results (partial):\n");
+        for (size_t i = 0; i < expected_count && i < 20; i++)
+        {
+            fprintf(stderr, "  [%zu] %s\n", i, expected[i]);
+        }
+        if (expected_count > 20)
+            fprintf(stderr, "  ... (%zu more)\n", expected_count - 20);
+
+        TEST_FAIL_MESSAGE("Result count mismatch");
+    }
+
+    if (actual_count == 0)
+        return;
+
+    // Create copies for sorting
+    char **actual_sorted = malloc(actual_count * sizeof(char *));
+    char **expected_sorted = malloc(expected_count * sizeof(char *));
+
+    if (!actual_sorted || !expected_sorted)
+    {
+        free(actual_sorted);
+        free(expected_sorted);
+        TEST_FAIL_MESSAGE("Memory allocation failed in test helper");
+    }
+
+    memcpy(actual_sorted, actual, actual_count * sizeof(char *));
+    memcpy(expected_sorted, expected, expected_count * sizeof(char *));
+
+    qsort(actual_sorted, actual_count, sizeof(char *), compare_strings);
+    qsort(expected_sorted, expected_count, sizeof(char *), compare_strings);
+
+    // Compare sorted arrays
+    for (size_t i = 0; i < actual_count; i++)
+    {
+        if (strcmp(actual_sorted[i], expected_sorted[i]) != 0)
+        {
+            fprintf(stderr, "\nResult mismatch (any order) at sorted index %zu:\n", i);
+            fprintf(stderr, "  Expected: \"%s\"\n", expected_sorted[i]);
+            fprintf(stderr, "  Actual:   \"%s\"\n", actual_sorted[i]);
+
+            fprintf(stderr, "\nFull unsorted actual:\n");
+            for (size_t k = 0; k < actual_count; k++)
+                fprintf(stderr, " %s\n", actual[k]);
+            fprintf(stderr, "\nFull unsorted expected:\n");
+            for (size_t k = 0; k < expected_count; k++)
+                fprintf(stderr, " %s\n", expected[k]);
+
+            free(actual_sorted);
+            free(expected_sorted);
+            TEST_FAIL_MESSAGE("Result content mismatch (even after sorting)");
+        }
+    }
+
+    free(actual_sorted);
+    free(expected_sorted);
+}
+
 void assert_matches_expected(char **c_result, size_t c_count, const char *expected_file)
 {
     size_t expected_count = 0;
@@ -167,6 +246,24 @@ void assert_matches_expected(char **c_result, size_t c_count, const char *expect
     assert_result_equals(c_result, c_count, (const char **)expected, expected_count);
 
     // 期待出力を解放
+    free_string_array(expected, expected_count);
+}
+
+void assert_matches_expected_any_order(char **c_result, size_t c_count, const char *expected_file)
+{
+    size_t expected_count = 0;
+    char **expected = load_expected_output(expected_file, &expected_count);
+
+    if (expected == NULL && expected_count == 0)
+    {
+        if (c_count != 0)
+        {
+            TEST_FAIL_MESSAGE("Expected empty result");
+        }
+        return;
+    }
+
+    assert_result_equals_any_order(c_result, c_count, (const char **)expected, expected_count); // Use the unsorted version
     free_string_array(expected, expected_count);
 }
 

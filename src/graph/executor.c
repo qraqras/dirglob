@@ -96,7 +96,10 @@ static void epsilon_closure(state_set_t *set)
         }
         else if (n->type == OP_MATCH_STAR)
         {
-            state_set_add(set, n->next, 0, s.is_literal_match);
+            // Even if STAR matches empty string, the presence of STAR means
+            // the pattern is not fully literal (it's a wildcard match of size 0).
+            // This is crucial for 'parent_wild' logic in file recursion guard.
+            state_set_add(set, n->next, 0, false);
         }
         // DON'T expand OP_MATCH_STAR2 here - we need to keep it for directory recursion
     }

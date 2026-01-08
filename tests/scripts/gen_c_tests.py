@@ -90,8 +90,9 @@ def generate_test_function(test_case, platform):
     # 期待出力ファイルパス (テスト実行時のワーキングディレクトリから見た相対パス)
     expected_file = f'../../tests/ruby_expected/{platform}/{case_id}.txt'
 
-    # テスト関数生成
-    code = f'''
+    # テスト関数生成 (厳密な順序チェック)
+    # 既存のテスト関数名 test_parity_pXXXX を維持
+    code_strict = f'''
 void test_parity_{case_id}(void) {{
     char **result = NULL;
     size_t count = 0;
@@ -100,13 +101,35 @@ void test_parity_{case_id}(void) {{
     // rbcglob_dirglob実行
     bool ok = rbcglob_dirglob({pattern_array}, {npatterns}, {flags}, {base}, {sort}, &result, &count, &lengths);
 
-    // 期待出力と比較
+    // 期待出力と比較 (完全一致)
     assert_matches_expected(result, count, "{escape_c_string(expected_file)}");
 
     // メモリ解放
     rbcglob_free(result, count, lengths);
 }}
 '''
+
+    # テスト関数生成 (順序無視チェック)
+    # 新しいテスト関数名 test_parity_anyorder_pXXXX
+    code_anyorder = f'''
+void test_parity_anyorder_{case_id}(void) {{
+    char **result = NULL;
+    size_t count = 0;
+    size_t *lengths = NULL;
+
+    // rbcglob_dirglob実行
+    bool ok = rbcglob_dirglob({pattern_array}, {npatterns}, {flags}, {base}, {sort}, &result, &count, &lengths);
+
+    // 期待出力と比較 (順序無視配列比較)
+    assert_matches_expected_any_order(result, count, "{escape_c_string(expected_file)}");
+
+    // メモリ解放
+    rbcglob_free(result, count, lengths);
+}}
+'''
+
+    return code_strict + code_anyorder
+
 
     return code
 
