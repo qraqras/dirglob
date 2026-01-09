@@ -1,25 +1,17 @@
-#ifndef RBCGLOB_INTERNAL_UTILS_H
-#define RBCGLOB_INTERNAL_UTILS_H
+#ifndef RBCGLOB_UTILS_H
+#define RBCGLOB_UTILS_H
 
 #include <stddef.h>
 #include <stdbool.h>
-#include "rbcglob/internal/arena.h"
-
-/**
- * @brief Duplicate a string
- */
-char *rbcglob_strdup(const char *str);
 
 typedef struct
 {
     char **items;
     size_t count;
     size_t capacity;
-    rbcglob_arena_t *arena; // Optional associated arena
 } rbcglob_str_list_t;
 
-// Initialize string list. If arena is provided, items array and strings will be allocated there.
-void rbcglob_str_list_init(rbcglob_str_list_t *list, size_t initial_cap, rbcglob_arena_t *arena);
+void rbcglob_str_list_init(rbcglob_str_list_t *list, size_t initial_cap);
 void rbcglob_str_list_add(rbcglob_str_list_t *list, const char *str);
 void rbcglob_str_list_free(rbcglob_str_list_t *list);
 
@@ -29,27 +21,17 @@ bool rbcglob_has_brace(const char *str);
 // Check if string contains wildcard characters (*, ?, [, ])
 bool rbcglob_has_wildcard(const char *str);
 
-// Brace expand using arena for allocations
-rbcglob_str_list_t rbcglob_brace_expand(const char *pattern, rbcglob_arena_t *arena);
-
-// Visitor callback for brace expansion
-typedef void (*rbcglob_brace_visit_cb)(const char *path, void *arg);
-
-// Expand braces and call callback for each result.
-void rbcglob_brace_visit(const char *pattern, rbcglob_arena_t *arena, rbcglob_brace_visit_cb cb, void *arg);
-
 // Find the end of the current logical segment (handles brace nesting)
-
 // Returns pointer to the '/' separator or null terminator.
 const char *rbcglob_find_segment_end(const char *str);
 
 // Expand braces in a single string.
 // Returns a list of expanded strings.
 // e.g. "a{b,c}d" -> ["abd", "acd"]
-// rbcglob_str_list_t rbcglob_brace_expand(const char *pattern);
+rbcglob_str_list_t rbcglob_brace_expand(const char *pattern);
 
 // Calculate Longest Common Prefix/Suffix for a list of strings
 char *rbcglob_compute_lcp(const char **strs, size_t count);
 char *rbcglob_compute_lcs(const char **strs, size_t count);
 
-#endif /* RBCGLOB_INTERNAL_UTILS_H */
+#endif

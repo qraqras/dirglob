@@ -1,113 +1,132 @@
 # Segment-Based NFA Engine Design
 
 ## 1. Overview
-This document outlines the architecture for the enhanced "Segment-Based NFA" engine.
-This evolution moves from a character-based NFA to a **path-segment-based NFA**, significantly improving performance by reducing graph size and enabling powerful optimizations like literal prefix/suffix filtering inside wildcards.
+This document outlines the architecture for the enhanced "Segment-Based NFA" engine with **Full Brace Expansion** and **Hybrid Execution Strategy**.
+This evolution adopts a strategy similar to `micromatch` (Node.js) and `glob(3)` (libc), optimizing purely static paths differently from dynamic wildcard paths.
 
 ## 2. Motivation
-The initial character-based NFA successfully replicated Ruby's logic but had performance overheads:
-- **Optimization Difficulty**: Optimizing `*.c` (suffix check) was hard because `*` and `.` and `c` were separate nodes.
-- **Overhead**: Traversing the graph for every single character in every filename is CPU intensive.
-
-The **Segment-Based Approach** treats a whole path component (e.g., `src`, `*.c`, `**`) as a single unit of work, allowing hybrid execution: "Graph Traversal for Directories, Native String operations for Filenames".
+- **Performance Gap**: Complex brace patterns like `*/{file1,file2,file3}` were slower than `glob(3)` because the previous engine treated braces as generic logical branches, causing redundant Graph Traversal overhead.
+- **I/O Optimization**: We want to use `stat()` (Probe) for exact paths and `opendir/readdir` (Scan) only for wildcards. `glob(3)` and `micromatch` excel at this separation.
+- **Micromatch Parity**: Adopting the "Expansion -> Analysis -> Execution" pipeline allows us to statically determine the best strategy for each segment.
 
 ## 3. Architecture
 
-### 3.1 Segment Graph (AST)
-The compiler parses the glob pattern into a graph of "Segments".
-A Segment corresponds to one level of directory depth or a control structure.
+### 3.1 Compilation Pipeline
+
+The process moves from "Streaming Parse" to "Segment-Level Expansion".
+
+#### Phase 1: Logical Segment splitting (Chunking)
+The pattern is split by path separators `/`, but **top-level braces act as grouping tokens**.
+- `src/{a,b}/c` -> `src`, `{a,b}`, `c`
+- `src/{pre/fix,other}/end` -> `src`, `{pre/fix,other}`, `end`
+
+#### Phase 2: Brace Expansion (Normalization)
+Each chunk is **fully expanded** into a list of concrete string patterns.
+- Segment `{foo,bar}` -> `["foo", "bar"]`
+- Segment `img_{0..2}.jpg` -> `["img_0.jpg", "img_1.jpg", "img_2.jpg"]`
+- Segment `{a/b,c}` -> `["a/b", "c"]` (Supports cross-segment braces)
+
+#### Phase 3: Strategy Selection (Optimizer)
+The compiler analyzes the expanded list to decide the node type.
+
+**Case A: No Wildcards (The "Stat" Path)**
+If NONE of the expanded strings contain `*`, `?`, `[`...
+-> **Compile to `SEG_BRANCH` of `SEG_LITERAL`s.**
+- This triggers the "Probe" strategy.
+- Executor will run `stat()` for each path.
+- **Benefit**: Faster than scanning a directory with 10,000 files just to find 2 files. Matches `glob(3)`.
+
+**Case B: Wildcards Present (The "Scan" Path)**
+If ANY string contains wildcards...
+-> **Compile to Single `SEG_WILDCARD` (Integrated NFA).**
+- All variations are combined into one logical OR NFA: `(variant1)|(variant2)|...`
+- Executor will run `opendir/readdir` ONCE.
+- **Benefit**: Avoids re-scanning the same directory multiple times for patterns like `{*.txt,*.md}`. Matches `ripgrep`/`micromatch` scan logic.
+
+### 3.2 Data Structures
 
 ```c
 typedef enum {
-    SEG_LITERAL,   // Exact match: "src", "include"
-    SEG_WILDCARD,  // Glob match: "*.c", "test_??"
-    SEG_RECURSIVE, // Recursive match: "**"
-    SEG_BRANCH,    // Brace expansion control: "{...}"
+    SEG_LITERAL,   // Exact match (stat optimization)
+    SEG_WILDCARD,  // Directory scan (readdir + NFA)
+    SEG_RECURSIVE, // Recursive scan (**)
+    SEG_BRANCH,    // Logical branch (try alternatives sequentially)
 } seg_type_t;
 
 struct rbcglob_segment_t {
     seg_type_t type;
-    
+
     union {
         // SEG_LITERAL
-        char *literal_path; 
+        char *literal_path;
 
         // SEG_WILDCARD
         struct {
-            char *raw_pattern;
-            
-            // --- Optimization Flags (The "Fast Path") ---
-            char *must_start;    // e.g., "test_" for "test_*.c"
+            // Optimization: Filter entries before running NFA
+            // Calculated from the Common Prefix/Suffix of all NFA branches
+            char *must_start;
             size_t start_len;
-            char *must_end;      // e.g., ".c" for "*.c"
+            char *must_end;
             size_t end_len;
-            
-            // --- Detailed Matching (The "Slow Path") ---
-            // A mini, character-based NFA dedicated ONLY to matching 
-            // the name string against the generalized pattern.
-            // Directory operations (opendir) logic is NOT included here.
-            rbcglob_node_t *local_nfa_root; 
+
+            // The NFA Graph (merged forks)
+            rbcglob_node_t *local_nfa_root;
         } glob;
 
         // SEG_BRANCH
         struct {
-            struct rbcglob_segment_t *branches; // Linked list of alternatives
+            struct rbcglob_segment_t *head; // Linked list of alternative CHAINS
         } branch;
     };
 
-    struct rbcglob_segment_t *next; // Next segment in the path
+    struct rbcglob_segment_t *next;
+    struct rbcglob_segment_t *next_alt; // For SEG_BRANCH alternatives
 };
 ```
 
-### 3.2 Compiler Strategy
-The compiler logic splits the input pattern by `/`.
+### 3.3 Execution Flow
 
-**Example**: `src/{a,b}/test_*.c`
+**Example 1: `src/{a,b}` (No wildcards)**
+1. Compiler expands to `["a", "b"]`.
+2. Generates `SEG_LITERAL("src")` -> `SEG_BRANCH`
+   - Alt 1: `SEG_LITERAL("a")`
+   - Alt 2: `SEG_LITERAL("b")`
+3. Executor:
+   - `stat("src")` OK.
+   - `stat("src/a")` ?
+   - `stat("src/b")` ?
+   - **Result**: No `readdir` calls. High performance.
 
-1. **Segment 1**: `SEG_LITERAL` ("src")
-   - Next -> Branch
+**Example 2: `src/{*.txt,*.md}` (With wildcards)**
+1. Compiler expands to `["*.txt", "*.md"]`. Detects wildcards.
+2. Generates `SEG_LITERAL("src")` -> `SEG_WILDCARD`
+   - NFA: `(.*\.txt)|(.*\.md)`
+3. Executor:
+   - `stat("src")` OK.
+   - `opendir("src")`.
+   - `readdir()` loop... passing names to NFA.
+   - **Result**: Single scan. Efficient filtering.
 
-2. **Segment 2**: `SEG_BRANCH`
-   - Alt 1: `SEG_LITERAL` ("a") -> Next -> Wildcard
-   - Alt 2: `SEG_LITERAL` ("b") -> Next -> Wildcard
+**Example 3: `src/{a/b, c}` (Cross-segment)**
+1. Compiler expands to `["a/b", "c"]`.
+2. Generates `SEG_LITERAL("src")` -> `SEG_BRANCH`
+   - Alt 1: `SEG_LITERAL("a")` -> `SEG_LITERAL("b")`
+   - Alt 2: `SEG_LITERAL("c")`
+3. Executor handles the structures naturally.
 
-3. **Segment 3**: `SEG_WILDCARD` ("test_*.c")
-   - `must_start`: "test_"
-   - `must_end`: ".c"
-   - `local_nfa`: (Compiled NFA for `test_*.c`)
+## 4. Advantages
 
-### 3.3 Executor Strategy
-The executor functions as a hybrid VM.
-
-#### Phase 1: Graph Traversal (Directory Navigation)
-- Follows `SEG_LITERAL` nodes by checking `stat()`. Efficiently skips `opendir`.
-- Handles `SEG_BRANCH` by recursively exploring paths (Depth First).
-- Handles `SEG_RECURSIVE` (`**`) by invoking the standard recursive directory walker.
-
-#### Phase 2: Directory Enumeration & Filtering (Leaf Processing)
-When the executor hits a `SEG_WILDCARD`:
-1. **Open Directory**: `opendir()`
-2. **Read Loop**: `readdir()`
-3. **Fast Filter**: 
-   - Check `strncmp(name, seg->must_start)`
-   - Check `suffix(name, seg->must_end)`
-   - **Performance Win**: This eliminates 99% of candidates using cheap CPU instructions.
-4. **Detailed Match**:
-   - If filters pass, execute the `local_nfa` (or a helper function for simpler globs).
-5. **Next Step**:
-   - If matched, construct path and recurse to `seg->next`.
-
-## 4. Advantages over Previous Design
-
-| Feature | Old Character-NFA | New Segment-NFA |
-| :--- | :--- | :--- |
-| **Graph Size** | Huge (Nodes per Char) | Tiny (Nodes per Directory) |
-| **Prefix Opt** | Possible (implemented) | Trivial & Native |
-| **Suffix Opt** | Very Hard | Trivial |
-| **Filename Check**| Cycle-heavy Graph Walk | Native String Ops |
-| **Memory** | High (State Set allocation) | Low (Stack recursion) |
+1.  **Best of Both Worlds**:
+    - "Stat" speed of `glob(3)` for exact paths.
+    - "Scan" efficiency of `ripgrep`/`micromatch` for complex patterns.
+2.  **Code Simplicity**:
+    - The NFA construction becomes simpler (just root-level ORs).
+    - The Compiler handles complexity (Expansion), leaving the Executor dumb and fast.
+3.  **Memory Safety**:
+    - Expansion is limited to segment scope, preventing `node-glob` style explosion for deep trees.
 
 ## 5. Implementation Roadmap
-1. **Refactor Compiler**: Update `compiler.c` to generate `rbcglob_segment_t` structures.
-2. **Implement Local NFA**: Re-purpose the existing `compiler.c` logic to generate "fragment NFAs" for the `SEG_WILDCARD` nodes.
-3. **Rewrite Executor**: Replace `executor.c` with the new segment-walking logic.
+1.  **Utils**: Add `rbcglob_brace_expand` to `src/utils.c`.
+2.  **Compiler**: Rewrite compile loop to use the "Expand -> Check -> Dispatch" strategy.
+3.  **NFA Builder**: Update NFA fragment compilation to handle lists of patterns (OR-ing them).
+4.  **Executor**: (Already mostly compatible) Ensure NFA engine handles the new graph shape (Root Forks).

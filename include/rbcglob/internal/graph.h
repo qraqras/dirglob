@@ -11,11 +11,8 @@
 typedef enum
 {
     OP_MATCH_LITERAL, // Exact string match (e.g., "src")
-    OP_MATCH_SEP,     // Directory separator "/"
-    OP_MATCH_DOT,     // Current directory "."
-    OP_MATCH_DOTDOT,  // Parent directory ".."
     OP_MATCH_STAR,    // Wildcard "*" (readdir within current dir)
-    OP_MATCH_STAR2,   // Recursive wildcard "**"
+    OP_MATCH_STAR2,   // Recursive wildcard "**" (kept for fnmatch NFA)
     OP_MATCH_QMARK,   // Single char match "?"
     OP_MATCH_CLASS,   // Character class "[...]"
     OP_FORK,          // Branching point for brace expansion
@@ -59,6 +56,60 @@ typedef enum
 } rbcglob_seg_type_t;
 
 /**
+ * @brief Match Strategy Types
+ */
+typedef enum
+{
+    STRATEGY_EXACT,    // "literal"
+    STRATEGY_PREFIX,   // "prefix*"
+    STRATEGY_SUFFIX,   // "*suffix"
+    STRATEGY_INFIX,    // "*infix*"
+    STRATEGY_SEQUENCE, // "foo*bar*baz" (only stars)
+    STRATEGY_NFA       // Complex pattern
+} rbcglob_match_strategy_t;
+
+/**
+ * @brief Matcher Data
+ */
+typedef struct
+{
+    rbcglob_match_strategy_t strategy;
+    union
+    {
+        // STRATEGY_EXACT
+        char *literal;
+
+        // STRATEGY_PREFIX, STRATEGY_SUFFIX, STRATEGY_INFIX
+        struct
+        {
+            char *pattern;
+            size_t len;
+        } affix;
+
+        // STRATEGY_SEQUENCE
+        struct
+        {
+            char **parts;     // Array of literal parts
+            size_t count;     // Number of parts
+            bool match_start; // If true, first part must match at start
+            bool match_end;   // If true, last part must match at end
+        } seq;
+
+        // STRATEGY_NFA
+        struct
+        {
+            rbcglob_node_t *root;
+            char *must_start; // Optimization (Prefix Trim)
+            size_t start_len;
+            char *must_end; // Optimization (Suffix Trim)
+            size_t end_len;
+            char **required_literals; // Optimization (Infix Pre-check)
+            size_t req_count;
+        } nfa;
+    } pk;
+} rbcglob_matcher_t;
+
+/**
  * @brief Segment Node
  */
 typedef struct rbcglob_segment_t rbcglob_segment_t;
@@ -74,17 +125,7 @@ struct rbcglob_segment_t
         struct
         {
             char *original_pattern;
-
-            // --- Optimization Flags ---
-            char *must_start;
-            size_t start_len;
-            char *must_end;
-            size_t end_len;
-
-            // --- Detailed Matching ---
-            // A mini, character-based NFA dedicated ONLY to matching
-            // the name string against the generalized pattern.
-            rbcglob_node_t *local_nfa_root;
+            rbcglob_matcher_t matcher;
         } glob;
 
         // SEG_BRANCH

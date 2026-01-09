@@ -331,21 +331,92 @@ static void segment_run_recursive(char *path_buf, size_t *path_len, rbcglob_segm
 
             if (seg->type == SEG_WILDCARD)
             {
-                if (seg->data.glob.must_start)
+                bool matched = false;
+                rbcglob_matcher_t *m = &seg->data.glob.matcher;
+                size_t name_len = strlen(name);
+
+                switch (m->strategy)
                 {
-                    if (strncmp(name, seg->data.glob.must_start, seg->data.glob.start_len) != 0)
-                        continue;
+                case STRATEGY_EXACT:
+                    matched = (strcmp(name, m->pk.literal) == 0);
+                    break;
+                case STRATEGY_PREFIX:
+                    matched = (strncmp(name, m->pk.affix.pattern, m->pk.affix.len) == 0);
+                    break;
+                case STRATEGY_SUFFIX:
+                    if (name_len >= m->pk.affix.len)
+                        matched = (strcmp(name + name_len - m->pk.affix.len, m->pk.affix.pattern) == 0);
+                    break;
+                case STRATEGY_INFIX:
+                    matched = (strstr(name, m->pk.affix.pattern) != NULL);
+                    break;
+                case STRATEGY_SEQUENCE:
+                {
+                    const char *p = name;
+                    const char *end_limit = name + name_len;
+                    matched = true;
+                    size_t count = m->pk.seq.count;
+
+                    if (m->pk.seq.match_end)
+                    {
+                        char *last_part = m->pk.seq.parts[count - 1];
+                        size_t last_len = strlen(last_part);
+                        if (name_len < last_len || strcmp(name + name_len - last_len, last_part) != 0)
+                        {
+                            matched = false;
+                        }
+                        else
+                        {
+                            end_limit -= last_len;
+                            count--; // Don't check last part in loop
+                        }
+                    }
+
+                    if (matched)
+                    {
+                        for (size_t i = 0; i < count; i++)
+                        {
+                            char *part = m->pk.seq.parts[i];
+                            size_t part_len = strlen(part);
+                            if (i == 0 && m->pk.seq.match_start)
+                            {
+                                if (strncmp(p, part, part_len) != 0)
+                                {
+                                    matched = false;
+                                    break;
+                                }
+                                p += part_len;
+                            }
+                            else
+                            {
+                                char *found = strstr(p, part);
+                                if (!found || found > end_limit)
+                                {
+                                    matched = false;
+                                    break;
+                                }
+                                p = found + part_len;
+                            }
+                        }
+                        if (matched && p > end_limit)
+                            matched = false;
+                    }
+                    break;
                 }
-                if (seg->data.glob.must_end)
-                {
-                    size_t name_len = strlen(name);
-                    if (name_len < seg->data.glob.end_len)
-                        continue;
-                    if (strcmp(name + name_len - seg->data.glob.end_len, seg->data.glob.must_end) != 0)
-                        continue;
+                case STRATEGY_NFA:
+                    if (m->pk.nfa.must_start)
+                    {
+                        if (strncmp(name, m->pk.nfa.must_start, m->pk.nfa.start_len) != 0)
+                        {
+                            matched = false;
+                            break;
+                        }
+                    }
+                    matched = local_nfa_match(name, m->pk.nfa.root);
+                    break;
                 }
 
-                if (local_nfa_match(name, seg->data.glob.local_nfa_root))
+                if (matched)
                 {
                     size_t original_len = *path_len;
                     if (buf_append(path_buf, path_len, name) > 0)
@@ -435,9 +506,8 @@ void rbcglob_execute_segments(
 {
     exec_ctx_t ctx = {callback, user_data, flags, sort};
 
-    char *path_buf = malloc(PATH_MAX);
-    if (!path_buf)
-        return;
+    char stack_buf[PATH_MAX];
+    char *path_buf = stack_buf;
 
     size_t path_len = 0;
     path_buf[0] = '\0';
@@ -450,6 +520,4 @@ void rbcglob_execute_segments(
     }
 
     segment_run_recursive(path_buf, &path_len, root, NULL, &ctx, false);
-
-    free(path_buf);
 }

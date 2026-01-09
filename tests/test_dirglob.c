@@ -66,3 +66,13 @@ void test_dirglob_match_stub_returns_no_match(void)
     bool match = rbcglob_fnmatch("*.txt", "test.txt", 0);
     TEST_ASSERT_TRUE(match);
 }
+
+void test_dirglob_character_class_match(void)
+{
+    TEST_ASSERT_TRUE(rbcglob_fnmatch("file[1-3].txt", "file1.txt", 0));
+    TEST_ASSERT_TRUE(rbcglob_fnmatch("file[1-3].txt", "file2.txt", 0));
+    TEST_ASSERT_TRUE(rbcglob_fnmatch("file[1-3].txt", "file3.txt", 0));
+    TEST_ASSERT_FALSE(rbcglob_fnmatch("file[1-3].txt", "file4.txt", 0));
+    TEST_ASSERT_FALSE(rbcglob_fnmatch("file[1-3].txt", "file0.txt", 0));
+    TEST_ASSERT_TRUE(rbcglob_fnmatch("[a-c].txt", "b.txt", 0));
+}

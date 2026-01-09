@@ -4,7 +4,9 @@
 #include <rbcglob/internal/utils.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <errno.h>
+#include <stdio.h> // For snprintf if needed
 
 /* Defines the opaque struct from types.h */
 struct rbcglob_compiled_glob_s
@@ -145,12 +147,72 @@ bool rbcglob_dirglob_compiled(const rbcglob_compiled_glob_t *cg, const char *bas
     else if (results.lengths)
         free(results.lengths);
 
-    if (results.items)
-        free(results.items);
     if (results.discovery_indices)
         free(results.discovery_indices);
 
     return true;
+}
+
+/* Context for fast path visitor */
+typedef struct
+{
+    rbcglob_results_t *results;
+    rbcglob_ctx_t *ctx;
+    const char *base;
+    unsigned flags;
+    bool sort;
+    callback_ctx_t *cb_ctx;
+} fast_path_ctx_t;
+
+static void fast_path_visitor(const char *p, void *arg)
+{
+    fast_path_ctx_t *fp_ctx = (fast_path_ctx_t *)arg;
+
+    // Check if remaining string has wildcards (escaped braces? etc)
+    if (strpbrk(p, "*?[]{}\\") == NULL)
+    {
+        // Pure literal
+        char full_path[4096];
+        int needed;
+        const char *base = fp_ctx->base;
+
+        if (base && strcmp(base, ".") != 0)
+        {
+            needed = snprintf(full_path, sizeof(full_path), "%s/%s", base, p);
+        }
+        else
+        {
+            needed = snprintf(full_path, sizeof(full_path), "%s", p);
+        }
+
+        if (needed < 0 || (size_t)needed >= sizeof(full_path))
+        {
+            // Too long, fallback to graph? Or just abort.
+            // If too long for stack buffer, NFA won't help much with stat unless it handles long paths logic differently.
+            return;
+        }
+
+        struct stat st;
+        if (stat(full_path, &st) == 0)
+        {
+            size_t plen = strlen(p);
+            if (plen > 0 && p[plen - 1] == '/')
+            {
+                if (!S_ISDIR(st.st_mode))
+                    return;
+            }
+            rbcglob_results_add(fp_ctx->results, p);
+        }
+    }
+    else
+    {
+        // Still has wildcards? Compile and run graph.
+        rbcglob_segment_t *graph = rbcglob_compile_segments(&fp_ctx->ctx->arena, p);
+        if (graph)
+        {
+            rbcglob_execute_segments(graph, fp_ctx->base, fp_ctx->flags, fp_ctx->sort, nfa_match_callback, fp_ctx->cb_ctx);
+        }
+    }
 }
 
 bool rbcglob_dirglob(const char **patterns, size_t npatterns, unsigned flags,
@@ -178,10 +240,30 @@ bool rbcglob_dirglob(const char **patterns, size_t npatterns, unsigned flags,
     {
         if (!patterns[i])
             continue;
-        rbcglob_segment_t *graph = rbcglob_compile_segments(&ctx->arena, patterns[i]);
-        if (graph)
+
+        const char *current_pattern = patterns[i];
+
+        if (strpbrk(current_pattern, "*?[]{}\\") == NULL)
         {
-            rbcglob_execute_segments(graph, base, flags, sort, nfa_match_callback, &cb_ctx);
+            // Pure literal: Fast path
+            fast_path_ctx_t fp_ctx = {&results, ctx, base, flags, sort, &cb_ctx};
+            fast_path_visitor(current_pattern, &fp_ctx);
+        }
+        else if (strchr(current_pattern, '{') != NULL && strpbrk(current_pattern, "*?[]") == NULL)
+        {
+            // Pure braces: Use visitor
+            fast_path_ctx_t fp_ctx = {&results, ctx, base, flags, sort, &cb_ctx};
+            rbcglob_brace_visit(current_pattern, &ctx->arena, fast_path_visitor, &fp_ctx);
+        }
+        else
+        {
+            // Standard path or mixed wildcard-brace
+            // If mixed, we pass directly to compile segments which handles braces via graph or expansion internally
+            rbcglob_segment_t *graph = rbcglob_compile_segments(&ctx->arena, current_pattern);
+            if (graph)
+            {
+                rbcglob_execute_segments(graph, base, flags, sort, nfa_match_callback, &cb_ctx);
+            }
         }
     }
 
