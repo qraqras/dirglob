@@ -11,6 +11,7 @@ a/b
 a/b/c
 a/b/file.txt
 a/c
+a/c/file.txt
 a.c
 a.txt
 abc.txt

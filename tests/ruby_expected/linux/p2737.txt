@@ -1,5 +1,6 @@
 a/a.txt
 a/b/file.txt
+a/c/file.txt
 a.txt
 abc.txt
 b/b.txt

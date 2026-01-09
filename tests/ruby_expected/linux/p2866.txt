@@ -3,6 +3,7 @@ xyz.txt
 abc.txt
 z.txt
 a/a.txt
+a/c/file.txt
 a/b/file.txt
 c.txt
 b.txt

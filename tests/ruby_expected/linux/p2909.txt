@@ -1,5 +1,6 @@
 .dir/file.txt
 a/b/file.txt
+a/c/file.txt
 dir/file.txt
 dir/sub/file.txt
 file.c

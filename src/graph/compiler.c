@@ -561,9 +561,9 @@ rbcglob_segment_t *rbcglob_compile_segments(rbcglob_arena_t *arena, const char *
                 all_literals = false;
         }
 
-        if (any_slash || all_literals)
+        if (any_slash || all_literals || expansions.count > 1)
         {
-            // Case A: SEG_BRANCH (Stat Optimization or Topology Split)
+            // Case A: SEG_BRANCH (Stat Optimization, Topology Split, or Brace Branching)
             seg = rbcglob_segment_new(arena, SEG_BRANCH);
             rbcglob_segment_t *last_alt = NULL;
 
@@ -624,7 +624,7 @@ rbcglob_segment_t *rbcglob_compile_segments(rbcglob_arena_t *arena, const char *
             }
             rbcglob_str_list_free(&expansions);
 
-            // SEG_BRANCH consumes the rest. Break loop.
+            // SEG_BRANCH consumes the rest using recursion. Break loop.
             if (!head)
                 head = seg;
             else
@@ -648,7 +648,7 @@ rbcglob_segment_t *rbcglob_compile_segments(rbcglob_arena_t *arena, const char *
             else
                 curr->next = seg;
             curr = seg;
-            break; // Done with this level
+            // Do NOT break here. Continue parsing next component.
         }
     }
     return head;

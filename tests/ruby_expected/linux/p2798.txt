@@ -10,6 +10,7 @@ z
 a
 a/a.txt
 a/c
+a/c/file.txt
 a/b
 a/b/file.txt
 a/b/c

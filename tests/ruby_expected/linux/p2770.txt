@@ -1,5 +1,6 @@
 file.txt
 file.md
+a/c/file.txt
 a/b/file.txt
 sub/file.txt
 dir/file.txt
