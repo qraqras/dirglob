@@ -1,9 +1,12 @@
-#include "rbcglob/internal/pattern.h"
-#include "rbcglob/internal/utils.h"
-#include <rbcglob/rbcglob.h>
-#include <stdlib.h>
 #include <string.h>
+#include <stdlib.h>
+#include <stdbool.h>
 #include <ctype.h>
+#include <stdio.h>
+
+#include "rbcglob/rbcglob.h"
+#include "pattern.h"
+#include "utils.h"
 
 // Helper macros
 #define IS_PATHNAME (flags & RBCGLOB_FNM_PATHNAME)
@@ -278,11 +281,20 @@ static bool match(const char *p, const char *s, const char *initial_str, unsigne
     return (*s == '\0');
 }
 
-bool rbcglob_vm_match(const char *text, const char *pattern, unsigned int flags)
+bool rbcglob_recursive_match(const char *text, const char *pattern, unsigned int flags)
 {
     if (!text || !pattern)
         return false;
 
-    // VMと言いつつ、中身は再帰的マッチャ
+    // Simple wrapper around recursive matcher
     return match(pattern, text, text, flags);
+}
+
+bool rbcglob_fnmatch(const char *pattern, const char *string, unsigned flags)
+{
+    if (!pattern || !string)
+        return false;
+
+    // Call the shared (recursive) matching engine
+    return rbcglob_recursive_match(string, pattern, flags);
 }

@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include "rbcglob/internal/arena.h"
+#include "arena.h"
 
 /**
  * @brief Duplicate a string

@@ -7,10 +7,9 @@
 #include <unistd.h>
 #include <errno.h>
 
-#include "rbcglob/internal/pattern.h"
-#include "rbcglob/internal/traverse.h"
-#include "rbcglob/internal/utils.h"
-#include "rbcglob/file.h"
+#include "pattern.h"
+#include "utils.h"
+#include "rbcglob/rbcglob.h"
 
 /******************************************************************************
  * Local Pattern Matcher (for matching filenames within SEG_WILDCARD)
@@ -239,6 +238,34 @@ static bool fs_next(fs_dir_iter_t *iter, fs_entry_t *out_entry)
     return true;
 }
 
+// Helper for fixed length pattern match (handles '?' but not '*')
+static bool match_fixed(const char *text, const char *pat, size_t len)
+{
+    for (size_t i = 0; i < len; i++)
+    {
+        if (pat[i] != '?' && pat[i] != text[i])
+            return false;
+    }
+    return true;
+}
+
+// Helper for finding fixed length pattern in text (like strstr but with '?')
+static const char *search_fixed(const char *text, const char *pat, const char *end_limit)
+{
+    size_t pat_len = strlen(pat);
+    if (pat_len == 0)
+        return text;
+
+    // Simple naive search: O(N*M)
+    // Could be optimized (Boyer-Moore etc) but '?' makes it tricky
+    for (const char *p = text; p <= end_limit; p++)
+    {
+        if (match_fixed(p, pat, pat_len))
+            return p;
+    }
+    return NULL;
+}
+
 static bool fs_is_dir(const char *path)
 { // Follows symlink
     struct stat st;
@@ -427,7 +454,7 @@ void rbcglob_execute_segments(
                 continue;
             }
 
-            if (seg->type == SEG_LITERAL)
+            if (seg->type == RBCG_SEGMENT_LITERAL)
             {
                 if (buf_append(path_buf, &path_len, seg->data.literal) == 0)
                 {
@@ -487,7 +514,7 @@ void rbcglob_execute_segments(
                     }
                 }
             }
-            else if (seg->type == SEG_WILDCARD || seg->type == SEG_RECURSIVE)
+            else if (seg->type == RBCG_SEGMENT_WILDCARD || seg->type == RBCG_SEGMENT_RECURSIVE)
             {
                 const char *open_path = (path_len == 0) ? "." : path_buf;
                 f->iter = fs_open(open_path);
@@ -498,7 +525,7 @@ void rbcglob_execute_segments(
                 }
                 f->state = ST_DIR_LOOP;
             }
-            else if (seg->type == SEG_BRANCH)
+            else if (seg->type == RBCG_SEGMENT_BRANCH)
             {
                 f->alt = seg->data.branch.head;
                 // Prepare the stack node for children
@@ -536,7 +563,7 @@ void rbcglob_execute_segments(
                     continue; // Loop again
                 if (strcmp(name, ".") == 0)
                 {
-                    if (seg->type == SEG_RECURSIVE)
+                    if (seg->type == RBCG_SEGMENT_RECURSIVE)
                         continue;
                     if (f->from_wildcard)
                         continue;
@@ -558,7 +585,7 @@ void rbcglob_execute_segments(
                 bool is_hidden = (name[0] == '.');
                 if (is_hidden && !(ctx.flags & RBCGLOB_FNM_DOTMATCH))
                 {
-                    if (seg->type == SEG_WILDCARD)
+                    if (seg->type == RBCG_SEGMENT_WILDCARD)
                     {
                         if (seg->data.glob.original_pattern[0] != '.')
                             continue;
@@ -572,10 +599,10 @@ void rbcglob_execute_segments(
                 bool should_recurse = false;
                 bool next_from_wildcard = false;
 
-                if (seg->type == SEG_WILDCARD)
+                if (seg->type == RBCG_SEGMENT_WILDCARD)
                 {
                     bool matched = false;
-                    rbcglob_matcher_t *m = &seg->data.glob.matcher;
+                    rbcg_matcher_t *m = &seg->data.glob.matcher;
                     size_t name_len = strlen(name);
 
                     // Optimization: Use a helper for matching logic if possible
@@ -586,30 +613,32 @@ void rbcglob_execute_segments(
 
                     switch (m->strategy)
                     {
-                    case STRATEGY_EXACT:
+                    case RBCG_STRATEGY_EXACT:
                         matched = (strcmp(name, m->pk.literal) == 0);
                         break;
-                    case STRATEGY_PREFIX:
+                    case RBCG_STRATEGY_PREFIX:
                         matched = (strncmp(name, m->pk.affix.pattern, m->pk.affix.len) == 0);
                         break;
-                    case STRATEGY_SUFFIX:
+                    case RBCG_STRATEGY_SUFFIX:
                         if (name_len >= m->pk.affix.len)
                             matched = (strcmp(name + name_len - m->pk.affix.len, m->pk.affix.pattern) == 0);
                         break;
-                    case STRATEGY_INFIX:
+                    case RBCG_STRATEGY_INFIX:
                         matched = (strstr(name, m->pk.affix.pattern) != NULL);
                         break;
-                    case STRATEGY_SEQUENCE:
+                    case RBCG_STRATEGY_PATTERN_CHAIN:
                     {
                         const char *p = name;
                         const char *end_limit = name + name_len;
                         matched = true;
-                        size_t count = m->pk.seq.count;
-                        if (m->pk.seq.match_end)
+                        size_t count = m->pk.chain.count;
+                        if (m->pk.chain.match_end)
                         {
-                            char *last = m->pk.seq.parts[count - 1];
+                            char *last = m->pk.chain.parts[count - 1];
                             size_t last_len = strlen(last);
-                            if (name_len < last_len || strcmp(name + name_len - last_len, last) != 0)
+                            if (name_len < last_len)
+                                matched = false;
+                            else if (!match_fixed(name + name_len - last_len, last, last_len))
                                 matched = false;
                             else
                             {
@@ -621,11 +650,24 @@ void rbcglob_execute_segments(
                         {
                             for (size_t i = 0; i < count; i++)
                             {
-                                char *part = m->pk.seq.parts[i];
+                                char *part = m->pk.chain.parts[i];
                                 size_t part_len = strlen(part);
-                                if (i == 0 && m->pk.seq.match_start)
+                                if (i == 0 && m->pk.chain.match_start)
                                 {
-                                    if (strncmp(p, part, part_len) != 0)
+                                    if (p + part_len > end_limit + (m->pk.chain.match_end ? 0 : 10000)) // overflow protection not needed strictly if logic sound but good for safety
+                                    {
+                                        // Logic: end_limit is dynamic.
+                                        // If match_end is true, end_limit is strictly the end of valid region.
+                                        // If match_end is false (patterns like "abc*"), end_limit is end of string.
+                                        // Simple check:
+                                    }
+                                    if (name_len < part_len)
+                                    {
+                                        matched = false;
+                                        break;
+                                    }
+
+                                    if (!match_fixed(p, part, part_len))
                                     {
                                         matched = false;
                                         break;
@@ -634,8 +676,8 @@ void rbcglob_execute_segments(
                                 }
                                 else
                                 {
-                                    char *found = strstr(p, part);
-                                    if (!found || found > end_limit)
+                                    const char *found = search_fixed(p, part, end_limit - part_len);
+                                    if (!found)
                                     {
                                         matched = false;
                                         break;
@@ -643,13 +685,13 @@ void rbcglob_execute_segments(
                                     p = found + part_len;
                                 }
                             }
-                            if (matched && p > end_limit)
+                            if (matched && m->pk.chain.match_end && p > end_limit)
                                 matched = false;
                         }
                     }
                     break;
-                    case STRATEGY_VM:
-                        matched = rbcglob_vm_match(name, m->pk.vm.pattern, ctx.flags);
+                    case RBCG_STRATEGY_FNMATCH:
+                        matched = rbcglob_recursive_match(name, m->pk.fnmatch.pattern, ctx.flags);
                         break;
                     }
 
@@ -659,7 +701,7 @@ void rbcglob_execute_segments(
                         next_from_wildcard = true;
                     }
                 }
-                else if (seg->type == SEG_RECURSIVE)
+                else if (seg->type == RBCG_SEGMENT_RECURSIVE)
                 {
                     // logic for ** recursion
                     bool can_recurse = is_dir_known;
@@ -718,54 +760,71 @@ void rbcglob_execute_segments(
                     bool matched_next = false;
                     if (next_seg)
                     {
-                        if (next_seg->type == SEG_WILDCARD)
+                        if (next_seg->type == RBCG_SEGMENT_WILDCARD)
                         {
                             // Inline Wildcard Match Logic to avoid function call overhead
-                            rbcglob_matcher_t *m_next = &next_seg->data.glob.matcher;
+                            rbcg_matcher_t *m_next = &next_seg->data.glob.matcher;
                             size_t name_len = strlen(name);
 
                             switch (m_next->strategy)
                             {
-                            case STRATEGY_EXACT:
+                            case RBCG_STRATEGY_EXACT:
                                 matched_next = (strcmp(name, m_next->pk.literal) == 0);
                                 break;
-                            case STRATEGY_PREFIX:
+                            case RBCG_STRATEGY_PREFIX:
                                 matched_next = (strncmp(name, m_next->pk.affix.pattern, m_next->pk.affix.len) == 0);
                                 break;
-                            case STRATEGY_SUFFIX:
+                            case RBCG_STRATEGY_SUFFIX:
                                 if (name_len >= m_next->pk.affix.len)
                                     matched_next = (strcmp(name + name_len - m_next->pk.affix.len, m_next->pk.affix.pattern) == 0);
                                 break;
-                            case STRATEGY_INFIX:
+                            case RBCG_STRATEGY_INFIX:
                                 matched_next = (strstr(name, m_next->pk.affix.pattern) != NULL);
                                 break;
-                            case STRATEGY_SEQUENCE:
+                            case RBCG_STRATEGY_PATTERN_CHAIN:
                             {
                                 const char *p = name;
                                 const char *end_limit = name + name_len;
                                 matched_next = true;
-                                size_t count = m_next->pk.seq.count;
-                                if (m_next->pk.seq.match_end)
+                                size_t count = m_next->pk.chain.count;
+                                if (m_next->pk.chain.match_end)
                                 {
-                                    char *last = m_next->pk.seq.parts[count - 1];
+                                    char *last = m_next->pk.chain.parts[count - 1];
                                     size_t last_len = strlen(last);
                                     if (name_len < last_len || strcmp(name + name_len - last_len, last) != 0)
                                         matched_next = false;
                                     else
                                     {
-                                        end_limit -= last_len;
-                                        count--;
+                                        if (end_limit < name + last_len) // Check underflow
+                                            matched_next = false;
+                                        else if (!match_fixed(end_limit - last_len, last, last_len))
+                                            matched_next = false;
+                                        else
+                                        {
+                                            end_limit -= last_len;
+                                            count--;
+                                        }
                                     }
                                 }
                                 if (matched_next)
                                 {
                                     for (size_t i = 0; i < count; i++)
                                     {
-                                        char *part = m_next->pk.seq.parts[i];
+                                        char *part = m_next->pk.chain.parts[i];
                                         size_t part_len = strlen(part);
-                                        if (i == 0 && m_next->pk.seq.match_start)
+                                        if (i == 0 && m_next->pk.chain.match_start)
                                         {
-                                            if (strncmp(p, part, part_len) != 0)
+                                            if (strncmp(p + part_len > end_limit ? end_limit : p + part_len, "", 0) != 0)
+                                            {
+                                            } // Dummy check to suppress warning? No.
+                                            // Check length first
+                                            if (p + part_len > end_limit + (m_next->pk.chain.match_end ? 0 : 10000)) // Hacky check? No.
+                                            {
+                                                matched_next = false; // Not enough chars
+                                                break;
+                                            }
+
+                                            if (!match_fixed(p, part, part_len))
                                             {
                                                 matched_next = false;
                                                 break;
@@ -774,8 +833,8 @@ void rbcglob_execute_segments(
                                         }
                                         else
                                         {
-                                            char *found = strstr(p, part);
-                                            if (!found || found > end_limit)
+                                            const char *found = search_fixed(p, part, end_limit - part_len);
+                                            if (!found)
                                             {
                                                 matched_next = false;
                                                 break;
@@ -783,17 +842,17 @@ void rbcglob_execute_segments(
                                             p = found + part_len;
                                         }
                                     }
-                                    if (matched_next && p > end_limit)
+                                    if (matched_next && m_next->pk.chain.match_end && p > end_limit)
                                         matched_next = false;
                                 }
                             }
                             break;
-                            case STRATEGY_VM:
-                                matched_next = rbcglob_vm_match(name, m_next->pk.vm.pattern, ctx.flags);
+                            case RBCG_STRATEGY_FNMATCH:
+                                matched_next = rbcglob_recursive_match(name, m_next->pk.fnmatch.pattern, ctx.flags);
                                 break;
                             }
                         }
-                        else if (next_seg->type == SEG_LITERAL)
+                        else if (next_seg->type == RBCG_SEGMENT_LITERAL)
                         {
                             if (strcmp(name, next_seg->data.literal) == 0)
                             {

@@ -3,16 +3,13 @@
 #include <stdlib.h>
 #include <ctype.h>
 
-#include "rbcglob/internal/pattern.h"
-#include "rbcglob/internal/utils.h"
+#include "pattern.h"
+#include "utils.h"
 
-/******************************************************************************
- * Part 0: Strategy Analysis Helper
- ******************************************************************************/
-
-static void analyze_and_build_matcher(rbcglob_arena_t *arena, rbcglob_matcher_t *m, const char *pattern)
+static void analyze_and_build_matcher(rbcglob_arena_t *arena, rbcg_matcher_t *m, const char *pattern)
 {
     // Check for complexity features
+    // Note: '?' is now handled by PATTERN_CHAIN, so it is not considered complex enough to force FNMATCH.
     bool has_qmark = (strchr(pattern, '?') != NULL);
     bool has_bracket = (strchr(pattern, '[') != NULL); // Basic check, ideally checking for escaped `\`
     bool has_brace = (strchr(pattern, '{') != NULL);   // Should be handled by expansion loop but double check
@@ -38,39 +35,64 @@ static void analyze_and_build_matcher(rbcglob_arena_t *arena, rbcglob_matcher_t 
         p++;
     }
 
-    // Force VM if complex characters exist
+    // Force VM if complex characters exist (excluding '?' which we can handle in chains)
     // Note: Escaped characters might trigger this simple check, which is safe (just falls back to VM).
-    if (has_qmark || has_bracket || has_brace || has_paren || has_pipe)
+    if (has_bracket || has_brace || has_paren || has_pipe)
     {
-        m->strategy = STRATEGY_VM;
-        m->pk.vm.pattern = rbcglob_arena_strdup(arena, pattern);
+        m->strategy = RBCG_STRATEGY_FNMATCH;
+        m->pk.fnmatch.pattern = rbcglob_arena_strdup(arena, pattern);
     }
     else if (star_count == 0)
     {
-        m->strategy = STRATEGY_EXACT;
-        m->pk.literal = rbcglob_arena_strdup(arena, pattern);
+        // No stars. If we have '?', it's a fixed length pattern chain (count=1).
+        // If no '?', it's exact match.
+        if (has_qmark)
+        {
+            m->strategy = RBCG_STRATEGY_PATTERN_CHAIN;
+            m->pk.chain.count = 1;
+            m->pk.chain.parts = rbcglob_arena_alloc(arena, sizeof(char *));
+            m->pk.chain.parts[0] = rbcglob_arena_strdup(arena, pattern);
+            m->pk.chain.match_start = true;
+            m->pk.chain.match_end = true;
+        }
+        else
+        {
+            m->strategy = RBCG_STRATEGY_EXACT;
+            m->pk.literal = rbcglob_arena_strdup(arena, pattern);
+        }
     }
     else if (star_count == 1)
     {
         size_t len = strlen(pattern);
+        if (has_qmark)
+        {
+            // If it has '?', we treat it as a PATTERN_CHAIN even if it looks like prefix/suffix.
+            // This simplifies logic: PREFIX/SUFFIX etc are for pure literals.
+            // "abc?*" -> Chain ["abc?", ""] (if we implemented empty tail) or similar logic.
+            // The existing PATTERN_CHAIN logic below splits by '*'.
+            // Let's drop into the generic PATTERN_CHAIN block at the end.
+            m->strategy = RBCG_STRATEGY_PATTERN_CHAIN;
+            goto build_chain;
+        }
+
         if (pattern[0] == '*')
         {
             if (len == 1)
             {
                 // Pattern is "*"
-                m->strategy = STRATEGY_INFIX; // or SEQUENCE with empty outer logic?
+                m->strategy = RBCG_STRATEGY_INFIX; // or SEQUENCE with empty outer logic?
                 // Actually "*" matches everything (except hidden).
                 // Let's treat it as INFIX with empty pattern? Or SUFFIX with empty?
                 // Let's treat it as SEQUENCE with ["", ""] parts?
                 // Simplest: STRATEGY_PREFIX with empty string (starts with "")
-                m->strategy = STRATEGY_PREFIX; // matches anything starting with empty string
+                m->strategy = RBCG_STRATEGY_PREFIX; // matches anything starting with empty string
                 m->pk.affix.pattern = "";
                 m->pk.affix.len = 0;
             }
             else
             {
                 // "*suffix"
-                m->strategy = STRATEGY_SUFFIX;
+                m->strategy = RBCG_STRATEGY_SUFFIX;
                 m->pk.affix.pattern = rbcglob_arena_strdup(arena, pattern + 1);
                 m->pk.affix.len = len - 1;
             }
@@ -78,7 +100,7 @@ static void analyze_and_build_matcher(rbcglob_arena_t *arena, rbcglob_matcher_t 
         else if (pattern[len - 1] == '*')
         {
             // "prefix*"
-            m->strategy = STRATEGY_PREFIX;
+            m->strategy = RBCG_STRATEGY_PREFIX;
             m->pk.affix.pattern = rbcglob_arena_strdup(arena, pattern);
             m->pk.affix.pattern[len - 1] = '\0'; // Remove star
             m->pk.affix.len = len - 1;
@@ -89,12 +111,12 @@ static void analyze_and_build_matcher(rbcglob_arena_t *arena, rbcglob_matcher_t 
             // Wait, "pre*suf" is NOT "contains(pre) && contains(suf)".
             // It is "starts(pre) && ends(suf)".
             // INFIX is "*sub*".
-            // So "pre*suf" is SEQUENCE.
-            m->strategy = STRATEGY_SEQUENCE;
+            // So "pre*suf" is PATTERN_CHAIN.
+            m->strategy = RBCG_STRATEGY_PATTERN_CHAIN;
 
             // Build 2 parts
-            m->pk.seq.count = 2;
-            m->pk.seq.parts = rbcglob_arena_alloc(arena, sizeof(char *) * 2);
+            m->pk.chain.count = 2;
+            m->pk.chain.parts = rbcglob_arena_alloc(arena, sizeof(char *) * 2);
 
             // Copy prefix
             char *star_pos = strchr(pattern, '*');
@@ -102,13 +124,13 @@ static void analyze_and_build_matcher(rbcglob_arena_t *arena, rbcglob_matcher_t 
             char *pre = rbcglob_arena_alloc(arena, pre_len + 1);
             memcpy(pre, pattern, pre_len);
             pre[pre_len] = '\0';
-            m->pk.seq.parts[0] = pre;
+            m->pk.chain.parts[0] = pre;
 
             // Copy suffix
-            m->pk.seq.parts[1] = rbcglob_arena_strdup(arena, star_pos + 1);
+            m->pk.chain.parts[1] = rbcglob_arena_strdup(arena, star_pos + 1);
 
-            m->pk.seq.match_start = true;
-            m->pk.seq.match_end = true;
+            m->pk.chain.match_start = true;
+            m->pk.chain.match_end = true;
         }
     }
     else
@@ -116,17 +138,18 @@ static void analyze_and_build_matcher(rbcglob_arena_t *arena, rbcglob_matcher_t 
         // 2 or more stars
         // Check for INFIX case: "*word*"
         size_t len = strlen(pattern);
-        if (pattern[0] == '*' && pattern[len - 1] == '*' && star_count == 2)
+        if (!has_qmark && pattern[0] == '*' && pattern[len - 1] == '*' && star_count == 2)
         {
-            m->strategy = STRATEGY_INFIX;
+            m->strategy = RBCG_STRATEGY_INFIX;
             m->pk.affix.pattern = rbcglob_arena_strdup(arena, pattern + 1);
             m->pk.affix.pattern[len - 2] = '\0'; // Remove trailing star
             m->pk.affix.len = len - 2;
         }
         else
         {
-            m->strategy = STRATEGY_SEQUENCE;
+            m->strategy = RBCG_STRATEGY_PATTERN_CHAIN;
 
+        build_chain:
             // Split by '*'
             // First count parts (star_count + 1 max)
             // But consecutive stars might reduce count.
@@ -134,8 +157,8 @@ static void analyze_and_build_matcher(rbcglob_arena_t *arena, rbcglob_matcher_t 
             // The split logic should handle empty parts or we normalize?
             // Let's implement robust split.
 
-            m->pk.seq.match_start = (pattern[0] != '*');
-            m->pk.seq.match_end = (pattern[len - 1] != '*');
+            m->pk.chain.match_start = (pattern[0] != '*');
+            m->pk.chain.match_end = (pattern[len - 1] != '*');
 
             // Estimate max parts
             size_t max_parts = star_count + 1;
@@ -162,27 +185,19 @@ static void analyze_and_build_matcher(rbcglob_arena_t *arena, rbcglob_matcher_t 
                 parts[count++] = rbcglob_arena_strdup(arena, curr);
             }
 
-            m->pk.seq.parts = parts;
-            m->pk.seq.count = count;
+            m->pk.chain.parts = parts;
+            m->pk.chain.count = count;
         }
     }
 
-    if (m->strategy == STRATEGY_VM)
+    if (m->strategy == RBCG_STRATEGY_FNMATCH)
     {
-        // Fill VM struct (Just copy pattern)
-        m->pk.vm.pattern = rbcglob_arena_strdup(arena, pattern);
+        // Fill fnmatch struct (Just copy pattern)
+        m->pk.fnmatch.pattern = rbcglob_arena_strdup(arena, pattern);
     }
 }
 
-/******************************************************************************
- * Part 1: VM Fragment Compilation (REMOVED)
- ******************************************************************************/
-
-/******************************************************************************
- * Part 2: Segment Compilation (Path-Level)
- ******************************************************************************/
-
-rbcglob_segment_t *rbcglob_segment_new(rbcglob_arena_t *arena, rbcglob_seg_type_t type)
+rbcglob_segment_t *rbcglob_segment_new(rbcglob_arena_t *arena, rbcg_segment_type_t type)
 {
     rbcglob_segment_t *seg = rbcglob_arena_alloc(arena, sizeof(rbcglob_segment_t));
     memset(seg, 0, sizeof(rbcglob_segment_t));
@@ -235,7 +250,7 @@ rbcglob_segment_t *rbcglob_compile_segments(rbcglob_arena_t *arena, const char *
         // Special Case: Pure Recursive Wildcard
         if (!rbcglob_has_brace(component) && is_recursive_wildcard(component))
         {
-            seg = rbcglob_segment_new(arena, SEG_RECURSIVE);
+            seg = rbcglob_segment_new(arena, RBCG_SEGMENT_RECURSIVE);
             rbcglob_str_list_free(&expansions);
             if (!head)
                 head = seg;
@@ -248,7 +263,7 @@ rbcglob_segment_t *rbcglob_compile_segments(rbcglob_arena_t *arena, const char *
         // Special Case: Simple Literal (No braces, no wildcards)
         if (!rbcglob_has_brace(component) && !rbcglob_has_wildcard(component))
         {
-            seg = rbcglob_segment_new(arena, SEG_LITERAL);
+            seg = rbcglob_segment_new(arena, RBCG_SEGMENT_LITERAL);
             seg->data.literal = component;
             rbcglob_str_list_free(&expansions);
             if (!head)
@@ -272,7 +287,7 @@ rbcglob_segment_t *rbcglob_compile_segments(rbcglob_arena_t *arena, const char *
         if (any_slash || all_literals || expansions.count > 1)
         {
             // Case A: SEG_BRANCH (Stat Optimization, Topology Split, or Brace Branching)
-            seg = rbcglob_segment_new(arena, SEG_BRANCH);
+            seg = rbcglob_segment_new(arena, RBCG_SEGMENT_BRANCH);
             rbcglob_segment_t *last_alt = NULL;
 
             for (size_t i = 0; i < expansions.count; i++)
@@ -306,7 +321,7 @@ rbcglob_segment_t *rbcglob_compile_segments(rbcglob_arena_t *arena, const char *
                 // we can create the node directly without re-parsing.
                 if (all_literals && !is_sep && !*rest)
                 {
-                    alt_chain = rbcglob_segment_new(arena, SEG_LITERAL);
+                    alt_chain = rbcglob_segment_new(arena, RBCG_SEGMENT_LITERAL);
                     alt_chain->data.literal = full_pattern;
                 }
                 else
@@ -317,7 +332,7 @@ rbcglob_segment_t *rbcglob_compile_segments(rbcglob_arena_t *arena, const char *
                 // Handle empty expansion case?
                 if (!alt_chain && !*full_pattern)
                 {
-                    alt_chain = rbcglob_segment_new(arena, SEG_LITERAL);
+                    alt_chain = rbcglob_segment_new(arena, RBCG_SEGMENT_LITERAL);
                     alt_chain->data.literal = "";
                 }
 
@@ -343,7 +358,7 @@ rbcglob_segment_t *rbcglob_compile_segments(rbcglob_arena_t *arena, const char *
         else
         {
             // Case B: SEG_WILDCARD (Optimization Strategy)
-            seg = rbcglob_segment_new(arena, SEG_WILDCARD);
+            seg = rbcglob_segment_new(arena, RBCG_SEGMENT_WILDCARD);
             seg->data.glob.original_pattern = rbcglob_arena_strdup(arena, expansions.items[0]);
 
             // Analyze pattern and select strategy
@@ -361,3 +376,11 @@ rbcglob_segment_t *rbcglob_compile_segments(rbcglob_arena_t *arena, const char *
     }
     return head;
 }
+#include <stdio.h>
+#include <stddef.h>
+#include "pattern.h"
+
+// VM Program creation is now handled directly by compiler
+// But we might need some stubs if referenced elsewhere
+
+// Empty implementation or removal if build system allows

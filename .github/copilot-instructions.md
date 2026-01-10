@@ -18,7 +18,7 @@ Rubyやglob(3)で実装されていない最適化も取り込みます。
   - Documentation: https://docs.ruby-lang.org/en/4.0/File.html#method-c-expand_path
 
 # 実装
-- プレフィックスはrbcglob_*です(内部実装にも使用します)
+- プレフィックスはrbcg_*です(内部実装にも使用します)
 - ヒューリスティックな動作の再現ではなくMRIのロジックを忠実に再現してください
 - 戻り値や引数はなるべくbool型やsize_t型を使います
 - Ruby互換APIは引数名まで一致させてください

@@ -67,6 +67,7 @@ add_dependencies(test_dirglob gen_unity_runner)
 
 target_include_directories(test_dirglob PRIVATE
   "${PROJECT_SOURCE_DIR}/include"
+  "${PROJECT_SOURCE_DIR}/src"
   "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 target_link_libraries(test_dirglob PRIVATE rbcglob ${UNITY_TARGET})

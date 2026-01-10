@@ -1,10 +1,121 @@
 #include <rbcglob/rbcglob.h>
-#include "rbcglob/internal/pattern.h"
+#include "../src/pattern.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <fnmatch.h>
+
+// Copied from walker.c for benchmarking
+static bool match_fixed(const char *text, const char *pat, size_t len)
+{
+    for (size_t i = 0; i < len; i++)
+    {
+        if (pat[i] != '?' && pat[i] != text[i])
+            return false;
+    }
+    return true;
+}
+
+static const char *search_fixed(const char *text, const char *pat, const char *end_limit)
+{
+    size_t pat_len = strlen(pat);
+    if (pat_len == 0)
+        return text;
+    for (const char *p = text; p <= end_limit; p++)
+    {
+        if (match_fixed(p, pat, pat_len))
+            return p;
+    }
+    return NULL;
+}
+
+static bool run_matcher(rbcg_matcher_t *m, const char *name)
+{
+    size_t name_len = strlen(name);
+    bool matched = false;
+    switch (m->strategy)
+    {
+    case RBCG_STRATEGY_EXACT:
+        matched = (strcmp(name, m->pk.literal) == 0);
+        break;
+    case RBCG_STRATEGY_PREFIX:
+        matched = (strncmp(name, m->pk.affix.pattern, m->pk.affix.len) == 0);
+        break;
+    case RBCG_STRATEGY_SUFFIX:
+        if (name_len >= m->pk.affix.len)
+            matched = (strcmp(name + name_len - m->pk.affix.len, m->pk.affix.pattern) == 0);
+        break;
+    case RBCG_STRATEGY_INFIX:
+        matched = (strstr(name, m->pk.affix.pattern) != NULL);
+        break;
+    case RBCG_STRATEGY_PATTERN_CHAIN:
+    {
+        const char *p = name;
+        const char *end_limit = name + name_len;
+        matched = true;
+        size_t count = m->pk.chain.count;
+        if (m->pk.chain.match_end)
+        {
+            char *last = m->pk.chain.parts[count - 1];
+            size_t last_len = strlen(last);
+            if (name_len < last_len)
+                matched = false;
+            else if (!match_fixed(name + name_len - last_len, last, last_len))
+                matched = false;
+            else
+            {
+                end_limit -= last_len;
+                count--;
+            }
+        }
+        if (matched)
+        {
+            for (size_t i = 0; i < count; i++)
+            {
+                char *part = m->pk.chain.parts[i];
+                size_t part_len = strlen(part);
+                if (i == 0 && m->pk.chain.match_start)
+                {
+                    if (p + part_len > end_limit + (m->pk.chain.match_end ? 0 : 10000))
+                    {
+                        matched = false;
+                        break;
+                    }
+                    if (name_len < part_len)
+                    {
+                        matched = false;
+                        break;
+                    }
+                    if (!match_fixed(p, part, part_len))
+                    {
+                        matched = false;
+                        break;
+                    }
+                    p += part_len;
+                }
+                else
+                {
+                    const char *found = search_fixed(p, part, end_limit - part_len);
+                    if (!found)
+                    {
+                        matched = false;
+                        break;
+                    }
+                    p = found + part_len;
+                }
+            }
+            if (matched && m->pk.chain.match_end && p > end_limit)
+                matched = false;
+        }
+    }
+    break;
+    case RBCG_STRATEGY_FNMATCH:
+        matched = rbcglob_recursive_match(name, m->pk.fnmatch.pattern, 0);
+        break;
+    }
+    return matched;
+}
 
 static double get_time_ms(void)
 {
@@ -26,11 +137,35 @@ void bench_pattern(const char *name, const char *pattern, const char *string, in
     int compiled_match = 0;
     for (int i = 0; i < iterations; i++)
     {
-        if (rbcglob_vm_match(string, pattern, 0))
+        if (rbcglob_recursive_match(string, pattern, 0))
             compiled_match++;
     }
     end = get_time_ms();
     printf("  rbcglob(direct):   %8.3f ms total (%d matches)\n", end - start, compiled_match);
+
+    // rbcglob Compiled (Optimization Enabled)
+    rbcglob_arena_t arena;
+    rbcglob_arena_init(&arena, 0);
+    rbcglob_segment_t *seg = rbcglob_compile_segments(&arena, pattern);
+
+    // Only benchmark if it compiled to a single wildcard segment (to match fnmatch semantics)
+    if (seg && seg->type == RBCG_SEGMENT_WILDCARD)
+    {
+        start = get_time_ms();
+        int opt_match = 0;
+        for (int i = 0; i < iterations; i++)
+        {
+            if (run_matcher(&seg->data.glob.matcher, string))
+                opt_match++;
+        }
+        end = get_time_ms();
+        printf("  rbcglob(compiled): %8.3f ms total (%d matches)\n", end - start, opt_match);
+    }
+    else
+    {
+        printf("  rbcglob(compiled): Skipped (Complex/Multi-segment pattern)\n");
+    }
+    rbcglob_arena_destroy(&arena);
 
     // rbcglob_fnmatch (Oneshot - overhead included)
     start = get_time_ms();
