@@ -57,21 +57,33 @@ void bench_glob3(const char *pattern, int iterations)
 int main(void)
 {
     const char *patterns[] = {
+        "benchmark/bench_many/*.txt",              // Large match (10000 files) - Alloc heavy
+        "benchmark/bench_many/*nonexistent*.txt",  // Large scan (10000 checks, 0 matches) - Matcher heavy
+        "benchmark/bench_many/*0*0*0*.txt",        // Complex wildcard: multiple segments (find files with three 0s)
+        "benchmark/bench_many/f*i*l*e*_*0*0*.txt", // Long chain of short segments
+        "benchmark/bench_many/?????_?????.txt",    // Fixed length wildcards
         "src/*.c",
         "tests/*.c",
         "include/rbcglob/*.h",
-        "*.c",                   // ルートディレクトリの.cファイル
-        "*/*.c",                 // 1階層下の.cファイル
-        "test*/*.c",             // test*で始まるディレクトリの.cファイル
-        "*.{c,h}",               // ルートの.cと.hファイル（ブレース展開）
-        "src/*.{c,h}",           // srcの.cと.hファイル（ブレース展開）
-        "tests/*.{c,h}",         // testsの.cと.hファイル（ブレース展開）
-        "*/*.{c,h}",             // 1階層下の.cと.hファイル（ブレース展開）
-        "{src,tests}/*.c",       // srcまたはtestsの.cファイル（ブレース展開）
-        "bench_data_many/*.txt", // Large match set (2000 files)
+        "*.c",             // ルートディレクトリの.cファイル
+        "*/*.c",           // 1階層下の.cファイル
+        "test*/*.c",       // test*で始まるディレクトリの.cファイル
+        "*.{c,h}",         // ルートの.cと.hファイル（ブレース展開）
+        "src/*.{c,h}",     // srcの.cと.hファイル（ブレース展開）
+        "tests/*.{c,h}",   // testsの.cと.hファイル（ブレース展開）
+        "*/*.{c,h}",       // 1階層下の.cと.hファイル（ブレース展開）
+        "{src,tests}/*.c", // srcまたはtestsの.cファイル（ブレース展開）
+        // "bench_data_many/*.txt", // Large match set (2000 files)
+        "*a*b*c*d*e*f*g*h*i*j*", // Pathological Case (requires long file name to be slow)
+        "tests/*_???.c",         // Mix of * and ? (e.g. test_txt.c)
+        "src/????.c",            // 4 chars (glob.c, path.c)
+        "src/?????.c",           // 5 chars (utils.c, arena.c)
+        "tests/test_????.c",     // tests/test_join.c
+        "src/*mp*.c",            // Infix "mp" (compiler.c)
+        "src/*a*.c",             // Infix "a" (path.c, arena.c, walker.c, glob.c, fnmatch.c) matches many
     };
-    int num_patterns = 12;
-    int iterations = 1000;
+    int num_patterns = 23; // Updated count
+    int iterations = 100;
 
     printf("=== Performance Benchmark: rbcglob vs libc glob(3) ===\n");
     printf("Iterations per pattern: %d\n\n", iterations);

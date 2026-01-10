@@ -167,6 +167,38 @@ void bench_pattern(const char *name, const char *pattern, const char *string, in
     }
     rbcglob_arena_destroy(&arena);
 
+    // rbcglob Compiled (One-shot: Compile per iteration)
+    // To measure if compiling every time is still faster for complex cases
+    start = get_time_ms();
+    int oneshot_compiled_match = 0;
+    // Reduce iterations for oneshot compilation benchmark to avoid taking too long on simple cases
+    // where overhead dominates (malloc/free is slow)
+    int iter_oneshot = (iterations > 100000) ? 100000 : iterations;
+
+    for (int i = 0; i < iter_oneshot; i++)
+    {
+        rbcglob_arena_t local_arena;
+        rbcglob_arena_init(&local_arena, 1024); // Small initial block
+        rbcglob_segment_t *local_seg = rbcglob_compile_segments(&local_arena, pattern);
+
+        if (local_seg && local_seg->type == RBCG_SEGMENT_WILDCARD)
+        {
+            if (run_matcher(&local_seg->data.glob.matcher, string))
+                oneshot_compiled_match++;
+        }
+        else if (local_seg && local_seg->type == RBCG_SEGMENT_LITERAL)
+        {
+            if (strcmp(string, local_seg->data.literal) == 0)
+                oneshot_compiled_match++;
+        }
+
+        rbcglob_arena_destroy(&local_arena);
+    }
+    end = get_time_ms();
+    // Scale back to original iterations for comparison display
+    double scaled_time = (end - start) * ((double)iterations / iter_oneshot);
+    printf("  rbcglob(compile-each): %8.3f ms total (scaled) (%d matches in sample)\n", scaled_time, oneshot_compiled_match);
+
     // rbcglob_fnmatch (Oneshot - overhead included)
     start = get_time_ms();
     int rbc_match = 0;
@@ -231,6 +263,10 @@ int main(void)
 
     // ケース8: 部分一致 (Infix)
     bench_pattern("Infix Match", "*glob*", "librbcglob.a", 1000000);
+
+    // ケース9: クエスチョンマーク最適化 (Question Mark)
+    // PATTERN_CHAIN最適化が機能していれば高速なはず
+    bench_pattern("Question Mark Match", "image_???.jpg", "image_123.jpg", 1000000);
 
     return 0;
 }

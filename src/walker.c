@@ -11,18 +11,6 @@
 #include "utils.h"
 #include "rbcglob/rbcglob.h"
 
-/******************************************************************************
- * Local Pattern Matcher (for matching filenames within SEG_WILDCARD)
- ******************************************************************************/
-
-/******************************************************************************
- * Segment Executor (Iterative / Heap Stack)
- ******************************************************************************/
-
-/******************************************************************************
- * File System Abstraction (VFS)
- ******************************************************************************/
-
 typedef struct fs_dir_iter_s fs_dir_iter_t;
 
 typedef struct
@@ -648,6 +636,13 @@ void rbcglob_execute_segments(
                         }
                         if (matched)
                         {
+                            // Fix: If all parts consumed by match_end logic, verify match_start constraint
+                            if (count == 0 && m->pk.chain.match_start)
+                            {
+                                if (p != end_limit)
+                                    matched = false;
+                            }
+
                             for (size_t i = 0; i < count; i++)
                             {
                                 char *part = m->pk.chain.parts[i];
@@ -902,6 +897,16 @@ void rbcglob_execute_segments(
                 // (This part of logic remains from original loop, ensure variables align)
                 if (should_recurse)
                 {
+                    // Optimization: If we have a next segment (which implies we need to enter a directory),
+                    // but we know this entry is NOT a directory (and not a symlink that might point to one),
+                    // we can skip the expensive push_next -> opendir failure cycle.
+                    // Only apply this checks if there really IS a next segment.
+                    // If seg->next is NULL, it's a leaf match, so files are valid!
+                    if (seg->next && !entry.type_unknown && !entry.is_dir && !entry.is_symlink)
+                    {
+                        continue;
+                    }
+
                     size_t old_len = path_len;
                     if (buf_append(path_buf, &path_len, name) > 0)
                     {
