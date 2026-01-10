@@ -56,21 +56,6 @@ void rbcglob_ctx_free(rbcglob_ctx_t *ctx);
 void rbcglob_results_init(rbcglob_results_t *results, rbcglob_ctx_t *ctx);
 
 /**
- * @brief Reset discovery counter in context
- */
-void rbcglob_results_reset_discovery_counter(rbcglob_ctx_t *ctx);
-
-/**
- * @brief Clear directory cache (Legacy stub)
- */
-void rbcglob_results_clear_cache(rbcglob_ctx_t *ctx);
-
-/**
- * @brief Compare two paths based on cached filesystem order
- */
-int rbcglob_compare_filesystem_order(rbcglob_ctx_t *ctx, const char *a, const char *b);
-
-/**
  * @brief Add a path to results (duplicates string)
  * @return 0 on success, -1 on error
  */

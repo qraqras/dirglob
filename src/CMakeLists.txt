@@ -17,10 +17,13 @@ add_library(rbcglob
   utils.c
   arena.c
 
-  # NFA Graph implementation
-  graph/node.c
-  graph/compiler.c
-  graph/executor.c
+  # Pattern & Matcher implementation
+  pattern/node.c
+  pattern/compiler.c
+  match/match.c
+
+  # Directory Walker
+  dir/walker.c
 )
 
 target_include_directories(rbcglob

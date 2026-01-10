@@ -29,20 +29,12 @@ void rbcglob_ctx_init(rbcglob_ctx_t *ctx)
     // Cache initialized to NULL implicit or unused
 }
 
-void rbcglob_results_clear_cache(rbcglob_ctx_t *ctx)
-{
-    // No-op in new engine
-    (void)ctx;
-}
-
 void rbcglob_ctx_free(rbcglob_ctx_t *ctx)
 {
     if (!ctx)
         return;
     rbcglob_arena_destroy(&ctx->arena);
 }
-
-void rbcglob_results_reset_discovery_counter(rbcglob_ctx_t *ctx) { ctx->discovery_counter = 0; }
 
 /* P1 Optimization: Initial capacity for result array */
 #define INITIAL_RESULT_CAPACITY 64
@@ -192,10 +184,4 @@ void rbcglob_results_deduplicate(rbcglob_results_t *results)
         }
     }
     results->count = write_idx;
-}
-
-int rbcglob_compare_filesystem_order(rbcglob_ctx_t *ctx, const char *a, const char *b)
-{
-    (void)ctx;
-    return strcmp(a, b);
 }

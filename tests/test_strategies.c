@@ -1,6 +1,6 @@
 #include <unity.h>
 #include <string.h>
-#include "rbcglob/internal/graph.h"
+#include "rbcglob/internal/pattern.h"
 #include "rbcglob/internal/arena.h"
 
 void test_compile_strategy_exact(void)
@@ -103,7 +103,7 @@ void test_compile_strategy_nfa_fallback(void)
 
     TEST_ASSERT_NOT_NULL(seg);
     TEST_ASSERT_EQUAL_INT(SEG_WILDCARD, seg->type);
-    TEST_ASSERT_EQUAL_INT(STRATEGY_NFA, seg->data.glob.matcher.strategy);
+    TEST_ASSERT_EQUAL_INT(STRATEGY_VM, seg->data.glob.matcher.strategy);
 
     rbcglob_arena_destroy(&arena);
 }

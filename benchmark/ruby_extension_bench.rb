@@ -2,7 +2,7 @@
 # Ruby C拡張 vs Dir.glob ベンチマーク比較
 
 require 'benchmark'
-require_relative '../ext/rbcglob/rbcglob'
+require_relative '../benchmark_ext/rbcglob_ext'
 
 patterns = [
   { pattern: "*.md", desc: "Simple wildcard" },

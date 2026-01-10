@@ -1,5 +1,5 @@
 #include <rbcglob/rbcglob.h>
-#include <rbcglob/internal/graph.h>
+#include <rbcglob/internal/pattern.h>
 #include <rbcglob/internal/traverse.h>
 #include <rbcglob/internal/utils.h>
 #include <stdlib.h>
@@ -12,11 +12,11 @@
 struct rbcglob_compiled_glob_s
 {
     rbcglob_ctx_t *ctx;
-    rbcglob_segment_t *graph;
+    rbcglob_segment_t *segments;
     unsigned flags; /* Store flags during compilation if needed */
 };
 
-/* Result collection callback for NFA executor */
+/* Result collection callback for Walker */
 typedef struct
 {
     rbcglob_results_t *results;
@@ -24,7 +24,7 @@ typedef struct
     size_t base_len;
 } callback_ctx_t;
 
-static void nfa_match_callback(const char *path, void *user_data)
+static void walker_match_callback(const char *path, void *user_data)
 {
     callback_ctx_t *ctx = (callback_ctx_t *)user_data;
 
@@ -69,9 +69,9 @@ rbcglob_compiled_glob_t *rbcglob_compile_glob(const char *pattern, unsigned flag
     rbcglob_ctx_init(cg->ctx);
     cg->flags = flags;
 
-    cg->graph = rbcglob_compile_segments(&cg->ctx->arena, pattern);
+    cg->segments = rbcglob_compile_segments(&cg->ctx->arena, pattern);
 
-    if (!cg->graph)
+    if (!cg->segments)
     {
         rbcglob_compiled_glob_free(cg);
         return NULL;
@@ -114,7 +114,7 @@ bool rbcglob_dirglob_compiled(const rbcglob_compiled_glob_t *cg, const char *bas
     cb_ctx.base_strip = base;
     cb_ctx.base_len = base ? strlen(base) : 0;
 
-    rbcglob_execute_segments(cg->graph, base, cg->flags, sort, nfa_match_callback, &cb_ctx);
+    rbcglob_execute_segments(cg->segments, base, cg->flags, sort, walker_match_callback, &cb_ctx);
 
     if (sort)
     {
@@ -206,11 +206,11 @@ static void fast_path_visitor(const char *p, void *arg)
     }
     else
     {
-        // Still has wildcards? Compile and run graph.
-        rbcglob_segment_t *graph = rbcglob_compile_segments(&fp_ctx->ctx->arena, p);
-        if (graph)
+        // Still has wildcards? Compile and run walker.
+        rbcglob_segment_t *segments = rbcglob_compile_segments(&fp_ctx->ctx->arena, p);
+        if (segments)
         {
-            rbcglob_execute_segments(graph, fp_ctx->base, fp_ctx->flags, fp_ctx->sort, nfa_match_callback, fp_ctx->cb_ctx);
+            rbcglob_execute_segments(segments, fp_ctx->base, fp_ctx->flags, fp_ctx->sort, walker_match_callback, fp_ctx->cb_ctx);
         }
     }
 }
@@ -258,11 +258,11 @@ bool rbcglob_dirglob(const char **patterns, size_t npatterns, unsigned flags,
         else
         {
             // Standard path or mixed wildcard-brace
-            // If mixed, we pass directly to compile segments which handles braces via graph or expansion internally
-            rbcglob_segment_t *graph = rbcglob_compile_segments(&ctx->arena, current_pattern);
-            if (graph)
+            // If mixed, we pass directly to compile segments which handles braces via segments or expansion internally
+            rbcglob_segment_t *segments = rbcglob_compile_segments(&ctx->arena, current_pattern);
+            if (segments)
             {
-                rbcglob_execute_segments(graph, base, flags, sort, nfa_match_callback, &cb_ctx);
+                rbcglob_execute_segments(segments, base, flags, sort, walker_match_callback, &cb_ctx);
             }
         }
     }

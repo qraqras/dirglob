@@ -1,51 +1,40 @@
-#ifndef RBCGLOB_INTERNAL_GRAPH_H
-#define RBCGLOB_INTERNAL_GRAPH_H
+#ifndef RBCGLOB_INTERNAL_PATTERN_H
+#define RBCGLOB_INTERNAL_PATTERN_H
 
 #include <stddef.h>
+#include <stdint.h>
 #include <stdbool.h>
 #include "rbcglob/internal/arena.h"
 
 /**
- * @brief NFA OpCodes for Glob matching
+ * @brief VM OpCodes for Glob matching (Backtracking)
  */
 typedef enum
 {
-    OP_MATCH_LITERAL, // Exact string match (e.g., "src")
-    OP_MATCH_STAR,    // Wildcard "*" (readdir within current dir)
-    OP_MATCH_STAR2,   // Recursive wildcard "**" (kept for fnmatch NFA)
+    OP_MATCH_LITERAL, // Exact string match
+    OP_MATCH_STAR,    // Wildcard "*"
+    OP_MATCH_STAR2,   // Recursive wildcard "**" (for fnmatch VM)
     OP_MATCH_QMARK,   // Single char match "?"
     OP_MATCH_CLASS,   // Character class "[...]"
-    OP_FORK,          // Branching point for brace expansion
-    OP_JUMP,          // Control flow jump (merge paths)
-    OP_ACCEPT,        // Successful match marker
-    OP_EOS            // End of string/segment (internal use)
+    OP_END            // End of program
 } rbcglob_opcode_type_t;
 
-/**
- * @brief Graph Node
- */
-typedef struct rbcglob_node_t
+typedef struct
 {
-    rbcglob_opcode_type_t type;
-    union
-    {
-        char *literal; // For OP_MATCH_LITERAL (owned string)
-        struct
-        {                                // For OP_FORK
-            struct rbcglob_node_t *next; // First branch (e.g., "a")
-            struct rbcglob_node_t *alt;  // Next alternative (e.g., "b")
-        } branch;
-        struct
-        {                          // For OP_MATCH_CLASS
-            unsigned char map[32]; // 256 bits bitmap for ASCII/byte-matching
-            bool is_negated;       // True if [^...] or [!...]
-        } char_class;
-    } data;
-    struct rbcglob_node_t *next; // Standard next node pointer (success transition)
-} rbcglob_node_t;
+    uint32_t min;
+    uint32_t max;
+} rbcglob_range_t;
 
 /**
- * @brief Segment Types for Path-Based NFA
+ * @brief VM Instruction (Deprecated/Removed)
+ */
+// typedef struct rbcglob_instruction_t ...
+
+// Removed VM Program struct
+// typedef struct rbcglob_program_t ...
+
+/**
+ * @brief Segment Types for Path-Based Pattern
  */
 typedef enum
 {
@@ -65,7 +54,7 @@ typedef enum
     STRATEGY_SUFFIX,   // "*suffix"
     STRATEGY_INFIX,    // "*infix*"
     STRATEGY_SEQUENCE, // "foo*bar*baz" (only stars)
-    STRATEGY_NFA       // Complex pattern
+    STRATEGY_VM        // Complex pattern (VM approach)
 } rbcglob_match_strategy_t;
 
 /**
@@ -95,17 +84,11 @@ typedef struct
             bool match_end;   // If true, last part must match at end
         } seq;
 
-        // STRATEGY_NFA
+        // STRATEGY_VM
         struct
         {
-            rbcglob_node_t *root;
-            char *must_start; // Optimization (Prefix Trim)
-            size_t start_len;
-            char *must_end; // Optimization (Suffix Trim)
-            size_t end_len;
-            char **required_literals; // Optimization (Infix Pre-check)
-            size_t req_count;
-        } nfa;
+            char *pattern;
+        } vm;
     } pk;
 } rbcglob_matcher_t;
 
@@ -141,27 +124,12 @@ struct rbcglob_segment_t
 rbcglob_segment_t *rbcglob_segment_new(rbcglob_arena_t *arena, rbcglob_seg_type_t type);
 
 /**
- * @brief Create a new graph node
- * @param arena The arena to allocate memory from
- * @param type The OpCode type
- */
-rbcglob_node_t *rbcglob_graph_new_node(rbcglob_arena_t *arena, rbcglob_opcode_type_t type);
-
-/**
- * @brief Compile a pattern into a segment graph
+ * @brief Compile a pattern into a segment chain
  * @param arena The arena for memory allocation
  * @param pattern The glob pattern string
- * @return The start node of the segment graph
+ * @return The start node of the segment chain
  */
 rbcglob_segment_t *rbcglob_compile_segments(rbcglob_arena_t *arena, const char *pattern);
-
-/**
- * @brief Compile a local NFA fragment (internal use for SEG_WILDCARD)
- * @param arena The arena for memory allocation
- * @param pattern The glob pattern string
- * @return The start node of the NFA graph
- */
-rbcglob_node_t *rbcglob_compile_nfa_fragment(rbcglob_arena_t *arena, const char *pattern);
 
 /**
  * @brief Callback for matches
@@ -169,7 +137,7 @@ rbcglob_node_t *rbcglob_compile_nfa_fragment(rbcglob_arena_t *arena, const char 
 typedef void (*rbcglob_match_callback_t)(const char *path, void *user_data);
 
 /**
- * @brief Execute the Segment Graph
+ * @brief Execute the Segment Chain
  * @param root The start segment
  * @param base_path The base directory to start from (can be NULL or empty for current dir)
  * @param callback Function to call when a match is found
@@ -184,8 +152,8 @@ void rbcglob_execute_segments(
     void *user_data);
 
 /**
- * @brief Dump graph to stdout
+ * @brief Execute VM matching
  */
-void rbcglob_graph_dump(const rbcglob_node_t *node);
+bool rbcglob_vm_match(const char *text, const char *pattern, unsigned int flags);
 
-#endif /* RBCGLOB_INTERNAL_GRAPH_H */
+#endif /* RBCGLOB_INTERNAL_PATTERN_H */

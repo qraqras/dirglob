@@ -4,6 +4,7 @@
 #include <string.h>
 #include <time.h>
 #include <glob.h>
+#include <stdbool.h>
 
 static double get_time_ms(void)
 {
@@ -41,7 +42,8 @@ void bench_glob3(const char *pattern, int iterations)
     for (int i = 0; i < iterations; i++)
     {
         glob_t g;
-        if (glob(pattern, 0, NULL, &g) == 0)
+        // GLOB_BRACEを追加してブレース展開を有効化
+        if (glob(pattern, GLOB_BRACE, NULL, &g) == 0)
         {
             total_matches = g.gl_pathc;
             globfree(&g);
@@ -55,12 +57,20 @@ void bench_glob3(const char *pattern, int iterations)
 int main(void)
 {
     const char *patterns[] = {
-        "src/rbcglob/*.c",
-        "tests/test_*.c",
-        "include/rbcglob/rbcglob.h",
-        "**/*.c",
+        "src/*.c",
+        "tests/*.c",
+        "include/rbcglob/*.h",
+        "*.c",                   // ルートディレクトリの.cファイル
+        "*/*.c",                 // 1階層下の.cファイル
+        "test*/*.c",             // test*で始まるディレクトリの.cファイル
+        "*.{c,h}",               // ルートの.cと.hファイル（ブレース展開）
+        "src/*.{c,h}",           // srcの.cと.hファイル（ブレース展開）
+        "tests/*.{c,h}",         // testsの.cと.hファイル（ブレース展開）
+        "*/*.{c,h}",             // 1階層下の.cと.hファイル（ブレース展開）
+        "{src,tests}/*.c",       // srcまたはtestsの.cファイル（ブレース展開）
+        "bench_data_many/*.txt", // Large match set (2000 files)
     };
-    int num_patterns = 4;
+    int num_patterns = 12;
     int iterations = 1000;
 
     printf("=== Performance Benchmark: rbcglob vs libc glob(3) ===\n");

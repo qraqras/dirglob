@@ -137,74 +137,51 @@ const char *rbcglob_find_segment_end(const char *str)
     return p;
 }
 
-// Simple implementations for LCP/LCS
-char *rbcglob_compute_lcp(const char **strs, size_t count)
+uint32_t rbcglob_next_codepoint(const char **p)
 {
-    if (count == 0 || !strs)
-        return NULL;
-    if (count == 1)
-        return rbcglob_strdup(strs[0]);
+    const unsigned char *s = (const unsigned char *)*p;
+    uint32_t c = *s;
 
-    size_t len = strlen(strs[0]);
-    for (size_t i = 1; i < count; i++)
+    if (c == 0)
+        return 0;
+
+    if (c < 0x80)
     {
-        size_t j = 0;
-        while (j < len && strs[i][j] && strs[0][j] == strs[i][j])
+        *p += 1;
+        return c;
+    }
+
+    // 2 bytes: 110xxxxx 10xxxxxx
+    if ((c & 0xE0) == 0xC0)
+    {
+        if ((s[1] & 0xC0) == 0x80)
         {
-            j++;
+            *p += 2;
+            return ((c & 0x1F) << 6) | (s[1] & 0x3F);
         }
-        len = j;
     }
-
-    if (len == 0)
-        return NULL;
-    char *res = malloc(len + 1);
-    strncpy(res, strs[0], len);
-    res[len] = '\0';
-    return res;
-}
-
-char *rbcglob_compute_lcs(const char **strs, size_t count)
-{
-    if (count == 0 || !strs)
-        return NULL;
-    if (count == 1)
-        return rbcglob_strdup(strs[0]);
-
-    size_t min_len = strlen(strs[0]);
-    for (size_t i = 1; i < count; i++)
+    // 3 bytes: 1110xxxx 10xxxxxx 10xxxxxx
+    else if ((c & 0xF0) == 0xE0)
     {
-        size_t l = strlen(strs[i]);
-        if (l < min_len)
-            min_len = l;
-    }
-
-    size_t common = 0;
-    while (common < min_len)
-    {
-        char c = strs[0][strlen(strs[0]) - 1 - common];
-        bool all_match = true;
-        for (size_t i = 1; i < count; i++)
+        if ((s[1] & 0xC0) == 0x80 && (s[2] & 0xC0) == 0x80)
         {
-            char this_c = strs[i][strlen(strs[i]) - 1 - common];
-            if (this_c != c)
-            {
-                all_match = false;
-                break;
-            }
+            *p += 3;
+            return ((c & 0x0F) << 12) | ((s[1] & 0x3F) << 6) | (s[2] & 0x3F);
         }
-        if (!all_match)
-            break;
-        common++;
+    }
+    // 4 bytes: 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
+    else if ((c & 0xF8) == 0xF0)
+    {
+        if ((s[1] & 0xC0) == 0x80 && (s[2] & 0xC0) == 0x80 && (s[3] & 0xC0) == 0x80)
+        {
+            *p += 4;
+            return ((c & 0x07) << 18) | ((s[1] & 0x3F) << 12) | ((s[2] & 0x3F) << 6) | (s[3] & 0x3F);
+        }
     }
 
-    if (common == 0)
-        return NULL;
-    char *res = malloc(common + 1);
-    // Copy the suffix
-    const char *src = strs[0] + strlen(strs[0]) - common;
-    strcpy(res, src);
-    return res;
+    // Invalid UTF-8 sequence, treat as raw byte
+    *p += 1;
+    return c;
 }
 
 // Minimal brace expansion (recursive)
@@ -395,7 +372,7 @@ static void expand_recursive(rbcglob_str_list_t *results, const char *prefix, co
         free(new_prefix_base);
 }
 
-static void expand_recursive_visitor(const char *pattern, rbcglob_arena_t *arena, rbcglob_brace_visit_cb cb, void *arg, char *scratch_buf, size_t buf_size)
+static void expand_recursive_visitor(const char *pattern, rbcglob_arena_t *arena, rbcglob_brace_visit_cb cb, void *arg)
 {
     // Simplified logic for visitor: no full allocation if possible.
     // For now, minimal implementation reusing some logic but using scratch buffer logic implicitly via recursion.
@@ -464,9 +441,6 @@ static void expand_recursive_visitor(const char *pattern, rbcglob_arena_t *arena
     size_t prefix_len = p - pattern;
     // We can't easily copy prefix because we are recursively expanding.
     // So 'pattern' contains the full string so far.
-    // We strip it: prefix = [pattern, p)
-
-    const char *brace_start = p;
     p++; // Skip {
     depth = 1;
     const char *chunk_start = p;
@@ -569,7 +543,7 @@ static void expand_recursive_visitor(const char *pattern, rbcglob_arena_t *arena
             memcpy(vla, pattern, prefix_len);
             memcpy(vla + prefix_len, options.items[i], opt_len);
             memcpy(vla + prefix_len + opt_len, suffix, suf_len + 1);
-            expand_recursive_visitor(vla, arena, cb, arg, NULL, 0);
+            expand_recursive_visitor(vla, arena, cb, arg);
         }
         else
         {
@@ -583,7 +557,7 @@ static void expand_recursive_visitor(const char *pattern, rbcglob_arena_t *arena
             memcpy(next_buf + prefix_len, options.items[i], opt_len);
             memcpy(next_buf + prefix_len + opt_len, suffix, suf_len + 1);
 
-            expand_recursive_visitor(next_buf, arena, cb, arg, NULL, 0);
+            expand_recursive_visitor(next_buf, arena, cb, arg);
             if (!arena)
                 free(next_buf);
         }
@@ -594,7 +568,7 @@ static void expand_recursive_visitor(const char *pattern, rbcglob_arena_t *arena
 
 void rbcglob_brace_visit(const char *pattern, rbcglob_arena_t *arena, rbcglob_brace_visit_cb cb, void *arg)
 {
-    expand_recursive_visitor(pattern, arena, cb, arg, NULL, 0);
+    expand_recursive_visitor(pattern, arena, cb, arg);
 }
 
 rbcglob_str_list_t rbcglob_brace_expand(const char *pattern, rbcglob_arena_t *arena)
