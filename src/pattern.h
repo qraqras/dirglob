@@ -209,4 +209,7 @@ void rbcglob_results_deduplicate(rbcglob_results_t *results);
  */
 void rbcglob_results_clear(rbcglob_results_t *results);
 
+void rbcglob_build_matcher(rbcglob_arena_t *arena, rbcg_matcher_t *m, const char *pattern);
+bool rbcglob_matcher_exec(const rbcg_matcher_t *m, const char *name, unsigned int flags);
+
 #endif /* RBCGLOB_INTERNAL_PATTERN_H */

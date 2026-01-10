@@ -290,11 +290,24 @@ bool rbcglob_recursive_match(const char *text, const char *pattern, unsigned int
     return match(pattern, text, text, flags);
 }
 
+// Optimized implementation using compiler
 bool rbcglob_fnmatch(const char *pattern, const char *string, unsigned flags)
 {
     if (!pattern || !string)
         return false;
 
-    // Call the shared (recursive) matching engine
-    return rbcglob_recursive_match(string, pattern, flags);
+    // Use stack memory for arena to avoid malloc overhead for most patterns
+    char stack_buf[4096];
+    rbcglob_arena_t arena;
+    rbcglob_arena_init_static(&arena, stack_buf, sizeof(stack_buf));
+
+    rbcg_matcher_t m;
+
+    // Note: rbcglob_build_matcher handles parsing strategy (CHAIN, SUFFIX etc)
+    rbcglob_build_matcher(&arena, &m, pattern);
+
+    bool result = rbcglob_matcher_exec(&m, string, flags);
+
+    rbcglob_arena_destroy(&arena);
+    return result;
 }

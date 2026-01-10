@@ -27,6 +27,12 @@ void rbcglob_str_list_free(rbcglob_str_list_t *list);
 // Check if string contains brace expression
 bool rbcglob_has_brace(const char *str);
 
+// Helper for fixed length pattern match (handles '?' but not '*')
+bool rbcglob_match_fixed(const char *text, const char *pat, size_t len);
+
+// Helper for finding fixed length pattern in text (like strstr but with '?')
+const char *rbcglob_search_fixed(const char *text, const char *pat, const char *end_limit);
+
 // Check if string contains wildcard characters (*, ?, [, ])
 bool rbcglob_has_wildcard(const char *str);
 

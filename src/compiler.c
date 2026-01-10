@@ -6,7 +6,7 @@
 #include "pattern.h"
 #include "utils.h"
 
-static void analyze_and_build_matcher(rbcglob_arena_t *arena, rbcg_matcher_t *m, const char *pattern)
+void rbcglob_build_matcher(rbcglob_arena_t *arena, rbcg_matcher_t *m, const char *pattern)
 {
     // Check for complexity features
     // Note: '?' is now handled by PATTERN_CHAIN, so it is not considered complex enough to force FNMATCH.
@@ -156,9 +156,11 @@ static void analyze_and_build_matcher(rbcglob_arena_t *arena, rbcg_matcher_t *m,
             // e.g. "a**b" -> "a*b".
             // The split logic should handle empty parts or we normalize?
             // Let's implement robust split.
-
-            m->pk.chain.match_start = (pattern[0] != '*');
-            m->pk.chain.match_end = (pattern[len - 1] != '*');
+            {
+                size_t chain_len = strlen(pattern);
+                m->pk.chain.match_start = (pattern[0] != '*');
+                m->pk.chain.match_end = (pattern[chain_len - 1] != '*');
+            }
 
             // Estimate max parts
             size_t max_parts = star_count + 1;
@@ -362,7 +364,7 @@ rbcglob_segment_t *rbcglob_compile_segments(rbcglob_arena_t *arena, const char *
             seg->data.glob.original_pattern = rbcglob_arena_strdup(arena, expansions.items[0]);
 
             // Analyze pattern and select strategy
-            analyze_and_build_matcher(arena, &seg->data.glob.matcher, seg->data.glob.original_pattern);
+            rbcglob_build_matcher(arena, &seg->data.glob.matcher, seg->data.glob.original_pattern);
 
             rbcglob_str_list_free(&expansions);
 

@@ -7,6 +7,7 @@ add_library(rbcglob
   path.c
   utils.c
   arena.c
+  matcher_exec.c
 )
 
 target_include_directories(rbcglob

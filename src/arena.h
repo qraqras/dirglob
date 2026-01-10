@@ -23,6 +23,7 @@ typedef struct rbcglob_arena_s
     rbcglob_arena_block_t *current;
     rbcglob_arena_block_t *first;
     size_t block_size;
+    unsigned int flags; // 1 = using static buffer matching first block
 } rbcglob_arena_t;
 
 /**
@@ -31,6 +32,14 @@ typedef struct rbcglob_arena_s
  * @param initial_size Initial block size (will grow as needed)
  */
 void rbcglob_arena_init(rbcglob_arena_t *arena, size_t initial_size);
+
+/**
+ * @brief Initialize an rbcglob_arena allocator with a static buffer (no malloc if fits)
+ * @param arena rbcglob_arena to initialize
+ * @param buffer Pointer to static buffer
+ * @param size Size of the buffer
+ */
+void rbcglob_arena_init_static(rbcglob_arena_t *arena, void *buffer, size_t size);
 
 /**
  * @brief Allocate memory from rbcglob_arena

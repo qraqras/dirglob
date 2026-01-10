@@ -137,6 +137,31 @@ const char *rbcglob_find_segment_end(const char *str)
     return p;
 }
 
+bool rbcglob_match_fixed(const char *text, const char *pat, size_t len)
+{
+    for (size_t i = 0; i < len; i++)
+    {
+        if (pat[i] != '?' && pat[i] != text[i])
+            return false;
+    }
+    return true;
+}
+
+const char *rbcglob_search_fixed(const char *text, const char *pat, const char *end_limit)
+{
+    size_t pat_len = strlen(pat);
+    if (pat_len == 0)
+        return text;
+
+    // Simple naive search: O(N*M)
+    for (const char *p = text; p <= end_limit; p++)
+    {
+        if (rbcglob_match_fixed(p, pat, pat_len))
+            return p;
+    }
+    return NULL;
+}
+
 uint32_t rbcglob_next_codepoint(const char **p)
 {
     const unsigned char *s = (const unsigned char *)*p;

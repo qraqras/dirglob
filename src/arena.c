@@ -34,6 +34,24 @@ void rbcglob_arena_init(rbcglob_arena_t *arena, size_t initial_size)
     arena->first = block;
     arena->current = block;
     arena->block_size = initial_size;
+    arena->flags = 0;
+}
+
+void rbcglob_arena_init_static(rbcglob_arena_t *arena, void *buffer, size_t size)
+{
+    if (!arena || !buffer || size < sizeof(rbcglob_arena_block_t))
+        return;
+
+    // We can cast the buffer directly to a block
+    rbcglob_arena_block_t *block = (rbcglob_arena_block_t *)buffer;
+    block->size = size - sizeof(rbcglob_arena_block_t);
+    block->used = 0;
+    block->next = NULL;
+
+    arena->first = block;
+    arena->current = block;
+    arena->block_size = DEFAULT_BLOCK_SIZE; // Fallback size if static fills up
+    arena->flags = 1;                       // Mark static
 }
 
 void *rbcglob_arena_alloc(rbcglob_arena_t *arena, size_t size)
@@ -136,13 +154,22 @@ void rbcglob_arena_destroy(rbcglob_arena_t *arena)
 {
     if (!arena)
         return;
+
     rbcglob_arena_block_t *block = arena->first;
+
+    // If it's a static arena, the first block is user-provided (stack/static) and shouldn't be freed.
+    if ((arena->flags & 1) && block)
+    {
+        block = block->next;
+    }
+
     while (block)
     {
         rbcglob_arena_block_t *next = block->next;
         free(block);
         block = next;
     }
+
     arena->first = NULL;
     arena->current = NULL;
 }
