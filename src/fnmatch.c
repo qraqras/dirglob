@@ -4,14 +4,14 @@
 #include <ctype.h>
 #include <stdio.h>
 
-#include "rbcglob/rbcglob.h"
+#include "rbc/rbc.h"
 #include "pattern.h"
 #include "utils.h"
 
 // Helper macros
-#define IS_PATHNAME (flags & RBCGLOB_FNM_PATHNAME)
-#define IS_CASEFOLD (flags & RBCGLOB_FNM_CASEFOLD)
-#define IS_DOTMATCH (flags & RBCGLOB_FNM_DOTMATCH)
+#define IS_PATHNAME (flags & RBC_FNM_PATHNAME)
+#define IS_CASEFOLD (flags & RBC_FNM_CASEFOLD)
+#define IS_DOTMATCH (flags & RBC_FNM_DOTMATCH)
 
 // 前方宣言
 static bool match(const char *pat, const char *str, const char *initial_str, unsigned int flags);
@@ -66,7 +66,7 @@ static const char *bracket_match(const char *p, unsigned char c, unsigned int fl
                 c2 = (unsigned char)*p++;
             }
 
-            if (flags & RBCGLOB_FNM_CASEFOLD)
+            if (flags & RBC_FNM_CASEFOLD)
             {
                 if (tolower(c1) <= tolower(c) && tolower(c) <= tolower(c2))
                     matched = true;
@@ -79,7 +79,7 @@ static const char *bracket_match(const char *p, unsigned char c, unsigned int fl
         }
         else
         {
-            if (flags & RBCGLOB_FNM_CASEFOLD)
+            if (flags & RBC_FNM_CASEFOLD)
             {
                 if (tolower(c1) == tolower(c))
                     matched = true;
@@ -281,7 +281,7 @@ static bool match(const char *p, const char *s, const char *initial_str, unsigne
     return (*s == '\0');
 }
 
-bool rbcglob_recursive_match(const char *text, const char *pattern, unsigned int flags)
+bool rbc_recursive_match(const char *text, const char *pattern, unsigned int flags)
 {
     if (!text || !pattern)
         return false;
@@ -291,23 +291,23 @@ bool rbcglob_recursive_match(const char *text, const char *pattern, unsigned int
 }
 
 // Optimized implementation using compiler
-bool rbcglob_fnmatch(const char *pattern, const char *string, unsigned flags)
+bool rbc_fnmatch(const char *pattern, const char *string, unsigned flags)
 {
     if (!pattern || !string)
         return false;
 
     // Use stack memory for arena to avoid malloc overhead for most patterns
     char stack_buf[4096];
-    rbcglob_arena_t arena;
-    rbcglob_arena_init_static(&arena, stack_buf, sizeof(stack_buf));
+    rbc_arena_t arena;
+    rbc_arena_init_static(&arena, stack_buf, sizeof(stack_buf));
 
-    rbcg_matcher_t m;
+    rbc_matcher_t m;
 
-    // Note: rbcglob_build_matcher handles parsing strategy (CHAIN, SUFFIX etc)
-    rbcglob_build_matcher(&arena, &m, pattern);
+    // Note: rbc_build_matcher handles parsing strategy (CHAIN, SUFFIX etc)
+    rbc_build_matcher(&arena, &m, pattern, flags);
 
-    bool result = rbcglob_matcher_exec(&m, string, flags);
+    bool result = rbc_matcher_exec(&m, string, flags);
 
-    rbcglob_arena_destroy(&arena);
+    rbc_arena_destroy(&arena);
     return result;
 }

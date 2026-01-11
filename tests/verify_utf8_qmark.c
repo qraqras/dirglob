@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "rbcglob/rbcglob.h"
+#include "rbc/rbc.h"
 
 bool test_glob(const char *pattern, const char *filename, bool expected)
 {
@@ -13,7 +13,7 @@ bool test_glob(const char *pattern, const char *filename, bool expected)
     char **results = NULL;
     size_t count = 0;
 
-    bool ret = rbcglob_dirglob(patterns, 1, 0, NULL, true, &results, &count, NULL);
+    bool ret = rbc_glob(patterns, 1, 0, NULL, true, &results, &count, NULL);
 
     bool found = false;
     if (ret)

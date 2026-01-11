@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(rbcglob LANGUAGES C)
+project(rbc LANGUAGES C)
 
 # Options
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
@@ -27,7 +27,7 @@ endif()
 
 # Install
 include(GNUInstallDirs)
-install(TARGETS rbcglob
+install(TARGETS rbc
   EXPORT rbcglobTargets
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}

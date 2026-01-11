@@ -1,21 +1,22 @@
-#include <rbcglob/rbcglob.h>
+#include <rbc/rbc.h>
 #include "utils.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <ctype.h>
 
-void rbcglob_str_list_init(rbcglob_str_list_t *list, size_t initial_cap, rbcglob_arena_t *arena)
+void rbc_str_list_init(rbc_str_list_t *list, size_t initial_cap, rbc_arena_t *arena)
 {
     list->arena = arena;
     list->count = 0;
     list->capacity = initial_cap;
     if (arena)
-        list->items = rbcglob_arena_alloc(arena, initial_cap * sizeof(char *));
+        list->items = rbc_arena_alloc(arena, initial_cap * sizeof(char *));
     else
         list->items = malloc(initial_cap * sizeof(char *));
 }
 
-void rbcglob_str_list_add(rbcglob_str_list_t *list, const char *str)
+void rbc_str_list_add(rbc_str_list_t *list, const char *str)
 {
     if (list->count == list->capacity)
     {
@@ -23,7 +24,7 @@ void rbcglob_str_list_add(rbcglob_str_list_t *list, const char *str)
         if (list->arena)
         {
             // Arena can't easily realloc, so we allocate new and copy
-            char **new_items = rbcglob_arena_alloc(list->arena, list->capacity * sizeof(char *));
+            char **new_items = rbc_arena_alloc(list->arena, list->capacity * sizeof(char *));
             if (list->count > 0)
                 memcpy(new_items, list->items, list->count * sizeof(char *));
             list->items = new_items;
@@ -36,15 +37,15 @@ void rbcglob_str_list_add(rbcglob_str_list_t *list, const char *str)
 
     if (list->arena)
     {
-        list->items[list->count++] = rbcglob_arena_strdup(list->arena, str);
+        list->items[list->count++] = rbc_arena_strdup(list->arena, str);
     }
     else
     {
-        list->items[list->count++] = rbcglob_strdup(str);
+        list->items[list->count++] = rbc_strdup(str);
     }
 }
 
-void rbcglob_str_list_free(rbcglob_str_list_t *list)
+void rbc_str_list_free(rbc_str_list_t *list)
 {
     if (list->arena)
     {
@@ -60,7 +61,7 @@ void rbcglob_str_list_free(rbcglob_str_list_t *list)
     free(list->items);
 }
 
-bool rbcglob_has_brace(const char *str)
+bool rbc_has_brace(const char *str)
 {
     bool esc = false;
     for (const char *p = str; *p; p++)
@@ -81,7 +82,7 @@ bool rbcglob_has_brace(const char *str)
     return false;
 }
 
-bool rbcglob_has_wildcard(const char *str)
+bool rbc_has_wildcard(const char *str)
 {
     bool esc = false;
     for (const char *p = str; *p; p++)
@@ -102,7 +103,7 @@ bool rbcglob_has_wildcard(const char *str)
     return false;
 }
 
-const char *rbcglob_find_segment_end(const char *str)
+const char *rbc_find_segment_end(const char *str)
 {
     bool esc = false;
     int depth = 0;
@@ -137,17 +138,28 @@ const char *rbcglob_find_segment_end(const char *str)
     return p;
 }
 
-bool rbcglob_match_fixed(const char *text, const char *pat, size_t len)
+bool rbc_match_fixed(const char *text, const char *pat, size_t len, bool casefold)
 {
-    for (size_t i = 0; i < len; i++)
+    if (casefold)
     {
-        if (pat[i] != '?' && pat[i] != text[i])
-            return false;
+        for (size_t i = 0; i < len; i++)
+        {
+            if (pat[i] != '?' && tolower((unsigned char)pat[i]) != tolower((unsigned char)text[i]))
+                return false;
+        }
+    }
+    else
+    {
+        for (size_t i = 0; i < len; i++)
+        {
+            if (pat[i] != '?' && pat[i] != text[i])
+                return false;
+        }
     }
     return true;
 }
 
-const char *rbcglob_search_fixed(const char *text, const char *pat, const char *end_limit)
+const char *rbc_search_fixed(const char *text, const char *pat, const char *end_limit, bool casefold)
 {
     size_t pat_len = strlen(pat);
     if (pat_len == 0)
@@ -156,13 +168,13 @@ const char *rbcglob_search_fixed(const char *text, const char *pat, const char *
     // Simple naive search: O(N*M)
     for (const char *p = text; p <= end_limit; p++)
     {
-        if (rbcglob_match_fixed(p, pat, pat_len))
+        if (rbc_match_fixed(p, pat, pat_len, casefold))
             return p;
     }
     return NULL;
 }
 
-uint32_t rbcglob_next_codepoint(const char **p)
+uint32_t rbc_next_codepoint(const char **p)
 {
     const unsigned char *s = (const unsigned char *)*p;
     uint32_t c = *s;
@@ -210,7 +222,7 @@ uint32_t rbcglob_next_codepoint(const char **p)
 }
 
 // Minimal brace expansion (recursive)
-static void expand_recursive(rbcglob_str_list_t *results, const char *prefix, const char *pattern, rbcglob_arena_t *arena)
+static void expand_recursive(rbc_str_list_t *results, const char *prefix, const char *pattern, rbc_arena_t *arena)
 {
     const char *brace_start = NULL;
     bool esc = false;
@@ -240,8 +252,8 @@ static void expand_recursive(rbcglob_str_list_t *results, const char *prefix, co
         // No braces, append prefix + pattern
         if (arena)
         {
-            char *full = rbcglob_arena_printf(arena, "%s%s", prefix, pattern);
-            rbcglob_str_list_add(results, full);
+            char *full = rbc_arena_printf(arena, "%s%s", prefix, pattern);
+            rbc_str_list_add(results, full);
             // No free
         }
         else
@@ -249,7 +261,7 @@ static void expand_recursive(rbcglob_str_list_t *results, const char *prefix, co
             size_t total_len = strlen(prefix) + strlen(pattern) + 1;
             char *full = malloc(total_len);
             sprintf(full, "%s%s", prefix, pattern);
-            rbcglob_str_list_add(results, full);
+            rbc_str_list_add(results, full);
             free(full);
         }
         return;
@@ -260,7 +272,7 @@ static void expand_recursive(rbcglob_str_list_t *results, const char *prefix, co
     char *pre;
     if (arena)
     {
-        pre = rbcglob_arena_alloc(arena, pre_len + 1);
+        pre = rbc_arena_alloc(arena, pre_len + 1);
         memcpy(pre, pattern, pre_len);
         pre[pre_len] = '\0';
     }
@@ -275,7 +287,7 @@ static void expand_recursive(rbcglob_str_list_t *results, const char *prefix, co
     char *new_prefix_base;
     if (arena)
     {
-        new_prefix_base = rbcglob_arena_printf(arena, "%s%s", prefix, pre);
+        new_prefix_base = rbc_arena_printf(arena, "%s%s", prefix, pre);
     }
     else
     {
@@ -289,8 +301,8 @@ static void expand_recursive(rbcglob_str_list_t *results, const char *prefix, co
     int depth = 1;
     esc = false;
 
-    rbcglob_str_list_t options;
-    rbcglob_str_list_init(&options, 4, arena);
+    rbc_str_list_t options;
+    rbc_str_list_init(&options, 4, arena);
 
     // Parse brace content
     while (*p)
@@ -320,7 +332,7 @@ static void expand_recursive(rbcglob_str_list_t *results, const char *prefix, co
                 char *chunk;
                 if (arena)
                 {
-                    chunk = rbcglob_arena_alloc(arena, chunk_len + 1);
+                    chunk = rbc_arena_alloc(arena, chunk_len + 1);
                     memcpy(chunk, chunk_start, chunk_len);
                     chunk[chunk_len] = '\0';
                 }
@@ -330,7 +342,7 @@ static void expand_recursive(rbcglob_str_list_t *results, const char *prefix, co
                     strncpy(chunk, chunk_start, chunk_len);
                     chunk[chunk_len] = '\0';
                 }
-                rbcglob_str_list_add(&options, chunk);
+                rbc_str_list_add(&options, chunk);
                 if (!arena)
                     free(chunk);
                 break;
@@ -343,7 +355,7 @@ static void expand_recursive(rbcglob_str_list_t *results, const char *prefix, co
             char *chunk;
             if (arena)
             {
-                chunk = rbcglob_arena_alloc(arena, chunk_len + 1);
+                chunk = rbc_arena_alloc(arena, chunk_len + 1);
                 memcpy(chunk, chunk_start, chunk_len);
                 chunk[chunk_len] = '\0';
             }
@@ -353,7 +365,7 @@ static void expand_recursive(rbcglob_str_list_t *results, const char *prefix, co
                 strncpy(chunk, chunk_start, chunk_len);
                 chunk[chunk_len] = '\0';
             }
-            rbcglob_str_list_add(&options, chunk);
+            rbc_str_list_add(&options, chunk);
             if (!arena)
                 free(chunk);
             chunk_start = p + 1;
@@ -375,7 +387,7 @@ static void expand_recursive(rbcglob_str_list_t *results, const char *prefix, co
             size_t opt_len = strlen(options.items[i]);
             size_t suf_len = strlen(suffix);
             size_t total = opt_len + suf_len + 1;
-            next_pattern = rbcglob_arena_alloc(arena, total);
+            next_pattern = rbc_arena_alloc(arena, total);
             memcpy(next_pattern, options.items[i], opt_len);
             memcpy(next_pattern + opt_len, suffix, suf_len + 1); // +1 copies null terminator
 
@@ -392,12 +404,12 @@ static void expand_recursive(rbcglob_str_list_t *results, const char *prefix, co
         }
     }
 
-    rbcglob_str_list_free(&options);
+    rbc_str_list_free(&options);
     if (!arena)
         free(new_prefix_base);
 }
 
-static void expand_recursive_visitor(const char *pattern, rbcglob_arena_t *arena, rbcglob_brace_visit_cb cb, void *arg)
+static void expand_recursive_visitor(const char *pattern, rbc_arena_t *arena, rbc_brace_visit_cb cb, void *arg)
 {
     // Simplified logic for visitor: no full allocation if possible.
     // For now, minimal implementation reusing some logic but using scratch buffer logic implicitly via recursion.
@@ -442,8 +454,8 @@ static void expand_recursive_visitor(const char *pattern, rbcglob_arena_t *arena
     // but instead of `results` list, we pass `cb`.
     // And for the memory, we use `alloca` for the intermediate pattern strings to keep it on stack.
 
-    rbcglob_str_list_t options;
-    rbcglob_str_list_init(&options, 4, arena);
+    rbc_str_list_t options;
+    rbc_str_list_init(&options, 4, arena);
 
     // Parse Logic (Duplicated for now, or consider refactoring common parse logic)
     p = pattern;
@@ -458,7 +470,7 @@ static void expand_recursive_visitor(const char *pattern, rbcglob_arena_t *arena
     if (*p != '{')
     {
         cb(pattern, arg);
-        rbcglob_str_list_free(&options);
+        rbc_str_list_free(&options);
         return;
     } // Should match quick scan
 
@@ -491,7 +503,7 @@ static void expand_recursive_visitor(const char *pattern, rbcglob_arena_t *arena
                 char *chunk;
                 if (arena)
                 {
-                    chunk = rbcglob_arena_alloc(arena, len + 1);
+                    chunk = rbc_arena_alloc(arena, len + 1);
                     memcpy(chunk, chunk_start, len);
                     chunk[len] = 0;
                 }
@@ -501,15 +513,15 @@ static void expand_recursive_visitor(const char *pattern, rbcglob_arena_t *arena
                     memcpy(chunk, chunk_start, len);
                     chunk[len] = 0;
                 }
-                rbcglob_str_list_add(&options, chunk);
+                rbc_str_list_add(&options, chunk);
                 if (!arena)
                     free(chunk); // list copies it if needed? No, list stores pointer.
                 // Wait, if !arena, list stores the pointer. If we free it, list has dangling.
-                // rbcglob_str_list_add copies if it manages own memory?
-                // `rbcglob_str_list_add` implementation: copies string if arena is NULL usually?
-                // Let's check `rbcglob_str_list_add`.
-                // Actually `rbcglob_str_list_add` usually takes ownership or strdups?
-                // Assuming `rbcglob_str_list_add` duplicates if needed.
+                // rbc_str_list_add copies if it manages own memory?
+                // `rbc_str_list_add` implementation: copies string if arena is NULL usually?
+                // Let's check `rbc_str_list_add`.
+                // Actually `rbc_str_list_add` usually takes ownership or strdups?
+                // Assuming `rbc_str_list_add` duplicates if needed.
                 // In `expand_recursive` above:
                 // if (!arena) free(chunk); -> This implies `add` duplicates.
 
@@ -523,7 +535,7 @@ static void expand_recursive_visitor(const char *pattern, rbcglob_arena_t *arena
             char *chunk;
             if (arena)
             {
-                chunk = rbcglob_arena_alloc(arena, len + 1);
+                chunk = rbc_arena_alloc(arena, len + 1);
                 memcpy(chunk, chunk_start, len);
                 chunk[len] = 0;
             }
@@ -533,7 +545,7 @@ static void expand_recursive_visitor(const char *pattern, rbcglob_arena_t *arena
                 memcpy(chunk, chunk_start, len);
                 chunk[len] = 0;
             }
-            rbcglob_str_list_add(&options, chunk);
+            rbc_str_list_add(&options, chunk);
             if (!arena)
                 free(chunk);
             chunk_start = p + 1;
@@ -544,7 +556,7 @@ static void expand_recursive_visitor(const char *pattern, rbcglob_arena_t *arena
     if (!valid_brace)
     {
         cb(pattern, arg);
-        rbcglob_str_list_free(&options);
+        rbc_str_list_free(&options);
         return;
     }
 
@@ -574,7 +586,7 @@ static void expand_recursive_visitor(const char *pattern, rbcglob_arena_t *arena
         {
             // Fallback to heap/arena
             if (arena)
-                next_buf = rbcglob_arena_alloc(arena, needed);
+                next_buf = rbc_arena_alloc(arena, needed);
             else
                 next_buf = malloc(needed);
 
@@ -588,18 +600,18 @@ static void expand_recursive_visitor(const char *pattern, rbcglob_arena_t *arena
         }
     }
 
-    rbcglob_str_list_free(&options);
+    rbc_str_list_free(&options);
 }
 
-void rbcglob_brace_visit(const char *pattern, rbcglob_arena_t *arena, rbcglob_brace_visit_cb cb, void *arg)
+void rbc_brace_visit(const char *pattern, rbc_arena_t *arena, rbc_brace_visit_cb cb, void *arg)
 {
     expand_recursive_visitor(pattern, arena, cb, arg);
 }
 
-rbcglob_str_list_t rbcglob_brace_expand(const char *pattern, rbcglob_arena_t *arena)
+rbc_str_list_t rbc_brace_expand(const char *pattern, rbc_arena_t *arena)
 {
-    rbcglob_str_list_t list;
-    rbcglob_str_list_init(&list, 8, arena);
+    rbc_str_list_t list;
+    rbc_str_list_init(&list, 8, arena);
     expand_recursive(&list, "", pattern, arena);
     return list;
 }
@@ -607,12 +619,8 @@ rbcglob_str_list_t rbcglob_brace_expand(const char *pattern, rbcglob_arena_t *ar
 /**
  * @brief Return library version string.
  */
-const char *rbcglob_version(void)
-{
-    return RBCGLOB_VERSION;
-}
 
-char *rbcglob_strdup(const char *str)
+char *rbc_strdup(const char *str)
 {
     if (!str)
         return NULL;

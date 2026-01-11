@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "rbcglob/rbcglob.h"
+#include "rbc/rbc.h"
 
 int main(int argc, char **argv)
 {
@@ -22,7 +22,7 @@ int main(int argc, char **argv)
     {
         if (strcmp(argv[i], "-d") == 0)
         {
-            flags |= RBCGLOB_FNM_DOTMATCH;
+            flags |= RBC_FNM_DOTMATCH;
         }
         else if (strcmp(argv[i], "-n") == 0)
         {
@@ -35,17 +35,17 @@ int main(int argc, char **argv)
     size_t count = 0;
     const char *patterns[] = {pattern};
 
-    if (rbcglob_dirglob(patterns, 1, flags, NULL, sort ? 1 : 0, &result, &count, &lengths))
+    if (rbc_glob(patterns, 1, flags, NULL, sort ? 1 : 0, &result, &count, &lengths))
     {
         for (size_t i = 0; i < count; i++)
         {
             printf("%s\n", result[i]);
         }
-        rbcglob_free(result, count, lengths);
+        rbc_glob_free(result, count, lengths);
     }
     else
     {
-        fprintf(stderr, "rbcglob_dirglob failed\n");
+        fprintf(stderr, "rbc_glob failed\n");
         return 1;
     }
 

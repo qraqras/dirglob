@@ -1,5 +1,5 @@
-#ifndef RBCGLOB_INTERNAL_ARENA_H
-#define RBCGLOB_INTERNAL_ARENA_H
+#ifndef RBC_INTERNAL_ARENA_H
+#define RBC_INTERNAL_ARENA_H
 
 #include <stddef.h>
 #include <stdarg.h>
@@ -10,80 +10,80 @@
  * All allocations are freed together when arena is destroyed.
  * This eliminates malloc/free overhead for thousands of small allocations.
  */
-typedef struct rbcglob_arena_block_s
+typedef struct rbc_arena_block_s
 {
-    struct rbcglob_arena_block_s *next;
+    struct rbc_arena_block_s *next;
     size_t size;
     size_t used;
     unsigned char data[]; /* C99 Flexible Array Member */
-} rbcglob_arena_block_t;
+} rbc_arena_block_t;
 
-typedef struct rbcglob_arena_s
+typedef struct rbc_arena_s
 {
-    rbcglob_arena_block_t *current;
-    rbcglob_arena_block_t *first;
+    rbc_arena_block_t *current;
+    rbc_arena_block_t *first;
     size_t block_size;
     unsigned int flags; // 1 = using static buffer matching first block
-} rbcglob_arena_t;
+} rbc_arena_t;
 
 /**
- * @brief Initialize an rbcglob_arena allocator
- * @param arena rbcglob_arena to initialize
+ * @brief Initialize an rbc_arena allocator
+ * @param arena rbc_arena to initialize
  * @param initial_size Initial block size (will grow as needed)
  */
-void rbcglob_arena_init(rbcglob_arena_t *arena, size_t initial_size);
+void rbc_arena_init(rbc_arena_t *arena, size_t initial_size);
 
 /**
- * @brief Initialize an rbcglob_arena allocator with a static buffer (no malloc if fits)
- * @param arena rbcglob_arena to initialize
+ * @brief Initialize an rbc_arena allocator with a static buffer (no malloc if fits)
+ * @param arena rbc_arena to initialize
  * @param buffer Pointer to static buffer
  * @param size Size of the buffer
  */
-void rbcglob_arena_init_static(rbcglob_arena_t *arena, void *buffer, size_t size);
+void rbc_arena_init_static(rbc_arena_t *arena, void *buffer, size_t size);
 
 /**
- * @brief Allocate memory from rbcglob_arena
- * @param arena rbcglob_arena to allocate from
+ * @brief Allocate memory from rbc_arena
+ * @param arena rbc_arena to allocate from
  * @param size Number of bytes to allocate
  * @return Pointer to allocated memory, or NULL on failure
  */
-void *rbcglob_arena_alloc(rbcglob_arena_t *arena, size_t size);
+void *rbc_arena_alloc(rbc_arena_t *arena, size_t size);
 
 /**
- * @brief Duplicate memory using rbcglob_arena memory
- * @param arena rbcglob_arena to allocate from
+ * @brief Duplicate memory using rbc_arena memory
+ * @param arena rbc_arena to allocate from
  * @param ptr Pointer to memory to duplicate
  * @param size Size of memory to duplicate
  * @return Pointer to duplicated memory, or NULL on failure
  */
-void *rbcglob_arena_memdup(rbcglob_arena_t *arena, const void *ptr, size_t size);
+void *rbc_arena_memdup(rbc_arena_t *arena, const void *ptr, size_t size);
 
 /**
- * @brief Duplicate string using rbcglob_arena memory
- * @param arena rbcglob_arena to allocate from
+ * @brief Duplicate string using rbc_arena memory
+ * @param arena rbc_arena to allocate from
  * @param str String to duplicate
  * @return Pointer to duplicated string, or NULL on failure
  */
-char *rbcglob_arena_strdup(rbcglob_arena_t *arena, const char *str);
+char *rbc_arena_strdup(rbc_arena_t *arena, const char *str);
 
 /**
- * @brief Format string using rbcglob_arena memory
- * @param arena rbcglob_arena to allocate from
+ * @brief Format string using rbc_arena memory
+ * @param arena rbc_arena to allocate from
  * @param fmt Format string
  * @return Pointer to formatted string, or NULL on failure
  */
-char *rbcglob_arena_printf(rbcglob_arena_t *arena, const char *fmt, ...);
+char *rbc_arena_printf(rbc_arena_t *arena, const char *fmt, ...);
 
 /**
- * @brief Reset rbcglob_arena (mark all memory as available without freeing)
- * @param arena rbcglob_arena to reset
+ * @brief Reset rbc_arena (mark all memory as available without freeing)
+ * @param arena rbc_arena to reset
  */
-void rbcglob_arena_reset(rbcglob_arena_t *arena);
+void rbc_arena_reset(rbc_arena_t *arena);
 
 /**
- * @brief Destroy rbcglob_arena and free all memory
- * @param arena rbcglob_arena to destroy
+ * @brief Destroy rbc_arena and free all memory
+ * @param arena rbc_arena to destroy
  */
-void rbcglob_arena_destroy(rbcglob_arena_t *arena);
+void rbc_arena_destroy(rbc_arena_t *arena);
 
-#endif /* RBCGLOB_INTERNAL_ARENA_H */
+#endif /* RBC_INTERNAL_ARENA_H */

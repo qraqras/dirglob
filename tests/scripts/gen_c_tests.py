@@ -15,8 +15,8 @@ def convert_flags_to_c(flags_str):
     if flags_str == '0':
         return '0'
 
-    # Ruby FNM_* -> RBCGLOB_FNM_* 変換
-    flags_str = flags_str.replace('FNM_', 'RBCGLOB_FNM_')
+    # Ruby FNM_* -> RBCG_FNM_* 変換
+    flags_str = flags_str.replace('FNM_', 'RBCG_FNM_')
 
     return flags_str
 
@@ -98,14 +98,14 @@ void test_parity_{case_id}(void) {{
     size_t count = 0;
     size_t *lengths = NULL;
 
-    // rbcglob_dirglob実行
-    bool ok = rbcglob_dirglob({pattern_array}, {npatterns}, {flags}, {base}, {sort}, &result, &count, &lengths);
+    // rbc_glob実行
+    bool ok = rbc_glob({pattern_array}, {npatterns}, {flags}, {base}, {sort}, &result, &count, &lengths);
 
     // 期待出力と比較 (完全一致)
     assert_matches_expected(result, count, "{escape_c_string(expected_file)}");
 
     // メモリ解放
-    rbcglob_free(result, count, lengths);
+    rbc_free(result, count, lengths);
 }}
 '''
 
@@ -117,14 +117,14 @@ void test_parity_anyorder_{case_id}(void) {{
     size_t count = 0;
     size_t *lengths = NULL;
 
-    // rbcglob_dirglob実行
-    bool ok = rbcglob_dirglob({pattern_array}, {npatterns}, {flags}, {base}, {sort}, &result, &count, &lengths);
+    // rbc_glob実行
+    bool ok = rbc_glob({pattern_array}, {npatterns}, {flags}, {base}, {sort}, &result, &count, &lengths);
 
     // 期待出力と比較 (順序無視配列比較)
     assert_matches_expected_any_order(result, count, "{escape_c_string(expected_file)}");
 
     // メモリ解放
-    rbcglob_free(result, count, lengths);
+    rbc_free(result, count, lengths);
 }}
 '''
 
@@ -143,7 +143,7 @@ def generate_test_file(test_cases, platform, output_file):
  */
 
 #include <unity.h>
-#include <rbcglob/rbcglob.h>
+#include <rbc/rbc.h>
 #include "test_helpers.h"
 
 '''

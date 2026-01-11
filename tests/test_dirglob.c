@@ -1,7 +1,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <unity.h>
-#include <rbcglob/rbcglob.h>
+#include <rbc/rbc.h>
 
 #include <unistd.h>
 
@@ -21,24 +21,19 @@ void setUp(void)
 }
 void tearDown(void) {}
 
-void test_dirglob_version(void)
-{
-    TEST_ASSERT_EQUAL_STRING(RBCGLOB_VERSION, rbcglob_version());
-}
-
 void test_dirglob_returns_empty_for_no_matches(void)
 {
     const char *patterns[] = {"nonexistent_*.txt"};
     char **result = NULL;
     size_t *lengths = NULL;
     size_t count = 0;
-    bool success = rbcglob_dirglob(patterns, 1, 0, NULL, 1, &result, &count, &lengths);
+    bool success = rbc_glob(patterns, 1, 0, NULL, 1, &result, &count, &lengths);
 
     TEST_ASSERT_TRUE(success);
     TEST_ASSERT_NOT_NULL(result);
     TEST_ASSERT_EQUAL_UINT(0, count);
 
-    rbcglob_free(result, count, lengths);
+    rbc_glob_free(result, count, lengths);
 }
 
 void test_dirglob_null_params_return_error(void)
@@ -48,31 +43,31 @@ void test_dirglob_null_params_return_error(void)
     size_t count = 0;
 
     /* NULL out parameter */
-    TEST_ASSERT_FALSE(rbcglob_dirglob(patterns, 1, 0, NULL, 1, NULL, &count, NULL));
+    TEST_ASSERT_FALSE(rbc_glob(patterns, 1, 0, NULL, 1, NULL, &count, NULL));
 
     /* NULL count parameter */
-    TEST_ASSERT_FALSE(rbcglob_dirglob(patterns, 1, 0, NULL, 1, &result, NULL, NULL));
+    TEST_ASSERT_FALSE(rbc_glob(patterns, 1, 0, NULL, 1, &result, NULL, NULL));
 }
 
 void test_dirglob_free_null_is_safe(void)
 {
     /* Should not crash */
-    rbcglob_free(NULL, 0, NULL);
+    rbc_glob_free(NULL, 0, NULL);
     TEST_ASSERT_TRUE(1);
 }
 
 void test_dirglob_match_stub_returns_no_match(void)
 {
-    bool match = rbcglob_fnmatch("*.txt", "test.txt", 0);
+    bool match = rbc_fnmatch("*.txt", "test.txt", 0);
     TEST_ASSERT_TRUE(match);
 }
 
 void test_dirglob_character_class_match(void)
 {
-    TEST_ASSERT_TRUE(rbcglob_fnmatch("file[1-3].txt", "file1.txt", 0));
-    TEST_ASSERT_TRUE(rbcglob_fnmatch("file[1-3].txt", "file2.txt", 0));
-    TEST_ASSERT_TRUE(rbcglob_fnmatch("file[1-3].txt", "file3.txt", 0));
-    TEST_ASSERT_FALSE(rbcglob_fnmatch("file[1-3].txt", "file4.txt", 0));
-    TEST_ASSERT_FALSE(rbcglob_fnmatch("file[1-3].txt", "file0.txt", 0));
-    TEST_ASSERT_TRUE(rbcglob_fnmatch("[a-c].txt", "b.txt", 0));
+    TEST_ASSERT_TRUE(rbc_fnmatch("file[1-3].txt", "file1.txt", 0));
+    TEST_ASSERT_TRUE(rbc_fnmatch("file[1-3].txt", "file2.txt", 0));
+    TEST_ASSERT_TRUE(rbc_fnmatch("file[1-3].txt", "file3.txt", 0));
+    TEST_ASSERT_FALSE(rbc_fnmatch("file[1-3].txt", "file4.txt", 0));
+    TEST_ASSERT_FALSE(rbc_fnmatch("file[1-3].txt", "file0.txt", 0));
+    TEST_ASSERT_TRUE(rbc_fnmatch("[a-c].txt", "b.txt", 0));
 }

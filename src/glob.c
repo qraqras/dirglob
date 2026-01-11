@@ -1,4 +1,4 @@
-#include <rbcglob/rbcglob.h>
+#include <rbc/rbc.h>
 #include "pattern.h"
 #include "utils.h"
 #include <stdlib.h>
@@ -11,7 +11,7 @@
  * Traverse Implementation (Merged from traverse.c)
  * ========================================================================= */
 
-int rbcglob_compare_paths(const char *s1_in, const char *s2_in)
+int rbc_compare_paths(const char *s1_in, const char *s2_in)
 {
     /* P12 Optimization: Inline fast path for common cases */
     const unsigned char *s1 = (const unsigned char *)s1_in;
@@ -30,23 +30,23 @@ int rbcglob_compare_paths(const char *s1_in, const char *s2_in)
     return strcmp(s1_in, s2_in);
 }
 
-void rbcglob_ctx_init(rbcglob_ctx_t *ctx)
+void rbc_ctx_init(rbc_ctx_t *ctx)
 {
-    rbcglob_arena_init(&ctx->arena, 0); /* Use default block size (128KB) */
+    rbc_arena_init(&ctx->arena, 0); /* Use default block size (128KB) */
     ctx->discovery_counter = 0;
 }
 
-void rbcglob_ctx_free(rbcglob_ctx_t *ctx)
+void rbc_ctx_free(rbc_ctx_t *ctx)
 {
     if (!ctx)
         return;
-    rbcglob_arena_destroy(&ctx->arena);
+    rbc_arena_destroy(&ctx->arena);
 }
 
 /* P1 Optimization: Initial capacity for result array */
 #define INITIAL_RESULT_CAPACITY 64
 
-void rbcglob_results_init(rbcglob_results_t *results, rbcglob_ctx_t *ctx)
+void rbc_results_init(rbc_results_t *results, rbc_ctx_t *ctx)
 {
     /* P1-1: Pre-allocate result array to reduce realloc() calls */
     results->capacity = INITIAL_RESULT_CAPACITY;
@@ -69,7 +69,7 @@ void rbcglob_results_init(rbcglob_results_t *results, rbcglob_ctx_t *ctx)
     }
 }
 
-void rbcglob_results_clear(rbcglob_results_t *results)
+void rbc_results_clear(rbc_results_t *results)
 {
     if (!results)
         return;
@@ -85,7 +85,7 @@ void rbcglob_results_clear(rbcglob_results_t *results)
     results->capacity = 0;
 }
 
-int rbcglob_results_add_with_index(rbcglob_results_t *results, const char *path, size_t index)
+int rbc_results_add_with_index(rbc_results_t *results, const char *path, size_t index)
 {
     if (results->count >= results->capacity)
     {
@@ -107,7 +107,7 @@ int rbcglob_results_add_with_index(rbcglob_results_t *results, const char *path,
     /* P13: Use arena for result strings */
     const char *p = path ? path : ".";
     size_t len = strlen(p);
-    results->items[results->count] = rbcglob_arena_alloc(&results->ctx->arena, len + 1);
+    results->items[results->count] = rbc_arena_alloc(&results->ctx->arena, len + 1);
     memcpy(results->items[results->count], p, len + 1);
     results->lengths[results->count] = len;
     results->discovery_indices[results->count] = index;
@@ -115,36 +115,36 @@ int rbcglob_results_add_with_index(rbcglob_results_t *results, const char *path,
     return 0;
 }
 
-int rbcglob_results_add(rbcglob_results_t *results, const char *path)
+int rbc_results_add(rbc_results_t *results, const char *path)
 {
     // Pass 0 as index implicitly if not tracking discovery order for sort stability
     // (though new engine might not use discovery index in the same way)
-    return rbcglob_results_add_with_index(results, path, results->ctx->discovery_counter++);
+    return rbc_results_add_with_index(results, path, results->ctx->discovery_counter++);
 }
 
 /* P10 Optimization: Helper structure for qsort() */
-typedef struct rbcglob_traverse_sort_pair_s
+typedef struct rbc_traverse_sort_pair_s
 {
     char *path;
     size_t length;
     size_t discovery_index;
-} rbcglob_traverse_sort_pair_t;
+} rbc_traverse_sort_pair_t;
 
 /* P10: Comparison function for qsort() */
-static int rbcglob_traverse_compare_sort_pairs(const void *a, const void *b)
+static int rbc_traverse_compare_sort_pairs(const void *a, const void *b)
 {
-    const rbcglob_traverse_sort_pair_t *pa = (const rbcglob_traverse_sort_pair_t *)a;
-    const rbcglob_traverse_sort_pair_t *pb = (const rbcglob_traverse_sort_pair_t *)b;
-    return rbcglob_compare_paths(pa->path, pb->path);
+    const rbc_traverse_sort_pair_t *pa = (const rbc_traverse_sort_pair_t *)a;
+    const rbc_traverse_sort_pair_t *pb = (const rbc_traverse_sort_pair_t *)b;
+    return rbc_compare_paths(pa->path, pb->path);
 }
 
-void rbcglob_results_sort(rbcglob_results_t *results)
+void rbc_results_sort(rbc_results_t *results)
 {
     if (results->count <= 1)
         return;
 
     /* P10: Use qsort() instead of O(n²) bubble sort */
-    rbcglob_traverse_sort_pair_t *pairs = malloc(sizeof(rbcglob_traverse_sort_pair_t) * results->count);
+    rbc_traverse_sort_pair_t *pairs = malloc(sizeof(rbc_traverse_sort_pair_t) * results->count);
     if (!pairs)
         return; /* Fallback: keep unsorted */
 
@@ -155,7 +155,7 @@ void rbcglob_results_sort(rbcglob_results_t *results)
         pairs[i].discovery_index = results->discovery_indices[i];
     }
 
-    qsort(pairs, results->count, sizeof(rbcglob_traverse_sort_pair_t), rbcglob_traverse_compare_sort_pairs);
+    qsort(pairs, results->count, sizeof(rbc_traverse_sort_pair_t), rbc_traverse_compare_sort_pairs);
 
     for (size_t i = 0; i < results->count; i++)
     {
@@ -167,7 +167,7 @@ void rbcglob_results_sort(rbcglob_results_t *results)
     free(pairs);
 }
 
-void rbcglob_results_deduplicate(rbcglob_results_t *results)
+void rbc_results_deduplicate(rbc_results_t *results)
 {
     if (results->count <= 1)
         return;
@@ -195,17 +195,17 @@ void rbcglob_results_deduplicate(rbcglob_results_t *results)
 
 /* Defines the opaque struct from types.h */
 
-struct rbcglob_compiled_glob_s
+struct rbc_glob_pattern_s
 {
-    rbcglob_ctx_t *ctx;
-    rbcglob_segment_t *segments;
+    rbc_ctx_t *ctx;
+    rbc_segment_t *segments;
     unsigned flags; /* Store flags during compilation if needed */
 };
 
 /* Result collection callback for Walker */
 typedef struct
 {
-    rbcglob_results_t *results;
+    rbc_results_t *results;
     const char *base_strip; /* If set, strip this prefix from results */
     size_t base_len;
 } callback_ctx_t;
@@ -233,64 +233,64 @@ static void walker_match_callback(const char *path, void *user_data)
         }
     }
 
-    rbcglob_results_add(ctx->results, add_path);
+    rbc_results_add(ctx->results, add_path);
 }
 
-rbcglob_compiled_glob_t *rbcglob_compile_glob(const char *pattern, unsigned flags)
+rbc_glob_pattern_t *rbc_glob_compile(const char *pattern, unsigned flags)
 {
     if (!pattern)
         return NULL;
 
-    rbcglob_compiled_glob_t *cg = malloc(sizeof(rbcglob_compiled_glob_t));
+    rbc_glob_pattern_t *cg = malloc(sizeof(rbc_glob_pattern_t));
     if (!cg)
         return NULL;
 
-    cg->ctx = malloc(sizeof(rbcglob_ctx_t));
+    cg->ctx = malloc(sizeof(rbc_ctx_t));
     if (!cg->ctx)
     {
         free(cg);
         return NULL;
     }
 
-    rbcglob_ctx_init(cg->ctx);
+    rbc_ctx_init(cg->ctx);
     cg->flags = flags;
 
-    cg->segments = rbcglob_compile_segments(&cg->ctx->arena, pattern);
+    cg->segments = rbc_compile_segments(&cg->ctx->arena, pattern, flags);
 
     if (!cg->segments)
     {
-        rbcglob_compiled_glob_free(cg);
+        rbc_glob_pattern_free(cg);
         return NULL;
     }
 
     return cg;
 }
 
-void rbcglob_compiled_glob_free(rbcglob_compiled_glob_t *cg)
+void rbc_glob_pattern_free(rbc_glob_pattern_t *cg)
 {
     if (!cg)
         return;
     if (cg->ctx)
     {
-        rbcglob_ctx_free(cg->ctx);
+        rbc_ctx_free(cg->ctx);
         free(cg->ctx);
     }
     free(cg);
 }
 
-bool rbcglob_dirglob_compiled(const rbcglob_compiled_glob_t *cg, const char *base, bool sort,
-                              char ***out, size_t *count, size_t **lengths)
+bool rbc_xglob(const rbc_glob_pattern_t *cg, const char *base, bool sort,
+               char ***out, size_t *count, size_t **lengths)
 {
     if (!cg || !out || !count)
         return false;
 
-    rbcglob_ctx_t *run_ctx = malloc(sizeof(rbcglob_ctx_t));
+    rbc_ctx_t *run_ctx = malloc(sizeof(rbc_ctx_t));
     if (!run_ctx)
         return false;
-    rbcglob_ctx_init(run_ctx);
+    rbc_ctx_init(run_ctx);
 
-    rbcglob_results_t results;
-    rbcglob_results_init(&results, run_ctx);
+    rbc_results_t results;
+    rbc_results_init(&results, run_ctx);
 
     callback_ctx_t cb_ctx;
     cb_ctx.results = &results;
@@ -300,21 +300,21 @@ bool rbcglob_dirglob_compiled(const rbcglob_compiled_glob_t *cg, const char *bas
     cb_ctx.base_strip = base;
     cb_ctx.base_len = base ? strlen(base) : 0;
 
-    rbcglob_execute_segments(cg->segments, base, cg->flags, sort, walker_match_callback, &cb_ctx);
+    rbc_execute_segments(cg->segments, base, cg->flags, sort, walker_match_callback, &cb_ctx);
 
     if (sort)
     {
-        rbcglob_results_sort(&results);
+        rbc_results_sort(&results);
     }
-    rbcglob_results_deduplicate(&results);
+    rbc_results_deduplicate(&results);
 
     // Packaging
     *count = results.count;
     void **package = malloc(sizeof(void *) + (results.count + 1) * sizeof(char *));
     if (!package)
     {
-        rbcglob_results_clear(&results);
-        rbcglob_ctx_free(run_ctx);
+        rbc_results_clear(&results);
+        rbc_ctx_free(run_ctx);
         free(run_ctx);
         return false;
     }
@@ -342,8 +342,8 @@ bool rbcglob_dirglob_compiled(const rbcglob_compiled_glob_t *cg, const char *bas
 /* Context for fast path visitor */
 typedef struct
 {
-    rbcglob_results_t *results;
-    rbcglob_ctx_t *ctx;
+    rbc_results_t *results;
+    rbc_ctx_t *ctx;
     const char *base;
     unsigned flags;
     bool sort;
@@ -387,34 +387,34 @@ static void fast_path_visitor(const char *p, void *arg)
                 if (!S_ISDIR(st.st_mode))
                     return;
             }
-            rbcglob_results_add(fp_ctx->results, p);
+            rbc_results_add(fp_ctx->results, p);
         }
     }
     else
     {
         // Still has wildcards? Compile and run walker.
-        rbcglob_segment_t *segments = rbcglob_compile_segments(&fp_ctx->ctx->arena, p);
+        rbc_segment_t *segments = rbc_compile_segments(&fp_ctx->ctx->arena, p, fp_ctx->flags);
         if (segments)
         {
-            rbcglob_execute_segments(segments, fp_ctx->base, fp_ctx->flags, fp_ctx->sort, walker_match_callback, fp_ctx->cb_ctx);
+            rbc_execute_segments(segments, fp_ctx->base, fp_ctx->flags, fp_ctx->sort, walker_match_callback, fp_ctx->cb_ctx);
         }
     }
 }
 
-bool rbcglob_dirglob(const char **patterns, size_t npatterns, unsigned flags,
-                     const char *base, bool sort, char ***out, size_t *count, size_t **lengths)
+bool rbc_glob(const char **patterns, size_t npatterns, unsigned flags,
+              const char *base, bool sort, char ***out, size_t *count, size_t **lengths)
 {
 
     if (!out || !count)
         return false;
 
-    rbcglob_ctx_t *ctx = malloc(sizeof(rbcglob_ctx_t));
+    rbc_ctx_t *ctx = malloc(sizeof(rbc_ctx_t));
     if (!ctx)
         return false;
-    rbcglob_ctx_init(ctx);
+    rbc_ctx_init(ctx);
 
-    rbcglob_results_t results;
-    rbcglob_results_init(&results, ctx);
+    rbc_results_t results;
+    rbc_results_init(&results, ctx);
 
     callback_ctx_t cb_ctx;
     cb_ctx.results = &results;
@@ -439,33 +439,33 @@ bool rbcglob_dirglob(const char **patterns, size_t npatterns, unsigned flags,
         {
             // Pure braces: Use visitor
             fast_path_ctx_t fp_ctx = {&results, ctx, base, flags, sort, &cb_ctx};
-            rbcglob_brace_visit(current_pattern, &ctx->arena, fast_path_visitor, &fp_ctx);
+            rbc_brace_visit(current_pattern, &ctx->arena, fast_path_visitor, &fp_ctx);
         }
         else
         {
             // Standard path or mixed wildcard-brace
             // If mixed, we pass directly to compile segments which handles braces via segments or expansion internally
-            rbcglob_segment_t *segments = rbcglob_compile_segments(&ctx->arena, current_pattern);
+            rbc_segment_t *segments = rbc_compile_segments(&ctx->arena, current_pattern, flags);
             if (segments)
             {
-                rbcglob_execute_segments(segments, base, flags, sort, walker_match_callback, &cb_ctx);
+                rbc_execute_segments(segments, base, flags, sort, walker_match_callback, &cb_ctx);
             }
         }
     }
 
     if (sort)
     {
-        rbcglob_results_sort(&results);
+        rbc_results_sort(&results);
     }
-    rbcglob_results_deduplicate(&results);
+    rbc_results_deduplicate(&results);
 
     // Packaging
     *count = results.count;
     void **package = malloc(sizeof(void *) + (results.count + 1) * sizeof(char *));
     if (!package)
     {
-        rbcglob_results_clear(&results);
-        rbcglob_ctx_free(ctx);
+        rbc_results_clear(&results);
+        rbc_ctx_free(ctx);
         free(ctx);
         return false;
     }
@@ -492,14 +492,14 @@ bool rbcglob_dirglob(const char **patterns, size_t npatterns, unsigned flags,
     return true;
 }
 
-void rbcglob_free(char **list, size_t count, size_t *lengths)
+void rbc_glob_free(char **list, size_t count, size_t *lengths)
 {
     (void)count;
     if (!list)
         return;
     void **package = (void **)list - 1;
-    rbcglob_ctx_t *ctx = (rbcglob_ctx_t *)package[0];
-    rbcglob_ctx_free(ctx);
+    rbc_ctx_t *ctx = (rbc_ctx_t *)package[0];
+    rbc_ctx_free(ctx);
     free(ctx);
     free(package);
     if (lengths)

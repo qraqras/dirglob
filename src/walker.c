@@ -9,7 +9,7 @@
 
 #include "pattern.h"
 #include "utils.h"
-#include "rbcglob/rbcglob.h"
+#include "rbc/rbc.h"
 
 typedef struct fs_dir_iter_s fs_dir_iter_t;
 
@@ -242,7 +242,7 @@ static bool fs_is_dir_nofollow(const char *path)
 
 typedef struct
 {
-    rbcglob_match_callback_t cb;
+    rbc_match_callback_t cb;
 
     void *ud;
     unsigned flags;
@@ -251,7 +251,7 @@ typedef struct
 
 typedef struct segment_stack_s
 {
-    rbcglob_segment_t *seg;
+    rbc_segment_t *seg;
     struct segment_stack_s *next;
 } segment_stack_t;
 
@@ -271,7 +271,7 @@ enum
 typedef struct
 {
     // Arguments
-    rbcglob_segment_t *seg;
+    rbc_segment_t *seg;
     segment_stack_t *stack_ptr;
     bool from_wildcard;
 
@@ -279,7 +279,7 @@ typedef struct
     int state;
     size_t entry_len; // To restore path_buf length
     fs_dir_iter_t *iter;
-    rbcglob_segment_t *alt;      // For BRANCH
+    rbc_segment_t *alt;      // For BRANCH
     segment_stack_t branch_node; // For BRANCH storage
 
     // Cached entry info for fused recursion
@@ -296,7 +296,7 @@ typedef struct
     size_t capacity;
 } exec_stack_t;
 
-static void stack_push(exec_stack_t *st, rbcglob_segment_t *seg, segment_stack_t *stack_ptr, bool from_wildcard)
+static void stack_push(exec_stack_t *st, rbc_segment_t *seg, segment_stack_t *stack_ptr, bool from_wildcard)
 {
     if (st->count == st->capacity)
     {
@@ -341,7 +341,7 @@ static size_t buf_append(char *buf, size_t *current_len, const char *str)
 
 // Logic to determine next segment helper
 // Returns true if it pushed a new frame, false if it executed callback (leaf)
-static bool push_next(exec_stack_t *st, char *path, rbcglob_segment_t *current_seg, segment_stack_t *stack_ptr, exec_ctx_t *ctx, bool from_wildcard)
+static bool push_next(exec_stack_t *st, char *path, rbc_segment_t *current_seg, segment_stack_t *stack_ptr, exec_ctx_t *ctx, bool from_wildcard)
 {
     if (current_seg && current_seg->next)
     {
@@ -360,12 +360,12 @@ static bool push_next(exec_stack_t *st, char *path, rbcglob_segment_t *current_s
     }
 }
 
-void rbcglob_execute_segments(
-    rbcglob_segment_t *root,
+void rbc_execute_segments(
+    rbc_segment_t *root,
     const char *base_path,
     unsigned flags,
     bool sort,
-    rbcglob_match_callback_t callback,
+    rbc_match_callback_t callback,
     void *user_data)
 {
     exec_ctx_t ctx = {callback, user_data, flags, sort};
@@ -397,7 +397,7 @@ void rbcglob_execute_segments(
         frame_t *f = &st.items[st.count - 1]; // Top
 
         // Load context from frame
-        rbcglob_segment_t *seg = f->seg;
+        rbc_segment_t *seg = f->seg;
 
         switch (f->state)
         {
@@ -414,7 +414,7 @@ void rbcglob_execute_segments(
                 continue;
             }
 
-            if (seg->type == RBCG_SEGMENT_LITERAL)
+            if (seg->type == RBC_SEGMENT_LITERAL)
             {
                 if (buf_append(path_buf, &path_len, seg->data.literal) == 0)
                 {
@@ -474,7 +474,7 @@ void rbcglob_execute_segments(
                     }
                 }
             }
-            else if (seg->type == RBCG_SEGMENT_WILDCARD || seg->type == RBCG_SEGMENT_RECURSIVE)
+            else if (seg->type == RBC_SEGMENT_WILDCARD || seg->type == RBC_SEGMENT_RECURSIVE)
             {
                 const char *open_path = (path_len == 0) ? "." : path_buf;
                 f->iter = fs_open(open_path);
@@ -485,7 +485,7 @@ void rbcglob_execute_segments(
                 }
                 f->state = ST_DIR_LOOP;
             }
-            else if (seg->type == RBCG_SEGMENT_BRANCH)
+            else if (seg->type == RBC_SEGMENT_BRANCH)
             {
                 f->alt = seg->data.branch.head;
                 // Prepare the stack node for children
@@ -523,7 +523,7 @@ void rbcglob_execute_segments(
                     continue; // Loop again
                 if (strcmp(name, ".") == 0)
                 {
-                    if (seg->type == RBCG_SEGMENT_RECURSIVE)
+                    if (seg->type == RBC_SEGMENT_RECURSIVE)
                         continue;
                     if (f->from_wildcard)
                         continue;
@@ -543,9 +543,9 @@ void rbcglob_execute_segments(
                 */
 
                 bool is_hidden = (name[0] == '.');
-                if (is_hidden && !(ctx.flags & RBCGLOB_FNM_DOTMATCH))
+                if (is_hidden && !(ctx.flags & RBC_FNM_DOTMATCH))
                 {
-                    if (seg->type == RBCG_SEGMENT_WILDCARD)
+                    if (seg->type == RBC_SEGMENT_WILDCARD)
                     {
                         if (seg->data.glob.original_pattern[0] != '.')
                             continue;
@@ -559,9 +559,9 @@ void rbcglob_execute_segments(
                 bool should_recurse = false;
                 bool next_from_wildcard = false;
 
-                if (seg->type == RBCG_SEGMENT_WILDCARD)
+                if (seg->type == RBC_SEGMENT_WILDCARD)
                 {
-                    bool matched = rbcglob_matcher_exec(&seg->data.glob.matcher, name, ctx.flags);
+                    bool matched = rbc_matcher_exec(&seg->data.glob.matcher, name, ctx.flags);
 
                     if (matched)
                     {
@@ -569,7 +569,7 @@ void rbcglob_execute_segments(
                         next_from_wildcard = true;
                     }
                 }
-                else if (seg->type == RBCG_SEGMENT_RECURSIVE)
+                else if (seg->type == RBC_SEGMENT_RECURSIVE)
                 {
                     // logic for ** recursion
                     bool can_recurse = is_dir_known;
@@ -612,7 +612,7 @@ void rbcglob_execute_segments(
                     // If it does, we spawn a task for that match.
                     // AFTER that task completes, we come back (ST_RECURSIVE_CHECK_CHILD) and do the recursion.
 
-                    rbcglob_segment_t *next_seg = seg->next;
+                    rbc_segment_t *next_seg = seg->next;
                     segment_stack_t *next_stack = f->stack_ptr;
 
                     // Resolve next segment across stack boundaries if needed
@@ -628,11 +628,11 @@ void rbcglob_execute_segments(
                     bool matched_next = false;
                     if (next_seg)
                     {
-                        if (next_seg->type == RBCG_SEGMENT_WILDCARD)
+                        if (next_seg->type == RBC_SEGMENT_WILDCARD)
                         {
-                            matched_next = rbcglob_matcher_exec(&next_seg->data.glob.matcher, name, ctx.flags);
+                            matched_next = rbc_matcher_exec(&next_seg->data.glob.matcher, name, ctx.flags);
                         }
-                        else if (next_seg->type == RBCG_SEGMENT_LITERAL)
+                        else if (next_seg->type == RBC_SEGMENT_LITERAL)
                         {
                             if (strcmp(name, next_seg->data.literal) == 0)
                             {
@@ -799,7 +799,7 @@ void rbcglob_execute_segments(
             // f->alt is current alternative
             if (f->alt)
             {
-                rbcglob_segment_t *curr = f->alt;
+                rbc_segment_t *curr = f->alt;
                 f->alt = f->alt->next_alt; // Advance for next time
 
                 f->state = ST_BRANCH_LOOP; // Come back here

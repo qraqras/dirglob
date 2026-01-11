@@ -70,7 +70,7 @@ target_include_directories(test_dirglob PRIVATE
   "${PROJECT_SOURCE_DIR}/src"
   "${CMAKE_CURRENT_SOURCE_DIR}"
 )
-target_link_libraries(test_dirglob PRIVATE rbcglob ${UNITY_TARGET})
+target_link_libraries(test_dirglob PRIVATE rbc ${UNITY_TARGET})
 
 enable_testing()
 add_test(NAME dirglob_test COMMAND test_dirglob WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/tests/fixtures)

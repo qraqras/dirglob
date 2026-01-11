@@ -9,13 +9,9 @@ Amalgamation形式で提供され、組み込みも容易です。
   - Documentation: https://docs.ruby-lang.org/en/4.0/Dir.html#method-c-glob
 - fnmatchの仕様はRuby4.0のFile.fnmatchに準拠します
   - Documentation: https://docs.ruby-lang.org/en/4.0/File.html#method-c-fnmatch
-- joinの仕様はRuby4.0のFile.joinに準拠します
-  - Documentation: https://docs.ruby-lang.org/en/4.0/File.html#method-c-join
-- expand_pathの仕様はRuby4.0のFile.expand_pathに準拠します
-  - Documentation: https://docs.ruby-lang.org/en/4.0/File.html#method-c-expand_path
 
 # 実装
-- プレフィックスはrbcg_*です(内部実装にも使用します)
+- プレフィックスはrbc_*です(内部実装にも使用します)
 - ヒューリスティックな動作の再現ではなくMRIのロジックを忠実に再現してください
 - 戻り値や引数はなるべくbool型やsize_t型を使います
 - Ruby互換APIは引数名まで一致させてください

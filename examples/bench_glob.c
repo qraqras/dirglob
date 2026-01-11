@@ -3,7 +3,7 @@
 #include <string.h>
 #include <time.h>
 #include <glob.h>
-#include "rbcglob/rbcglob.h"
+#include "rbc/rbc.h"
 
 double get_time_sec()
 {
@@ -43,11 +43,11 @@ void bench_rbcglob(const char *pattern, int iterations)
         char **out = NULL;
         size_t count = 0;
 
-        bool success = rbcglob_dirglob(patterns, 1, 0, NULL, true, &out, &count, NULL);
+        bool success = rbc_glob(patterns, 1, 0, NULL, true, &out, &count, NULL);
         if (success)
         {
             total_matches += count;
-            rbcglob_free(out, count, NULL);
+            rbc_glob_free(out, count, NULL);
         }
     }
     double end = get_time_sec();

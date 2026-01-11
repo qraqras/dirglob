@@ -1,4 +1,4 @@
-# rbcglob_dirglob テスト実装完了
+# rbc_glob テスト実装完了
 
 ## 実装されたテストシステム
 

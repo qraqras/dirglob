@@ -1,5 +1,5 @@
-#ifndef RBCGLOB_INTERNAL_UTILS_H
-#define RBCGLOB_INTERNAL_UTILS_H
+#ifndef RBC_INTERNAL_UTILS_H
+#define RBC_INTERNAL_UTILS_H
 
 #include <stddef.h>
 #include <stdbool.h>
@@ -9,32 +9,32 @@
 /**
  * @brief Duplicate a string
  */
-char *rbcglob_strdup(const char *str);
+char *rbc_strdup(const char *str);
 
 typedef struct
 {
     char **items;
     size_t count;
     size_t capacity;
-    rbcglob_arena_t *arena; // Optional associated arena
-} rbcglob_str_list_t;
+    rbc_arena_t *arena; // Optional associated arena
+} rbc_str_list_t;
 
 // Initialize string list. If arena is provided, items array and strings will be allocated there.
-void rbcglob_str_list_init(rbcglob_str_list_t *list, size_t initial_cap, rbcglob_arena_t *arena);
-void rbcglob_str_list_add(rbcglob_str_list_t *list, const char *str);
-void rbcglob_str_list_free(rbcglob_str_list_t *list);
+void rbc_str_list_init(rbc_str_list_t *list, size_t initial_cap, rbc_arena_t *arena);
+void rbc_str_list_add(rbc_str_list_t *list, const char *str);
+void rbc_str_list_free(rbc_str_list_t *list);
 
 // Check if string contains brace expression
-bool rbcglob_has_brace(const char *str);
+bool rbc_has_brace(const char *str);
 
 // Helper for fixed length pattern match (handles '?' but not '*')
-bool rbcglob_match_fixed(const char *text, const char *pat, size_t len);
+bool rbc_match_fixed(const char *text, const char *pat, size_t len, bool casefold);
 
 // Helper for finding fixed length pattern in text (like strstr but with '?')
-const char *rbcglob_search_fixed(const char *text, const char *pat, const char *end_limit);
+const char *rbc_search_fixed(const char *text, const char *pat, const char *end_limit, bool casefold);
 
 // Check if string contains wildcard characters (*, ?, [, ])
-bool rbcglob_has_wildcard(const char *str);
+bool rbc_has_wildcard(const char *str);
 
 /**
  * @brief Decode the next UTF-8 codepoint and advance the pointer
@@ -43,26 +43,26 @@ bool rbcglob_has_wildcard(const char *str);
  * @return The decoded Unicode code point, or the byte value if invalid UTF-8.
  *         Returns 0 at null terminator.
  */
-uint32_t rbcglob_next_codepoint(const char **p);
+uint32_t rbc_next_codepoint(const char **p);
 
 // Brace expand using arena for allocations
-rbcglob_str_list_t rbcglob_brace_expand(const char *pattern, rbcglob_arena_t *arena);
+rbc_str_list_t rbc_brace_expand(const char *pattern, rbc_arena_t *arena);
 
 // Visitor callback for brace expansion
-typedef void (*rbcglob_brace_visit_cb)(const char *path, void *arg);
+typedef void (*rbc_brace_visit_cb)(const char *path, void *arg);
 
 // Expand braces and call callback for each result.
-void rbcglob_brace_visit(const char *pattern, rbcglob_arena_t *arena, rbcglob_brace_visit_cb cb, void *arg);
+void rbc_brace_visit(const char *pattern, rbc_arena_t *arena, rbc_brace_visit_cb cb, void *arg);
 
 // Find the end of the current logical segment (handles brace nesting)
 
 // Returns pointer to the '/' separator or null terminator.
-const char *rbcglob_find_segment_end(const char *str);
+const char *rbc_find_segment_end(const char *str);
 
 // Expand braces in a single string.
 // Returns a list of expanded strings.
 // e.g. "a{b,c}d" -> ["abd", "acd"]
-// rbcglob_str_list_t rbcglob_brace_expand(const char *pattern);
+// rbc_str_list_t rbc_brace_expand(const char *pattern);
 
 // Calculate Longest Common Prefix/Suffix for a list of strings
-#endif /* RBCGLOB_INTERNAL_UTILS_H */
+#endif /* RBC_INTERNAL_UTILS_H */

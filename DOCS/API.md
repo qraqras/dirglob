@@ -7,13 +7,13 @@ Ruby 4.0 の `Dir.glob` および関連する `File` クラスの機能を C か
 
 ## 主な API
 
-### 1. Dir.glob 相当 (rbcglob_dirglob)
+### 1. Dir.glob 相当 (rbc_glob)
 
 ```c
 /**
  * patterns: パターン配列
  * npatterns: パターン数
- * flags: RBCGLOB_FNM_* フラグ
+ * flags: RBCG_FNM_* フラグ
  * base: 検索基準ディレクトリ (NULL で CWD)
  * sort: 1 で Ruby compatible sort を実行
  * out_list: マッチしたパス配列を受け取るポインタ
@@ -21,76 +21,30 @@ Ruby 4.0 の `Dir.glob` および関連する `File` クラスの機能を C か
  * out_lengths: (任意) 各パスの長さ配列を受け取るポインタ
  * 戻り値: true で成功
  */
-bool rbcglob_dirglob(const char **patterns, size_t npatterns, unsigned flags,
+bool rbc_glob(const char **patterns, size_t npatterns, unsigned flags,
                      const char *base, int sort,
                      char ***out_list, size_t *out_count, size_t **out_lengths);
 
 /* 結果の解放 */
-void rbcglob_free(char **list, size_t count, size_t *lengths);
+void rbc_free(char **list, size_t count, size_t *lengths);
 ```
 
-### 2. File.fnmatch 相当 (rbcglob_fnmatch)
+### 2. File.fnmatch 相当 (rbc_fnmatch)
 
 ```c
 /* 戻り値: true でマッチ、false で不一致 */
-bool rbcglob_fnmatch(const char *pattern, const char *path, unsigned flags);
-```
-
-### 3. File.join 相当 (rbcglob_join)
-
-```c
-/* 複数のパス成分を Ruby 流に結合 */
-char *rbcglob_join(const char **args, size_t count);
-```
-
-### 4. File.expand_path 相当 (rbcglob_expand_path)
-
-```c
-/* ~展開や相対パスの解決 */
-char *rbcglob_expand_path(const char *file_name, const char *dir_string);
-```
-
-### 5. File.dirname 相当 (rbcglob_dirname)
-
-```c
-/**
- * file_name: パス
- * level: 削除する末尾コンポーネント数 (デフォルト: 1)
- * 戻り値: 新規に割り当てられた文字列 (free()で解放)
- */
-char *rbcglob_dirname(const char *file_name, int level);
-```
-
-### 6. File.basename 相当 (rbcglob_basename)
-
-```c
-/**
- * file_name: パス
- * suffix: 削除する拡張子 (NULL または "" で削除なし、".*" で任意の拡張子を削除)
- * 戻り値: 新規に割り当てられた文字列 (free()で解放)
- */
-char *rbcglob_basename(const char *file_name, const char *suffix);
-```
-
-### 7. File.extname 相当 (rbcglob_extname)
-
-```c
-/**
- * path: パス
- * 戻り値: 拡張子 (ドットを含む)、拡張子がない場合は空文字列
- */
-char *rbcglob_extname(const char *path);
+bool rbc_fnmatch(const char *pattern, const char *path, unsigned flags);
 ```
 
 ---
 
-## 主要フラグ (RBCGLOB_FNM_*)
+## 主要フラグ (RBCG_FNM_*)
 
-- `RBCGLOB_FNM_NOESCAPE`: `\` をエスケープ文字として扱わない
-- `RBCGLOB_FNM_PATHNAME`: `*` を `/` にマッチさせない
-- `RBCGLOB_FNM_DOTMATCH`: `.` で始まるファイルを含める
-- `RBCGLOB_FNM_CASEFOLD`: 大文字小文字を区別しない
-- `RBCGLOB_FNM_SYSCASE`: OS のデフォルト（Win/MacはFold）に従う
+- `RBCG_FNM_NOESCAPE`: `\` をエスケープ文字として扱わない
+- `RBCG_FNM_PATHNAME`: `*` を `/` にマッチさせない
+- `RBCG_FNM_DOTMATCH`: `.` で始まるファイルを含める
+- `RBCG_FNM_CASEFOLD`: 大文字小文字を区別しない
+- `RBCG_FNM_SYSCASE`: OS のデフォルト（Win/MacはFold）に従う
 
 
 実装では、これらのフラグの意味を Ruby の仕様どおり再現し、`dirglob` の `flags` 引数でビットフラグとして指定できるようにします。

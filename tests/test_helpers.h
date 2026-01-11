@@ -1,5 +1,5 @@
 /*
- * Test helper functions for rbcglob_dirglob
+ * Test helper functions for rbc_glob
  */
 
 #ifndef TEST_HELPERS_H

@@ -7,7 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TEST_DIR="$SCRIPT_DIR/.."
 BUILD_DIR="$TEST_DIR/../build"
 
-echo "=== rbcglob_dirglob Test Generation Pipeline ==="
+echo "=== rbc_glob Test Generation Pipeline ==="
 echo
 
 # Step 1: マトリックス生成
