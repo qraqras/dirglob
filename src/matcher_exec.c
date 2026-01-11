@@ -2,8 +2,314 @@
 #include <stdbool.h>
 #include <ctype.h>
 #include <rbc/rbc.h>
-#include "pattern.h"
+#include "internal.h"
 #include "utils.h"
+
+static bool rbc_match_fixed(const char *text, const char *pat, size_t len, bool casefold)
+{
+    if (casefold)
+    {
+        for (size_t i = 0; i < len; i++)
+        {
+            if (pat[i] != '?' && tolower((unsigned char)pat[i]) != tolower((unsigned char)text[i]))
+                return false;
+        }
+    }
+    else
+    {
+        for (size_t i = 0; i < len; i++)
+        {
+            if (pat[i] != '?' && pat[i] != text[i])
+                return false;
+        }
+    }
+    return true;
+}
+
+static const char *rbc_search_fixed(const char *text, const char *pat, const char *end_limit, bool casefold)
+{
+    size_t pat_len = strlen(pat);
+    if (pat_len == 0)
+        return text;
+
+    for (const char *p = text; p <= end_limit; p++)
+    {
+        if (rbc_match_fixed(p, pat, pat_len, casefold))
+            return p;
+    }
+    return NULL;
+}
+
+// Helper macros for recursive matcher
+#define IS_PATHNAME (flags & RBC_FNM_PATHNAME)
+#define IS_CASEFOLD (flags & RBC_FNM_CASEFOLD)
+#define IS_DOTMATCH (flags & RBC_FNM_DOTMATCH)
+
+static const char *bracket_match(const char *p, unsigned char c, unsigned int flags)
+{
+    bool negated = (*p == '!' || *p == '^');
+    if (negated)
+        p++;
+
+    bool matched = false;
+
+    if (*p == ']')
+    {
+        if (c == ']')
+            matched = true;
+        p++;
+    }
+
+    while (*p && *p != ']')
+    {
+        unsigned char c1;
+        if (*p == '\\')
+        {
+            p++;
+            if (*p)
+                c1 = (unsigned char)*p++;
+            else
+                c1 = 0; // Invalid
+        }
+        else
+        {
+            c1 = (unsigned char)*p++;
+        }
+
+        if (*p == '-' && p[1] && p[1] != ']')
+        {
+            p++;
+            unsigned char c2;
+            if (*p == '\\')
+            {
+                p++;
+                if (*p)
+                    c2 = (unsigned char)*p++;
+                else
+                    c2 = 0;
+            }
+            else
+            {
+                c2 = (unsigned char)*p++;
+            }
+
+            if (flags & RBC_FNM_CASEFOLD)
+            {
+                if (tolower(c1) <= tolower(c) && tolower(c) <= tolower(c2))
+                    matched = true;
+            }
+            else
+            {
+                if (c1 <= c && c <= c2)
+                    matched = true;
+            }
+        }
+        else
+        {
+            if (flags & RBC_FNM_CASEFOLD)
+            {
+                if (tolower(c1) == tolower(c))
+                    matched = true;
+            }
+            else
+            {
+                if (c1 == c)
+                    matched = true;
+            }
+        }
+    }
+
+    if (*p == ']')
+        p++;
+
+    if (negated)
+        matched = !matched;
+    return matched ? p : NULL;
+}
+
+static bool match_recursive(const char *p, const char *s, const char *initial_str, unsigned int flags)
+{
+    while (*p)
+    {
+        char c = *p;
+
+        switch (c)
+        {
+        case '?':
+        {
+            if (*s == '\0')
+                return false;
+
+            if (IS_PATHNAME && *s == '/')
+                return false;
+            if (!IS_DOTMATCH && *s == '.' &&
+                (s == initial_str || (IS_PATHNAME && s[-1] == '/')))
+                return false;
+
+            p++;
+            s++;
+            continue;
+        }
+
+        case '*':
+        {
+            // Consecutive stars are equivalent to one star
+            while (*p == '*')
+                p++;
+
+            if (!IS_DOTMATCH && *s == '.' &&
+                (s == initial_str || (IS_PATHNAME && s[-1] == '/')))
+                return false;
+
+            if (*p == '\0')
+            {
+                // Trailing star matches everything (except checks above)
+                if (IS_PATHNAME)
+                    return (strchr(s, '/') == NULL);
+                return true;
+            }
+
+            // Optimization: Fast Forward & Literal Island
+            // If the next pattern character is a literal, skip until we find it.
+            // This turns O(N*M) into O(N) for cases like "*.c" or "*foo".
+            char next_p = *p;
+            bool is_literal = (next_p != '?' && next_p != '*' && next_p != '[' && next_p != '\\');
+
+            // "Literal Island" Optimization (strstr-based) for run > 1
+            // Significantly speeds up "*long_literal" cases by avoiding backtracking on single char hits.
+            if (is_literal && !IS_CASEFOLD)
+            {
+                const char *lit_end = p;
+                while (*lit_end && *lit_end != '?' && *lit_end != '*' && *lit_end != '[' && *lit_end != '\\')
+                    lit_end++;
+                size_t lit_len = lit_end - p;
+
+                if (lit_len > 1 && lit_len < 128)
+                {
+                    char buf[128];
+                    memcpy(buf, p, lit_len);
+                    buf[lit_len] = '\0';
+
+                    const char *search_s = s;
+                    char *found;
+                    while ((found = strstr(search_s, buf)) != NULL)
+                    {
+                        if (IS_PATHNAME)
+                        {
+                            // Check for slash crossing in the skipped part
+                            if (memchr(search_s, '/', found - search_s))
+                                return false;
+                        }
+
+                        if (match_recursive(p + lit_len, found + lit_len, initial_str, flags))
+                            return true;
+
+                        search_s = found + 1;
+                    }
+                    return false;
+                }
+            }
+
+            // Recursive backtracking
+            while (1)
+            {
+                // Optimization: Skip loop (Single Char)
+                if (is_literal && *s != '\0')
+                {
+                    if (IS_CASEFOLD)
+                    {
+                        char next_p_lower = tolower((unsigned char)next_p);
+                        while (*s)
+                        {
+                            if (IS_PATHNAME && *s == '/')
+                                break;
+                            if (tolower((unsigned char)*s) == next_p_lower)
+                                break;
+                            s++;
+                        }
+                    }
+                    else
+                    {
+                        while (*s)
+                        {
+                            if (IS_PATHNAME && *s == '/')
+                                break;
+                            if (*s == next_p)
+                                break;
+                            s++;
+                        }
+                    }
+                }
+
+                if (match_recursive(p, s, initial_str, flags))
+                    return true;
+                if (*s == '\0')
+                    break;
+                if (IS_PATHNAME && *s == '/')
+                    break;
+                s++;
+            }
+            return false;
+        }
+
+        case '[':
+        {
+            if (*s == '\0')
+                return false;
+            if (IS_PATHNAME && *s == '/')
+                return false;
+            if (!IS_DOTMATCH && *s == '.' &&
+                (s == initial_str || (IS_PATHNAME && s[-1] == '/')))
+                return false;
+
+            const char *nxt = bracket_match(p + 1, (unsigned char)*s, flags);
+            if (nxt)
+            {
+                p = nxt;
+                s++;
+                continue;
+            }
+            return false;
+        }
+
+        case '\\':
+            if (p[1])
+                p++;
+            // Fallthrough
+
+        default:
+        {
+            if (*s == '\0')
+                return false;
+
+            char c1 = c;  // from pattern
+            char c2 = *s; // from string
+
+            if (IS_CASEFOLD)
+            {
+                c1 = tolower((unsigned char)c1);
+                c2 = tolower((unsigned char)c2);
+            }
+
+            if (c1 != c2)
+                return false;
+
+            p++;
+            s++;
+            continue;
+        }
+        }
+    }
+
+    return (*s == '\0');
+}
+
+static bool rbc_match_recursive_entry(const char *text, const char *pattern, unsigned int flags)
+{
+    if (!text || !pattern)
+        return false;
+    return match_recursive(pattern, text, text, flags);
+}
 
 // Note: rbc_build_matcher handles parsing strategy (CHAIN, SUFFIX etc)
 
@@ -18,33 +324,33 @@ bool rbc_matcher_exec(const rbc_matcher_t *m, const char *name, unsigned int fla
     {
     case RBC_STRATEGY_EXACT:
         if (casefold)
-            matched = (rbc_match_fixed(name, m->pk.literal, name_len, true) && strlen(m->pk.literal) == name_len);
+            matched = (rbc_match_fixed(name, m->pk.str.ptr, name_len, true) && m->pk.str.len == name_len);
         else
-            matched = (strcmp(name, m->pk.literal) == 0);
+            matched = (m->pk.str.len == name_len && strcmp(name, m->pk.str.ptr) == 0);
         break;
     case RBC_STRATEGY_PREFIX:
         if (casefold)
-            matched = rbc_match_fixed(name, m->pk.affix.pattern, m->pk.affix.len, true);
+            matched = rbc_match_fixed(name, m->pk.str.ptr, m->pk.str.len, true);
         else
-            matched = (strncmp(name, m->pk.affix.pattern, m->pk.affix.len) == 0);
+            matched = (name_len >= m->pk.str.len && strncmp(name, m->pk.str.ptr, m->pk.str.len) == 0);
 
         if (matched && pathname)
         {
-            if (memchr(name + m->pk.affix.len, '/', name_len - m->pk.affix.len))
+            if (memchr(name + m->pk.str.len, '/', name_len - m->pk.str.len))
                 matched = false;
         }
         break;
     case RBC_STRATEGY_SUFFIX:
-        if (name_len >= m->pk.affix.len)
+        if (name_len >= m->pk.str.len)
         {
             if (casefold)
-                matched = rbc_match_fixed(name + name_len - m->pk.affix.len, m->pk.affix.pattern, m->pk.affix.len, true);
+                matched = rbc_match_fixed(name + name_len - m->pk.str.len, m->pk.str.ptr, m->pk.str.len, true);
             else
-                matched = (strcmp(name + name_len - m->pk.affix.len, m->pk.affix.pattern) == 0);
+                matched = (strcmp(name + name_len - m->pk.str.len, m->pk.str.ptr) == 0);
 
             if (matched && pathname)
             {
-                if (memchr(name, '/', name_len - m->pk.affix.len))
+                if (memchr(name, '/', name_len - m->pk.str.len))
                     matched = false;
             }
         }
@@ -53,22 +359,22 @@ bool rbc_matcher_exec(const rbc_matcher_t *m, const char *name, unsigned int fla
         if (!pathname)
         {
             if (casefold)
-                matched = (rbc_search_fixed(name, m->pk.affix.pattern, name + name_len, true) != NULL);
+                matched = (rbc_search_fixed(name, m->pk.str.ptr, name + name_len, true) != NULL);
             else
-                matched = (strstr(name, m->pk.affix.pattern) != NULL);
+                matched = (strstr(name, m->pk.str.ptr) != NULL);
         }
         else
         {
             const char *p = name;
-            size_t pat_len = m->pk.affix.len;
+            size_t pat_len = m->pk.str.len;
             const char *end_ptr = name + name_len;
 
             while (true)
             {
                 if (casefold)
-                    p = rbc_search_fixed(p, m->pk.affix.pattern, end_ptr, true);
+                    p = rbc_search_fixed(p, m->pk.str.ptr, end_ptr, true);
                 else
-                    p = strstr(p, m->pk.affix.pattern);
+                    p = strstr(p, m->pk.str.ptr);
 
                 if (!p)
                     break;
@@ -234,8 +540,8 @@ bool rbc_matcher_exec(const rbc_matcher_t *m, const char *name, unsigned int fla
         }
     }
     break;
-    case RBC_STRATEGY_FNMATCH:
-        matched = rbc_recursive_match(name, m->pk.fnmatch.pattern, flags);
+    case RBC_STRATEGY_RECURSIVE:
+        matched = rbc_match_recursive_entry(name, m->pk.recursive.pattern, flags);
         break;
     }
     return matched;

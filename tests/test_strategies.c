@@ -1,6 +1,6 @@
 #include <unity.h>
 #include <string.h>
-#include "pattern.h"
+#include "internal.h"
 #include "arena.h"
 
 void test_compile_strategy_exact(void)
@@ -22,7 +22,7 @@ void test_compile_strategy_exact(void)
         // Fallback check if optimization strategy ever handles literals as Exact Matcher
         TEST_ASSERT_EQUAL_INT(RBC_SEGMENT_WILDCARD, seg->type);
         TEST_ASSERT_EQUAL_INT(RBC_STRATEGY_EXACT, seg->data.glob.matcher.strategy);
-        TEST_ASSERT_EQUAL_STRING("file.txt", seg->data.glob.matcher.pk.literal);
+        TEST_ASSERT_EQUAL_STRING("file.txt", seg->data.glob.matcher.pk.str.ptr);
     }
 
     rbc_arena_destroy(&arena);
@@ -38,7 +38,7 @@ void test_compile_strategy_suffix(void)
     TEST_ASSERT_NOT_NULL(seg);
     TEST_ASSERT_EQUAL_INT(RBC_SEGMENT_WILDCARD, seg->type);
     TEST_ASSERT_EQUAL_INT(RBC_STRATEGY_SUFFIX, seg->data.glob.matcher.strategy);
-    TEST_ASSERT_EQUAL_STRING(".c", seg->data.glob.matcher.pk.affix.pattern);
+    TEST_ASSERT_EQUAL_STRING(".c", seg->data.glob.matcher.pk.str.ptr);
 
     rbc_arena_destroy(&arena);
 }
@@ -53,7 +53,7 @@ void test_compile_strategy_prefix(void)
     TEST_ASSERT_NOT_NULL(seg);
     TEST_ASSERT_EQUAL_INT(RBC_SEGMENT_WILDCARD, seg->type);
     TEST_ASSERT_EQUAL_INT(RBC_STRATEGY_PREFIX, seg->data.glob.matcher.strategy);
-    TEST_ASSERT_EQUAL_STRING("test_", seg->data.glob.matcher.pk.affix.pattern);
+    TEST_ASSERT_EQUAL_STRING("test_", seg->data.glob.matcher.pk.str.ptr);
 
     rbc_arena_destroy(&arena);
 }
@@ -68,7 +68,7 @@ void test_compile_strategy_infix(void)
     TEST_ASSERT_NOT_NULL(seg);
     TEST_ASSERT_EQUAL_INT(RBC_SEGMENT_WILDCARD, seg->type);
     TEST_ASSERT_EQUAL_INT(RBC_STRATEGY_INFIX, seg->data.glob.matcher.strategy);
-    TEST_ASSERT_EQUAL_STRING("foo", seg->data.glob.matcher.pk.affix.pattern);
+    TEST_ASSERT_EQUAL_STRING("foo", seg->data.glob.matcher.pk.str.ptr);
 
     rbc_arena_destroy(&arena);
 }
@@ -98,12 +98,12 @@ void test_compile_strategy_nfa_fallback(void)
     rbc_arena_t arena;
     rbc_arena_init(&arena, 1024);
 
-    // Use brackets to force FNMATCH (complex fallback)
+    // Use brackets to force RECURSIVE (complex fallback)
     rbc_segment_t *seg = rbc_compile_segments(&arena, "[abc].c", 0);
 
     TEST_ASSERT_NOT_NULL(seg);
     TEST_ASSERT_EQUAL_INT(RBC_SEGMENT_WILDCARD, seg->type);
-    TEST_ASSERT_EQUAL_INT(RBC_STRATEGY_FNMATCH, seg->data.glob.matcher.strategy);
+    TEST_ASSERT_EQUAL_INT(RBC_STRATEGY_RECURSIVE, seg->data.glob.matcher.strategy);
 
     rbc_arena_destroy(&arena);
 }

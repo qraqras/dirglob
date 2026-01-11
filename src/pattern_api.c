@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include <rbc/rbc.h>
-#include "pattern.h"
+#include "internal.h"
 #include "arena.h"
 
 struct rbc_fnmatch_pattern_s
@@ -21,7 +21,7 @@ rbc_fnmatch_pattern_t *rbc_fnmatch_compile(const char *pattern, unsigned int fla
 
     rbc_arena_init(&p->arena, 0); // Default block size
 
-    rbc_build_matcher(&p->arena, &p->matcher, pattern, flags);
+    rbc_matcher_build(&p->arena, &p->matcher, pattern, flags);
     p->flags = flags;
 
     return p;

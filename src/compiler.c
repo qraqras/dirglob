@@ -4,10 +4,474 @@
 #include <ctype.h>
 #include <rbc/rbc.h>
 
-#include "pattern.h"
+#include "internal.h"
 #include "utils.h"
 
-void rbc_build_matcher(rbc_arena_t *arena, rbc_matcher_t *m, const char *pattern, unsigned int flags)
+// --- Internal String List Utility ---
+
+typedef struct rbc_str_list_s
+{
+    char **items;
+    size_t count;
+    size_t capacity;
+    rbc_arena_t *arena;
+} rbc_str_list_t;
+
+static void rbc_str_list_init(rbc_str_list_t *list, size_t initial_cap, rbc_arena_t *arena)
+{
+    list->arena = arena;
+    list->count = 0;
+    list->capacity = initial_cap;
+    if (arena)
+        list->items = rbc_arena_alloc(arena, initial_cap * sizeof(char *));
+    else
+        list->items = malloc(initial_cap * sizeof(char *));
+}
+
+static void rbc_str_list_add(rbc_str_list_t *list, const char *str)
+{
+    if (list->count == list->capacity)
+    {
+        list->capacity *= 2;
+        if (list->arena)
+        {
+            char **new_items = rbc_arena_alloc(list->arena, list->capacity * sizeof(char *));
+            if (list->count > 0)
+                memcpy(new_items, list->items, list->count * sizeof(char *));
+            list->items = new_items;
+        }
+        else
+        {
+            list->items = realloc(list->items, list->capacity * sizeof(char *));
+        }
+    }
+
+    if (list->arena)
+    {
+        list->items[list->count++] = rbc_arena_strdup(list->arena, str);
+    }
+    else
+    {
+        list->items[list->count++] = rbc_strdup(str);
+    }
+}
+
+static void rbc_str_list_free(rbc_str_list_t *list)
+{
+    if (list->arena)
+        return;
+
+    for (size_t i = 0; i < list->count; i++)
+        free(list->items[i]);
+    free(list->items);
+}
+
+// --- Pattern Query Helpers ---
+
+static bool rbc_has_brace(const char *str)
+{
+    bool esc = false;
+    for (const char *p = str; *p; p++)
+    {
+        if (esc)
+        {
+            esc = false;
+            continue;
+        }
+        if (*p == '\\')
+        {
+            esc = true;
+            continue;
+        }
+        if (*p == '{')
+            return true;
+    }
+    return false;
+}
+
+static bool rbc_has_wildcard(const char *str)
+{
+    bool esc = false;
+    for (const char *p = str; *p; p++)
+    {
+        if (esc)
+        {
+            esc = false;
+            continue;
+        }
+        if (*p == '\\')
+        {
+            esc = true;
+            continue;
+        }
+        if (*p == '*' || *p == '?' || *p == '[')
+            return true;
+    }
+    return false;
+}
+
+static const char *rbc_find_segment_end(const char *str)
+{
+    bool esc = false;
+    int depth = 0;
+    const char *p = str;
+    while (*p)
+    {
+        if (esc)
+        {
+            esc = false;
+            p++;
+            continue;
+        }
+        if (*p == '\\')
+        {
+            esc = true;
+            p++;
+            continue;
+        }
+
+        if (*p == '{')
+            depth++;
+        else if (*p == '}')
+        {
+            if (depth > 0)
+                depth--;
+        }
+        else if (*p == '/' && depth == 0)
+            return p;
+
+        p++;
+    }
+    return p;
+}
+
+// --- Brace Expansion Implementation ---
+
+static void expand_recursive(rbc_str_list_t *results, const char *prefix, const char *pattern, rbc_arena_t *arena)
+{
+    const char *brace_start = NULL;
+    bool esc = false;
+
+    for (const char *p = pattern; *p; p++)
+    {
+        if (esc)
+        {
+            esc = false;
+            continue;
+        }
+        if (*p == '\\')
+        {
+            esc = true;
+            continue;
+        }
+        if (*p == '{')
+        {
+            brace_start = p;
+            break;
+        }
+    }
+
+    if (!brace_start)
+    {
+        if (arena)
+        {
+            char *full = rbc_arena_printf(arena, "%s%s", prefix, pattern);
+            rbc_str_list_add(results, full);
+        }
+        else
+        {
+            size_t total_len = strlen(prefix) + strlen(pattern) + 1;
+            char *full = malloc(total_len);
+            sprintf(full, "%s%s", prefix, pattern);
+            rbc_str_list_add(results, full);
+            free(full);
+        }
+        return;
+    }
+
+    size_t pre_len = brace_start - pattern;
+    char *new_prefix_base;
+    if (arena)
+    {
+        char *pre = rbc_arena_alloc(arena, pre_len + 1);
+        memcpy(pre, pattern, pre_len);
+        pre[pre_len] = '\0';
+        new_prefix_base = rbc_arena_printf(arena, "%s%s", prefix, pre);
+    }
+    else
+    {
+        char *pre = malloc(pre_len + 1);
+        memcpy(pre, pattern, pre_len);
+        pre[pre_len] = '\0';
+        new_prefix_base = malloc(strlen(prefix) + pre_len + 1);
+        sprintf(new_prefix_base, "%s%s", prefix, pre);
+        free(pre);
+    }
+
+    const char *p = brace_start + 1;
+    const char *chunk_start = p;
+    int depth = 1;
+    esc = false;
+
+    rbc_str_list_t options;
+    rbc_str_list_init(&options, 4, arena);
+
+    while (*p)
+    {
+        if (esc)
+        {
+            esc = false;
+            p++;
+            continue;
+        }
+        if (*p == '\\')
+        {
+            esc = true;
+            p++;
+            continue;
+        }
+
+        if (*p == '{')
+            depth++;
+        else if (*p == '}')
+        {
+            depth--;
+            if (depth == 0)
+            {
+                size_t chunk_len = p - chunk_start;
+                char *chunk;
+                if (arena)
+                {
+                    chunk = rbc_arena_alloc(arena, chunk_len + 1);
+                    memcpy(chunk, chunk_start, chunk_len);
+                    chunk[chunk_len] = '\0';
+                }
+                else
+                {
+                    chunk = malloc(chunk_len + 1);
+                    memcpy(chunk, chunk_start, chunk_len);
+                    chunk[chunk_len] = '\0';
+                }
+                rbc_str_list_add(&options, chunk);
+                if (!arena)
+                    free(chunk);
+                break;
+            }
+        }
+        else if (*p == ',' && depth == 1)
+        {
+            size_t chunk_len = p - chunk_start;
+            char *chunk;
+            if (arena)
+            {
+                chunk = rbc_arena_alloc(arena, chunk_len + 1);
+                memcpy(chunk, chunk_start, chunk_len);
+                chunk[chunk_len] = '\0';
+            }
+            else
+            {
+                chunk = malloc(chunk_len + 1);
+                memcpy(chunk, chunk_start, chunk_len);
+                chunk[chunk_len] = '\0';
+            }
+            rbc_str_list_add(&options, chunk);
+            if (!arena)
+                free(chunk);
+            chunk_start = p + 1;
+        }
+        p++;
+    }
+
+    const char *suffix = (*p == '}') ? p + 1 : p;
+
+    for (size_t i = 0; i < options.count; i++)
+    {
+        if (arena)
+        {
+            size_t opt_len = strlen(options.items[i]);
+            size_t suf_len = strlen(suffix);
+            char *next_pattern = rbc_arena_alloc(arena, opt_len + suf_len + 1);
+            memcpy(next_pattern, options.items[i], opt_len);
+            memcpy(next_pattern + opt_len, suffix, suf_len + 1);
+            expand_recursive(results, new_prefix_base, next_pattern, arena);
+        }
+        else
+        {
+            size_t opt_len = strlen(options.items[i]);
+            size_t suf_len = strlen(suffix);
+            char *next_pattern = malloc(opt_len + suf_len + 1);
+            sprintf(next_pattern, "%s%s", options.items[i], suffix);
+            expand_recursive(results, new_prefix_base, next_pattern, arena);
+            free(next_pattern);
+        }
+    }
+
+    rbc_str_list_free(&options);
+    if (!arena)
+        free(new_prefix_base);
+}
+
+static rbc_str_list_t rbc_brace_expand(const char *pattern, rbc_arena_t *arena)
+{
+    rbc_str_list_t list;
+    rbc_str_list_init(&list, 8, arena);
+    expand_recursive(&list, "", pattern, arena);
+    return list;
+}
+
+static void expand_recursive_visitor(const char *pattern, rbc_arena_t *arena, rbc_brace_visit_cb cb, void *arg)
+{
+    const char *p = pattern;
+    bool in_brace = false;
+
+    while (*p)
+    {
+        if (*p == '\\')
+        {
+            p += 2;
+            continue;
+        }
+        if (*p == '{')
+        {
+            in_brace = true;
+            break;
+        }
+        p++;
+    }
+
+    if (!in_brace)
+    {
+        cb(pattern, arg);
+        return;
+    }
+
+    rbc_str_list_t options;
+    rbc_str_list_init(&options, 4, arena);
+
+    p = pattern;
+    while (*p && *p != '{')
+    {
+        if (*p == '\\')
+            p++;
+        p++;
+    }
+
+    if (*p != '{')
+    {
+        cb(pattern, arg);
+        rbc_str_list_free(&options);
+        return;
+    }
+
+    size_t prefix_len = p - pattern;
+    p++;
+    int depth = 1;
+    const char *chunk_start = p;
+    bool valid_brace = false;
+
+    while (*p)
+    {
+        if (*p == '\\')
+        {
+            p += 2;
+            continue;
+        }
+        if (*p == '{')
+            depth++;
+        else if (*p == '}')
+        {
+            depth--;
+            if (depth == 0)
+            {
+                size_t len = p - chunk_start;
+                char *chunk;
+                if (arena)
+                {
+                    chunk = rbc_arena_alloc(arena, len + 1);
+                    memcpy(chunk, chunk_start, len);
+                    chunk[len] = 0;
+                }
+                else
+                {
+                    chunk = malloc(len + 1);
+                    memcpy(chunk, chunk_start, len);
+                    chunk[len] = 0;
+                }
+                rbc_str_list_add(&options, chunk);
+                if (!arena)
+                    free(chunk);
+                valid_brace = true;
+                break;
+            }
+        }
+        else if (*p == ',' && depth == 1)
+        {
+            size_t len = p - chunk_start;
+            char *chunk;
+            if (arena)
+            {
+                chunk = rbc_arena_alloc(arena, len + 1);
+                memcpy(chunk, chunk_start, len);
+                chunk[len] = 0;
+            }
+            else
+            {
+                chunk = malloc(len + 1);
+                memcpy(chunk, chunk_start, len);
+                chunk[len] = 0;
+            }
+            rbc_str_list_add(&options, chunk);
+            if (!arena)
+                free(chunk);
+            chunk_start = p + 1;
+        }
+        p++;
+    }
+
+    if (!valid_brace)
+    {
+        cb(pattern, arg);
+        rbc_str_list_free(&options);
+        return;
+    }
+
+    const char *suffix = p + 1;
+    for (size_t i = 0; i < options.count; i++)
+    {
+        size_t opt_len = strlen(options.items[i]);
+        size_t suf_len = strlen(suffix);
+        size_t needed = prefix_len + opt_len + suf_len + 1;
+
+        if (needed < 4096)
+        {
+            char vla[needed];
+            memcpy(vla, pattern, prefix_len);
+            memcpy(vla + prefix_len, options.items[i], opt_len);
+            memcpy(vla + prefix_len + opt_len, suffix, suf_len + 1);
+            expand_recursive_visitor(vla, arena, cb, arg);
+        }
+        else
+        {
+            char *next_buf = arena ? rbc_arena_alloc(arena, needed) : malloc(needed);
+            memcpy(next_buf, pattern, prefix_len);
+            memcpy(next_buf + prefix_len, options.items[i], opt_len);
+            memcpy(next_buf + prefix_len + opt_len, suffix, suf_len + 1);
+
+            expand_recursive_visitor(next_buf, arena, cb, arg);
+            if (!arena)
+                free(next_buf);
+        }
+    }
+
+    rbc_str_list_free(&options);
+}
+
+void rbc_brace_visit(const char *pattern, rbc_arena_t *arena, rbc_brace_visit_cb cb, void *arg)
+{
+    expand_recursive_visitor(pattern, arena, cb, arg);
+}
+
+void rbc_matcher_build(rbc_arena_t *arena, rbc_matcher_t *m, const char *pattern, unsigned int flags)
 {
     bool noescape = (flags & RBC_FNM_NOESCAPE);
     // Check for complexity features
@@ -41,8 +505,8 @@ void rbc_build_matcher(rbc_arena_t *arena, rbc_matcher_t *m, const char *pattern
     // Note: Escaped characters might trigger this simple check, which is safe (just falls back to VM).
     if (has_bracket || has_brace || has_paren || has_pipe)
     {
-        m->strategy = RBC_STRATEGY_FNMATCH;
-        m->pk.fnmatch.pattern = rbc_arena_strdup(arena, pattern);
+        m->strategy = RBC_STRATEGY_RECURSIVE;
+        m->pk.recursive.pattern = rbc_arena_strdup(arena, pattern);
     }
     else if (star_count == 0)
     {
@@ -60,7 +524,8 @@ void rbc_build_matcher(rbc_arena_t *arena, rbc_matcher_t *m, const char *pattern
         else
         {
             m->strategy = RBC_STRATEGY_EXACT;
-            m->pk.literal = rbc_arena_strdup(arena, pattern);
+            m->pk.str.ptr = rbc_arena_strdup(arena, pattern);
+            m->pk.str.len = strlen(pattern);
         }
     }
     else if (star_count == 1)
@@ -88,24 +553,24 @@ void rbc_build_matcher(rbc_arena_t *arena, rbc_matcher_t *m, const char *pattern
                 // Let's treat it as SEQUENCE with ["", ""] parts?
                 // Simplest: STRATEGY_PREFIX with empty string (starts with "")
                 m->strategy = RBC_STRATEGY_PREFIX; // matches anything starting with empty string
-                m->pk.affix.pattern = "";
-                m->pk.affix.len = 0;
+                m->pk.str.ptr = "";
+                m->pk.str.len = 0;
             }
             else
             {
                 // "*suffix"
                 m->strategy = RBC_STRATEGY_SUFFIX;
-                m->pk.affix.pattern = rbc_arena_strdup(arena, pattern + 1);
-                m->pk.affix.len = len - 1;
+                m->pk.str.ptr = rbc_arena_strdup(arena, pattern + 1);
+                m->pk.str.len = len - 1;
             }
         }
         else if (pattern[len - 1] == '*')
         {
             // "prefix*"
             m->strategy = RBC_STRATEGY_PREFIX;
-            m->pk.affix.pattern = rbc_arena_strdup(arena, pattern);
-            m->pk.affix.pattern[len - 1] = '\0'; // Remove star
-            m->pk.affix.len = len - 1;
+            m->pk.str.ptr = rbc_arena_strdup(arena, pattern);
+            m->pk.str.ptr[len - 1] = '\0'; // Remove star
+            m->pk.str.len = len - 1;
         }
         else
         {
@@ -143,9 +608,9 @@ void rbc_build_matcher(rbc_arena_t *arena, rbc_matcher_t *m, const char *pattern
         if (!has_qmark && pattern[0] == '*' && pattern[len - 1] == '*' && star_count == 2)
         {
             m->strategy = RBC_STRATEGY_INFIX;
-            m->pk.affix.pattern = rbc_arena_strdup(arena, pattern + 1);
-            m->pk.affix.pattern[len - 2] = '\0'; // Remove trailing star
-            m->pk.affix.len = len - 2;
+            m->pk.str.ptr = rbc_arena_strdup(arena, pattern + 1);
+            m->pk.str.ptr[len - 2] = '\0'; // Remove trailing star
+            m->pk.str.len = len - 2;
         }
         else
         {
@@ -241,14 +706,14 @@ void rbc_build_matcher(rbc_arena_t *arena, rbc_matcher_t *m, const char *pattern
         }
     }
 
-    if (m->strategy == RBC_STRATEGY_FNMATCH)
+    if (m->strategy == RBC_STRATEGY_RECURSIVE)
     {
-        // Fill fnmatch struct (Just copy pattern)
-        m->pk.fnmatch.pattern = rbc_arena_strdup(arena, pattern);
+        // Fill recursive struct (Just copy pattern)
+        m->pk.recursive.pattern = rbc_arena_strdup(arena, pattern);
     }
 }
 
-rbc_segment_t *rbc_segment_new(rbc_arena_t *arena, rbc_segment_type_t type)
+static rbc_segment_t *rbc_segment_new(rbc_arena_t *arena, rbc_segment_type_t type)
 {
     rbc_segment_t *seg = rbc_arena_alloc(arena, sizeof(rbc_segment_t));
     memset(seg, 0, sizeof(rbc_segment_t));
@@ -413,7 +878,7 @@ rbc_segment_t *rbc_compile_segments(rbc_arena_t *arena, const char *pattern, uns
             seg->data.glob.original_pattern = rbc_arena_strdup(arena, expansions.items[0]);
 
             // Analyze pattern and select strategy
-            rbc_build_matcher(arena, &seg->data.glob.matcher, seg->data.glob.original_pattern, flags);
+            rbc_matcher_build(arena, &seg->data.glob.matcher, seg->data.glob.original_pattern, flags);
 
             rbc_str_list_free(&expansions);
 
@@ -429,7 +894,7 @@ rbc_segment_t *rbc_compile_segments(rbc_arena_t *arena, const char *pattern, uns
 }
 #include <stdio.h>
 #include <stddef.h>
-#include "pattern.h"
+#include "internal.h"
 
 // VM Program creation is now handled directly by compiler
 // But we might need some stubs if referenced elsewhere

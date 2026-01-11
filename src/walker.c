@@ -7,7 +7,7 @@
 #include <unistd.h>
 #include <errno.h>
 
-#include "pattern.h"
+#include "internal.h"
 #include "utils.h"
 #include "rbc/rbc.h"
 
@@ -279,7 +279,7 @@ typedef struct
     int state;
     size_t entry_len; // To restore path_buf length
     fs_dir_iter_t *iter;
-    rbc_segment_t *alt;      // For BRANCH
+    rbc_segment_t *alt;          // For BRANCH
     segment_stack_t branch_node; // For BRANCH storage
 
     // Cached entry info for fused recursion
@@ -360,7 +360,7 @@ static bool push_next(exec_stack_t *st, char *path, rbc_segment_t *current_seg, 
     }
 }
 
-void rbc_execute_segments(
+void rbc_segments_exec(
     rbc_segment_t *root,
     const char *base_path,
     unsigned flags,

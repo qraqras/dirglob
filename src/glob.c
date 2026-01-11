@@ -1,5 +1,5 @@
 #include <rbc/rbc.h>
-#include "pattern.h"
+#include "internal.h"
 #include "utils.h"
 #include <stdlib.h>
 #include <string.h>
@@ -11,7 +11,7 @@
  * Traverse Implementation (Merged from traverse.c)
  * ========================================================================= */
 
-int rbc_compare_paths(const char *s1_in, const char *s2_in)
+static int rbc_compare_paths(const char *s1_in, const char *s2_in)
 {
     /* P12 Optimization: Inline fast path for common cases */
     const unsigned char *s1 = (const unsigned char *)s1_in;
@@ -300,7 +300,7 @@ bool rbc_xglob(const rbc_glob_pattern_t *cg, const char *base, bool sort,
     cb_ctx.base_strip = base;
     cb_ctx.base_len = base ? strlen(base) : 0;
 
-    rbc_execute_segments(cg->segments, base, cg->flags, sort, walker_match_callback, &cb_ctx);
+    rbc_segments_exec(cg->segments, base, cg->flags, sort, walker_match_callback, &cb_ctx);
 
     if (sort)
     {
@@ -396,7 +396,7 @@ static void fast_path_visitor(const char *p, void *arg)
         rbc_segment_t *segments = rbc_compile_segments(&fp_ctx->ctx->arena, p, fp_ctx->flags);
         if (segments)
         {
-            rbc_execute_segments(segments, fp_ctx->base, fp_ctx->flags, fp_ctx->sort, walker_match_callback, fp_ctx->cb_ctx);
+            rbc_segments_exec(segments, fp_ctx->base, fp_ctx->flags, fp_ctx->sort, walker_match_callback, fp_ctx->cb_ctx);
         }
     }
 }
@@ -448,7 +448,7 @@ bool rbc_glob(const char **patterns, size_t npatterns, unsigned flags,
             rbc_segment_t *segments = rbc_compile_segments(&ctx->arena, current_pattern, flags);
             if (segments)
             {
-                rbc_execute_segments(segments, base, flags, sort, walker_match_callback, &cb_ctx);
+                rbc_segments_exec(segments, base, flags, sort, walker_match_callback, &cb_ctx);
             }
         }
     }
