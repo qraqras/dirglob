@@ -4,7 +4,7 @@
 #include "internal.h"
 #include "utils.h"
 
-void rbc_brace_visit(const char *pattern, rbc_arena_t *arena, rbc_brace_visit_cb cb, void *arg)
+bool rbc_brace_visit(const char *pattern, rbc_arena_t *arena, rbc_brace_visit_cb cb, void *arg)
 {
     const char *p = pattern;
     bool in_brace = false;
@@ -26,12 +26,12 @@ void rbc_brace_visit(const char *pattern, rbc_arena_t *arena, rbc_brace_visit_cb
 
     if (!in_brace)
     {
-        cb(pattern, arg);
-        return;
+        return cb(pattern, arg);
     }
 
     rbc_str_list_t options;
-    rbc_str_list_init(&options, 4, arena);
+    if (!rbc_str_list_init(&options, 4, arena))
+        return false;
 
     p = pattern;
     while (*p && *p != '{')
@@ -43,9 +43,9 @@ void rbc_brace_visit(const char *pattern, rbc_arena_t *arena, rbc_brace_visit_cb
 
     if (*p != '{')
     {
-        cb(pattern, arg);
+        bool ret = cb(pattern, arg);
         rbc_str_list_free(&options);
-        return;
+        return ret;
     }
 
     size_t prefix_len = p - pattern;
@@ -73,16 +73,32 @@ void rbc_brace_visit(const char *pattern, rbc_arena_t *arena, rbc_brace_visit_cb
                 if (arena)
                 {
                     chunk = rbc_arena_alloc(arena, len + 1);
+                    if (!chunk)
+                    {
+                        rbc_str_list_free(&options);
+                        return false;
+                    }
                     memcpy(chunk, chunk_start, len);
                     chunk[len] = 0;
                 }
                 else
                 {
                     chunk = malloc(len + 1);
+                    if (!chunk)
+                    {
+                        rbc_str_list_free(&options);
+                        return false;
+                    }
                     memcpy(chunk, chunk_start, len);
                     chunk[len] = 0;
                 }
-                rbc_str_list_add(&options, chunk);
+                if (!rbc_str_list_add(&options, chunk))
+                {
+                    if (!arena)
+                        free(chunk);
+                    rbc_str_list_free(&options);
+                    return false;
+                }
                 if (!arena)
                     free(chunk);
                 valid_brace = true;
@@ -96,16 +112,32 @@ void rbc_brace_visit(const char *pattern, rbc_arena_t *arena, rbc_brace_visit_cb
             if (arena)
             {
                 chunk = rbc_arena_alloc(arena, len + 1);
+                if (!chunk)
+                {
+                    rbc_str_list_free(&options);
+                    return false;
+                }
                 memcpy(chunk, chunk_start, len);
                 chunk[len] = 0;
             }
             else
             {
                 chunk = malloc(len + 1);
+                if (!chunk)
+                {
+                    rbc_str_list_free(&options);
+                    return false;
+                }
                 memcpy(chunk, chunk_start, len);
                 chunk[len] = 0;
             }
-            rbc_str_list_add(&options, chunk);
+            if (!rbc_str_list_add(&options, chunk))
+            {
+                if (!arena)
+                    free(chunk);
+                rbc_str_list_free(&options);
+                return false;
+            }
             if (!arena)
                 free(chunk);
             chunk_start = p + 1;
@@ -115,9 +147,9 @@ void rbc_brace_visit(const char *pattern, rbc_arena_t *arena, rbc_brace_visit_cb
 
     if (!valid_brace)
     {
-        cb(pattern, arg);
+        bool ret = cb(pattern, arg);
         rbc_str_list_free(&options);
-        return;
+        return ret;
     }
 
     const char *suffix = p + 1;
@@ -133,34 +165,56 @@ void rbc_brace_visit(const char *pattern, rbc_arena_t *arena, rbc_brace_visit_cb
             memcpy(vla, pattern, prefix_len);
             memcpy(vla + prefix_len, options.items[i], opt_len);
             memcpy(vla + prefix_len + opt_len, suffix, suf_len + 1);
-            rbc_brace_visit(vla, arena, cb, arg);
+            if (!rbc_brace_visit(vla, arena, cb, arg))
+            {
+                rbc_str_list_free(&options);
+                return false;
+            }
         }
         else
         {
             char *next_buf = arena ? rbc_arena_alloc(arena, needed) : malloc(needed);
+            if (!next_buf)
+            {
+                rbc_str_list_free(&options);
+                return false;
+            }
             memcpy(next_buf, pattern, prefix_len);
             memcpy(next_buf + prefix_len, options.items[i], opt_len);
             memcpy(next_buf + prefix_len + opt_len, suffix, suf_len + 1);
 
-            rbc_brace_visit(next_buf, arena, cb, arg);
+            bool ret = rbc_brace_visit(next_buf, arena, cb, arg);
             if (!arena)
                 free(next_buf);
+            if (!ret)
+            {
+                rbc_str_list_free(&options);
+                return false;
+            }
         }
     }
 
     rbc_str_list_free(&options);
+    return true;
 }
 
-static void rbc_brace_collect_cb(const char *pattern, void *arg)
+static bool rbc_brace_collect_cb(const char *pattern, void *arg)
 {
     rbc_str_list_t *list = (rbc_str_list_t *)arg;
-    rbc_str_list_add(list, pattern);
+    return rbc_str_list_add(list, pattern);
 }
 
 rbc_str_list_t rbc_brace_collect(const char *pattern, rbc_arena_t *arena)
 {
     rbc_str_list_t list;
-    rbc_str_list_init(&list, 8, arena);
+    if (!rbc_str_list_init(&list, 8, arena))
+    {
+        list.items = NULL;
+        list.count = 0;
+        list.capacity = 0;
+        list.arena = arena;
+        return list;
+    }
     rbc_brace_visit(pattern, arena, rbc_brace_collect_cb, &list);
     return list;
 }

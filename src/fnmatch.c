@@ -19,7 +19,11 @@ bool rbc_fnmatch(const char *pattern, const char *string, unsigned flags)
     rbc_matcher_t m;
 
     // rbc_matcher_build handles parsing strategy (CHAIN, SUFFIX etc)
-    rbc_matcher_build(&arena, &m, pattern, flags);
+    if (!rbc_matcher_build(&arena, &m, pattern, flags))
+    {
+        rbc_arena_destroy(&arena);
+        return false;
+    }
 
     bool result = rbc_matcher_exec(&m, string, flags);
 
@@ -45,9 +49,18 @@ rbc_fnmatch_pattern_t *rbc_fnmatch_compile(const char *pattern, unsigned int fla
     if (!p)
         return NULL;
 
-    rbc_arena_init(&p->arena, 0); // Default block size
+    if (!rbc_arena_init(&p->arena, 0))
+    {
+        free(p);
+        return NULL;
+    }
 
-    rbc_matcher_build(&p->arena, &p->matcher, pattern, flags);
+    if (!rbc_matcher_build(&p->arena, &p->matcher, pattern, flags))
+    {
+        rbc_arena_destroy(&p->arena);
+        free(p);
+        return NULL;
+    }
     p->flags = flags;
 
     return p;

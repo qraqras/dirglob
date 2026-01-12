@@ -117,8 +117,8 @@ typedef struct rbc_str_list_s
     rbc_arena_t *arena;
 } rbc_str_list_t;
 
-void rbc_str_list_init(rbc_str_list_t *list, size_t initial_cap, rbc_arena_t *arena);
-void rbc_str_list_add(rbc_str_list_t *list, const char *str);
+bool rbc_str_list_init(rbc_str_list_t *list, size_t initial_cap, rbc_arena_t *arena);
+bool rbc_str_list_add(rbc_str_list_t *list, const char *str);
 void rbc_str_list_free(rbc_str_list_t *list);
 
 /// @}
@@ -127,24 +127,24 @@ void rbc_str_list_free(rbc_str_list_t *list);
 /// @{
 
 /// @brief Callback for brace expansion visitor
-typedef void (*rbc_brace_visit_cb)(const char *expanded_pattern, void *arg);
+typedef bool (*rbc_brace_visit_cb)(const char *expanded_pattern, void *arg);
 
-void rbc_brace_visit(const char *pattern, rbc_arena_t *arena, rbc_brace_visit_cb cb, void *arg);
+bool rbc_brace_visit(const char *pattern, rbc_arena_t *arena, rbc_brace_visit_cb cb, void *arg);
 rbc_str_list_t rbc_brace_collect(const char *pattern, rbc_arena_t *arena);
 
 /// @}
 
 /// @defgroup Context Functions
 /// @{
-void rbc_ctx_init(rbc_ctx_t *ctx);
+bool rbc_ctx_init(rbc_ctx_t *ctx);
 void rbc_ctx_free(rbc_ctx_t *ctx);
 /// @}
 
 /// @defgroup Results Functions
 /// @{
-void rbc_results_init(rbc_results_t *results, rbc_ctx_t *ctx);
-int rbc_results_add(rbc_results_t *results, const char *path);
-int rbc_results_add_with_index(rbc_results_t *results, const char *path, size_t index);
+bool rbc_results_init(rbc_results_t *results, rbc_ctx_t *ctx);
+bool rbc_results_add(rbc_results_t *results, const char *path);
+bool rbc_results_add_with_index(rbc_results_t *results, const char *path, size_t index);
 void rbc_results_sort(rbc_results_t *results);
 void rbc_results_deduplicate(rbc_results_t *results);
 void rbc_results_clear(rbc_results_t *results);
@@ -152,7 +152,7 @@ void rbc_results_clear(rbc_results_t *results);
 
 /// @defgroup Matcher Functions
 /// @{
-void rbc_matcher_build(rbc_arena_t *arena, rbc_matcher_t *m, const char *pattern, unsigned int flags);
+bool rbc_matcher_build(rbc_arena_t *arena, rbc_matcher_t *m, const char *pattern, unsigned int flags);
 bool rbc_matcher_exec(const rbc_matcher_t *m, const char *name, unsigned int flags);
 /// @}
 

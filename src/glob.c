@@ -7,52 +7,52 @@
 #include <errno.h>
 #include <stdio.h>
 
-static int rbc_compare_paths(const char *s1_in, const char *s2_in)
+/// @name Context
+/// @{
+
+/// @brief Initialize the context
+/// @param ctx Context to initialize
+/// @return true on success, false on failure
+bool rbc_ctx_init(rbc_ctx_t *ctx)
 {
-    /* P12 Optimization: Inline fast path for common cases */
-    const unsigned char *s1 = (const unsigned char *)s1_in;
-    const unsigned char *s2 = (const unsigned char *)s2_in;
-
-    if (!s1_in || !s2_in)
-        return (s1_in == s2_in) ? 0 : (s1_in ? 1 : -1);
-
-    /* Fast path: check first characters */
-    if (*s1 != *s2)
-        return (int)*s1 - (int)*s2;
-    if (*s1 == '\0')
-        return 0;
-
-    /* Fall back to strcmp for rest */
-    return strcmp(s1_in, s2_in);
-}
-
-void rbc_ctx_init(rbc_ctx_t *ctx)
-{
-    rbc_arena_init(&ctx->arena, 0); /* Use default block size (128KB) */
+    if (!rbc_arena_init(&ctx->arena, 0))
+        return false;
     ctx->discovery_counter = 0;
+    return true;
 }
 
+/// @brief Free the context
+/// @param ctx Context to free
 void rbc_ctx_free(rbc_ctx_t *ctx)
 {
     if (!ctx)
+    {
         return;
+    }
     rbc_arena_destroy(&ctx->arena);
 }
 
-/* P1 Optimization: Initial capacity for result array */
-#define INITIAL_RESULT_CAPACITY 64
+/// @}
 
-void rbc_results_init(rbc_results_t *results, rbc_ctx_t *ctx)
+/// @name Results
+/// @{
+
+/// @brief Initial capacity for results
+#define RBC_RESULTS_CAPACITY 64
+
+/// @brief Initialize results structure
+/// @param results Results structure to initialize
+/// @param ctx Context for arena access
+/// @return true on success, false on failure
+bool rbc_results_init(rbc_results_t *results, rbc_ctx_t *ctx)
 {
-    /* P1-1: Pre-allocate result array to reduce realloc() calls */
-    results->capacity = INITIAL_RESULT_CAPACITY;
+    results->capacity = RBC_RESULTS_CAPACITY;
     results->items = malloc(sizeof(char *) * results->capacity);
     results->lengths = malloc(sizeof(size_t) * results->capacity);
     results->discovery_indices = malloc(sizeof(size_t) * results->capacity);
     results->count = 0;
     results->ctx = ctx;
 
-    /* Handle allocation failure gracefully */
     if (!results->items || !results->lengths || !results->discovery_indices)
     {
         free(results->items);
@@ -62,15 +62,19 @@ void rbc_results_init(rbc_results_t *results, rbc_ctx_t *ctx)
         results->lengths = NULL;
         results->discovery_indices = NULL;
         results->capacity = 0;
+        return false;
     }
+    return true;
 }
 
+/// @brief Clear results structure and free memory
+/// @param results Results structure to clear
 void rbc_results_clear(rbc_results_t *results)
 {
     if (!results)
+    {
         return;
-    /* P13: Strings are in arena, no need to free individually */
-    /* Only free the arrays themselves */
+    }
     free(results->items);
     free(results->lengths);
     free(results->discovery_indices);
@@ -81,26 +85,45 @@ void rbc_results_clear(rbc_results_t *results)
     results->capacity = 0;
 }
 
-int rbc_results_add_with_index(rbc_results_t *results, const char *path, size_t index)
+/// @brief Add s1_in path to the results
+/// @param results Results structure
+/// @param path Path to add
+/// @return true on success, false on failure
+bool rbc_results_add(rbc_results_t *results, const char *path)
+{
+    return rbc_results_add_with_index(results, path, results->ctx->discovery_counter++);
+}
+
+/// @brief Add s1_in path with discovery index to the results
+/// @param results Results structure
+/// @param path Path to add
+/// @param index Discovery index
+/// @return true on success, false on failure
+bool rbc_results_add_with_index(rbc_results_t *results, const char *path, size_t index)
 {
     if (results->count >= results->capacity)
     {
         size_t new_cap = results->capacity ? results->capacity * 2 : 16;
         char **new_items = realloc(results->items, sizeof(char *) * new_cap);
         if (!new_items)
-            return -1;
+        {
+            return false;
+        }
         results->items = new_items;
         size_t *new_lens = realloc(results->lengths, sizeof(size_t) * new_cap);
         if (!new_lens)
-            return -1;
+        {
+            return false;
+        }
         results->lengths = new_lens;
         size_t *new_indices = realloc(results->discovery_indices, sizeof(size_t) * new_cap);
         if (!new_indices)
-            return -1;
+        {
+            return false;
+        }
         results->discovery_indices = new_indices;
         results->capacity = new_cap;
     }
-    /* P13: Use arena for result strings */
     const char *p = path ? path : ".";
     size_t len = strlen(p);
     results->items[results->count] = rbc_arena_alloc(&results->ctx->arena, len + 1);
@@ -108,41 +131,66 @@ int rbc_results_add_with_index(rbc_results_t *results, const char *path, size_t 
     results->lengths[results->count] = len;
     results->discovery_indices[results->count] = index;
     results->count++;
-    return 0;
+    return true;
 }
 
-int rbc_results_add(rbc_results_t *results, const char *path)
-{
-    // Pass 0 as index implicitly if not tracking discovery order for sort stability
-    // (though new engine might not use discovery index in the same way)
-    return rbc_results_add_with_index(results, path, results->ctx->discovery_counter++);
-}
-
-/* P10 Optimization: Helper structure for qsort() */
-typedef struct rbc_traverse_sort_pair_s
+/// @brief Sort results lexicographically
+typedef struct rbc_results_sort_item_s
 {
     char *path;
     size_t length;
     size_t discovery_index;
-} rbc_traverse_sort_pair_t;
+} rbc_results_sort_item_t;
 
-/* P10: Comparison function for qsort() */
-static int rbc_traverse_compare_sort_pairs(const void *a, const void *b)
+/// @brief Compare two paths for sorting
+/// @param s1_in First path
+/// @param s2_in Second path
+/// @return Negative if s1 < s2, positive if s1 > s2, zero if equal
+static int rbc_results_path_cmp(const char *s1_in, const char *s2_in)
 {
-    const rbc_traverse_sort_pair_t *pa = (const rbc_traverse_sort_pair_t *)a;
-    const rbc_traverse_sort_pair_t *pb = (const rbc_traverse_sort_pair_t *)b;
-    return rbc_compare_paths(pa->path, pb->path);
+    const unsigned char *s1 = (const unsigned char *)s1_in;
+    const unsigned char *s2 = (const unsigned char *)s2_in;
+
+    if (!s1_in || !s2_in)
+    {
+        return (s1_in == s2_in) ? 0 : (s1_in ? 1 : -1);
+    }
+    if (*s1 != *s2)
+    {
+        return (int)*s1 - (int)*s2;
+    }
+    if (*s1 == '\0')
+    {
+        return 0;
+    }
+    return strcmp(s1_in, s2_in);
 }
 
+/// @brief Comparison function for qsort
+/// @param i1 First item
+/// @param i2 Second item
+/// @return Comparison result
+static int rbc_results_sort_cmp(const void *i1, const void *i2)
+{
+    const rbc_results_sort_item_t *pi1 = (const rbc_results_sort_item_t *)i1;
+    const rbc_results_sort_item_t *pi2 = (const rbc_results_sort_item_t *)i2;
+    return rbc_results_path_cmp(pi1->path, pi2->path);
+}
+
+/// @brief Sort results lexicographically
+/// @param results Results structure
 void rbc_results_sort(rbc_results_t *results)
 {
     if (results->count <= 1)
+    {
         return;
+    }
 
-    /* P10: Use qsort() instead of O(n²) bubble sort */
-    rbc_traverse_sort_pair_t *pairs = malloc(sizeof(rbc_traverse_sort_pair_t) * results->count);
+    rbc_results_sort_item_t *pairs = malloc(sizeof(rbc_results_sort_item_t) * results->count);
     if (!pairs)
-        return; /* Fallback: keep unsorted */
+    {
+        return;
+    }
 
     for (size_t i = 0; i < results->count; i++)
     {
@@ -151,7 +199,7 @@ void rbc_results_sort(rbc_results_t *results)
         pairs[i].discovery_index = results->discovery_indices[i];
     }
 
-    qsort(pairs, results->count, sizeof(rbc_traverse_sort_pair_t), rbc_traverse_compare_sort_pairs);
+    qsort(pairs, results->count, sizeof(rbc_results_sort_item_t), rbc_results_sort_cmp);
 
     for (size_t i = 0; i < results->count; i++)
     {
@@ -163,20 +211,20 @@ void rbc_results_sort(rbc_results_t *results)
     free(pairs);
 }
 
+/// @brief Deduplicate results (removes consecutive duplicates)
+/// @param results Results structure
 void rbc_results_deduplicate(rbc_results_t *results)
 {
     if (results->count <= 1)
+    {
         return;
+    }
 
-    /* P11 Optimization: O(n) deduplication for sorted array
-     * Only compare adjacent elements instead of O(n²) full scan */
     size_t write_idx = 1;
     for (size_t read_idx = 1; read_idx < results->count; read_idx++)
     {
-        /* Compare only with previous element (array is sorted) */
         if (strcmp(results->items[read_idx], results->items[write_idx - 1]) != 0)
         {
-            /* Different from previous - keep it */
             if (write_idx != read_idx)
             {
                 results->items[write_idx] = results->items[read_idx];
@@ -188,6 +236,8 @@ void rbc_results_deduplicate(rbc_results_t *results)
     }
     results->count = write_idx;
 }
+
+/// @}
 
 /* Defines the opaque struct from types.h */
 
@@ -235,9 +285,7 @@ static void walker_match_callback(const char *path, void *user_data)
 rbc_glob_pattern_t *rbc_glob_compile(const char *pattern, unsigned flags);
 void rbc_glob_pattern_free(rbc_glob_pattern_t *cg);
 
-/* --- Glob Compilation (Internal) --- */
-
-/// @brief Check if the string is a pure recursive wildcard "**"
+/// @brief Check if the string is s1_in pure recursive wildcard "**"
 static bool is_recursive_wildcard(const char *s)
 {
     return strcmp(s, "**") == 0;
@@ -323,7 +371,7 @@ static const char *rbc_find_segment_end(const char *str)
     return p;
 }
 
-/// @brief Create a new rbc_segment_t of the specified type
+/// @brief Create s1_in new rbc_segment_t of the specified type
 static rbc_segment_t *rbc_segment_new(rbc_arena_t *arena, rbc_segment_type_t type)
 {
     rbc_segment_t *seg = rbc_arena_alloc(arena, sizeof(rbc_segment_t));
@@ -455,7 +503,12 @@ rbc_segment_t *rbc_compile_segments(rbc_arena_t *arena, const char *pattern, uns
         {
             seg = rbc_segment_new(arena, RBC_SEGMENT_WILDCARD);
             seg->data.glob.original_pattern = rbc_arena_strdup(arena, expansions.items[0]);
-            rbc_matcher_build(arena, &seg->data.glob.matcher, seg->data.glob.original_pattern, flags);
+            if (!seg->data.glob.original_pattern ||
+                !rbc_matcher_build(arena, &seg->data.glob.matcher, seg->data.glob.original_pattern, flags))
+            {
+                rbc_str_list_free(&expansions);
+                return NULL;
+            }
             rbc_str_list_free(&expansions);
 
             if (!head)
@@ -484,7 +537,12 @@ rbc_glob_pattern_t *rbc_glob_compile(const char *pattern, unsigned flags)
         return NULL;
     }
 
-    rbc_ctx_init(cg->ctx);
+    if (!rbc_ctx_init(cg->ctx))
+    {
+        free(cg->ctx);
+        free(cg);
+        return NULL;
+    }
     cg->flags = flags;
 
     cg->segments = rbc_compile_segments(&cg->ctx->arena, pattern, flags);
@@ -510,69 +568,8 @@ void rbc_glob_pattern_free(rbc_glob_pattern_t *cg)
     free(cg);
 }
 
-bool rbc_xglob(const rbc_glob_pattern_t *cg, const char *base, bool sort,
-               char ***out, size_t *count, size_t **lengths)
-{
-    if (!cg || !out || !count)
-        return false;
-
-    rbc_ctx_t *run_ctx = malloc(sizeof(rbc_ctx_t));
-    if (!run_ctx)
-        return false;
-    rbc_ctx_init(run_ctx);
-
-    rbc_results_t results;
-    rbc_results_init(&results, run_ctx);
-
-    callback_ctx_t cb_ctx;
-    cb_ctx.results = &results;
-
-    // Always set base_strip. Even for ".", we want to strip logical prefix "./"
-    // which is now produced by executor.
-    cb_ctx.base_strip = base;
-    cb_ctx.base_len = base ? strlen(base) : 0;
-
-    rbc_segments_exec(cg->segments, base, cg->flags, sort, walker_match_callback, &cb_ctx);
-
-    if (sort)
-    {
-        rbc_results_sort(&results);
-    }
-    rbc_results_deduplicate(&results);
-
-    // Packaging
-    *count = results.count;
-    void **package = malloc(sizeof(void *) + (results.count + 1) * sizeof(char *));
-    if (!package)
-    {
-        rbc_results_clear(&results);
-        rbc_ctx_free(run_ctx);
-        free(run_ctx);
-        return false;
-    }
-
-    package[0] = run_ctx;
-    char **pkg_items = (char **)&package[1];
-    if (results.count > 0)
-    {
-        memcpy(pkg_items, results.items, results.count * sizeof(char *));
-    }
-    pkg_items[results.count] = NULL;
-
-    *out = pkg_items;
-    if (lengths)
-        *lengths = results.lengths;
-    else if (results.lengths)
-        free(results.lengths);
-
-    if (results.discovery_indices)
-        free(results.discovery_indices);
-
-    return true;
-}
-
 /* Context for fast path visitor */
-typedef struct
+typedef struct fast_path_ctx_s
 {
     rbc_results_t *results;
     rbc_ctx_t *ctx;
@@ -582,7 +579,7 @@ typedef struct
     callback_ctx_t *cb_ctx;
 } fast_path_ctx_t;
 
-static void fast_path_visitor(const char *p, void *arg)
+static bool fast_path_visitor(const char *p, void *arg)
 {
     fast_path_ctx_t *fp_ctx = (fast_path_ctx_t *)arg;
 
@@ -606,8 +603,7 @@ static void fast_path_visitor(const char *p, void *arg)
         if (needed < 0 || (size_t)needed >= sizeof(full_path))
         {
             // Too long, fallback to graph? Or just abort.
-            // If too long for stack buffer, NFA won't help much with stat unless it handles long paths logic differently.
-            return;
+            return true; // continue
         }
 
         struct stat st;
@@ -617,9 +613,10 @@ static void fast_path_visitor(const char *p, void *arg)
             if (plen > 0 && p[plen - 1] == '/')
             {
                 if (!S_ISDIR(st.st_mode))
-                    return;
+                    return true;
             }
-            rbc_results_add(fp_ctx->results, p);
+            if (!rbc_results_add(fp_ctx->results, p))
+                return false;
         }
     }
     else
@@ -631,6 +628,7 @@ static void fast_path_visitor(const char *p, void *arg)
             rbc_segments_exec(segments, fp_ctx->base, fp_ctx->flags, fp_ctx->sort, walker_match_callback, fp_ctx->cb_ctx);
         }
     }
+    return true;
 }
 
 bool rbc_glob(const char **patterns, size_t npatterns, unsigned flags,
@@ -643,10 +641,19 @@ bool rbc_glob(const char **patterns, size_t npatterns, unsigned flags,
     rbc_ctx_t *ctx = malloc(sizeof(rbc_ctx_t));
     if (!ctx)
         return false;
-    rbc_ctx_init(ctx);
+    if (!rbc_ctx_init(ctx))
+    {
+        free(ctx);
+        return false;
+    }
 
     rbc_results_t results;
-    rbc_results_init(&results, ctx);
+    if (!rbc_results_init(&results, ctx))
+    {
+        rbc_ctx_free(ctx);
+        free(ctx);
+        return false;
+    }
 
     callback_ctx_t cb_ctx;
     cb_ctx.results = &results;
@@ -720,6 +727,79 @@ bool rbc_glob(const char **patterns, size_t npatterns, unsigned flags,
         free(results.items);
     if (results.discovery_indices)
         free(results.discovery_indices);
+
+    return true;
+}
+
+bool rbc_xglob(const rbc_glob_pattern_t *cg, const char *base, bool sort,
+               char ***out, size_t *count, size_t **lengths)
+{
+    if (!cg || !out || !count)
+        return false;
+
+    rbc_ctx_t *run_ctx = malloc(sizeof(rbc_ctx_t));
+    if (!run_ctx)
+        return false;
+    if (!rbc_ctx_init(run_ctx))
+    {
+        free(run_ctx);
+        return false;
+    }
+
+    rbc_results_t results;
+    if (!rbc_results_init(&results, run_ctx))
+    {
+        rbc_ctx_free(run_ctx);
+        free(run_ctx);
+        return false;
+    }
+
+    callback_ctx_t cb_ctx;
+    cb_ctx.results = &results;
+
+    // Always set base_strip. Even for ".", we want to strip logical prefix "./"
+    // which is now produced by executor.
+    cb_ctx.base_strip = base;
+    cb_ctx.base_len = base ? strlen(base) : 0;
+
+    rbc_segments_exec(cg->segments, base, cg->flags, sort, walker_match_callback, &cb_ctx);
+
+    if (sort)
+    {
+        rbc_results_sort(&results);
+    }
+    rbc_results_deduplicate(&results);
+
+    // Packaging
+    *count = results.count;
+    void **package = malloc(sizeof(void *) + (results.count + 1) * sizeof(char *));
+    if (!package)
+    {
+        rbc_results_clear(&results);
+        rbc_ctx_free(run_ctx);
+        free(run_ctx);
+        return false;
+    }
+
+    package[0] = run_ctx;
+    char **pkg_items = (char **)&package[1];
+    if (results.count > 0)
+    {
+        memcpy(pkg_items, results.items, results.count * sizeof(char *));
+    }
+    pkg_items[results.count] = NULL;
+
+    *out = pkg_items;
+    if (lengths)
+        *lengths = results.lengths;
+    else if (results.lengths)
+        free(results.lengths);
+
+    if (results.discovery_indices)
+        free(results.discovery_indices);
+
+    if (results.items)
+        free(results.items);
 
     return true;
 }
