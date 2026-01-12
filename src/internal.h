@@ -105,10 +105,34 @@ struct rbc_segment_s
 /// @brief Callback for match results
 typedef void (*rbc_match_callback_t)(const char *path, void *user_data);
 
+/// @name String List Utilities
+/// @{
+
+/// @brief Dynamic String List (Internal)
+typedef struct rbc_str_list_s
+{
+    char **items;
+    size_t count;
+    size_t capacity;
+    rbc_arena_t *arena;
+} rbc_str_list_t;
+
+void rbc_str_list_init(rbc_str_list_t *list, size_t initial_cap, rbc_arena_t *arena);
+void rbc_str_list_add(rbc_str_list_t *list, const char *str);
+void rbc_str_list_free(rbc_str_list_t *list);
+
+/// @}
+
+/// @defgroup Brace Expansion Functions
+/// @{
+
 /// @brief Callback for brace expansion visitor
 typedef void (*rbc_brace_visit_cb)(const char *expanded_pattern, void *arg);
 
 void rbc_brace_visit(const char *pattern, rbc_arena_t *arena, rbc_brace_visit_cb cb, void *arg);
+rbc_str_list_t rbc_brace_collect(const char *pattern, rbc_arena_t *arena);
+
+/// @}
 
 /// @defgroup Context Functions
 /// @{

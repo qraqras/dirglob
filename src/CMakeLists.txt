@@ -1,13 +1,14 @@
 # src/CMakeLists.txt
 add_library(rbc
   glob.c
-  compiler.c
   walker.c
   fnmatch.c
   utils.c
   arena.c
-  matcher_exec.c
-  pattern_api.c
+  pattern_matcher.c
+  pattern_compiler.c
+  brace.c
+  str_list.c
 )
 
 target_include_directories(rbc
