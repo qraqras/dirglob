@@ -376,25 +376,44 @@ rbc_segment_t *rbc_glob_segment_compile(rbc_arena_t *arena, const char *pattern,
 
         if (!rbc_has_brace(component) && rbc_is_recursive_wildcard(component))
         {
-            seg = rbc_glob_segment_new(arena, RBC_SEGMENT_RECURSIVE);
             rbc_str_list_free(&expansions);
-            if (!head)
+
+            // ** is only recursive if followed by /
+            // If not followed by /, treat as regular *
+            if (!is_sep)
             {
-                head = seg;
+                // Treat ** as * when not followed by /
+                component = "*";
+                // Fall through to wildcard handling below
             }
             else
             {
-                curr->next = seg;
+                // Collapse consecutive recursive wildcards
+                if (curr && curr->type == RBC_SEGMENT_RECURSIVE)
+                {
+                    // Skip creating a new segment - previous ** handles everything
+                    continue;
+                }
+
+                seg = rbc_glob_segment_new(arena, RBC_SEGMENT_RECURSIVE);
+                if (!head)
+                {
+                    head = seg;
+                }
+                else
+                {
+                    curr->next = seg;
+                }
+                curr = seg;
+                if (!*rest)
+                {
+                    rbc_segment_t *trail = rbc_glob_segment_new(arena, RBC_SEGMENT_LITERAL);
+                    trail->data.literal = "";
+                    curr->next = trail;
+                    curr = trail;
+                }
+                continue;
             }
-            curr = seg;
-            if (is_sep && !*rest)
-            {
-                rbc_segment_t *trail = rbc_glob_segment_new(arena, RBC_SEGMENT_LITERAL);
-                trail->data.literal = "";
-                curr->next = trail;
-                curr = trail;
-            }
-            continue;
         }
 
         if (!rbc_has_brace(component) && !rbc_has_wildcard(component))

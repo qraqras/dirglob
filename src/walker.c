@@ -497,7 +497,6 @@ void rbc_segment_exec(
 
     // Push initial task with EMPTY path_buf.
     // base_path is only used for syscalls via get_real_path.
-    printf("DEBUG: START EXEC seg=%d\n", root->type);
     stack_push(&st, root, NULL, false, false, "", 0, &ctx);
 
     while (st.count > 0)
@@ -663,38 +662,45 @@ void rbc_segment_exec(
 
         case ST_DIR_LOOP:
         {
+            // Get next entry FIRST and advance index/iterator
             const char *name = NULL;
             bool is_dir = false;
             bool is_symlink = false;
             bool type_unknown = false;
+            bool has_entry = false;
 
             if (f->sorted_entries)
             {
-                if (f->sorted_idx >= f->sorted_count)
+                if (f->sorted_idx < f->sorted_count)
                 {
-                    frame_cleanup(f);
-                    st.count--;
-                    continue;
+                    sorted_entry_t *se = &f->sorted_entries[f->sorted_idx];
+                    name = se->name;
+                    is_dir = se->is_dir;
+                    is_symlink = se->is_symlink;
+                    type_unknown = se->type_unknown;
+                    f->sorted_idx++; // Increment BEFORE processing
+                    has_entry = true;
                 }
-                sorted_entry_t *se = &f->sorted_entries[f->sorted_idx++];
-                name = se->name;
-                is_dir = se->is_dir;
-                is_symlink = se->is_symlink;
-                type_unknown = se->type_unknown;
             }
             else
             {
                 fs_entry_t entry;
-                if (!fs_next(f->iter, &entry))
+                if (fs_next(f->iter, &entry))
                 {
-                    frame_cleanup(f);
-                    st.count--;
-                    continue;
+                    name = entry.name;
+                    is_dir = entry.is_dir;
+                    is_symlink = entry.is_symlink;
+                    type_unknown = entry.type_unknown;
+                    has_entry = true;
                 }
-                name = entry.name;
-                is_dir = entry.is_dir;
-                is_symlink = entry.is_symlink;
-                type_unknown = entry.type_unknown;
+            }
+
+            // If no more entries, cleanup and pop
+            if (!has_entry)
+            {
+                frame_cleanup(f);
+                st.count--;
+                continue;
             }
 
             bool is_dot = (name[0] == '.' && (name[1] == '\0'));
@@ -786,20 +792,8 @@ void rbc_segment_exec(
 
                     if (rbc_matcher_exec(&seg->data.glob.matcher, name))
                     {
-                        size_t pre_count = st.count;
                         push_next(&st, path_buf, path_len, seg, stack_ptr, &ctx, true, false);
-
-                        if (st.count > pre_count)
-                        {
-                            // New frame pushed. Break to execute it.
-                            break;
-                        }
-
-                        // Careful with pointer invalidation if push_next reallocs
-                        // (Even if st.count didn't increase?? push_next shouldn't realloc if no push)
-                        // But if it pushed, we broke out.
-                        // So we just need to confirm f is valid if we didn't push.
-                        f = &st.items[cur_idx];
+                        // Don't break - continue to process this frame and move to next entry
                     }
                 }
                 else if (seg->type == RBC_SEGMENT_RECURSIVE)
@@ -817,13 +811,7 @@ void rbc_segment_exec(
                         // Then '.' is a valid match. But we do NOT recurse into it.
                         if ((ctx.flags & RBC_FNM_DOTMATCH) && !seg->next && !stack_ptr)
                         {
-                            size_t pre_count = st.count;
                             push_next(&st, path_buf, path_len, seg, stack_ptr, &ctx, true, false);
-                            if (st.count > pre_count)
-                            {
-                                break;
-                            }
-                            f = &st.items[cur_idx];
                         }
                         path_len = saved_len;
                         path_buf[path_len] = '\0';
@@ -853,17 +841,16 @@ void rbc_segment_exec(
                         // We push a new frame for "path_buf" (which is current/entry).
                         // The segment remains "seg" (recursive).
                         // The new frame's ST_INIT will handle "Match Zero" for this entry.
-                        fprintf(stderr, "DEBUG: Push RECURSIVE %s\n", path_buf);
                         stack_push(&st, seg, stack_ptr, true, false, path_buf, path_len, &ctx);
-                        // Child frame pushed. Break to execute it.
-                        break;
+                        // Don't break - continue processing more entries
                     }
                 }
             }
             path_len = saved_len;
             path_buf[path_len] = '\0';
+            // Continue to next entry in this directory
+            continue;
         }
-        break;
         }
     }
 
@@ -932,7 +919,6 @@ bool rbc_walker_run(const char *pattern, rbc_walker_ctx_t *ctx)
     {
         return false;
     }
-    printf("DEBUG: walker_run pattern='%s'\n", pattern);
 
     // Fast-path 1: Pure literal
     if (strpbrk(pattern, "*?[]\\{}") == NULL)

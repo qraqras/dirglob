@@ -123,6 +123,9 @@ rbc_segment_t *rbc_compile_segments(rbc_arena_t *arena, const char *pattern, uns
     if (!pattern || !*pattern)
         return NULL;
 
+    printf("\n=== Compiling pattern: '%s' ===\n", pattern);
+    fflush(stdout);
+
     rbc_segment_t *head = NULL;
     rbc_segment_t *curr = NULL;
 
@@ -152,7 +155,8 @@ rbc_segment_t *rbc_compile_segments(rbc_arena_t *arena, const char *pattern, uns
         memcpy(component, p, len);
         component[len] = '\0';
 
-        // printf("DEBUG: Component='%s' len=%zu\n", component, len);
+        fprintf(stderr, "DEBUG: Component='%s' len=%zu, prev_type=%d\n", component, len, curr ? curr->type : -1);
+        fflush(stderr);
 
         bool is_sep = (*end == '/');
         p = is_sep ? end + 1 : end;
@@ -182,26 +186,28 @@ rbc_segment_t *rbc_compile_segments(rbc_arena_t *arena, const char *pattern, uns
         // Special Case: Pure Recursive Wildcard
         if (!rbc_has_brace(component) && is_recursive_wildcard(component))
         {
+            rbc_str_list_free(&expansions);
+
             // Collapse consecutive recursive wildcards
             if (curr && curr->type == RBC_SEGMENT_RECURSIVE)
             {
-                printf("DEBUG: Collapsing ** (prev type=%d)\n", curr->type);
-                rbc_str_list_free(&expansions);
-                // We consume this component but do NOT create a new segment.
-                // However, we must ensure that if this was followed by a slash, the previous one handles it?
-                // The previous segment is already created.
-                // This component is skipped.
+                fprintf(stderr, "DEBUG: Skipping ** (collapsed with previous)\n");
+                fflush(stderr);
+                // Skip creating a new segment - previous ** handles everything
                 continue;
             }
 
-            printf("DEBUG: Created ** segment\n");
+            fprintf(stderr, "DEBUG: Creating new ** segment\n");
+            fflush(stderr);
+            // Create new recursive segment
             seg = rbc_segment_new(arena, RBC_SEGMENT_RECURSIVE);
-            rbc_str_list_free(&expansions);
             if (!head)
                 head = seg;
             else
                 curr->next = seg;
             curr = seg;
+            fprintf(stderr, "DEBUG: Added ** segment, chain length=%d\n", curr ? 1 : 0);
+            fflush(stderr);
             continue;
         }
 
