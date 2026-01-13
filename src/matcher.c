@@ -33,33 +33,17 @@ bool rbc_matcher_build(rbc_arena_t *arena, rbc_matcher_t *m, const char *pattern
     }
 
     // Force VM if complex characters exist
-    if (has_bracket || has_brace || has_paren || has_pipe)
+    if (has_qmark || has_bracket || has_brace || has_paren || has_pipe)
     {
         m->strategy = RBC_STRATEGY_RECURSIVE;
     }
     else if (star_count == 0)
     {
-        if (has_qmark)
-        {
-            m->strategy = RBC_STRATEGY_PATTERN_CHAIN;
-            m->pk.chain.count = 1;
-            m->pk.chain.parts = (char **)rbc_arena_alloc(arena, sizeof(char *));
-            if (!m->pk.chain.parts)
-                return false;
-            m->pk.chain.parts[0] = rbc_arena_strdup(arena, pattern);
-            if (!m->pk.chain.parts[0])
-                return false;
-            m->pk.chain.match_start = true;
-            m->pk.chain.match_end = true;
-        }
-        else
-        {
-            m->strategy = RBC_STRATEGY_EXACT;
-            m->pk.str.ptr = rbc_arena_strdup(arena, pattern);
-            if (!m->pk.str.ptr)
-                return false;
-            m->pk.str.len = strlen(pattern);
-        }
+        m->strategy = RBC_STRATEGY_EXACT;
+        m->pk.str.ptr = rbc_arena_strdup(arena, pattern);
+        if (!m->pk.str.ptr)
+            return false;
+        m->pk.str.len = strlen(pattern);
     }
     else if (star_count == 1)
     {

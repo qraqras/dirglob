@@ -1,1 +1,14 @@
+a/a.txt
+a/b/file.txt
+a.txt
+abc.txt
+b/b.txt
+b.txt
+c.txt
+dir/file.txt
+dir/sub/file.txt
 file.txt
+sub/file.txt
+x/y/file.txt
+xyz.txt
+z.txt

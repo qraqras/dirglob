@@ -1,0 +1,11 @@
+id	pattern	type
+f01	*.txt	wildcard
+f02	*.[ch]	bracket
+f03	**/*.txt	recursive
+f04	file.{txt,md}	brace
+f05	?	char
+f06	*	all
+f07	.*	hidden
+f08	test.c	literal
+f09	*/	dir_only
+f10	**/	recursive_dir_only

@@ -155,15 +155,25 @@ static int rbc_glob_results_path_cmp(const char *s1_in, const char *s2_in)
     {
         return (s1_in == s2_in) ? 0 : (s1_in ? 1 : -1);
     }
-    if (*s1 != *s2)
+
+    while (*s1 && *s2)
     {
-        return (int)*s1 - (int)*s2;
+        if (*s1 != *s2)
+        {
+            // Ruby quirk: treat '/' as smaller than other characters (e.g. '.')
+            if (*s1 == '/')
+                return -1;
+            if (*s2 == '/')
+                return 1;
+            return (*s1 < *s2) ? -1 : 1;
+        }
+        s1++;
+        s2++;
     }
-    if (*s1 == '\0')
-    {
+
+    if (*s1 == *s2)
         return 0;
-    }
-    return strcmp(s1_in, s2_in);
+    return (*s1 == '\0') ? -1 : 1;
 }
 
 /// @brief Comparison function for qsort
@@ -211,30 +221,35 @@ void rbc_glob_results_sort(rbc_results_t *results)
     free(pairs);
 }
 
-/// @brief Deduplicate results (removes consecutive duplicates)
+/// @brief Deduplicate results (removes duplicates while preserving order)
 /// @param results Results structure
+
+typedef struct
+{
+    size_t original_index;
+    const char *path;
+} rbc_dedup_item_t;
+
+static int rbc_dedup_cmp(const void *a, const void *b)
+{
+    const rbc_dedup_item_t *ia = (const rbc_dedup_item_t *)a;
+    const rbc_dedup_item_t *ib = (const rbc_dedup_item_t *)b;
+    int c = strcmp(ia->path, ib->path);
+    if (c != 0)
+    {
+        return c;
+    }
+    return (ia->original_index < ib->original_index) ? -1 : 1;
+}
+
 void rbc_glob_results_deduplicate(rbc_results_t *results)
 {
-    if (results->count <= 1)
-    {
-        return;
-    }
+    // MRI does not deduplicate results.
+    // Duplicates from brace expansion are preserved.
+    // Duplicates from walker (recursion) should be fixed in walker logic.
+    return;
 
-    size_t write_idx = 1;
-    for (size_t read_idx = 1; read_idx < results->count; read_idx++)
-    {
-        if (strcmp(results->items[read_idx], results->items[write_idx - 1]) != 0)
-        {
-            if (write_idx != read_idx)
-            {
-                results->items[write_idx] = results->items[read_idx];
-                results->lengths[write_idx] = results->lengths[read_idx];
-                results->discovery_indices[write_idx] = results->discovery_indices[read_idx];
-            }
-            write_idx++;
-        }
-    }
-    results->count = write_idx;
+    // ... (Old Logic Removed or Commented Out) ...
 }
 
 /// @}
@@ -312,16 +327,39 @@ rbc_segment_t *rbc_glob_segment_compile(rbc_arena_t *arena, const char *pattern,
     {
         const char *end = rbc_glob_segment_find_end(p);
         size_t len = end - p;
-        if (len == 0)
+
+        if (len == 0 && *end == '/')
         {
-            if (*end == '/')
+            if (head == NULL)
             {
+                // Leading slash
+                rbc_segment_t *root_seg = rbc_glob_segment_new(arena, RBC_SEGMENT_LITERAL);
+                root_seg->data.literal = "/";
+                head = root_seg;
+                curr = root_seg;
+            }
+            else if (curr->type == RBC_SEGMENT_RECURSIVE)
+            {
+                // Collapse slash after **
                 p = end + 1;
+                continue;
             }
             else
             {
-                p = end;
+                // Middle extra slash. Turn into a literal "/" segment.
+                // Our buf_append will handle this to produce //
+                rbc_segment_t *sep_seg = rbc_glob_segment_new(arena, RBC_SEGMENT_LITERAL);
+                sep_seg->data.literal = "/";
+                curr->next = sep_seg;
+                curr = sep_seg;
             }
+            p = end + 1;
+            continue;
+        }
+
+        if (len == 0 && *end != '/')
+        {
+            p = end;
             continue;
         }
 
@@ -349,6 +387,13 @@ rbc_segment_t *rbc_glob_segment_compile(rbc_arena_t *arena, const char *pattern,
                 curr->next = seg;
             }
             curr = seg;
+            if (is_sep && !*rest)
+            {
+                rbc_segment_t *trail = rbc_glob_segment_new(arena, RBC_SEGMENT_LITERAL);
+                trail->data.literal = "";
+                curr->next = trail;
+                curr = trail;
+            }
             continue;
         }
 
@@ -366,6 +411,13 @@ rbc_segment_t *rbc_glob_segment_compile(rbc_arena_t *arena, const char *pattern,
                 curr->next = seg;
             }
             curr = seg;
+            if (is_sep && !*rest)
+            {
+                rbc_segment_t *trail = rbc_glob_segment_new(arena, RBC_SEGMENT_LITERAL);
+                trail->data.literal = "";
+                curr->next = trail;
+                curr = trail;
+            }
             continue;
         }
 
@@ -468,6 +520,13 @@ rbc_segment_t *rbc_glob_segment_compile(rbc_arena_t *arena, const char *pattern,
                 curr->next = seg;
             }
             curr = seg;
+            if (is_sep && !*rest)
+            {
+                rbc_segment_t *trail = rbc_glob_segment_new(arena, RBC_SEGMENT_LITERAL);
+                trail->data.literal = "";
+                curr->next = trail;
+                curr = trail;
+            }
         }
     }
     return head;
@@ -591,10 +650,13 @@ bool rbc_glob(const char **patterns, size_t npatterns, unsigned flags, const cha
         }
     }
 
-    if (sort)
-    {
-        rbc_glob_results_sort(&results);
-    }
+    // NOTE: MRI does not sort the final list.
+    // Sorting happens locally within directories (handled by walker if sort=true).
+    // Brace expansion order is preserved.
+    // if (sort)
+    // {
+    //     rbc_glob_results_sort(&results);
+    // }
     rbc_glob_results_deduplicate(&results);
 
     // Packaging
@@ -683,11 +745,11 @@ bool rbc_xglob(const rbc_glob_pattern_t *gp, const char *base, bool sort, char *
 
     rbc_walker_run_compiled(gp, &cb_ctx);
 
-    if (sort)
-    {
-        rbc_glob_results_sort(&results);
-    }
-    rbc_glob_results_deduplicate(&results);
+    // if (sort)
+    // {
+    //     rbc_glob_results_sort(&results);
+    // }
+    // rbc_glob_results_deduplicate(&results);
 
     // Packaging
     *count = results.count;

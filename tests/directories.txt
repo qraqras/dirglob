@@ -1,0 +1,7 @@
+id	pattern	type
+d00		root
+d01	*	wildcard
+d02	*/	dir_only
+d03	**/	recursive
+d04	{a,b}	brace
+d05	dir/sub	nested

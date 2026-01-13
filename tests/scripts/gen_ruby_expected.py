@@ -18,11 +18,11 @@ def convert_flags_to_ruby(flags_str):
         return '0'
 
     flag_map = {
-        'FNM_NOESCAPE': 'File::FNM_NOESCAPE',
-        'FNM_PATHNAME': 'File::FNM_PATHNAME',
-        'FNM_CASEFOLD': 'File::FNM_CASEFOLD',
-        'FNM_DOTMATCH': 'File::FNM_DOTMATCH',
-        'FNM_EXTGLOB': 'File::FNM_EXTGLOB'
+        'RBC_FNM_NOESCAPE': 'File::FNM_NOESCAPE',
+        'RBC_FNM_PATHNAME': 'File::FNM_PATHNAME',
+        'RBC_FNM_CASEFOLD': 'File::FNM_CASEFOLD',
+        'RBC_FNM_DOTMATCH': 'File::FNM_DOTMATCH',
+        'RBC_FNM_EXTGLOB': 'File::FNM_EXTGLOB'
     }
 
     # 複数フラグの組み合わせ対応（将来用）

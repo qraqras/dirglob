@@ -1,0 +1,4 @@
+id	flags	base	sort
+o01	0	NULL	1
+o02	RBC_FNM_DOTMATCH	NULL	1
+o03	0	"tests/fixtures"	1

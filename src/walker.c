@@ -1,3 +1,4 @@
+#define _DEFAULT_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,6 +11,7 @@
 #include "internal.h"
 #include "utils.h"
 #include "rbc/rbc.h"
+#include <stdio.h>
 
 typedef struct fs_dir_iter_s fs_dir_iter_t;
 
@@ -223,6 +225,9 @@ static bool fs_next(fs_dir_iter_t *iter, fs_entry_t *out_entry)
     return true;
 }
 
+#ifdef __GNUC__
+__attribute__((unused))
+#endif
 static bool fs_is_dir(const char *path)
 { // Follows symlink
     struct stat st;
@@ -239,11 +244,26 @@ static bool fs_is_dir_nofollow(const char *path)
 
 typedef struct
 {
-    rbc_match_callback_t cb;
+    char *name;
+    bool is_dir;
+    bool is_symlink;
+    bool type_unknown;
+} sorted_entry_t;
 
+static int entry_cmp(const void *a, const void *b)
+{
+    const sorted_entry_t *ea = (const sorted_entry_t *)a;
+    const sorted_entry_t *eb = (const sorted_entry_t *)b;
+    return strcmp(ea->name, eb->name);
+}
+
+typedef struct
+{
+    rbc_match_callback_t cb;
     void *ud;
     unsigned flags;
     bool sort;
+    rbc_arena_t *arena;
 } exec_ctx_t;
 
 typedef struct segment_stack_s
@@ -256,34 +276,28 @@ typedef struct segment_stack_s
 enum
 {
     ST_INIT,
-    ST_LITERAL_DONE,
+    ST_DIR_OPEN,
     ST_DIR_LOOP,
-    ST_DIR_LOOP_RESTORE,
-    ST_RECURSIVE_CHECK_CHILD,
-    ST_RECURSIVE_NEXT,
     ST_BRANCH_LOOP
 };
 
 // Stack frame
 typedef struct
 {
-    // Arguments
     rbc_segment_t *seg;
     segment_stack_t *stack_ptr;
     bool from_wildcard;
+    bool post_recursive;
+    char *path;
+    size_t path_len;
 
-    // Local state variables
     int state;
-    size_t entry_len; // To restore path_buf length
     fs_dir_iter_t *iter;
-    rbc_segment_t *alt;          // For BRANCH
-    segment_stack_t branch_node; // For BRANCH storage
+    sorted_entry_t *sorted_entries;
+    size_t sorted_count;
+    size_t sorted_idx;
 
-    // Cached entry info for fused recursion
-    bool current_is_dir;
-    bool current_is_symlink;
-    bool current_type_unknown;
-    char current_name[256];
+    rbc_segment_t *alt;
 } frame_t;
 
 typedef struct
@@ -293,7 +307,23 @@ typedef struct
     size_t capacity;
 } exec_stack_t;
 
-static void stack_push(exec_stack_t *st, rbc_segment_t *seg, segment_stack_t *stack_ptr, bool from_wildcard)
+static void frame_cleanup(frame_t *f)
+{
+    if (f->iter)
+    {
+        fs_close(f->iter);
+        f->iter = NULL;
+    }
+    if (f->sorted_entries)
+    {
+        for (size_t i = 0; i < f->sorted_count; i++)
+            free(f->sorted_entries[i].name);
+        free(f->sorted_entries);
+        f->sorted_entries = NULL;
+    }
+}
+
+static void stack_push(exec_stack_t *st, rbc_segment_t *seg, segment_stack_t *stack_ptr, bool from_wildcard, bool post_recursive, const char *path, size_t path_len, exec_ctx_t *ctx)
 {
     if (st->count == st->capacity)
     {
@@ -302,55 +332,149 @@ static void stack_push(exec_stack_t *st, rbc_segment_t *seg, segment_stack_t *st
         st->capacity = new_cap;
     }
     frame_t *f = &st->items[st->count++];
+    memset(f, 0, sizeof(frame_t));
     f->seg = seg;
     f->stack_ptr = stack_ptr;
     f->from_wildcard = from_wildcard;
+    f->post_recursive = post_recursive;
     f->state = ST_INIT;
-    f->iter = NULL;
-    // other fields initialized when used
+
+    if (path)
+    {
+        f->path = rbc_arena_alloc(ctx->arena, path_len + 1);
+        memcpy(f->path, path, path_len);
+        f->path[path_len] = '\0';
+        f->path_len = path_len;
+    }
 }
 
 // Helper to append to buffer
+// Helper to append to buffer
 static size_t buf_append(char *buf, size_t *current_len, const char *str)
 {
+    if (!str)
+        return 0;
     size_t len = strlen(str);
-    if (*current_len + len + 1 >= PATH_MAX)
-        return 0; // Overflow check
 
-    // Add separator if needed
+    // Simple rule: Add a separator if we have a path and it doesn't end in one.
+    // Empty segments (str="") will result in a trailing slash being added.
+    bool needs_sep = (*current_len > 0 && buf[*current_len - 1] != '/');
+    if (*current_len == 0 && len == 0)
+        needs_sep = true;
+
+    if (*current_len + (needs_sep ? 1 : 0) + len + 1 >= PATH_MAX)
+        return 0;
+
     size_t added = 0;
-    if (*current_len > 0 && buf[*current_len - 1] != '/')
+    if (needs_sep)
     {
-        if (*current_len + 1 >= PATH_MAX)
-            return 0;
         buf[(*current_len)++] = '/';
-        added++;
+        added = 1;
     }
 
-    strcpy(buf + *current_len, str);
-    *current_len += len;
-    return added + len;
+    if (len > 0)
+    {
+        memcpy(buf + *current_len, str, len);
+        *current_len += len;
+        added += len;
+    }
+    buf[*current_len] = '\0';
+    return added;
 }
 
 // Logic to determine next segment helper
 // Returns true if it pushed a new frame, false if it executed callback (leaf)
-static bool push_next(exec_stack_t *st, char *path, rbc_segment_t *current_seg, segment_stack_t *stack_ptr, exec_ctx_t *ctx, bool from_wildcard)
+static bool push_next(exec_stack_t *st, char *path, size_t path_len, rbc_segment_t *current_seg, segment_stack_t *stack_ptr, exec_ctx_t *ctx, bool from_wildcard, bool post_recursive)
 {
     if (current_seg && current_seg->next)
     {
-        stack_push(st, current_seg->next, stack_ptr, from_wildcard);
+        stack_push(st, current_seg->next, stack_ptr, from_wildcard, post_recursive, path, path_len, ctx);
         return true;
     }
     else if (stack_ptr)
     {
-        stack_push(st, stack_ptr->seg, stack_ptr->next, from_wildcard);
+        stack_push(st, stack_ptr->seg, stack_ptr->next, from_wildcard, post_recursive, path, path_len, ctx);
         return true;
     }
     else
     {
+        // Path is relative to the base_path
+        const char *filename = path;
+        const char *last_slash = strrchr(path, '/');
+        if (last_slash)
+            filename = last_slash + 1;
+
+        // MRI Rule: ".." is never returned as a result matching a wildcard/recursion.
+        if (from_wildcard && (strcmp(filename, "..") == 0))
+            return false;
+
         ctx->cb(path, ctx->ud);
         return false;
     }
+}
+
+void rbc_walker_match_callback(const char *path, void *user_data)
+{
+    rbc_walker_ctx_t *ctx = (rbc_walker_ctx_t *)user_data;
+
+    // MRI Parity Logic:
+    // 1. Root match via "" (e.g. "**")
+    if ((!path || path[0] == '\0') && !ctx->base)
+    {
+        if (!(ctx->flags & RBC_FNM_DOTMATCH))
+            return;
+    }
+
+    // 2. Root match via "/" (e.g. "**/")
+    // When base is NULL, this means we matched CWD root with trailing slash.
+    // Ruby behavior: excludes "./" even with FNM_DOTMATCH for "**/".
+    bool root_slash = (path && strcmp(path, "/") == 0);
+    if (root_slash && !ctx->base)
+    {
+        return;
+    }
+
+    // MRI: Dir.glob("**", FNM_DOTMATCH) at root should return "."
+    // If path is empty, it means current directory.
+    const char *p = (path && path[0] != '\0') ? path : ".";
+
+    rbc_glob_results_add(ctx->results, p);
+}
+
+static char *get_real_path(char *real_buf, const char *base, const char *rel)
+{
+    // If rel is absolute, or base is empty/NULL, just use rel.
+    if ((rel && rel[0] == '/') || !base || !*base)
+    {
+        const char *p = (rel && *rel) ? rel : ".";
+        strncpy(real_buf, p, PATH_MAX - 1);
+        real_buf[PATH_MAX - 1] = '\0';
+        return real_buf;
+    }
+
+    size_t blen = strlen(base);
+    size_t rlen = rel ? strlen(rel) : 0;
+
+    if (blen + 1 + rlen + 1 > PATH_MAX)
+        return NULL;
+
+    memcpy(real_buf, base, blen);
+    size_t cur = blen;
+
+    // Add separator if base doesn't end in one AND rel doesn't start with one
+    // AND rel is not empty.
+    if (blen > 0 && base[blen - 1] != '/' && rlen > 0 && rel[0] != '/')
+    {
+        real_buf[cur++] = '/';
+    }
+
+    if (rlen > 0)
+    {
+        memcpy(real_buf + cur, rel, rlen);
+        cur += rlen;
+    }
+    real_buf[cur] = '\0';
+    return real_buf;
 }
 
 void rbc_segment_exec(
@@ -359,476 +483,392 @@ void rbc_segment_exec(
     unsigned flags,
     bool sort,
     rbc_match_callback_t callback,
-    void *user_data)
+    void *user_data,
+    rbc_arena_t *arena)
 {
-    exec_ctx_t ctx = {callback, user_data, flags, sort};
+    exec_ctx_t ctx = {callback, user_data, flags, sort, arena};
 
-    char stack_buf[PATH_MAX];
-    char *path_buf = stack_buf;
-
-    size_t path_len = 0;
+    char path_buf[PATH_MAX];
+    char real_path_buf[PATH_MAX];
     path_buf[0] = '\0';
-
-    if (base_path && *base_path)
-    {
-        strncpy(path_buf, base_path, PATH_MAX - 1);
-        path_buf[PATH_MAX - 1] = '\0';
-        path_len = strlen(path_buf);
-    }
 
     // Initialize Stack
     exec_stack_t st = {NULL, 0, 0};
 
-    // Push initial task (similar to run_next_recursive logic for NULL, but here we start with root)
-    // Actually the recursive entry point was segment_run_recursive(root, NULL...)
-    // But segment_run_recursive handles NULL seg by calling run_next_recursive(NULL...) which handles stack.
-    // If root is valid:
-    stack_push(&st, root, NULL, false);
+    // Push initial task with EMPTY path_buf.
+    // base_path is only used for syscalls via get_real_path.
+    printf("DEBUG: START EXEC seg=%d\n", root->type);
+    stack_push(&st, root, NULL, false, false, "", 0, &ctx);
 
     while (st.count > 0)
     {
-        frame_t *f = &st.items[st.count - 1]; // Top
+        size_t cur_idx = st.count - 1;
+        frame_t *f = &st.items[cur_idx];
+        size_t path_len = f->path_len;
+        if (f->path)
+        {
+            memcpy(path_buf, f->path, path_len);
+        }
+        path_buf[path_len] = '\0';
 
-        // Load context from frame
+        // Capture state to survive reallocs during push
         rbc_segment_t *seg = f->seg;
+        segment_stack_t *stack_ptr = f->stack_ptr;
+        bool from_wildcard = f->from_wildcard;
+        bool post_recursive = f->post_recursive;
 
         switch (f->state)
         {
         case ST_INIT:
-            f->entry_len = path_len; // Save current length
-
             if (!seg)
             {
-                // Equivalent to: if (!seg) run_next_recursive(NULL...)
-                // We pop this frame and push the "next" logic?
-                // Actually push_next(NULL...) will push the next frame ON TOP.
-                st.count--; // Pop current "empty" frame effectively (tail call optimization)
-                push_next(&st, path_buf, NULL, f->stack_ptr, &ctx, f->from_wildcard);
+                st.count--;
+                push_next(&st, path_buf, path_len, NULL, stack_ptr, &ctx, from_wildcard, post_recursive);
                 continue;
             }
 
             if (seg->type == RBC_SEGMENT_LITERAL)
             {
-                if (buf_append(path_buf, &path_len, seg->data.literal) == 0)
+                // MRI Rule: post-recursive match must not be "." or ".."
+                if (post_recursive && (strcmp(seg->data.literal, ".") == 0 || strcmp(seg->data.literal, "..") == 0))
                 {
-                    st.count--; // Overflow/Error
-                    continue;
-                }
-
-                if (fs_is_dir(path_buf))
-                {
-                    // Check if we need to continue
-                    bool is_dir = true; // Confirmed by fs_is_dir
-                    bool has_more = (seg->next != NULL) || (f->stack_ptr != NULL && f->stack_ptr->seg != NULL);
-
-                    if (!has_more || is_dir)
-                    {
-                        // Recurse: run_next_recursive
-                        f->state = ST_LITERAL_DONE;
-                        // Instead of pop, we pause this frame and push child
-                        push_next(&st, path_buf, seg, f->stack_ptr, &ctx, false);
-                    }
-                    else
-                    {
-                        // End of this path
-                        path_len = f->entry_len;
-                        path_buf[path_len] = '\0';
-                        st.count--;
-                    }
-                }
-                else
-                {
-                    // Maybe file?
-                    // Original logic used `stat` then checked `S_ISDIR`.
-                    // If simply file exists:
-                    struct stat s;
-                    if (stat(path_buf, &s) == 0)
-                    {
-                        bool is_dir = S_ISDIR(s.st_mode);
-                        bool has_more = (seg->next != NULL) || (f->stack_ptr != NULL && f->stack_ptr->seg != NULL);
-                        if (!has_more || is_dir)
-                        {
-                            f->state = ST_LITERAL_DONE;
-                            push_next(&st, path_buf, seg, f->stack_ptr, &ctx, false);
-                        }
-                        else
-                        {
-                            path_len = f->entry_len;
-                            path_buf[path_len] = '\0';
-                            st.count--;
-                        }
-                    }
-                    else
-                    {
-                        // Not found
-                        path_len = f->entry_len;
-                        path_buf[path_len] = '\0';
-                        st.count--;
-                    }
-                }
-            }
-            else if (seg->type == RBC_SEGMENT_WILDCARD || seg->type == RBC_SEGMENT_RECURSIVE)
-            {
-                const char *open_path = (path_len == 0) ? "." : path_buf;
-                f->iter = fs_open(open_path);
-                if (!f->iter)
-                {
+                    frame_cleanup(f);
                     st.count--;
                     continue;
                 }
-                f->state = ST_DIR_LOOP;
+
+                if (buf_append(path_buf, &path_len, seg->data.literal) > 0 || (seg->data.literal && seg->data.literal[0] == '\0'))
+                {
+                    struct stat s_lit;
+                    char *rp = get_real_path(real_path_buf, base_path, path_buf);
+                    if (stat(rp, &s_lit) == 0)
+                    {
+                        bool is_dir = S_ISDIR(s_lit.st_mode);
+                        bool has_more = (seg->next != NULL) || (stack_ptr != NULL);
+                        if (!has_more || is_dir)
+                        {
+                            st.count--; // Pop current frame (LITERAL)
+                            push_next(&st, path_buf, path_len, seg, stack_ptr, &ctx, from_wildcard, false);
+                            continue; // Run next frame immediately
+                        }
+                    }
+                }
+                frame_cleanup(f);
+                st.count--;
+                continue;
             }
             else if (seg->type == RBC_SEGMENT_BRANCH)
             {
                 f->alt = seg->data.branch.head;
-                // Prepare the stack node for children
-                f->branch_node.seg = seg->next;
-                f->branch_node.next = f->stack_ptr;
-
                 f->state = ST_BRANCH_LOOP;
-                // Go to loop immediately
+            }
+            else if (seg->type == RBC_SEGMENT_RECURSIVE)
+            {
+                // RBC_SEGMENT_RECURSIVE (**) behavior:
+                // 1. Match the rest of the pattern against current path (skip **) - Match Zero
+                // 2. Iterate subdirectories and recurse (enter **) - Recurse
+
+                // 1. Match Zero: Push a frame to handle the 'next' segment with current path
+                // This frame goes to TOP, so it executes FIRST (Pre-order traversal).
+                push_next(&st, path_buf, path_len, seg, stack_ptr, &ctx, from_wildcard, true);
+
+                // 2. Recurse: Reuse the current frame to enter directory listing state
+                // This frame remains in the stack (under the Match Zero frame we just pushed).
+                // When Match Zero pops, this frame resumes and iterates children.
+                f->state = ST_DIR_OPEN;
+
+                // Refresh f pointer as realloc might have happened in push_next
+                f = &st.items[st.count - 1];
+
+                // IMPORTANT: Since we changed f->state, we must continue to loop to pick up new state
+                continue;
+            }
+
+            else // WILDCARD
+            {
+                f->state = ST_DIR_OPEN;
             }
             break;
 
-        case ST_LITERAL_DONE:
-            // Came back from child
-            path_len = f->entry_len;
-            path_buf[path_len] = '\0';
-            st.count--;
+        case ST_BRANCH_LOOP:
+            if (f->alt)
+            {
+                rbc_segment_t *curr = f->alt;
+                f->alt = curr->next_alt;
+
+                segment_stack_t *cont = NULL;
+                if (seg->next || stack_ptr)
+                {
+                    cont = rbc_arena_alloc(ctx.arena, sizeof(segment_stack_t));
+                    cont->seg = seg->next;
+                    cont->next = stack_ptr;
+                }
+                stack_push(&st, curr, cont, from_wildcard, post_recursive, path_buf, path_len, &ctx);
+            }
+            else
+            {
+                frame_cleanup(f);
+                st.count--;
+            }
             break;
 
+        case ST_DIR_OPEN:
+        {
+            char *rp = get_real_path(real_path_buf, base_path, path_buf);
+            f->iter = fs_open(rp);
+            if (!f->iter)
+            {
+                frame_cleanup(f);
+                st.count--;
+                continue;
+            }
+
+            if (ctx.sort)
+            {
+                size_t cap = 16;
+                f->sorted_entries = malloc(sizeof(sorted_entry_t) * cap);
+                if (f->sorted_entries)
+                {
+                    f->sorted_count = 0;
+                    fs_entry_t entry;
+                    while (fs_next(f->iter, &entry))
+                    {
+                        if (f->sorted_count == cap)
+                        {
+                            size_t new_cap = cap * 2;
+                            sorted_entry_t *new_entries = realloc(f->sorted_entries, sizeof(sorted_entry_t) * new_cap);
+                            if (!new_entries)
+                                break;
+                            f->sorted_entries = new_entries;
+                            cap = new_cap;
+                        }
+                        f->sorted_entries[f->sorted_count].name = strdup(entry.name);
+                        f->sorted_entries[f->sorted_count].is_dir = entry.is_dir;
+                        f->sorted_entries[f->sorted_count].is_symlink = entry.is_symlink;
+                        f->sorted_entries[f->sorted_count].type_unknown = entry.type_unknown;
+                        f->sorted_count++;
+                    }
+                    if (f->sorted_count > 0)
+                    {
+                        qsort(f->sorted_entries, f->sorted_count, sizeof(sorted_entry_t), entry_cmp);
+                    }
+                }
+                fs_close(f->iter);
+                f->iter = NULL;
+                f->sorted_idx = 0;
+            }
+            f->state = ST_DIR_LOOP;
+        }
+        break;
+
         case ST_DIR_LOOP:
-            // Loop over directory entries
-            // We are "paused" inside the loop.
+        {
+            const char *name = NULL;
+            bool is_dir = false;
+            bool is_symlink = false;
+            bool type_unknown = false;
+
+            if (f->sorted_entries)
+            {
+                if (f->sorted_idx >= f->sorted_count)
+                {
+                    frame_cleanup(f);
+                    st.count--;
+                    continue;
+                }
+                sorted_entry_t *se = &f->sorted_entries[f->sorted_idx++];
+                name = se->name;
+                is_dir = se->is_dir;
+                is_symlink = se->is_symlink;
+                type_unknown = se->type_unknown;
+            }
+            else
             {
                 fs_entry_t entry;
                 if (!fs_next(f->iter, &entry))
                 {
-                    fs_close(f->iter);
-                    f->iter = NULL;
+                    frame_cleanup(f);
                     st.count--;
                     continue;
                 }
+                name = entry.name;
+                is_dir = entry.is_dir;
+                is_symlink = entry.is_symlink;
+                type_unknown = entry.type_unknown;
+            }
 
-                // Process Entry
-                const char *name = entry.name;
-                if (strcmp(name, "..") == 0)
-                    continue; // Loop again
-                if (strcmp(name, ".") == 0)
+            bool is_dot = (name[0] == '.' && (name[1] == '\0'));
+            bool is_dotdot = (name[0] == '.' && name[1] == '.' && name[2] == '\0');
+
+            // MRI: Wildcards and recursion never match ".."
+            if (is_dotdot)
+                continue;
+
+            // MRI: If we arrived here via a recursive "nothing" match, we skip "."
+            // from matching against wildcard/explicit dot, UNLESS DOTMATCH is active.
+            if (post_recursive && is_dot && !(ctx.flags & RBC_FNM_DOTMATCH))
+                continue;
+
+            if (seg->type == RBC_SEGMENT_RECURSIVE)
+            {
+                if (is_dot)
+                    continue; // ** never matches .
+                if (name[0] == '.' && !(ctx.flags & RBC_FNM_DOTMATCH))
+                    continue; // ** skips hidden files/dirs unless DOTMATCH
+            }
+            else // WILDCARD
+            {
+                bool dotmatch = (ctx.flags & RBC_FNM_DOTMATCH) != 0;
+                bool dotglob = (seg->data.glob.original_pattern[0] == '.');
+
+                if (name[0] == '.')
                 {
-                    if (seg->type == RBC_SEGMENT_RECURSIVE)
+                    // If it's a hidden dot file, but not matched by DOTMATCH or explicit dot
+                    if (!dotmatch && !dotglob)
                         continue;
-                    if (f->from_wildcard)
-                        continue;
-                }
 
-                // Check d_type to avoid unnecessary recursion or stats
-                bool is_dir_known = entry.is_dir;
-                // bool is_not_dir_known = !entry.is_dir && !entry.type_unknown && !entry.is_symlink;
-
-                // REMOVED Optimization: We must process files for Fused Loop matching (and pure ** matches files too)
-                /*
-                if (seg->type == SEG_RECURSIVE)
-                {
-                    if (is_not_dir_known)
-                        continue;
-                }
-                */
-
-                bool is_hidden = (name[0] == '.');
-                if (is_hidden && !(ctx.flags & RBC_FNM_DOTMATCH))
-                {
-                    if (seg->type == RBC_SEGMENT_WILDCARD)
+                    // If it's a special dot entry (. or ..)
+                    if (is_dot)
                     {
-                        if (seg->data.glob.original_pattern[0] != '.')
+                        // MRI: . is matched by a wildcard only if (dotglob OR dotmatch)
+                        // AND there were no preceding wildcards (from_wildcard is false)
+                        if (from_wildcard)
                             continue;
                     }
-                    else
-                    {
-                        continue;
-                    }
                 }
+            }
 
-                bool should_recurse = false;
-                bool next_from_wildcard = false;
+            size_t saved_len = path_len;
+            if (buf_append(path_buf, &path_len, name) > 0)
+            {
+                // Determine if we should process this entry
+                bool is_dot = (strcmp(name, ".") == 0);
+                bool is_dotdot = (strcmp(name, "..") == 0);
+                bool is_hidden = (name[0] == '.');
 
                 if (seg->type == RBC_SEGMENT_WILDCARD)
                 {
-                    bool matched = rbc_matcher_exec(&seg->data.glob.matcher, name);
-
-                    if (matched)
+                    if (is_dotdot)
                     {
-                        should_recurse = true;
-                        next_from_wildcard = true;
+                        path_len = saved_len;
+                        path_buf[path_len] = '\0';
+                        continue;
+                    }
+
+                    if (is_hidden)
+                    {
+                        bool visible = (ctx.flags & RBC_FNM_DOTMATCH);
+                        // Explicit dot check: if pattern starts with '.', it matches hidden
+                        if (!visible && seg->data.glob.original_pattern && seg->data.glob.original_pattern[0] == '.')
+                        {
+                            visible = true;
+                        }
+                        if (!visible)
+                        {
+                            path_len = saved_len;
+                            path_buf[path_len] = '\0';
+                            continue;
+                        }
+                    }
+
+                    if (is_dot)
+                    {
+                        // MRI Rule: '.*' matches '.', but '*' matches '.' only if DOTMATCH.
+                        // AND: A wildcard matches '.' only if no preceding wildcard matches '.' in the immediate chain
+                        // to avoid infinite loops (e.g. */* Matching ./* -> ././a)
+                        if (from_wildcard)
+                        {
+                            path_len = saved_len;
+                            path_buf[path_len] = '\0';
+                            continue;
+                        }
+                    }
+
+                    if (rbc_matcher_exec(&seg->data.glob.matcher, name))
+                    {
+                        size_t pre_count = st.count;
+                        push_next(&st, path_buf, path_len, seg, stack_ptr, &ctx, true, false);
+
+                        if (st.count > pre_count)
+                        {
+                            // New frame pushed. Break to execute it.
+                            break;
+                        }
+
+                        // Careful with pointer invalidation if push_next reallocs
+                        // (Even if st.count didn't increase?? push_next shouldn't realloc if no push)
+                        // But if it pushed, we broke out.
+                        // So we just need to confirm f is valid if we didn't push.
+                        f = &st.items[cur_idx];
                     }
                 }
                 else if (seg->type == RBC_SEGMENT_RECURSIVE)
                 {
-                    // logic for ** recursion
-                    bool can_recurse = is_dir_known;
-                    if (!can_recurse && entry.type_unknown)
+                    if (is_dotdot)
                     {
-                        // struct stat st;
-                        size_t old_len = path_len;
-                        if (buf_append(path_buf, &path_len, name) > 0)
-                        {
-                            if (fs_is_dir_nofollow(path_buf)) // lstat default
-                                can_recurse = true;
-                            path_len = old_len;
-                            path_buf[path_len] = '\0'; // Restore
-                        }
-                    }
-                    else if (!can_recurse && entry.is_symlink)
-                    {
-                        // struct stat st;
-                        size_t old_len = path_len;
-                        if (buf_append(path_buf, &path_len, name) > 0)
-                        {
-                            if (fs_is_dir(path_buf)) // stat (follows link) for explicit check?
-                                can_recurse = true;
-                            path_len = old_len;
-                            path_buf[path_len] = '\0';
-                        }
-                    }
-                    else if (entry.is_dir)
-                    {
-                        can_recurse = true;
-                    }
-
-                    // Store directory status in frame for state machine resumption
-                    f->current_is_dir = can_recurse; // We trust the logic above
-                    // We don't strictly need symlink specific flags if we trust can_recurse result,
-                    // but if we needed to re-stat later we might. Ideally we don't re-stat.
-
-                    // --- OPTIMIZATION: Fused Loop (Single Pass) ---
-                    // Instead of just recursing, we ALSO check if this entry matches the *next* segment.
-                    // If it does, we spawn a task for that match.
-                    // AFTER that task completes, we come back (ST_RECURSIVE_CHECK_CHILD) and do the recursion.
-
-                    rbc_segment_t *next_seg = seg->next;
-                    segment_stack_t *next_stack = f->stack_ptr;
-
-                    // Resolve next segment across stack boundaries if needed
-                    if (!next_seg && next_stack)
-                    {
-                        next_seg = next_stack->seg;
-                        next_stack = next_stack->next;
-                    }
-
-                    // DEBUG
-                    // printf("DEBUG: Path='%.*s' Item='%s' NextSegType=%d\n", (int)path_len, path_buf, name, next_seg ? next_seg->type : -1);
-
-                    bool matched_next = false;
-                    if (next_seg)
-                    {
-                        if (next_seg->type == RBC_SEGMENT_WILDCARD)
-                        {
-                            matched_next = rbc_matcher_exec(&next_seg->data.glob.matcher, name);
-                        }
-                        else if (next_seg->type == RBC_SEGMENT_LITERAL)
-                        {
-                            if (strcmp(name, next_seg->data.literal) == 0)
-                            {
-                                matched_next = true;
-                            }
-                        }
-                    }
-
-                    if (matched_next)
-                    {
-                        // We have a match for the NEXT segment (e.g. found 'foo.c' matching '*.c' while in '**').
-                        // We must process this match.
-                        size_t old_len = path_len;
-                        if (buf_append(path_buf, &path_len, name) > 0)
-                        {
-                            // If this was the last segment, emit callback immediately
-                            if (!next_seg->next && !next_stack)
-                            {
-                                ctx.cb(path_buf, ctx.ud);
-                                path_len = old_len;
-                                path_buf[path_len] = '\0';
-                            }
-                            else
-                            {
-                                // Otherwise push a task for the REST of the path
-                                push_next(&st, path_buf, next_seg, next_stack, &ctx, true);
-
-                                // CRITICAL: We pause *this* frame to let the child run.
-                                // When child returns, we resume at ST_RECURSIVE_CHECK_CHILD to do the recursion part.
-                                f->state = ST_RECURSIVE_CHECK_CHILD;
-                                f->entry_len = old_len; // Save fallback length
-                                // Cache name for the second pass (Recursion)
-                                strncpy(f->current_name, name, 255);
-                                f->current_name[255] = '\0';
-                                goto loop_continue;
-                            }
-                        }
-                    }
-
-                    // If no match (or match emitted immediately), fall through to Recursion Check
-                    goto check_recursion;
-                }
-
-                // --- End SEG_RECURSIVE block ---
-
-                // Standard processing for WILDCARD/LITERAL (non-recursive segments)
-                // (This part of logic remains from original loop, ensure variables align)
-                if (should_recurse)
-                {
-                    // Optimization: If we have a next segment (which implies we need to enter a directory),
-                    // but we know this entry is NOT a directory (and not a symlink that might point to one),
-                    // we can skip the expensive push_next -> opendir failure cycle.
-                    // Only apply this checks if there really IS a next segment.
-                    // If seg->next is NULL, it's a leaf match, so files are valid!
-                    if (seg->next && !entry.type_unknown && !entry.is_dir && !entry.is_symlink)
-                    {
+                        path_len = saved_len;
+                        path_buf[path_len] = '\0';
                         continue;
                     }
 
-                    size_t old_len = path_len;
-                    if (buf_append(path_buf, &path_len, name) > 0)
+                    if (is_dot)
                     {
-                        push_next(&st, path_buf, seg, f->stack_ptr, &ctx, next_from_wildcard);
-                        f->state = ST_DIR_LOOP_RESTORE;
-                        f->entry_len = old_len;
-                        goto loop_continue;
+                        // If DOTMATCH is on, and this is the LAST segment (Leaf **),
+                        // Then '.' is a valid match. But we do NOT recurse into it.
+                        if ((ctx.flags & RBC_FNM_DOTMATCH) && !seg->next && !stack_ptr)
+                        {
+                            size_t pre_count = st.count;
+                            push_next(&st, path_buf, path_len, seg, stack_ptr, &ctx, true, false);
+                            if (st.count > pre_count)
+                            {
+                                break;
+                            }
+                            f = &st.items[cur_idx];
+                        }
+                        path_len = saved_len;
+                        path_buf[path_len] = '\0';
+                        continue;
+                    }
+
+                    // [Redesign for MRI Parity]
+                    // In ST_DIR_LOOP for RECURSIVE, we ONLY handle recursion.
+                    // The "Match Zero" logic (matching current path against rest) is handled by the ST_INIT
+                    // of the *child* frame we are about to push.
+                    // So, we just check if we should recurse.
+
+                    // Determine if we should recurse into this entry.
+                    // 1. It must be a directory.
+                    // 2. We do NOT follow symlinks for ** recursion (unless potentially requested, but MRI defaults to no).
+
+                    if (!is_dir && type_unknown)
+                    {
+                        char *rp = get_real_path(real_path_buf, base_path, path_buf);
+                        is_dir = fs_is_dir_nofollow(rp);
+                        // Update cache? Not needed for local var.
+                    }
+
+                    if (is_dir && !is_symlink)
+                    {
+                        // Recurse deeper.
+                        // We push a new frame for "path_buf" (which is current/entry).
+                        // The segment remains "seg" (recursive).
+                        // The new frame's ST_INIT will handle "Match Zero" for this entry.
+                        fprintf(stderr, "DEBUG: Push RECURSIVE %s\n", path_buf);
+                        stack_push(&st, seg, stack_ptr, true, false, path_buf, path_len, &ctx);
+                        // Child frame pushed. Break to execute it.
+                        break;
                     }
                 }
-
-                // If we are here, we are looping to next entry normally.
-                continue;
-
-            // --- Shared Recursion Check Block ---
-            // Reached via goto or state transition
-            check_recursion:
-                if (f->current_is_dir)
-                {
-                    // Perform Recursion: push SEG_RECURSIVE (self) for this directory
-                    size_t old_len = path_len;
-                    // 'name' is valid here because we are still in the entry processing block
-                    if (buf_append(path_buf, &path_len, name) > 0)
-                    {
-                        stack_push(&st, seg, f->stack_ptr, true);
-                        f->state = ST_DIR_LOOP_RESTORE;
-                        f->entry_len = old_len;
-                        goto loop_continue;
-                    }
-                }
-                // If not recursing, continue to next entry
-                continue;
-            } // End of entry processing block
-            break;
-
-        case ST_RECURSIVE_CHECK_CHILD:
-            // Returning from "Match Next" task. Now we must check if we should Recurse (the "**" part).
-            // path_buf currently contains "path/to/dir/file". We must restore it to "path/to/dir".
-            // f->entry_len held the length before appending the name.
-            path_len = f->entry_len;
+            }
+            path_len = saved_len;
             path_buf[path_len] = '\0';
-
-            // Now perform the recursion check using cached name
-            if (f->current_is_dir)
-            {
-                const char *chk_name = f->current_name;
-                size_t old_len = path_len;
-                if (buf_append(path_buf, &path_len, chk_name) > 0)
-                {
-                    // Push SEG_RECURSIVE (self)
-                    stack_push(&st, f->seg, f->stack_ptr, true);
-                    f->state = ST_DIR_LOOP_RESTORE;
-                    f->entry_len = old_len;
-                    goto loop_continue;
-                }
-            }
-
-            // Done processing this entry (both match and recurse attempt finished).
-            // Resume directory iteration.
-            f->state = ST_DIR_LOOP;
-            break; // Break switch to re-enter loop which enters ST_DIR_LOOP which calls fs_next()
-            // `fs_dir_iter_t` implementation usually keeps the current name in buffers.
-            // Let's assume `f->iter` has it. `fs_next` returns bool.
-            // We can add `name_ptr` to `frame_t`.
-
-            // Let's assume for now we need to fix this.
-            // I'll grab the name from the iterator if possible, or save it.
-            // But first, let's complete the `replace_string` to fix the mess.
-            // I will use a placeholder `name = f->iter->current_name` or similar if I can find it,
-            // OR I will simply rely on the fact that `buf_append` needs it.
-            // If I can't get it, I can't append it again.
-
-            // Wait, we appended it for the *Previous* task. Then we stripped it.
-            // Now we need to append it *Again* for the recursion task.
-            // So we definitely need the name.
-
-            // Plan: Add `char current_name[256]` or `char *current_name` to `frame_t`?
-            // Or just `strdup` it? memory management...
-            // `readdir` strings are static/thread-local or in the DIR struct.
-            // On Linux `readdir` returns pointer to statics or buffer in DIR.
-            // It should remain valid as long as we don't call `readdir` (fs_next) again.
-            // Since we pause processing of *this* directory to process a *sub* directory (or match),
-            // and we rely on the stack, we are NOT iterating this directory further yet.
-            // So the `dirent` should still be valid!
-            // Depending on implementation of `fs_next` (wrapper).
-            // Let's verify `fs_next`.
-            break;
-
-        case ST_DIR_LOOP_RESTORE:
-            // Returning from child
-            path_len = f->entry_len;
-            path_buf[path_len] = '\0';
-            f->state = ST_DIR_LOOP; // Go back to loop
-            // We need to re-execute the loop logic to get NEXT entry.
-            // But verify: we just finished processing ONE entry.
-            // So loops check condition?
-            // The `ST_DIR_LOOP` case will call `readdir` again. Correct.
-            break;
-
-        case ST_RECURSIVE_NEXT:
-            // Returning from "run_next_recursive" call at end of RECURSIVE
-            st.count--;
-            break;
-
-        case ST_BRANCH_LOOP:
-            // f->alt is current alternative
-            if (f->alt)
-            {
-                rbc_segment_t *curr = f->alt;
-                f->alt = f->alt->next_alt; // Advance for next time
-
-                f->state = ST_BRANCH_LOOP; // Come back here
-
-                // Push child: segment_run_recursive(alt, &new_frame...)
-                stack_push(&st, curr, &f->branch_node, f->from_wildcard);
-            }
-            else
-            {
-                st.count--; // Done
-            }
-            break;
         }
-    loop_continue:;
+        break;
+        }
     }
 
     if (st.items)
         free(st.items);
-}
-
-void rbc_walker_match_callback(const char *path, void *user_data)
-{
-    rbc_walker_ctx_t *ctx = (rbc_walker_ctx_t *)user_data;
-    const char *add_path = path;
-
-    if (ctx->base_strip && ctx->base_len > 0)
-    {
-        if (strncmp(path, ctx->base_strip, ctx->base_len) == 0)
-        {
-            if (path[ctx->base_len] == '/')
-                add_path = path + ctx->base_len + 1;
-            else if (path[ctx->base_len] == '\0')
-                add_path = ".";
-        }
-    }
-    rbc_glob_results_add(ctx->results, add_path);
 }
 
 static bool rbc_walker_dispatch_literal(const char *p, rbc_walker_ctx_t *ctx)
@@ -871,7 +911,7 @@ static bool rbc_walker_dispatch_segments(const char *p, rbc_walker_ctx_t *ctx)
     rbc_segment_t *segments = rbc_glob_segment_compile(&ctx->ctx->arena, p, ctx->flags);
     if (segments)
     {
-        rbc_segment_exec(segments, ctx->base, ctx->flags, ctx->sort, rbc_walker_match_callback, ctx);
+        rbc_segment_exec(segments, ctx->base, ctx->flags, ctx->sort, rbc_walker_match_callback, ctx, &ctx->ctx->arena);
     }
     return true;
 }
@@ -892,6 +932,7 @@ bool rbc_walker_run(const char *pattern, rbc_walker_ctx_t *ctx)
     {
         return false;
     }
+    printf("DEBUG: walker_run pattern='%s'\n", pattern);
 
     // Fast-path 1: Pure literal
     if (strpbrk(pattern, "*?[]\\{}") == NULL)
@@ -924,7 +965,7 @@ bool rbc_walker_run_compiled(const rbc_glob_pattern_t *cg, rbc_walker_ctx_t *ctx
         return rbc_brace_visit(cg->original_pattern, &ctx->ctx->arena, rbc_walker_dispatch_visitor, ctx);
     case RBC_PATTERN_GENERAL:
         // Use the pre-compiled segments
-        rbc_segment_exec(cg->segments, ctx->base, cg->flags, ctx->sort, rbc_walker_match_callback, ctx);
+        rbc_segment_exec(cg->segments, ctx->base, cg->flags, ctx->sort, rbc_walker_match_callback, ctx, &ctx->ctx->arena);
         return true;
     }
     return false;

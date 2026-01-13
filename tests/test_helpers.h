@@ -30,7 +30,6 @@ void assert_matches_expected(char **c_result, size_t c_count, const char *expect
  * @param c_count C実装の結果数
  * @param expected_file 期待出力ファイルのパス
  */
-void assert_matches_expected_any_order(char **c_result, size_t c_count, const char *expected_file);
 
 /**
  * 2つの文字列配列を比較してアサート
@@ -41,16 +40,6 @@ void assert_matches_expected_any_order(char **c_result, size_t c_count, const ch
  */
 void assert_result_equals(char **actual, size_t actual_count,
                           const char **expected, size_t expected_count);
-
-/**
- * 2つの文字列配列を比較してアサート（順序無視）
- * @param actual 実際の結果
- * @param actual_count 実際の結果数
- * @param expected 期待される結果
- * @param expected_count 期待される結果数
- */
-void assert_result_equals_any_order(char **actual, size_t actual_count,
-                                    const char **expected, size_t expected_count);
 
 /**
  * テストフィクスチャをセットアップ

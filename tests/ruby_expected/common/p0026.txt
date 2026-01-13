@@ -1,1 +1,10 @@
-.file.txt
+./
+.dir/
+a/
+b/
+c/
+dir/
+sub/
+x/
+y/
+z/

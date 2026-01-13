@@ -1,1 +1,7 @@
-file.txt
+.
+a
+b
+c
+x
+y
+z

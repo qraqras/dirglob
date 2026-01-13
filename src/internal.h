@@ -206,7 +206,7 @@ bool rbc_matcher_exec(const rbc_matcher_t *m, const char *name);
 /// @defgroup Segment Functions
 /// @{
 rbc_segment_t *rbc_glob_segment_compile(rbc_arena_t *arena, const char *pattern, unsigned int flags);
-void rbc_segment_exec(rbc_segment_t *root, const char *base_path, unsigned flags, bool sort, rbc_match_callback_t callback, void *user_data);
+void rbc_segment_exec(rbc_segment_t *root, const char *base_path, unsigned flags, bool sort, rbc_match_callback_t callback, void *user_data, rbc_arena_t *arena);
 /// @}
 
 #endif /* RBC_INTERNAL_H */

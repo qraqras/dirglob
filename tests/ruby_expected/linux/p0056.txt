@@ -1,0 +1,16 @@
+./.dir/
+./a/
+./b/
+./c/
+./dir/
+./sub/
+./x/
+./y/
+./z/
+.dir/sub/
+a/b/
+a/c/
+dir/a/
+dir/b/
+dir/sub/
+x/y/

@@ -1,1 +1,3 @@
-file.txt
+a.c
+file.c
+test.c

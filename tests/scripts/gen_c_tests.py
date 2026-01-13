@@ -15,10 +15,19 @@ def convert_flags_to_c(flags_str):
     if flags_str == '0':
         return '0'
 
-    # Ruby FNM_* -> RBCG_FNM_* 変換
-    flags_str = flags_str.replace('FNM_', 'RBCG_FNM_')
+    # Ensure RBC_ prefix
+    flags = flags_str.split('|')
+    c_flags = []
+    for f in flags:
+        f = f.strip()
+        if f.startswith('FNM_'):
+            c_flags.append('RBC_' + f)
+        elif not f.startswith('RBC_'):
+            c_flags.append('RBC_FNM_' + f)
+        else:
+            c_flags.append(f)
 
-    return flags_str
+    return ' | '.join(c_flags)
 
 
 def convert_base_to_c(base_str):
@@ -105,34 +114,11 @@ void test_parity_{case_id}(void) {{
     assert_matches_expected(result, count, "{escape_c_string(expected_file)}");
 
     // メモリ解放
-    rbc_free(result, count, lengths);
+    rbc_glob_free(result, count, lengths);
 }}
 '''
 
-    # テスト関数生成 (順序無視チェック)
-    # 新しいテスト関数名 test_parity_anyorder_pXXXX
-    code_anyorder = f'''
-void test_parity_anyorder_{case_id}(void) {{
-    char **result = NULL;
-    size_t count = 0;
-    size_t *lengths = NULL;
-
-    // rbc_glob実行
-    bool ok = rbc_glob({pattern_array}, {npatterns}, {flags}, {base}, {sort}, &result, &count, &lengths);
-
-    // 期待出力と比較 (順序無視配列比較)
-    assert_matches_expected_any_order(result, count, "{escape_c_string(expected_file)}");
-
-    // メモリ解放
-    rbc_free(result, count, lengths);
-}}
-'''
-
-    return code_strict + code_anyorder
-
-
-    return code
-
+    return code_strict
 
 def generate_test_file(test_cases, platform, output_file):
     """テストファイル全体を生成"""

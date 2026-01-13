@@ -33,6 +33,8 @@ def combine(part1, part2, separator):
     """2つのパス要素を結合"""
     if part1 == '':
         return part2
+    if part1.endswith(separator):
+        return part1 + part2
     else:
         return part1 + separator + part2
 
