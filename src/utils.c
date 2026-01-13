@@ -65,3 +65,67 @@ uint32_t rbc_next_codepoint(const char **p)
     *p += 1;
     return c;
 }
+
+bool rbc_has_wildcard(const char *str)
+{
+    bool esc = false;
+    for (const char *p = str; *p; p++)
+    {
+        if (esc)
+        {
+            esc = false;
+            continue;
+        }
+        if (*p == '\\')
+        {
+            esc = true;
+            continue;
+        }
+        if (*p == '*' || *p == '?' || *p == '[')
+            return true;
+    }
+    return false;
+}
+
+bool rbc_is_recursive_wildcard(const char *str)
+{
+    return str != NULL && strcmp(str, "**") == 0;
+}
+
+bool rbc_has_brace(const char *str)
+{
+    bool esc = false;
+    for (const char *p = str; *p; p++)
+    {
+        if (esc)
+        {
+            esc = false;
+            continue;
+        }
+        if (*p == '\\')
+        {
+            esc = true;
+            continue;
+        }
+        if (*p == '{')
+            return true;
+    }
+    return false;
+}
+
+rbc_pattern_type_t rbc_analyze_pattern(const char *pattern)
+{
+    if (!pattern)
+        return RBC_PATTERN_GENERAL;
+
+    bool has_wildcard = rbc_has_wildcard(pattern);
+    bool has_brace = rbc_has_brace(pattern);
+
+    if (!has_wildcard && !has_brace)
+        return RBC_PATTERN_LITERAL;
+
+    if (has_brace && !has_wildcard)
+        return RBC_PATTERN_BRACE_LITERAL;
+
+    return RBC_PATTERN_GENERAL;
+}

@@ -5,8 +5,7 @@ add_library(rbc
   fnmatch.c
   utils.c
   arena.c
-  pattern_matcher.c
-  pattern_compiler.c
+  matcher.c
   brace.c
   str_list.c
 )

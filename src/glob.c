@@ -13,7 +13,7 @@
 /// @brief Initialize the context
 /// @param ctx Context to initialize
 /// @return true on success, false on failure
-bool rbc_ctx_init(rbc_ctx_t *ctx)
+bool rbc_glob_ctx_init(rbc_ctx_t *ctx)
 {
     if (!rbc_arena_init(&ctx->arena, 0))
         return false;
@@ -23,7 +23,7 @@ bool rbc_ctx_init(rbc_ctx_t *ctx)
 
 /// @brief Free the context
 /// @param ctx Context to free
-void rbc_ctx_free(rbc_ctx_t *ctx)
+void rbc_glob_ctx_free(rbc_ctx_t *ctx)
 {
     if (!ctx)
     {
@@ -44,7 +44,7 @@ void rbc_ctx_free(rbc_ctx_t *ctx)
 /// @param results Results structure to initialize
 /// @param ctx Context for arena access
 /// @return true on success, false on failure
-bool rbc_results_init(rbc_results_t *results, rbc_ctx_t *ctx)
+bool rbc_glob_results_init(rbc_results_t *results, rbc_ctx_t *ctx)
 {
     results->capacity = RBC_RESULTS_CAPACITY;
     results->items = malloc(sizeof(char *) * results->capacity);
@@ -69,7 +69,7 @@ bool rbc_results_init(rbc_results_t *results, rbc_ctx_t *ctx)
 
 /// @brief Clear results structure and free memory
 /// @param results Results structure to clear
-void rbc_results_clear(rbc_results_t *results)
+void rbc_glob_results_clear(rbc_results_t *results)
 {
     if (!results)
     {
@@ -89,9 +89,9 @@ void rbc_results_clear(rbc_results_t *results)
 /// @param results Results structure
 /// @param path Path to add
 /// @return true on success, false on failure
-bool rbc_results_add(rbc_results_t *results, const char *path)
+bool rbc_glob_results_add(rbc_results_t *results, const char *path)
 {
-    return rbc_results_add_with_index(results, path, results->ctx->discovery_counter++);
+    return rbc_glob_results_add_with_index(results, path, results->ctx->discovery_counter++);
 }
 
 /// @brief Add s1_in path with discovery index to the results
@@ -99,7 +99,7 @@ bool rbc_results_add(rbc_results_t *results, const char *path)
 /// @param path Path to add
 /// @param index Discovery index
 /// @return true on success, false on failure
-bool rbc_results_add_with_index(rbc_results_t *results, const char *path, size_t index)
+bool rbc_glob_results_add_with_index(rbc_results_t *results, const char *path, size_t index)
 {
     if (results->count >= results->capacity)
     {
@@ -135,18 +135,18 @@ bool rbc_results_add_with_index(rbc_results_t *results, const char *path, size_t
 }
 
 /// @brief Sort results lexicographically
-typedef struct rbc_results_sort_item_s
+typedef struct rbc_glob_results_sort_item_s
 {
     char *path;
     size_t length;
     size_t discovery_index;
-} rbc_results_sort_item_t;
+} rbc_glob_results_sort_item_t;
 
 /// @brief Compare two paths for sorting
 /// @param s1_in First path
 /// @param s2_in Second path
 /// @return Negative if s1 < s2, positive if s1 > s2, zero if equal
-static int rbc_results_path_cmp(const char *s1_in, const char *s2_in)
+static int rbc_glob_results_path_cmp(const char *s1_in, const char *s2_in)
 {
     const unsigned char *s1 = (const unsigned char *)s1_in;
     const unsigned char *s2 = (const unsigned char *)s2_in;
@@ -170,23 +170,23 @@ static int rbc_results_path_cmp(const char *s1_in, const char *s2_in)
 /// @param i1 First item
 /// @param i2 Second item
 /// @return Comparison result
-static int rbc_results_sort_cmp(const void *i1, const void *i2)
+static int rbc_glob_results_sort_cmp(const void *i1, const void *i2)
 {
-    const rbc_results_sort_item_t *pi1 = (const rbc_results_sort_item_t *)i1;
-    const rbc_results_sort_item_t *pi2 = (const rbc_results_sort_item_t *)i2;
-    return rbc_results_path_cmp(pi1->path, pi2->path);
+    const rbc_glob_results_sort_item_t *pi1 = (const rbc_glob_results_sort_item_t *)i1;
+    const rbc_glob_results_sort_item_t *pi2 = (const rbc_glob_results_sort_item_t *)i2;
+    return rbc_glob_results_path_cmp(pi1->path, pi2->path);
 }
 
 /// @brief Sort results lexicographically
 /// @param results Results structure
-void rbc_results_sort(rbc_results_t *results)
+void rbc_glob_results_sort(rbc_results_t *results)
 {
     if (results->count <= 1)
     {
         return;
     }
 
-    rbc_results_sort_item_t *pairs = malloc(sizeof(rbc_results_sort_item_t) * results->count);
+    rbc_glob_results_sort_item_t *pairs = malloc(sizeof(rbc_glob_results_sort_item_t) * results->count);
     if (!pairs)
     {
         return;
@@ -199,7 +199,7 @@ void rbc_results_sort(rbc_results_t *results)
         pairs[i].discovery_index = results->discovery_indices[i];
     }
 
-    qsort(pairs, results->count, sizeof(rbc_results_sort_item_t), rbc_results_sort_cmp);
+    qsort(pairs, results->count, sizeof(rbc_glob_results_sort_item_t), rbc_glob_results_sort_cmp);
 
     for (size_t i = 0; i < results->count; i++)
     {
@@ -213,7 +213,7 @@ void rbc_results_sort(rbc_results_t *results)
 
 /// @brief Deduplicate results (removes consecutive duplicates)
 /// @param results Results structure
-void rbc_results_deduplicate(rbc_results_t *results)
+void rbc_glob_results_deduplicate(rbc_results_t *results)
 {
     if (results->count <= 1)
     {
@@ -239,108 +239,17 @@ void rbc_results_deduplicate(rbc_results_t *results)
 
 /// @}
 
-/* Defines the opaque struct from types.h */
-
-struct rbc_glob_pattern_s
-{
-    rbc_ctx_t *ctx;
-    rbc_segment_t *segments;
-    unsigned flags; /* Store flags during compilation if needed */
-};
-
-/* Result collection callback for Walker */
-typedef struct
-{
-    rbc_results_t *results;
-    const char *base_strip; /* If set, strip this prefix from results */
-    size_t base_len;
-} callback_ctx_t;
-
-static void walker_match_callback(const char *path, void *user_data)
-{
-    callback_ctx_t *ctx = (callback_ctx_t *)user_data;
-
-    const char *add_path = path;
-
-    // Handle stripping base path to match Ruby's 'base:' behavior
-    // If base_strip is "foo", and path is "foo/bar", result should be "bar".
-    if (ctx->base_strip && ctx->base_len > 0)
-    {
-        if (strncmp(path, ctx->base_strip, ctx->base_len) == 0)
-        {
-            if (path[ctx->base_len] == '/')
-            {
-                add_path = path + ctx->base_len + 1;
-            }
-            else if (path[ctx->base_len] == '\0')
-            {
-                add_path = "."; // base itself
-            }
-        }
-    }
-
-    rbc_results_add(ctx->results, add_path);
-}
-
-rbc_glob_pattern_t *rbc_glob_compile(const char *pattern, unsigned flags);
-void rbc_glob_pattern_free(rbc_glob_pattern_t *cg);
-
-/// @brief Check if the string is s1_in pure recursive wildcard "**"
-static bool is_recursive_wildcard(const char *s)
-{
-    return strcmp(s, "**") == 0;
-}
-
-/// @brief Check if the string contains any unescaped wildcard characters
-static bool rbc_has_wildcard(const char *str)
-{
-    bool esc = false;
-    for (const char *p = str; *p; p++)
-    {
-        if (esc)
-        {
-            esc = false;
-            continue;
-        }
-        if (*p == '\\')
-        {
-            esc = true;
-            continue;
-        }
-        if (*p == '*' || *p == '?' || *p == '[')
-            return true;
-    }
-    return false;
-}
-
-/// @brief Check if the string contains any unescaped brace characters
-static bool rbc_has_brace(const char *str)
-{
-    bool esc = false;
-    for (const char *p = str; *p; p++)
-    {
-        if (esc)
-        {
-            esc = false;
-            continue;
-        }
-        if (*p == '\\')
-        {
-            esc = true;
-            continue;
-        }
-        if (*p == '{')
-            return true;
-    }
-    return false;
-}
+/// @name Glob Segment Functions
+/// @{
 
 /// @brief Find the end of the current segment in the pattern
-static const char *rbc_find_segment_end(const char *str)
+/// @param pattern Pattern string
+/// @return Pointer to the end of the segment (either '/' or '\0')
+static const char *rbc_glob_segment_find_end(const char *pattern)
 {
     bool esc = false;
     int depth = 0;
-    const char *p = str;
+    const char *p = pattern;
     while (*p)
     {
         if (esc)
@@ -371,8 +280,11 @@ static const char *rbc_find_segment_end(const char *str)
     return p;
 }
 
-/// @brief Create s1_in new rbc_segment_t of the specified type
-static rbc_segment_t *rbc_segment_new(rbc_arena_t *arena, rbc_segment_type_t type)
+/// @brief Create a new glob segment
+/// @param arena Arena to allocate from
+/// @param type Segment type
+/// @return Pointer to the new segment
+static rbc_segment_t *rbc_glob_segment_new(rbc_arena_t *arena, rbc_segment_type_t type)
 {
     rbc_segment_t *seg = rbc_arena_alloc(arena, sizeof(rbc_segment_t));
     memset(seg, 0, sizeof(rbc_segment_t));
@@ -380,11 +292,17 @@ static rbc_segment_t *rbc_segment_new(rbc_arena_t *arena, rbc_segment_type_t typ
     return seg;
 }
 
-/// @brief Compile pattern into segments
-rbc_segment_t *rbc_compile_segments(rbc_arena_t *arena, const char *pattern, unsigned int flags)
+/// @brief Compile pattern into glob segments
+/// @param arena Arena to allocate from
+/// @param pattern Pattern string
+/// @param flags Compilation flags
+/// @return Pointer to the head segment, or NULL on failure
+rbc_segment_t *rbc_glob_segment_compile(rbc_arena_t *arena, const char *pattern, unsigned int flags)
 {
     if (!pattern || !*pattern)
+    {
         return NULL;
+    }
 
     rbc_segment_t *head = NULL;
     rbc_segment_t *curr = NULL;
@@ -392,14 +310,18 @@ rbc_segment_t *rbc_compile_segments(rbc_arena_t *arena, const char *pattern, uns
     const char *p = pattern;
     while (*p)
     {
-        const char *end = rbc_find_segment_end(p);
+        const char *end = rbc_glob_segment_find_end(p);
         size_t len = end - p;
         if (len == 0)
         {
             if (*end == '/')
+            {
                 p = end + 1;
+            }
             else
+            {
                 p = end;
+            }
             continue;
         }
 
@@ -414,27 +336,35 @@ rbc_segment_t *rbc_compile_segments(rbc_arena_t *arena, const char *pattern, uns
         rbc_segment_t *seg = NULL;
         rbc_str_list_t expansions = rbc_brace_collect(component, arena);
 
-        if (!rbc_has_brace(component) && is_recursive_wildcard(component))
+        if (!rbc_has_brace(component) && rbc_is_recursive_wildcard(component))
         {
-            seg = rbc_segment_new(arena, RBC_SEGMENT_RECURSIVE);
+            seg = rbc_glob_segment_new(arena, RBC_SEGMENT_RECURSIVE);
             rbc_str_list_free(&expansions);
             if (!head)
+            {
                 head = seg;
+            }
             else
+            {
                 curr->next = seg;
+            }
             curr = seg;
             continue;
         }
 
         if (!rbc_has_brace(component) && !rbc_has_wildcard(component))
         {
-            seg = rbc_segment_new(arena, RBC_SEGMENT_LITERAL);
+            seg = rbc_glob_segment_new(arena, RBC_SEGMENT_LITERAL);
             seg->data.literal = component;
             rbc_str_list_free(&expansions);
             if (!head)
+            {
                 head = seg;
+            }
             else
+            {
                 curr->next = seg;
+            }
             curr = seg;
             continue;
         }
@@ -444,64 +374,82 @@ rbc_segment_t *rbc_compile_segments(rbc_arena_t *arena, const char *pattern, uns
         for (size_t i = 0; i < expansions.count; i++)
         {
             if (strchr(expansions.items[i], '/'))
+            {
                 any_slash = true;
+            }
             if (rbc_has_wildcard(expansions.items[i]))
+            {
                 all_literals = false;
+            }
         }
 
         if (any_slash || all_literals || expansions.count > 1)
         {
-            seg = rbc_segment_new(arena, RBC_SEGMENT_BRANCH);
+            seg = rbc_glob_segment_new(arena, RBC_SEGMENT_BRANCH);
             rbc_segment_t *last_alt = NULL;
 
             for (size_t i = 0; i < expansions.count; i++)
             {
                 char *full_pattern;
                 if (is_sep)
+                {
                     full_pattern = rbc_arena_printf(arena, "%s/%s", expansions.items[i], rest);
+                }
                 else if (*rest)
+                {
                     full_pattern = rbc_arena_printf(arena, "%s%s", expansions.items[i], rest);
+                }
                 else
+                {
                     full_pattern = rbc_arena_strdup(arena, expansions.items[i]);
+                }
 
                 rbc_segment_t *alt_chain = NULL;
                 if (all_literals && !is_sep && !*rest)
                 {
-                    alt_chain = rbc_segment_new(arena, RBC_SEGMENT_LITERAL);
+                    alt_chain = rbc_glob_segment_new(arena, RBC_SEGMENT_LITERAL);
                     alt_chain->data.literal = full_pattern;
                 }
                 else
                 {
-                    alt_chain = rbc_compile_segments(arena, full_pattern, flags);
+                    alt_chain = rbc_glob_segment_compile(arena, full_pattern, flags);
                 }
 
                 if (!alt_chain && !*full_pattern)
                 {
-                    alt_chain = rbc_segment_new(arena, RBC_SEGMENT_LITERAL);
+                    alt_chain = rbc_glob_segment_new(arena, RBC_SEGMENT_LITERAL);
                     alt_chain->data.literal = "";
                 }
 
                 if (alt_chain)
                 {
                     if (!seg->data.branch.head)
+                    {
                         seg->data.branch.head = alt_chain;
+                    }
                     else if (last_alt)
+                    {
                         last_alt->next_alt = alt_chain;
+                    }
                     last_alt = alt_chain;
                 }
             }
             rbc_str_list_free(&expansions);
 
             if (!head)
+            {
                 head = seg;
+            }
             else
+            {
                 curr->next = seg;
+            }
             curr = seg;
             break;
         }
         else
         {
-            seg = rbc_segment_new(arena, RBC_SEGMENT_WILDCARD);
+            seg = rbc_glob_segment_new(arena, RBC_SEGMENT_WILDCARD);
             seg->data.glob.original_pattern = rbc_arena_strdup(arena, expansions.items[0]);
             if (!seg->data.glob.original_pattern ||
                 !rbc_matcher_build(arena, &seg->data.glob.matcher, seg->data.glob.original_pattern, flags))
@@ -512,23 +460,56 @@ rbc_segment_t *rbc_compile_segments(rbc_arena_t *arena, const char *pattern, uns
             rbc_str_list_free(&expansions);
 
             if (!head)
+            {
                 head = seg;
+            }
             else
+            {
                 curr->next = seg;
+            }
             curr = seg;
         }
     }
     return head;
 }
 
+/// @}
+
+/// @name Glob Functions
+/// @{
+
+/// @brief Free a compiled glob pattern
+/// @param gp Compiled glob pattern to free
+void rbc_glob_pattern_free(rbc_glob_pattern_t *gp)
+{
+    if (!gp)
+    {
+        return;
+    }
+    if (gp->ctx)
+    {
+        rbc_glob_ctx_free(gp->ctx);
+        free(gp->ctx);
+    }
+    free(gp);
+}
+
+/// @brief Compile a glob pattern
+/// @param pattern Pattern string
+/// @param flags Compilation flags
+/// @return Compiled glob pattern, or NULL on failure
 rbc_glob_pattern_t *rbc_glob_compile(const char *pattern, unsigned flags)
 {
     if (!pattern)
+    {
         return NULL;
+    }
 
     rbc_glob_pattern_t *cg = malloc(sizeof(rbc_glob_pattern_t));
     if (!cg)
+    {
         return NULL;
+    }
 
     cg->ctx = malloc(sizeof(rbc_ctx_t));
     if (!cg->ctx)
@@ -537,15 +518,16 @@ rbc_glob_pattern_t *rbc_glob_compile(const char *pattern, unsigned flags)
         return NULL;
     }
 
-    if (!rbc_ctx_init(cg->ctx))
+    if (!rbc_glob_ctx_init(cg->ctx))
     {
         free(cg->ctx);
         free(cg);
         return NULL;
     }
     cg->flags = flags;
-
-    cg->segments = rbc_compile_segments(&cg->ctx->arena, pattern, flags);
+    cg->original_pattern = rbc_arena_strdup(&cg->ctx->arena, pattern);
+    cg->type = rbc_analyze_pattern(pattern);
+    cg->segments = rbc_glob_segment_compile(&cg->ctx->arena, pattern, flags);
 
     if (!cg->segments)
     {
@@ -556,155 +538,72 @@ rbc_glob_pattern_t *rbc_glob_compile(const char *pattern, unsigned flags)
     return cg;
 }
 
-void rbc_glob_pattern_free(rbc_glob_pattern_t *cg)
+/// @brief Perform globbing on patterns
+/// @param patterns Array of pattern strings
+/// @param npatterns Number of patterns
+/// @param flags Compilation and matching flags
+/// @param base Base path to strip from results
+/// @param sort Whether to sort results
+/// @param out Output array of matched paths
+/// @param count Number of matched paths
+/// @param lengths Lengths of matched paths
+/// @return true on success, false on failure
+bool rbc_glob(const char **patterns, size_t npatterns, unsigned flags, const char *base, bool sort, char ***out, size_t *count, size_t **lengths)
 {
-    if (!cg)
-        return;
-    if (cg->ctx)
-    {
-        rbc_ctx_free(cg->ctx);
-        free(cg->ctx);
-    }
-    free(cg);
-}
-
-/* Context for fast path visitor */
-typedef struct fast_path_ctx_s
-{
-    rbc_results_t *results;
-    rbc_ctx_t *ctx;
-    const char *base;
-    unsigned flags;
-    bool sort;
-    callback_ctx_t *cb_ctx;
-} fast_path_ctx_t;
-
-static bool fast_path_visitor(const char *p, void *arg)
-{
-    fast_path_ctx_t *fp_ctx = (fast_path_ctx_t *)arg;
-
-    // Check if remaining string has wildcards (escaped braces? etc)
-    if (strpbrk(p, "*?[]{}\\") == NULL)
-    {
-        // Pure literal
-        char full_path[4096];
-        int needed;
-        const char *base = fp_ctx->base;
-
-        if (base && strcmp(base, ".") != 0)
-        {
-            needed = snprintf(full_path, sizeof(full_path), "%s/%s", base, p);
-        }
-        else
-        {
-            needed = snprintf(full_path, sizeof(full_path), "%s", p);
-        }
-
-        if (needed < 0 || (size_t)needed >= sizeof(full_path))
-        {
-            // Too long, fallback to graph? Or just abort.
-            return true; // continue
-        }
-
-        struct stat st;
-        if (stat(full_path, &st) == 0)
-        {
-            size_t plen = strlen(p);
-            if (plen > 0 && p[plen - 1] == '/')
-            {
-                if (!S_ISDIR(st.st_mode))
-                    return true;
-            }
-            if (!rbc_results_add(fp_ctx->results, p))
-                return false;
-        }
-    }
-    else
-    {
-        // Still has wildcards? Compile and run walker.
-        rbc_segment_t *segments = rbc_compile_segments(&fp_ctx->ctx->arena, p, fp_ctx->flags);
-        if (segments)
-        {
-            rbc_segments_exec(segments, fp_ctx->base, fp_ctx->flags, fp_ctx->sort, walker_match_callback, fp_ctx->cb_ctx);
-        }
-    }
-    return true;
-}
-
-bool rbc_glob(const char **patterns, size_t npatterns, unsigned flags,
-              const char *base, bool sort, char ***out, size_t *count, size_t **lengths)
-{
-
     if (!out || !count)
+    {
         return false;
+    }
 
     rbc_ctx_t *ctx = malloc(sizeof(rbc_ctx_t));
     if (!ctx)
+    {
         return false;
-    if (!rbc_ctx_init(ctx))
+    }
+    if (!rbc_glob_ctx_init(ctx))
     {
         free(ctx);
         return false;
     }
 
     rbc_results_t results;
-    if (!rbc_results_init(&results, ctx))
+    if (!rbc_glob_results_init(&results, ctx))
     {
-        rbc_ctx_free(ctx);
+        rbc_glob_ctx_free(ctx);
         free(ctx);
         return false;
     }
 
-    callback_ctx_t cb_ctx;
+    rbc_walker_ctx_t cb_ctx;
     cb_ctx.results = &results;
-
     cb_ctx.base_strip = base;
     cb_ctx.base_len = base ? strlen(base) : 0;
+    cb_ctx.ctx = ctx;
+    cb_ctx.base = base;
+    cb_ctx.flags = flags;
+    cb_ctx.sort = sort;
 
     for (size_t i = 0; i < npatterns; i++)
     {
-        if (!patterns[i])
-            continue;
-
-        const char *current_pattern = patterns[i];
-
-        if (strpbrk(current_pattern, "*?[]{}\\") == NULL)
+        if (patterns[i])
         {
-            // Pure literal: Fast path
-            fast_path_ctx_t fp_ctx = {&results, ctx, base, flags, sort, &cb_ctx};
-            fast_path_visitor(current_pattern, &fp_ctx);
-        }
-        else if (strchr(current_pattern, '{') != NULL && strpbrk(current_pattern, "*?[]") == NULL)
-        {
-            // Pure braces: Use visitor
-            fast_path_ctx_t fp_ctx = {&results, ctx, base, flags, sort, &cb_ctx};
-            rbc_brace_visit(current_pattern, &ctx->arena, fast_path_visitor, &fp_ctx);
-        }
-        else
-        {
-            // Standard path or mixed wildcard-brace
-            // If mixed, we pass directly to compile segments which handles braces via segments or expansion internally
-            rbc_segment_t *segments = rbc_compile_segments(&ctx->arena, current_pattern, flags);
-            if (segments)
-            {
-                rbc_segments_exec(segments, base, flags, sort, walker_match_callback, &cb_ctx);
-            }
+            rbc_walker_run(patterns[i], &cb_ctx);
         }
     }
 
     if (sort)
     {
-        rbc_results_sort(&results);
+        rbc_glob_results_sort(&results);
     }
-    rbc_results_deduplicate(&results);
+    rbc_glob_results_deduplicate(&results);
 
     // Packaging
     *count = results.count;
     void **package = malloc(sizeof(void *) + (results.count + 1) * sizeof(char *));
     if (!package)
     {
-        rbc_results_clear(&results);
-        rbc_ctx_free(ctx);
+        rbc_glob_results_clear(&results);
+        rbc_glob_ctx_free(ctx);
         free(ctx);
         return false;
     }
@@ -719,64 +618,84 @@ bool rbc_glob(const char **patterns, size_t npatterns, unsigned flags,
 
     *out = pkg_items;
     if (lengths)
+    {
         *lengths = results.lengths;
+    }
     else if (results.lengths)
+    {
         free(results.lengths);
+    }
 
     if (results.items)
+    {
         free(results.items);
+    }
     if (results.discovery_indices)
+    {
         free(results.discovery_indices);
+    }
 
     return true;
 }
 
-bool rbc_xglob(const rbc_glob_pattern_t *cg, const char *base, bool sort,
-               char ***out, size_t *count, size_t **lengths)
+/// @brief Perform globbing using a compiled pattern
+/// @param gp Compiled glob pattern
+/// @param base Base path to strip from results
+/// @param sort Whether to sort results
+/// @param out Output array of matched paths
+/// @param count Number of matched paths
+/// @param lengths Lengths of matched paths
+/// @return true on success, false on failure
+bool rbc_xglob(const rbc_glob_pattern_t *gp, const char *base, bool sort, char ***out, size_t *count, size_t **lengths)
 {
-    if (!cg || !out || !count)
+    if (!gp || !out || !count)
+    {
         return false;
+    }
 
     rbc_ctx_t *run_ctx = malloc(sizeof(rbc_ctx_t));
     if (!run_ctx)
+    {
         return false;
-    if (!rbc_ctx_init(run_ctx))
+    }
+    if (!rbc_glob_ctx_init(run_ctx))
     {
         free(run_ctx);
         return false;
     }
 
     rbc_results_t results;
-    if (!rbc_results_init(&results, run_ctx))
+    if (!rbc_glob_results_init(&results, run_ctx))
     {
-        rbc_ctx_free(run_ctx);
+        rbc_glob_ctx_free(run_ctx);
         free(run_ctx);
         return false;
     }
 
-    callback_ctx_t cb_ctx;
+    rbc_walker_ctx_t cb_ctx;
     cb_ctx.results = &results;
-
-    // Always set base_strip. Even for ".", we want to strip logical prefix "./"
-    // which is now produced by executor.
     cb_ctx.base_strip = base;
     cb_ctx.base_len = base ? strlen(base) : 0;
+    cb_ctx.ctx = run_ctx;
+    cb_ctx.base = base;
+    cb_ctx.flags = gp->flags;
+    cb_ctx.sort = sort;
 
-    rbc_segments_exec(cg->segments, base, cg->flags, sort, walker_match_callback, &cb_ctx);
+    rbc_walker_run_compiled(gp, &cb_ctx);
 
     if (sort)
     {
-        rbc_results_sort(&results);
+        rbc_glob_results_sort(&results);
     }
-    rbc_results_deduplicate(&results);
+    rbc_glob_results_deduplicate(&results);
 
     // Packaging
     *count = results.count;
     void **package = malloc(sizeof(void *) + (results.count + 1) * sizeof(char *));
     if (!package)
     {
-        rbc_results_clear(&results);
-        rbc_ctx_free(run_ctx);
+        rbc_glob_results_clear(&results);
+        rbc_glob_ctx_free(run_ctx);
         free(run_ctx);
         return false;
     }
@@ -791,29 +710,47 @@ bool rbc_xglob(const rbc_glob_pattern_t *cg, const char *base, bool sort,
 
     *out = pkg_items;
     if (lengths)
+    {
         *lengths = results.lengths;
+    }
     else if (results.lengths)
+    {
         free(results.lengths);
+    }
 
     if (results.discovery_indices)
+    {
         free(results.discovery_indices);
+    }
 
     if (results.items)
+    {
         free(results.items);
+    }
 
     return true;
 }
 
+/// @brief Free globbing results
+/// @param list List of matched paths
+/// @param count Number of matched paths
+/// @param lengths Lengths of matched paths
 void rbc_glob_free(char **list, size_t count, size_t *lengths)
 {
     (void)count;
     if (!list)
+    {
         return;
+    }
     void **package = (void **)list - 1;
     rbc_ctx_t *ctx = (rbc_ctx_t *)package[0];
-    rbc_ctx_free(ctx);
+    rbc_glob_ctx_free(ctx);
     free(ctx);
     free(package);
     if (lengths)
+    {
         free(lengths);
+    }
 }
+
+/// @}

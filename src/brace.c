@@ -159,7 +159,7 @@ bool rbc_brace_visit(const char *pattern, rbc_arena_t *arena, rbc_brace_visit_cb
         size_t suf_len = strlen(suffix);
         size_t needed = prefix_len + opt_len + suf_len + 1;
 
-        if (needed < 4096)
+        if (needed < PATH_MAX)
         {
             char vla[needed];
             memcpy(vla, pattern, prefix_len);

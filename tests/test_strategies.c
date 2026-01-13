@@ -8,7 +8,7 @@ void test_compile_strategy_exact(void)
     rbc_arena_t arena;
     rbc_arena_init(&arena, 1024);
 
-    rbc_segment_t *seg = rbc_compile_segments(&arena, "file.txt", 0);
+    rbc_segment_t *seg = rbc_glob_segment_compile(&arena, "file.txt", 0);
 
     TEST_ASSERT_NOT_NULL(seg);
 
@@ -33,7 +33,7 @@ void test_compile_strategy_suffix(void)
     rbc_arena_t arena;
     rbc_arena_init(&arena, 1024);
 
-    rbc_segment_t *seg = rbc_compile_segments(&arena, "*.c", 0);
+    rbc_segment_t *seg = rbc_glob_segment_compile(&arena, "*.c", 0);
 
     TEST_ASSERT_NOT_NULL(seg);
     TEST_ASSERT_EQUAL_INT(RBC_SEGMENT_WILDCARD, seg->type);
@@ -48,7 +48,7 @@ void test_compile_strategy_prefix(void)
     rbc_arena_t arena;
     rbc_arena_init(&arena, 1024);
 
-    rbc_segment_t *seg = rbc_compile_segments(&arena, "test_*", 0);
+    rbc_segment_t *seg = rbc_glob_segment_compile(&arena, "test_*", 0);
 
     TEST_ASSERT_NOT_NULL(seg);
     TEST_ASSERT_EQUAL_INT(RBC_SEGMENT_WILDCARD, seg->type);
@@ -63,7 +63,7 @@ void test_compile_strategy_infix(void)
     rbc_arena_t arena;
     rbc_arena_init(&arena, 1024);
 
-    rbc_segment_t *seg = rbc_compile_segments(&arena, "*foo*", 0);
+    rbc_segment_t *seg = rbc_glob_segment_compile(&arena, "*foo*", 0);
 
     TEST_ASSERT_NOT_NULL(seg);
     TEST_ASSERT_EQUAL_INT(RBC_SEGMENT_WILDCARD, seg->type);
@@ -79,7 +79,7 @@ void test_compile_strategy_sequence(void)
     rbc_arena_init(&arena, 1024);
 
     // "a*b" -> Sequence [a, b] (match_start=T, match_end=T)
-    rbc_segment_t *seg = rbc_compile_segments(&arena, "a*b", 0);
+    rbc_segment_t *seg = rbc_glob_segment_compile(&arena, "a*b", 0);
 
     TEST_ASSERT_NOT_NULL(seg);
     TEST_ASSERT_EQUAL_INT(RBC_SEGMENT_WILDCARD, seg->type);
@@ -99,7 +99,7 @@ void test_compile_strategy_nfa_fallback(void)
     rbc_arena_init(&arena, 1024);
 
     // Use brackets to force RECURSIVE (complex fallback)
-    rbc_segment_t *seg = rbc_compile_segments(&arena, "[abc].c", 0);
+    rbc_segment_t *seg = rbc_glob_segment_compile(&arena, "[abc].c", 0);
 
     TEST_ASSERT_NOT_NULL(seg);
     TEST_ASSERT_EQUAL_INT(RBC_SEGMENT_WILDCARD, seg->type);
@@ -114,7 +114,7 @@ void test_compile_strategy_question_chain(void)
     rbc_arena_init(&arena, 1024);
 
     // "?" should now be optimized as PATTERN_CHAIN (count=1)
-    rbc_segment_t *seg = rbc_compile_segments(&arena, "?.c", 0);
+    rbc_segment_t *seg = rbc_glob_segment_compile(&arena, "?.c", 0);
 
     TEST_ASSERT_NOT_NULL(seg);
     TEST_ASSERT_EQUAL_INT(RBC_SEGMENT_WILDCARD, seg->type);
@@ -133,7 +133,7 @@ void test_compile_strategy_mixed_chain(void)
     rbc_arena_init(&arena, 1024);
 
     // "a?b*c" -> Chain ["a?b", "c"]
-    rbc_segment_t *seg = rbc_compile_segments(&arena, "a?b*c", 0);
+    rbc_segment_t *seg = rbc_glob_segment_compile(&arena, "a?b*c", 0);
 
     TEST_ASSERT_NOT_NULL(seg);
     TEST_ASSERT_EQUAL_INT(RBC_SEGMENT_WILDCARD, seg->type);
@@ -153,7 +153,7 @@ void test_compile_strategy_combinations(void)
 
     // 1. Prefix '*' and '?' : "*foo?"
     // Should be CHAIN ["foo?"], match_start=false, match_end=true
-    seg = rbc_compile_segments(&arena, "*foo?", 0);
+    seg = rbc_glob_segment_compile(&arena, "*foo?", 0);
     TEST_ASSERT_EQUAL_INT(RBC_STRATEGY_PATTERN_CHAIN, seg->data.glob.matcher.strategy);
     TEST_ASSERT_EQUAL_INT(1, seg->data.glob.matcher.pk.chain.count);
     TEST_ASSERT_EQUAL_STRING("foo?", seg->data.glob.matcher.pk.chain.parts[0]);
@@ -162,7 +162,7 @@ void test_compile_strategy_combinations(void)
 
     // 2. Suffix '*' and '?' : "?foo*"
     // Should be CHAIN ["?foo"], match_start=true, match_end=false
-    seg = rbc_compile_segments(&arena, "?foo*", 0);
+    seg = rbc_glob_segment_compile(&arena, "?foo*", 0);
     TEST_ASSERT_EQUAL_INT(RBC_STRATEGY_PATTERN_CHAIN, seg->data.glob.matcher.strategy);
     TEST_ASSERT_EQUAL_INT(1, seg->data.glob.matcher.pk.chain.count);
     TEST_ASSERT_EQUAL_STRING("?foo", seg->data.glob.matcher.pk.chain.parts[0]);
@@ -171,7 +171,7 @@ void test_compile_strategy_combinations(void)
 
     // 3. Infix '*' and '?' : "*?foo*"
     // Should be CHAIN ["?foo"], match_start=false, match_end=false
-    seg = rbc_compile_segments(&arena, "*?foo*", 0);
+    seg = rbc_glob_segment_compile(&arena, "*?foo*", 0);
     TEST_ASSERT_EQUAL_INT(RBC_STRATEGY_PATTERN_CHAIN, seg->data.glob.matcher.strategy);
     TEST_ASSERT_EQUAL_INT(1, seg->data.glob.matcher.pk.chain.count);
     TEST_ASSERT_EQUAL_STRING("?foo", seg->data.glob.matcher.pk.chain.parts[0]);

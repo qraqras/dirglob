@@ -24,9 +24,6 @@ typedef struct
 
 #if defined(_WIN32)
 #include <windows.h>
-#ifndef PATH_MAX
-#define PATH_MAX 4096
-#endif
 
 // Helper for UTF-8 <-> UTF-16 conversions
 static wchar_t *utf8_to_wide(const char *utf8)
@@ -313,10 +310,6 @@ static void stack_push(exec_stack_t *st, rbc_segment_t *seg, segment_stack_t *st
     // other fields initialized when used
 }
 
-#ifndef PATH_MAX
-#define PATH_MAX 4096
-#endif
-
 // Helper to append to buffer
 static size_t buf_append(char *buf, size_t *current_len, const char *str)
 {
@@ -360,7 +353,7 @@ static bool push_next(exec_stack_t *st, char *path, rbc_segment_t *current_seg, 
     }
 }
 
-void rbc_segments_exec(
+void rbc_segment_exec(
     rbc_segment_t *root,
     const char *base_path,
     unsigned flags,
@@ -561,7 +554,7 @@ void rbc_segments_exec(
 
                 if (seg->type == RBC_SEGMENT_WILDCARD)
                 {
-                    bool matched = rbc_matcher_exec(&seg->data.glob.matcher, name, ctx.flags);
+                    bool matched = rbc_matcher_exec(&seg->data.glob.matcher, name);
 
                     if (matched)
                     {
@@ -630,7 +623,7 @@ void rbc_segments_exec(
                     {
                         if (next_seg->type == RBC_SEGMENT_WILDCARD)
                         {
-                            matched_next = rbc_matcher_exec(&next_seg->data.glob.matcher, name, ctx.flags);
+                            matched_next = rbc_matcher_exec(&next_seg->data.glob.matcher, name);
                         }
                         else if (next_seg->type == RBC_SEGMENT_LITERAL)
                         {
@@ -818,4 +811,121 @@ void rbc_segments_exec(
 
     if (st.items)
         free(st.items);
+}
+
+void rbc_walker_match_callback(const char *path, void *user_data)
+{
+    rbc_walker_ctx_t *ctx = (rbc_walker_ctx_t *)user_data;
+    const char *add_path = path;
+
+    if (ctx->base_strip && ctx->base_len > 0)
+    {
+        if (strncmp(path, ctx->base_strip, ctx->base_len) == 0)
+        {
+            if (path[ctx->base_len] == '/')
+                add_path = path + ctx->base_len + 1;
+            else if (path[ctx->base_len] == '\0')
+                add_path = ".";
+        }
+    }
+    rbc_glob_results_add(ctx->results, add_path);
+}
+
+static bool rbc_walker_dispatch_literal(const char *p, rbc_walker_ctx_t *ctx)
+{
+    char full_path[PATH_MAX];
+    int needed;
+    const char *base = ctx->base;
+
+    if (base && strcmp(base, ".") != 0)
+    {
+        needed = snprintf(full_path, sizeof(full_path), "%s/%s", base, p);
+    }
+    else
+    {
+        needed = snprintf(full_path, sizeof(full_path), "%s", p);
+    }
+
+    if (needed < 0 || (size_t)needed >= sizeof(full_path))
+    {
+        return true; // Too long, continue
+    }
+
+    struct stat st;
+    if (stat(full_path, &st) == 0)
+    {
+        size_t plen = strlen(p);
+        if (plen > 0 && p[plen - 1] == '/')
+        {
+            if (!S_ISDIR(st.st_mode))
+                return true;
+        }
+        if (!rbc_glob_results_add(ctx->results, p))
+            return false;
+    }
+    return true;
+}
+
+static bool rbc_walker_dispatch_segments(const char *p, rbc_walker_ctx_t *ctx)
+{
+    rbc_segment_t *segments = rbc_glob_segment_compile(&ctx->ctx->arena, p, ctx->flags);
+    if (segments)
+    {
+        rbc_segment_exec(segments, ctx->base, ctx->flags, ctx->sort, rbc_walker_match_callback, ctx);
+    }
+    return true;
+}
+
+static bool rbc_walker_dispatch_visitor(const char *p, void *arg)
+{
+    rbc_walker_ctx_t *ctx = (rbc_walker_ctx_t *)arg;
+    if (strpbrk(p, "*?[]\\") == NULL)
+    {
+        return rbc_walker_dispatch_literal(p, ctx);
+    }
+    return rbc_walker_dispatch_segments(p, ctx);
+}
+
+bool rbc_walker_run(const char *pattern, rbc_walker_ctx_t *ctx)
+{
+    if (!pattern)
+    {
+        return false;
+    }
+
+    // Fast-path 1: Pure literal
+    if (strpbrk(pattern, "*?[]\\{}") == NULL)
+    {
+        return rbc_walker_dispatch_literal(pattern, ctx);
+    }
+
+    // Fast-path 2: Pure braces (no wildcards)
+    if (strchr(pattern, '{') != NULL && strpbrk(pattern, "*?[]\\") == NULL)
+    {
+        return rbc_brace_visit(pattern, &ctx->ctx->arena, rbc_walker_dispatch_visitor, ctx);
+    }
+
+    // Default: General case (handles general wildcards and nested braces)
+    return rbc_walker_dispatch_segments(pattern, ctx);
+}
+
+bool rbc_walker_run_compiled(const rbc_glob_pattern_t *cg, rbc_walker_ctx_t *ctx)
+{
+    if (!cg)
+    {
+        return false;
+    }
+
+    switch (cg->type)
+    {
+    case RBC_PATTERN_LITERAL:
+        return rbc_walker_dispatch_literal(cg->original_pattern, ctx);
+    case RBC_PATTERN_BRACE_LITERAL:
+        return rbc_brace_visit(cg->original_pattern, &ctx->ctx->arena, rbc_walker_dispatch_visitor, ctx);
+    case RBC_PATTERN_GENERAL:
+        // Use the pre-compiled segments
+        rbc_segment_exec(cg->segments, ctx->base, cg->flags, ctx->sort, rbc_walker_match_callback, ctx);
+        return true;
+    }
+    return false;
 }

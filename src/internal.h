@@ -6,6 +6,11 @@
 #include <stdbool.h>
 #include "arena.h"
 #include "utils.h"
+#include "rbc/rbc.h"
+
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
 
 /// @brief Segment Types
 typedef enum rbc_segment_type_e
@@ -49,6 +54,7 @@ typedef struct rbc_results_s
 typedef struct rbc_matcher_s
 {
     rbc_match_strategy_t strategy;
+    unsigned int flags; // Flags used for compilation and matching
     union
     {
         // STRATEGY_EXACT | STRATEGY_PREFIX | STRATEGY_SUFFIX | STRATEGY_INFIX
@@ -102,8 +108,41 @@ struct rbc_segment_s
 };
 /// @}
 
+/// @brief Pattern Execution Strategy Types
+typedef enum rbc_pattern_type_e
+{
+    RBC_PATTERN_LITERAL,       // Pure literal path (no braces, no wildcards)
+    RBC_PATTERN_BRACE_LITERAL, // Braces containing only literals
+    RBC_PATTERN_GENERAL        // General case with wildcards
+} rbc_pattern_type_t;
+
+/// @brief Pre-compiled Glob Pattern Structure
+struct rbc_glob_pattern_s
+{
+    rbc_ctx_t *ctx;
+    rbc_segment_t *segments;
+    unsigned flags;
+    rbc_pattern_type_t type;
+    char *original_pattern;
+};
+
 /// @brief Callback for match results
 typedef void (*rbc_match_callback_t)(const char *path, void *user_data);
+
+/// @brief Result collection context
+typedef struct rbc_walker_ctx_s
+{
+    rbc_results_t *results;
+    const char *base_strip; /* If set, strip this prefix from results */
+    size_t base_len;
+    rbc_ctx_t *ctx;
+    const char *base;
+    unsigned int flags;
+    bool sort;
+} rbc_walker_ctx_t;
+
+bool rbc_walker_run(const char *pattern, rbc_walker_ctx_t *ctx);
+bool rbc_walker_run_compiled(const rbc_glob_pattern_t *cg, rbc_walker_ctx_t *ctx);
 
 /// @name String List Utilities
 /// @{
@@ -136,30 +175,38 @@ rbc_str_list_t rbc_brace_collect(const char *pattern, rbc_arena_t *arena);
 
 /// @defgroup Context Functions
 /// @{
-bool rbc_ctx_init(rbc_ctx_t *ctx);
-void rbc_ctx_free(rbc_ctx_t *ctx);
+bool rbc_glob_ctx_init(rbc_ctx_t *ctx);
+void rbc_glob_ctx_free(rbc_ctx_t *ctx);
+/// @}
+
+/// @defgroup Strategy Functions
+/// @{
+bool rbc_has_wildcard(const char *str);
+bool rbc_is_recursive_wildcard(const char *str);
+bool rbc_has_brace(const char *str);
+rbc_pattern_type_t rbc_analyze_pattern(const char *pattern);
 /// @}
 
 /// @defgroup Results Functions
 /// @{
-bool rbc_results_init(rbc_results_t *results, rbc_ctx_t *ctx);
-bool rbc_results_add(rbc_results_t *results, const char *path);
-bool rbc_results_add_with_index(rbc_results_t *results, const char *path, size_t index);
-void rbc_results_sort(rbc_results_t *results);
-void rbc_results_deduplicate(rbc_results_t *results);
-void rbc_results_clear(rbc_results_t *results);
+bool rbc_glob_results_init(rbc_results_t *results, rbc_ctx_t *ctx);
+bool rbc_glob_results_add(rbc_results_t *results, const char *path);
+bool rbc_glob_results_add_with_index(rbc_results_t *results, const char *path, size_t index);
+void rbc_glob_results_sort(rbc_results_t *results);
+void rbc_glob_results_deduplicate(rbc_results_t *results);
+void rbc_glob_results_clear(rbc_results_t *results);
 /// @}
 
 /// @defgroup Matcher Functions
 /// @{
 bool rbc_matcher_build(rbc_arena_t *arena, rbc_matcher_t *m, const char *pattern, unsigned int flags);
-bool rbc_matcher_exec(const rbc_matcher_t *m, const char *name, unsigned int flags);
+bool rbc_matcher_exec(const rbc_matcher_t *m, const char *name);
 /// @}
 
 /// @defgroup Segment Functions
 /// @{
-rbc_segment_t *rbc_compile_segments(rbc_arena_t *arena, const char *pattern, unsigned int flags);
-void rbc_segments_exec(rbc_segment_t *root, const char *base_path, unsigned flags, bool sort, rbc_match_callback_t callback, void *user_data);
+rbc_segment_t *rbc_glob_segment_compile(rbc_arena_t *arena, const char *pattern, unsigned int flags);
+void rbc_segment_exec(rbc_segment_t *root, const char *base_path, unsigned flags, bool sort, rbc_match_callback_t callback, void *user_data);
 /// @}
 
 #endif /* RBC_INTERNAL_H */
