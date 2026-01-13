@@ -747,9 +747,7 @@ void rbc_segment_exec(
             size_t saved_len = path_len;
             if (buf_append(path_buf, &path_len, name) > 0)
             {
-                // Determine if we should process this entry
-                bool is_dot = (strcmp(name, ".") == 0);
-                bool is_dotdot = (strcmp(name, "..") == 0);
+                // Note: is_dot and is_dotdot already defined above - do not redefine
                 bool is_hidden = (name[0] == '.');
 
                 if (seg->type == RBC_SEGMENT_WILDCARD)
