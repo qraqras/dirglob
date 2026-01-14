@@ -32,23 +32,25 @@ static void test_glob_against_ruby(const char *pattern, int flags,
     char **expected_lines = NULL;
     size_t expected_count = 0;
     size_t capacity = 16;
-    expected_lines = malloc(capacity * sizeof(char *));
+    expected_lines = malloc(capacity * sizeof(char*));
     TEST_ASSERT_NOT_NULL(expected_lines);
 
     char line[4096];
-    while (fgets(line, sizeof(line), fp))
-    {
+    while (fgets(line, sizeof(line), fp)) {
         /* Remove trailing newline */
         size_t len = strlen(line);
-        if (len > 0 && line[len - 1] == '\n')
-        {
-            line[len - 1] = '\0';
+        if (len > 0 && line[len-1] == '\n') {
+            line[len-1] = '\0';
         }
 
-        if (expected_count >= capacity)
-        {
+        /* Skip empty lines (Ruby puts always adds newline, even for empty results) */
+        if (strlen(line) == 0) {
+            continue;
+        }
+
+        if (expected_count >= capacity) {
             capacity *= 2;
-            expected_lines = realloc(expected_lines, capacity * sizeof(char *));
+            expected_lines = realloc(expected_lines, capacity * sizeof(char*));
             TEST_ASSERT_NOT_NULL(expected_lines);
         }
 
@@ -64,8 +66,7 @@ static void test_glob_against_ruby(const char *pattern, int flags,
     TEST_ASSERT_EQUAL_size_t_MESSAGE(expected_count, count, count_msg);
 
     /* Compare each result */
-    for (size_t i = 0; i < expected_count; i++)
-    {
+    for (size_t i = 0; i < expected_count; i++) {
         char msg[512];
         snprintf(msg, sizeof(msg),
                  "Pattern: %s, Index: %zu, Expected: %s, Got: %s",
@@ -75,13 +76,13 @@ static void test_glob_against_ruby(const char *pattern, int flags,
     }
 
     /* Cleanup */
-    for (size_t i = 0; i < expected_count; i++)
-    {
+    for (size_t i = 0; i < expected_count; i++) {
         free(expected_lines[i]);
     }
     free(expected_lines);
     rbc_glob_free(results, count, lengths);
 }
+
 
 /* ========== Test Functions ========== */
 
@@ -97,6 +98,7 @@ void test_t1000(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1001(void)
 {
     /* Matrix: 01_basic/file, unsorted */
@@ -108,6 +110,7 @@ void test_t1001(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1002(void)
 {
@@ -121,6 +124,7 @@ void test_t1002(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1003(void)
 {
     /* Matrix: 01_basic/file, flags=DOTMATCH */
@@ -132,6 +136,7 @@ void test_t1003(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1004(void)
 {
@@ -145,6 +150,7 @@ void test_t1004(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1005(void)
 {
     /* Matrix: 01_basic/file, flags=DOTMATCH, base=. */
@@ -156,6 +162,7 @@ void test_t1005(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1006(void)
 {
@@ -169,6 +176,7 @@ void test_t1006(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1007(void)
 {
     /* Matrix: 01_basic/file, flags=PATHNAME, unsorted */
@@ -180,6 +188,7 @@ void test_t1007(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1008(void)
 {
@@ -193,6 +202,7 @@ void test_t1008(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1009(void)
 {
     /* Matrix: 01_basic/file, flags=CASEFOLD */
@@ -204,6 +214,7 @@ void test_t1009(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1010(void)
 {
@@ -217,6 +228,7 @@ void test_t1010(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1011(void)
 {
     /* Matrix: 01_basic/file, flags=CASEFOLD, base=. */
@@ -228,6 +240,7 @@ void test_t1011(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1012(void)
 {
@@ -241,6 +254,7 @@ void test_t1012(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1013(void)
 {
     /* Matrix: 01_basic/file, flags=PATHNAME|DOTMATCH, unsorted */
@@ -252,6 +266,7 @@ void test_t1013(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1014(void)
 {
@@ -265,6 +280,7 @@ void test_t1014(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1015(void)
 {
     /* Matrix: 01_basic/file, flags=PATHNAME|CASEFOLD */
@@ -276,6 +292,7 @@ void test_t1015(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1016(void)
 {
@@ -289,6 +306,7 @@ void test_t1016(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1017(void)
 {
     /* Matrix: 01_basic/file, flags=PATHNAME|CASEFOLD, base=. */
@@ -300,6 +318,7 @@ void test_t1017(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1018(void)
 {
@@ -313,6 +332,7 @@ void test_t1018(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1019(void)
 {
     /* Matrix: 01_basic/file, flags=DOTMATCH|CASEFOLD, unsorted */
@@ -324,6 +344,7 @@ void test_t1019(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1020(void)
 {
@@ -337,6 +358,7 @@ void test_t1020(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1021(void)
 {
     /* Matrix: 01_basic/file.txt */
@@ -348,6 +370,7 @@ void test_t1021(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1022(void)
 {
@@ -361,6 +384,7 @@ void test_t1022(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1023(void)
 {
     /* Matrix: 01_basic/file.txt, base=/workspaces/dirglob/tests/fixtures/ */
@@ -372,6 +396,7 @@ void test_t1023(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1024(void)
 {
@@ -385,6 +410,7 @@ void test_t1024(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1025(void)
 {
     /* Matrix: 01_basic/file.txt, flags=DOTMATCH */
@@ -396,6 +422,7 @@ void test_t1025(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1026(void)
 {
@@ -409,6 +436,7 @@ void test_t1026(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1027(void)
 {
     /* Matrix: 01_basic/file.txt, flags=DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -420,6 +448,7 @@ void test_t1027(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1028(void)
 {
@@ -433,6 +462,7 @@ void test_t1028(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1029(void)
 {
     /* Matrix: 01_basic/file.txt, flags=PATHNAME */
@@ -444,6 +474,7 @@ void test_t1029(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1030(void)
 {
@@ -457,6 +488,7 @@ void test_t1030(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1031(void)
 {
     /* Matrix: 01_basic/file.txt, flags=PATHNAME, base=/workspaces/dirglob/tests/fixtures/ */
@@ -468,6 +500,7 @@ void test_t1031(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1032(void)
 {
@@ -481,6 +514,7 @@ void test_t1032(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1033(void)
 {
     /* Matrix: 01_basic/file.txt, flags=CASEFOLD */
@@ -492,6 +526,7 @@ void test_t1033(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1034(void)
 {
@@ -505,6 +540,7 @@ void test_t1034(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1035(void)
 {
     /* Matrix: 01_basic/file.txt, flags=CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -516,6 +552,7 @@ void test_t1035(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1036(void)
 {
@@ -529,6 +566,7 @@ void test_t1036(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1037(void)
 {
     /* Matrix: 01_basic/file.txt, flags=PATHNAME|DOTMATCH */
@@ -540,6 +578,7 @@ void test_t1037(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1038(void)
 {
@@ -553,6 +592,7 @@ void test_t1038(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1039(void)
 {
     /* Matrix: 01_basic/file.txt, flags=PATHNAME|DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -564,6 +604,7 @@ void test_t1039(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1040(void)
 {
@@ -577,6 +618,7 @@ void test_t1040(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1041(void)
 {
     /* Matrix: 01_basic/file.txt, flags=PATHNAME|CASEFOLD */
@@ -588,6 +630,7 @@ void test_t1041(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1042(void)
 {
@@ -601,6 +644,7 @@ void test_t1042(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1043(void)
 {
     /* Matrix: 01_basic/file.txt, flags=PATHNAME|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -612,6 +656,7 @@ void test_t1043(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1044(void)
 {
@@ -625,6 +670,7 @@ void test_t1044(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1045(void)
 {
     /* Matrix: 01_basic/file.txt, flags=DOTMATCH|CASEFOLD */
@@ -636,6 +682,7 @@ void test_t1045(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1046(void)
 {
@@ -649,6 +696,7 @@ void test_t1046(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1047(void)
 {
     /* Matrix: 01_basic/file.txt, flags=DOTMATCH|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -660,6 +708,7 @@ void test_t1047(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1048(void)
 {
@@ -673,6 +722,7 @@ void test_t1048(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1049(void)
 {
     /* Matrix: 01_basic/dir */
@@ -684,6 +734,7 @@ void test_t1049(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1050(void)
 {
@@ -697,6 +748,7 @@ void test_t1050(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1051(void)
 {
     /* Matrix: 01_basic/dir, base=. */
@@ -708,6 +760,7 @@ void test_t1051(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1052(void)
 {
@@ -721,6 +774,7 @@ void test_t1052(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1053(void)
 {
     /* Matrix: 01_basic/dir, flags=DOTMATCH, unsorted */
@@ -732,6 +786,7 @@ void test_t1053(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1054(void)
 {
@@ -745,6 +800,7 @@ void test_t1054(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1055(void)
 {
     /* Matrix: 01_basic/dir, flags=PATHNAME */
@@ -756,6 +812,7 @@ void test_t1055(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1056(void)
 {
@@ -769,6 +826,7 @@ void test_t1056(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1057(void)
 {
     /* Matrix: 01_basic/dir, flags=PATHNAME, base=. */
@@ -780,6 +838,7 @@ void test_t1057(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1058(void)
 {
@@ -793,6 +852,7 @@ void test_t1058(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1059(void)
 {
     /* Matrix: 01_basic/dir, flags=CASEFOLD, unsorted */
@@ -804,6 +864,7 @@ void test_t1059(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1060(void)
 {
@@ -817,6 +878,7 @@ void test_t1060(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1061(void)
 {
     /* Matrix: 01_basic/dir, flags=PATHNAME|DOTMATCH */
@@ -828,6 +890,7 @@ void test_t1061(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1062(void)
 {
@@ -841,6 +904,7 @@ void test_t1062(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1063(void)
 {
     /* Matrix: 01_basic/dir, flags=PATHNAME|DOTMATCH, base=. */
@@ -852,6 +916,7 @@ void test_t1063(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1064(void)
 {
@@ -865,6 +930,7 @@ void test_t1064(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1065(void)
 {
     /* Matrix: 01_basic/dir, flags=PATHNAME|CASEFOLD, unsorted */
@@ -876,6 +942,7 @@ void test_t1065(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1066(void)
 {
@@ -889,6 +956,7 @@ void test_t1066(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1067(void)
 {
     /* Matrix: 01_basic/dir, flags=DOTMATCH|CASEFOLD */
@@ -900,6 +968,7 @@ void test_t1067(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1068(void)
 {
@@ -913,6 +982,7 @@ void test_t1068(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1069(void)
 {
     /* Matrix: 01_basic/dir, flags=DOTMATCH|CASEFOLD, base=. */
@@ -924,6 +994,7 @@ void test_t1069(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1070(void)
 {
@@ -937,6 +1008,7 @@ void test_t1070(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1071(void)
 {
     /* Matrix: 01_basic/dir/, unsorted */
@@ -948,6 +1020,7 @@ void test_t1071(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1072(void)
 {
@@ -961,6 +1034,7 @@ void test_t1072(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1073(void)
 {
     /* Matrix: 01_basic/dir/, flags=DOTMATCH */
@@ -972,6 +1046,7 @@ void test_t1073(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1074(void)
 {
@@ -985,6 +1060,7 @@ void test_t1074(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1075(void)
 {
     /* Matrix: 01_basic/dir/, flags=DOTMATCH, base=. */
@@ -996,6 +1072,7 @@ void test_t1075(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1076(void)
 {
@@ -1009,6 +1086,7 @@ void test_t1076(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1077(void)
 {
     /* Matrix: 01_basic/dir/, flags=PATHNAME, unsorted */
@@ -1020,6 +1098,7 @@ void test_t1077(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1078(void)
 {
@@ -1033,6 +1112,7 @@ void test_t1078(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1079(void)
 {
     /* Matrix: 01_basic/dir/, flags=CASEFOLD */
@@ -1044,6 +1124,7 @@ void test_t1079(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1080(void)
 {
@@ -1057,6 +1138,7 @@ void test_t1080(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1081(void)
 {
     /* Matrix: 01_basic/dir/, flags=CASEFOLD, base=. */
@@ -1068,6 +1150,7 @@ void test_t1081(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1082(void)
 {
@@ -1081,6 +1164,7 @@ void test_t1082(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1083(void)
 {
     /* Matrix: 01_basic/dir/, flags=PATHNAME|DOTMATCH, unsorted */
@@ -1092,6 +1176,7 @@ void test_t1083(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1084(void)
 {
@@ -1105,6 +1190,7 @@ void test_t1084(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1085(void)
 {
     /* Matrix: 01_basic/dir/, flags=PATHNAME|CASEFOLD */
@@ -1116,6 +1202,7 @@ void test_t1085(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1086(void)
 {
@@ -1129,6 +1216,7 @@ void test_t1086(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1087(void)
 {
     /* Matrix: 01_basic/dir/, flags=PATHNAME|CASEFOLD, base=. */
@@ -1140,6 +1228,7 @@ void test_t1087(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1088(void)
 {
@@ -1153,6 +1242,7 @@ void test_t1088(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1089(void)
 {
     /* Matrix: 01_basic/dir/, flags=DOTMATCH|CASEFOLD, unsorted */
@@ -1164,6 +1254,7 @@ void test_t1089(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1090(void)
 {
@@ -1177,6 +1268,7 @@ void test_t1090(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1091(void)
 {
     /* Matrix: 02_asterisk/* */
@@ -1188,6 +1280,7 @@ void test_t1091(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1092(void)
 {
@@ -1201,6 +1294,7 @@ void test_t1092(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1093(void)
 {
     /* Matrix: 02_asterisk/*, base=/workspaces/dirglob/tests/fixtures/ */
@@ -1212,6 +1306,7 @@ void test_t1093(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1094(void)
 {
@@ -1225,6 +1320,7 @@ void test_t1094(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1095(void)
 {
     /* Matrix: 02_asterisk/*, base=. */
@@ -1236,6 +1332,7 @@ void test_t1095(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1096(void)
 {
@@ -1249,6 +1346,7 @@ void test_t1096(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1097(void)
 {
     /* Matrix: 02_asterisk/*, flags=DOTMATCH */
@@ -1260,6 +1358,7 @@ void test_t1097(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1098(void)
 {
@@ -1273,6 +1372,7 @@ void test_t1098(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1099(void)
 {
     /* Matrix: 02_asterisk/*, flags=DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -1284,6 +1384,7 @@ void test_t1099(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1100(void)
 {
@@ -1297,6 +1398,7 @@ void test_t1100(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1101(void)
 {
     /* Matrix: 02_asterisk/*, flags=DOTMATCH, base=. */
@@ -1308,6 +1410,7 @@ void test_t1101(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1102(void)
 {
@@ -1321,6 +1424,7 @@ void test_t1102(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1103(void)
 {
     /* Matrix: 02_asterisk/*, flags=PATHNAME */
@@ -1332,6 +1436,7 @@ void test_t1103(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1104(void)
 {
@@ -1345,6 +1450,7 @@ void test_t1104(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1105(void)
 {
     /* Matrix: 02_asterisk/*, flags=PATHNAME, base=/workspaces/dirglob/tests/fixtures/ */
@@ -1356,6 +1462,7 @@ void test_t1105(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1106(void)
 {
@@ -1369,6 +1476,7 @@ void test_t1106(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1107(void)
 {
     /* Matrix: 02_asterisk/*, flags=PATHNAME, base=. */
@@ -1380,6 +1488,7 @@ void test_t1107(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1108(void)
 {
@@ -1393,6 +1502,7 @@ void test_t1108(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1109(void)
 {
     /* Matrix: 02_asterisk/*, flags=CASEFOLD */
@@ -1404,6 +1514,7 @@ void test_t1109(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1110(void)
 {
@@ -1417,6 +1528,7 @@ void test_t1110(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1111(void)
 {
     /* Matrix: 02_asterisk/*, flags=CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -1428,6 +1540,7 @@ void test_t1111(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1112(void)
 {
@@ -1441,6 +1554,7 @@ void test_t1112(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1113(void)
 {
     /* Matrix: 02_asterisk/*, flags=CASEFOLD, base=. */
@@ -1452,6 +1566,7 @@ void test_t1113(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1114(void)
 {
@@ -1465,6 +1580,7 @@ void test_t1114(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1115(void)
 {
     /* Matrix: 02_asterisk/*, flags=PATHNAME|DOTMATCH */
@@ -1476,6 +1592,7 @@ void test_t1115(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1116(void)
 {
@@ -1489,6 +1606,7 @@ void test_t1116(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1117(void)
 {
     /* Matrix: 02_asterisk/*, flags=PATHNAME|DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -1500,6 +1618,7 @@ void test_t1117(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1118(void)
 {
@@ -1513,6 +1632,7 @@ void test_t1118(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1119(void)
 {
     /* Matrix: 02_asterisk/*, flags=PATHNAME|DOTMATCH, base=. */
@@ -1524,6 +1644,7 @@ void test_t1119(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1120(void)
 {
@@ -1537,6 +1658,7 @@ void test_t1120(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1121(void)
 {
     /* Matrix: 02_asterisk/*, flags=PATHNAME|CASEFOLD */
@@ -1548,6 +1670,7 @@ void test_t1121(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1122(void)
 {
@@ -1561,6 +1684,7 @@ void test_t1122(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1123(void)
 {
     /* Matrix: 02_asterisk/*, flags=PATHNAME|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -1572,6 +1696,7 @@ void test_t1123(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1124(void)
 {
@@ -1585,6 +1710,7 @@ void test_t1124(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1125(void)
 {
     /* Matrix: 02_asterisk/*, flags=PATHNAME|CASEFOLD, base=. */
@@ -1596,6 +1722,7 @@ void test_t1125(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1126(void)
 {
@@ -1609,6 +1736,7 @@ void test_t1126(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1127(void)
 {
     /* Matrix: 02_asterisk/*, flags=DOTMATCH|CASEFOLD */
@@ -1620,6 +1748,7 @@ void test_t1127(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1128(void)
 {
@@ -1633,6 +1762,7 @@ void test_t1128(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1129(void)
 {
     /* Matrix: 02_asterisk/*, flags=DOTMATCH|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -1644,6 +1774,7 @@ void test_t1129(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1130(void)
 {
@@ -1657,6 +1788,7 @@ void test_t1130(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1131(void)
 {
     /* Matrix: 02_asterisk/*, flags=DOTMATCH|CASEFOLD, base=. */
@@ -1668,6 +1800,7 @@ void test_t1131(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1132(void)
 {
@@ -1681,6 +1814,7 @@ void test_t1132(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1133(void)
 {
     /* Matrix: 02_asterisk/* / */
@@ -1692,6 +1826,7 @@ void test_t1133(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1134(void)
 {
@@ -1705,6 +1840,7 @@ void test_t1134(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1135(void)
 {
     /* Matrix: 02_asterisk/* /, base=/workspaces/dirglob/tests/fixtures/ */
@@ -1716,6 +1852,7 @@ void test_t1135(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1136(void)
 {
@@ -1729,6 +1866,7 @@ void test_t1136(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1137(void)
 {
     /* Matrix: 02_asterisk/* /, base=. */
@@ -1740,6 +1878,7 @@ void test_t1137(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1138(void)
 {
@@ -1753,6 +1892,7 @@ void test_t1138(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1139(void)
 {
     /* Matrix: 02_asterisk/* /, flags=DOTMATCH */
@@ -1764,6 +1904,7 @@ void test_t1139(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1140(void)
 {
@@ -1777,6 +1918,7 @@ void test_t1140(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1141(void)
 {
     /* Matrix: 02_asterisk/* /, flags=DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -1788,6 +1930,7 @@ void test_t1141(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1142(void)
 {
@@ -1801,6 +1944,7 @@ void test_t1142(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1143(void)
 {
     /* Matrix: 02_asterisk/* /, flags=DOTMATCH, base=. */
@@ -1812,6 +1956,7 @@ void test_t1143(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1144(void)
 {
@@ -1825,6 +1970,7 @@ void test_t1144(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1145(void)
 {
     /* Matrix: 02_asterisk/* /, flags=PATHNAME */
@@ -1836,6 +1982,7 @@ void test_t1145(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1146(void)
 {
@@ -1849,6 +1996,7 @@ void test_t1146(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1147(void)
 {
     /* Matrix: 02_asterisk/* /, flags=PATHNAME, base=/workspaces/dirglob/tests/fixtures/ */
@@ -1860,6 +2008,7 @@ void test_t1147(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1148(void)
 {
@@ -1873,6 +2022,7 @@ void test_t1148(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1149(void)
 {
     /* Matrix: 02_asterisk/* /, flags=PATHNAME, base=. */
@@ -1884,6 +2034,7 @@ void test_t1149(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1150(void)
 {
@@ -1897,6 +2048,7 @@ void test_t1150(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1151(void)
 {
     /* Matrix: 02_asterisk/* /, flags=CASEFOLD */
@@ -1908,6 +2060,7 @@ void test_t1151(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1152(void)
 {
@@ -1921,6 +2074,7 @@ void test_t1152(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1153(void)
 {
     /* Matrix: 02_asterisk/* /, flags=CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -1932,6 +2086,7 @@ void test_t1153(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1154(void)
 {
@@ -1945,6 +2100,7 @@ void test_t1154(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1155(void)
 {
     /* Matrix: 02_asterisk/* /, flags=CASEFOLD, base=. */
@@ -1956,6 +2112,7 @@ void test_t1155(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1156(void)
 {
@@ -1969,6 +2126,7 @@ void test_t1156(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1157(void)
 {
     /* Matrix: 02_asterisk/* /, flags=PATHNAME|DOTMATCH */
@@ -1980,6 +2138,7 @@ void test_t1157(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1158(void)
 {
@@ -1993,6 +2152,7 @@ void test_t1158(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1159(void)
 {
     /* Matrix: 02_asterisk/* /, flags=PATHNAME|DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -2004,6 +2164,7 @@ void test_t1159(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1160(void)
 {
@@ -2017,6 +2178,7 @@ void test_t1160(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1161(void)
 {
     /* Matrix: 02_asterisk/* /, flags=PATHNAME|DOTMATCH, base=. */
@@ -2028,6 +2190,7 @@ void test_t1161(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1162(void)
 {
@@ -2041,6 +2204,7 @@ void test_t1162(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1163(void)
 {
     /* Matrix: 02_asterisk/* /, flags=PATHNAME|CASEFOLD */
@@ -2052,6 +2216,7 @@ void test_t1163(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1164(void)
 {
@@ -2065,6 +2230,7 @@ void test_t1164(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1165(void)
 {
     /* Matrix: 02_asterisk/* /, flags=PATHNAME|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -2076,6 +2242,7 @@ void test_t1165(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1166(void)
 {
@@ -2089,6 +2256,7 @@ void test_t1166(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1167(void)
 {
     /* Matrix: 02_asterisk/* /, flags=PATHNAME|CASEFOLD, base=. */
@@ -2100,6 +2268,7 @@ void test_t1167(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1168(void)
 {
@@ -2113,6 +2282,7 @@ void test_t1168(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1169(void)
 {
     /* Matrix: 02_asterisk/* /, flags=DOTMATCH|CASEFOLD */
@@ -2124,6 +2294,7 @@ void test_t1169(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1170(void)
 {
@@ -2137,6 +2308,7 @@ void test_t1170(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1171(void)
 {
     /* Matrix: 02_asterisk/* /, flags=DOTMATCH|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -2148,6 +2320,7 @@ void test_t1171(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1172(void)
 {
@@ -2161,6 +2334,7 @@ void test_t1172(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1173(void)
 {
     /* Matrix: 02_asterisk/* /, flags=DOTMATCH|CASEFOLD, base=. */
@@ -2172,6 +2346,7 @@ void test_t1173(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1174(void)
 {
@@ -2185,6 +2360,7 @@ void test_t1174(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1175(void)
 {
     /* Matrix: 02_asterisk/* /* */
@@ -2196,6 +2372,7 @@ void test_t1175(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1176(void)
 {
@@ -2209,6 +2386,7 @@ void test_t1176(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1177(void)
 {
     /* Matrix: 02_asterisk/* /*, base=/workspaces/dirglob/tests/fixtures/ */
@@ -2220,6 +2398,7 @@ void test_t1177(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1178(void)
 {
@@ -2233,6 +2412,7 @@ void test_t1178(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1179(void)
 {
     /* Matrix: 02_asterisk/* /*, base=. */
@@ -2244,6 +2424,7 @@ void test_t1179(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1180(void)
 {
@@ -2257,6 +2438,7 @@ void test_t1180(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1181(void)
 {
     /* Matrix: 02_asterisk/* /*, flags=DOTMATCH */
@@ -2268,6 +2450,7 @@ void test_t1181(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1182(void)
 {
@@ -2281,6 +2464,7 @@ void test_t1182(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1183(void)
 {
     /* Matrix: 02_asterisk/* /*, flags=DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -2292,6 +2476,7 @@ void test_t1183(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1184(void)
 {
@@ -2305,6 +2490,7 @@ void test_t1184(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1185(void)
 {
     /* Matrix: 02_asterisk/* /*, flags=DOTMATCH, base=. */
@@ -2316,6 +2502,7 @@ void test_t1185(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1186(void)
 {
@@ -2329,6 +2516,7 @@ void test_t1186(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1187(void)
 {
     /* Matrix: 02_asterisk/* /*, flags=PATHNAME */
@@ -2340,6 +2528,7 @@ void test_t1187(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1188(void)
 {
@@ -2353,6 +2542,7 @@ void test_t1188(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1189(void)
 {
     /* Matrix: 02_asterisk/* /*, flags=PATHNAME, base=/workspaces/dirglob/tests/fixtures/ */
@@ -2364,6 +2554,7 @@ void test_t1189(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1190(void)
 {
@@ -2377,6 +2568,7 @@ void test_t1190(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1191(void)
 {
     /* Matrix: 02_asterisk/* /*, flags=PATHNAME, base=. */
@@ -2388,6 +2580,7 @@ void test_t1191(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1192(void)
 {
@@ -2401,6 +2594,7 @@ void test_t1192(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1193(void)
 {
     /* Matrix: 02_asterisk/* /*, flags=CASEFOLD */
@@ -2412,6 +2606,7 @@ void test_t1193(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1194(void)
 {
@@ -2425,6 +2620,7 @@ void test_t1194(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1195(void)
 {
     /* Matrix: 02_asterisk/* /*, flags=CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -2436,6 +2632,7 @@ void test_t1195(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1196(void)
 {
@@ -2449,6 +2646,7 @@ void test_t1196(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1197(void)
 {
     /* Matrix: 02_asterisk/* /*, flags=CASEFOLD, base=. */
@@ -2460,6 +2658,7 @@ void test_t1197(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1198(void)
 {
@@ -2473,6 +2672,7 @@ void test_t1198(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1199(void)
 {
     /* Matrix: 02_asterisk/* /*, flags=PATHNAME|DOTMATCH */
@@ -2484,6 +2684,7 @@ void test_t1199(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1200(void)
 {
@@ -2497,6 +2698,7 @@ void test_t1200(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1201(void)
 {
     /* Matrix: 02_asterisk/* /*, flags=PATHNAME|DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -2508,6 +2710,7 @@ void test_t1201(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1202(void)
 {
@@ -2521,6 +2724,7 @@ void test_t1202(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1203(void)
 {
     /* Matrix: 02_asterisk/* /*, flags=PATHNAME|DOTMATCH, base=. */
@@ -2532,6 +2736,7 @@ void test_t1203(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1204(void)
 {
@@ -2545,6 +2750,7 @@ void test_t1204(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1205(void)
 {
     /* Matrix: 02_asterisk/* /*, flags=PATHNAME|CASEFOLD */
@@ -2556,6 +2762,7 @@ void test_t1205(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1206(void)
 {
@@ -2569,6 +2776,7 @@ void test_t1206(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1207(void)
 {
     /* Matrix: 02_asterisk/* /*, flags=PATHNAME|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -2580,6 +2788,7 @@ void test_t1207(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1208(void)
 {
@@ -2593,6 +2802,7 @@ void test_t1208(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1209(void)
 {
     /* Matrix: 02_asterisk/* /*, flags=PATHNAME|CASEFOLD, base=. */
@@ -2604,6 +2814,7 @@ void test_t1209(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1210(void)
 {
@@ -2617,6 +2828,7 @@ void test_t1210(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1211(void)
 {
     /* Matrix: 02_asterisk/* /*, flags=DOTMATCH|CASEFOLD */
@@ -2628,6 +2840,7 @@ void test_t1211(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1212(void)
 {
@@ -2641,6 +2854,7 @@ void test_t1212(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1213(void)
 {
     /* Matrix: 02_asterisk/* /*, flags=DOTMATCH|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -2652,6 +2866,7 @@ void test_t1213(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1214(void)
 {
@@ -2665,6 +2880,7 @@ void test_t1214(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1215(void)
 {
     /* Matrix: 02_asterisk/* /*, flags=DOTMATCH|CASEFOLD, base=. */
@@ -2676,6 +2892,7 @@ void test_t1215(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1216(void)
 {
@@ -2689,6 +2906,7 @@ void test_t1216(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1217(void)
 {
     /* Matrix: 02_asterisk/* /* / */
@@ -2700,6 +2918,7 @@ void test_t1217(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1218(void)
 {
@@ -2713,6 +2932,7 @@ void test_t1218(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1219(void)
 {
     /* Matrix: 02_asterisk/* /* /, base=/workspaces/dirglob/tests/fixtures/ */
@@ -2724,6 +2944,7 @@ void test_t1219(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1220(void)
 {
@@ -2737,6 +2958,7 @@ void test_t1220(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1221(void)
 {
     /* Matrix: 02_asterisk/* /* /, base=. */
@@ -2748,6 +2970,7 @@ void test_t1221(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1222(void)
 {
@@ -2761,6 +2984,7 @@ void test_t1222(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1223(void)
 {
     /* Matrix: 02_asterisk/* /* /, flags=DOTMATCH */
@@ -2772,6 +2996,7 @@ void test_t1223(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1224(void)
 {
@@ -2785,6 +3010,7 @@ void test_t1224(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1225(void)
 {
     /* Matrix: 02_asterisk/* /* /, flags=DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -2796,6 +3022,7 @@ void test_t1225(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1226(void)
 {
@@ -2809,6 +3036,7 @@ void test_t1226(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1227(void)
 {
     /* Matrix: 02_asterisk/* /* /, flags=DOTMATCH, base=. */
@@ -2820,6 +3048,7 @@ void test_t1227(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1228(void)
 {
@@ -2833,6 +3062,7 @@ void test_t1228(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1229(void)
 {
     /* Matrix: 02_asterisk/* /* /, flags=PATHNAME */
@@ -2844,6 +3074,7 @@ void test_t1229(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1230(void)
 {
@@ -2857,6 +3088,7 @@ void test_t1230(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1231(void)
 {
     /* Matrix: 02_asterisk/* /* /, flags=PATHNAME, base=/workspaces/dirglob/tests/fixtures/ */
@@ -2868,6 +3100,7 @@ void test_t1231(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1232(void)
 {
@@ -2881,6 +3114,7 @@ void test_t1232(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1233(void)
 {
     /* Matrix: 02_asterisk/* /* /, flags=PATHNAME, base=. */
@@ -2892,6 +3126,7 @@ void test_t1233(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1234(void)
 {
@@ -2905,6 +3140,7 @@ void test_t1234(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1235(void)
 {
     /* Matrix: 02_asterisk/* /* /, flags=CASEFOLD */
@@ -2916,6 +3152,7 @@ void test_t1235(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1236(void)
 {
@@ -2929,6 +3166,7 @@ void test_t1236(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1237(void)
 {
     /* Matrix: 02_asterisk/* /* /, flags=CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -2940,6 +3178,7 @@ void test_t1237(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1238(void)
 {
@@ -2953,6 +3192,7 @@ void test_t1238(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1239(void)
 {
     /* Matrix: 02_asterisk/* /* /, flags=CASEFOLD, base=. */
@@ -2964,6 +3204,7 @@ void test_t1239(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1240(void)
 {
@@ -2977,6 +3218,7 @@ void test_t1240(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1241(void)
 {
     /* Matrix: 02_asterisk/* /* /, flags=PATHNAME|DOTMATCH */
@@ -2988,6 +3230,7 @@ void test_t1241(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1242(void)
 {
@@ -3001,6 +3244,7 @@ void test_t1242(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1243(void)
 {
     /* Matrix: 02_asterisk/* /* /, flags=PATHNAME|DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -3012,6 +3256,7 @@ void test_t1243(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1244(void)
 {
@@ -3025,6 +3270,7 @@ void test_t1244(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1245(void)
 {
     /* Matrix: 02_asterisk/* /* /, flags=PATHNAME|DOTMATCH, base=. */
@@ -3036,6 +3282,7 @@ void test_t1245(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1246(void)
 {
@@ -3049,6 +3296,7 @@ void test_t1246(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1247(void)
 {
     /* Matrix: 02_asterisk/* /* /, flags=PATHNAME|CASEFOLD */
@@ -3060,6 +3308,7 @@ void test_t1247(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1248(void)
 {
@@ -3073,6 +3322,7 @@ void test_t1248(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1249(void)
 {
     /* Matrix: 02_asterisk/* /* /, flags=PATHNAME|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -3084,6 +3334,7 @@ void test_t1249(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1250(void)
 {
@@ -3097,6 +3348,7 @@ void test_t1250(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1251(void)
 {
     /* Matrix: 02_asterisk/* /* /, flags=PATHNAME|CASEFOLD, base=. */
@@ -3108,6 +3360,7 @@ void test_t1251(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1252(void)
 {
@@ -3121,6 +3374,7 @@ void test_t1252(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1253(void)
 {
     /* Matrix: 02_asterisk/* /* /, flags=DOTMATCH|CASEFOLD */
@@ -3132,6 +3386,7 @@ void test_t1253(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1254(void)
 {
@@ -3145,6 +3400,7 @@ void test_t1254(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1255(void)
 {
     /* Matrix: 02_asterisk/* /* /, flags=DOTMATCH|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -3156,6 +3412,7 @@ void test_t1255(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1256(void)
 {
@@ -3169,6 +3426,7 @@ void test_t1256(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1257(void)
 {
     /* Matrix: 02_asterisk/* /* /, flags=DOTMATCH|CASEFOLD, base=. */
@@ -3180,6 +3438,7 @@ void test_t1257(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1258(void)
 {
@@ -3193,6 +3452,7 @@ void test_t1258(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1259(void)
 {
     /* Matrix: 02_asterisk/*.txt */
@@ -3204,6 +3464,7 @@ void test_t1259(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1260(void)
 {
@@ -3217,6 +3478,7 @@ void test_t1260(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1261(void)
 {
     /* Matrix: 02_asterisk/*.txt, base=/workspaces/dirglob/tests/fixtures/ */
@@ -3228,6 +3490,7 @@ void test_t1261(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1262(void)
 {
@@ -3241,6 +3504,7 @@ void test_t1262(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1263(void)
 {
     /* Matrix: 02_asterisk/*.txt, base=. */
@@ -3252,6 +3516,7 @@ void test_t1263(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1264(void)
 {
@@ -3265,6 +3530,7 @@ void test_t1264(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1265(void)
 {
     /* Matrix: 02_asterisk/*.txt, flags=DOTMATCH */
@@ -3276,6 +3542,7 @@ void test_t1265(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1266(void)
 {
@@ -3289,6 +3556,7 @@ void test_t1266(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1267(void)
 {
     /* Matrix: 02_asterisk/*.txt, flags=DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -3300,6 +3568,7 @@ void test_t1267(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1268(void)
 {
@@ -3313,6 +3582,7 @@ void test_t1268(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1269(void)
 {
     /* Matrix: 02_asterisk/*.txt, flags=DOTMATCH, base=. */
@@ -3324,6 +3594,7 @@ void test_t1269(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1270(void)
 {
@@ -3337,6 +3608,7 @@ void test_t1270(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1271(void)
 {
     /* Matrix: 02_asterisk/*.txt, flags=PATHNAME */
@@ -3348,6 +3620,7 @@ void test_t1271(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1272(void)
 {
@@ -3361,6 +3634,7 @@ void test_t1272(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1273(void)
 {
     /* Matrix: 02_asterisk/*.txt, flags=PATHNAME, base=/workspaces/dirglob/tests/fixtures/ */
@@ -3372,6 +3646,7 @@ void test_t1273(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1274(void)
 {
@@ -3385,6 +3660,7 @@ void test_t1274(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1275(void)
 {
     /* Matrix: 02_asterisk/*.txt, flags=PATHNAME, base=. */
@@ -3396,6 +3672,7 @@ void test_t1275(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1276(void)
 {
@@ -3409,6 +3686,7 @@ void test_t1276(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1277(void)
 {
     /* Matrix: 02_asterisk/*.txt, flags=CASEFOLD */
@@ -3420,6 +3698,7 @@ void test_t1277(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1278(void)
 {
@@ -3433,6 +3712,7 @@ void test_t1278(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1279(void)
 {
     /* Matrix: 02_asterisk/*.txt, flags=CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -3444,6 +3724,7 @@ void test_t1279(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1280(void)
 {
@@ -3457,6 +3738,7 @@ void test_t1280(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1281(void)
 {
     /* Matrix: 02_asterisk/*.txt, flags=CASEFOLD, base=. */
@@ -3468,6 +3750,7 @@ void test_t1281(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1282(void)
 {
@@ -3481,6 +3764,7 @@ void test_t1282(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1283(void)
 {
     /* Matrix: 02_asterisk/*.txt, flags=PATHNAME|DOTMATCH */
@@ -3492,6 +3776,7 @@ void test_t1283(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1284(void)
 {
@@ -3505,6 +3790,7 @@ void test_t1284(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1285(void)
 {
     /* Matrix: 02_asterisk/*.txt, flags=PATHNAME|DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -3516,6 +3802,7 @@ void test_t1285(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1286(void)
 {
@@ -3529,6 +3816,7 @@ void test_t1286(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1287(void)
 {
     /* Matrix: 02_asterisk/*.txt, flags=PATHNAME|DOTMATCH, base=. */
@@ -3540,6 +3828,7 @@ void test_t1287(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1288(void)
 {
@@ -3553,6 +3842,7 @@ void test_t1288(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1289(void)
 {
     /* Matrix: 02_asterisk/*.txt, flags=PATHNAME|CASEFOLD */
@@ -3564,6 +3854,7 @@ void test_t1289(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1290(void)
 {
@@ -3577,6 +3868,7 @@ void test_t1290(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1291(void)
 {
     /* Matrix: 02_asterisk/*.txt, flags=PATHNAME|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -3588,6 +3880,7 @@ void test_t1291(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1292(void)
 {
@@ -3601,6 +3894,7 @@ void test_t1292(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1293(void)
 {
     /* Matrix: 02_asterisk/*.txt, flags=PATHNAME|CASEFOLD, base=. */
@@ -3612,6 +3906,7 @@ void test_t1293(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1294(void)
 {
@@ -3625,6 +3920,7 @@ void test_t1294(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1295(void)
 {
     /* Matrix: 02_asterisk/*.txt, flags=DOTMATCH|CASEFOLD */
@@ -3636,6 +3932,7 @@ void test_t1295(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1296(void)
 {
@@ -3649,6 +3946,7 @@ void test_t1296(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1297(void)
 {
     /* Matrix: 02_asterisk/*.txt, flags=DOTMATCH|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -3660,6 +3958,7 @@ void test_t1297(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1298(void)
 {
@@ -3673,6 +3972,7 @@ void test_t1298(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1299(void)
 {
     /* Matrix: 02_asterisk/*.txt, flags=DOTMATCH|CASEFOLD, base=. */
@@ -3684,6 +3984,7 @@ void test_t1299(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1300(void)
 {
@@ -3697,6 +3998,7 @@ void test_t1300(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1301(void)
 {
     /* Matrix: 02_asterisk/file.* */
@@ -3708,6 +4010,7 @@ void test_t1301(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1302(void)
 {
@@ -3721,6 +4024,7 @@ void test_t1302(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1303(void)
 {
     /* Matrix: 02_asterisk/file.*, base=/workspaces/dirglob/tests/fixtures/ */
@@ -3732,6 +4036,7 @@ void test_t1303(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1304(void)
 {
@@ -3745,6 +4050,7 @@ void test_t1304(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1305(void)
 {
     /* Matrix: 02_asterisk/file.*, base=. */
@@ -3756,6 +4062,7 @@ void test_t1305(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1306(void)
 {
@@ -3769,6 +4076,7 @@ void test_t1306(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1307(void)
 {
     /* Matrix: 02_asterisk/file.*, flags=DOTMATCH */
@@ -3780,6 +4088,7 @@ void test_t1307(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1308(void)
 {
@@ -3793,6 +4102,7 @@ void test_t1308(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1309(void)
 {
     /* Matrix: 02_asterisk/file.*, flags=DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -3804,6 +4114,7 @@ void test_t1309(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1310(void)
 {
@@ -3817,6 +4128,7 @@ void test_t1310(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1311(void)
 {
     /* Matrix: 02_asterisk/file.*, flags=DOTMATCH, base=. */
@@ -3828,6 +4140,7 @@ void test_t1311(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1312(void)
 {
@@ -3841,6 +4154,7 @@ void test_t1312(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1313(void)
 {
     /* Matrix: 02_asterisk/file.*, flags=PATHNAME */
@@ -3852,6 +4166,7 @@ void test_t1313(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1314(void)
 {
@@ -3865,6 +4180,7 @@ void test_t1314(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1315(void)
 {
     /* Matrix: 02_asterisk/file.*, flags=PATHNAME, base=/workspaces/dirglob/tests/fixtures/ */
@@ -3876,6 +4192,7 @@ void test_t1315(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1316(void)
 {
@@ -3889,6 +4206,7 @@ void test_t1316(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1317(void)
 {
     /* Matrix: 02_asterisk/file.*, flags=PATHNAME, base=. */
@@ -3900,6 +4218,7 @@ void test_t1317(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1318(void)
 {
@@ -3913,6 +4232,7 @@ void test_t1318(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1319(void)
 {
     /* Matrix: 02_asterisk/file.*, flags=CASEFOLD */
@@ -3924,6 +4244,7 @@ void test_t1319(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1320(void)
 {
@@ -3937,6 +4258,7 @@ void test_t1320(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1321(void)
 {
     /* Matrix: 02_asterisk/file.*, flags=CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -3948,6 +4270,7 @@ void test_t1321(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1322(void)
 {
@@ -3961,6 +4284,7 @@ void test_t1322(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1323(void)
 {
     /* Matrix: 02_asterisk/file.*, flags=CASEFOLD, base=. */
@@ -3972,6 +4296,7 @@ void test_t1323(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1324(void)
 {
@@ -3985,6 +4310,7 @@ void test_t1324(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1325(void)
 {
     /* Matrix: 02_asterisk/file.*, flags=PATHNAME|DOTMATCH */
@@ -3996,6 +4322,7 @@ void test_t1325(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1326(void)
 {
@@ -4009,6 +4336,7 @@ void test_t1326(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1327(void)
 {
     /* Matrix: 02_asterisk/file.*, flags=PATHNAME|DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -4020,6 +4348,7 @@ void test_t1327(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1328(void)
 {
@@ -4033,6 +4362,7 @@ void test_t1328(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1329(void)
 {
     /* Matrix: 02_asterisk/file.*, flags=PATHNAME|DOTMATCH, base=. */
@@ -4044,6 +4374,7 @@ void test_t1329(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1330(void)
 {
@@ -4057,6 +4388,7 @@ void test_t1330(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1331(void)
 {
     /* Matrix: 02_asterisk/file.*, flags=PATHNAME|CASEFOLD */
@@ -4068,6 +4400,7 @@ void test_t1331(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1332(void)
 {
@@ -4081,6 +4414,7 @@ void test_t1332(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1333(void)
 {
     /* Matrix: 02_asterisk/file.*, flags=PATHNAME|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -4092,6 +4426,7 @@ void test_t1333(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1334(void)
 {
@@ -4105,6 +4440,7 @@ void test_t1334(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1335(void)
 {
     /* Matrix: 02_asterisk/file.*, flags=PATHNAME|CASEFOLD, base=. */
@@ -4116,6 +4452,7 @@ void test_t1335(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1336(void)
 {
@@ -4129,6 +4466,7 @@ void test_t1336(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1337(void)
 {
     /* Matrix: 02_asterisk/file.*, flags=DOTMATCH|CASEFOLD */
@@ -4140,6 +4478,7 @@ void test_t1337(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1338(void)
 {
@@ -4153,6 +4492,7 @@ void test_t1338(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1339(void)
 {
     /* Matrix: 02_asterisk/file.*, flags=DOTMATCH|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -4164,6 +4504,7 @@ void test_t1339(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1340(void)
 {
@@ -4177,6 +4518,7 @@ void test_t1340(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1341(void)
 {
     /* Matrix: 02_asterisk/file.*, flags=DOTMATCH|CASEFOLD, base=. */
@@ -4188,6 +4530,7 @@ void test_t1341(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1342(void)
 {
@@ -4201,6 +4544,7 @@ void test_t1342(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1343(void)
 {
     /* Matrix: 03_questionmark/? */
@@ -4212,6 +4556,7 @@ void test_t1343(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1344(void)
 {
@@ -4225,6 +4570,7 @@ void test_t1344(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1345(void)
 {
     /* Matrix: 03_questionmark/?, base=. */
@@ -4236,6 +4582,7 @@ void test_t1345(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1346(void)
 {
@@ -4249,6 +4596,7 @@ void test_t1346(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1347(void)
 {
     /* Matrix: 03_questionmark/?, flags=DOTMATCH */
@@ -4260,6 +4608,7 @@ void test_t1347(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1348(void)
 {
@@ -4273,6 +4622,7 @@ void test_t1348(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1349(void)
 {
     /* Matrix: 03_questionmark/?, flags=DOTMATCH, base=. */
@@ -4284,6 +4634,7 @@ void test_t1349(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1350(void)
 {
@@ -4297,6 +4648,7 @@ void test_t1350(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1351(void)
 {
     /* Matrix: 03_questionmark/?, flags=PATHNAME */
@@ -4308,6 +4660,7 @@ void test_t1351(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1352(void)
 {
@@ -4321,6 +4674,7 @@ void test_t1352(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1353(void)
 {
     /* Matrix: 03_questionmark/?, flags=PATHNAME, base=. */
@@ -4332,6 +4686,7 @@ void test_t1353(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1354(void)
 {
@@ -4345,6 +4700,7 @@ void test_t1354(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1355(void)
 {
     /* Matrix: 03_questionmark/?, flags=CASEFOLD */
@@ -4356,6 +4712,7 @@ void test_t1355(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1356(void)
 {
@@ -4369,6 +4726,7 @@ void test_t1356(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1357(void)
 {
     /* Matrix: 03_questionmark/?, flags=CASEFOLD, base=. */
@@ -4380,6 +4738,7 @@ void test_t1357(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1358(void)
 {
@@ -4393,6 +4752,7 @@ void test_t1358(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1359(void)
 {
     /* Matrix: 03_questionmark/?, flags=PATHNAME|DOTMATCH */
@@ -4404,6 +4764,7 @@ void test_t1359(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1360(void)
 {
@@ -4417,6 +4778,7 @@ void test_t1360(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1361(void)
 {
     /* Matrix: 03_questionmark/?, flags=PATHNAME|DOTMATCH, base=. */
@@ -4428,6 +4790,7 @@ void test_t1361(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1362(void)
 {
@@ -4441,6 +4804,7 @@ void test_t1362(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1363(void)
 {
     /* Matrix: 03_questionmark/?, flags=PATHNAME|CASEFOLD */
@@ -4452,6 +4816,7 @@ void test_t1363(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1364(void)
 {
@@ -4465,6 +4830,7 @@ void test_t1364(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1365(void)
 {
     /* Matrix: 03_questionmark/?, flags=PATHNAME|CASEFOLD, base=. */
@@ -4476,6 +4842,7 @@ void test_t1365(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1366(void)
 {
@@ -4489,6 +4856,7 @@ void test_t1366(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1367(void)
 {
     /* Matrix: 03_questionmark/?, flags=DOTMATCH|CASEFOLD */
@@ -4500,6 +4868,7 @@ void test_t1367(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1368(void)
 {
@@ -4513,6 +4882,7 @@ void test_t1368(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1369(void)
 {
     /* Matrix: 03_questionmark/?, flags=DOTMATCH|CASEFOLD, base=. */
@@ -4524,6 +4894,7 @@ void test_t1369(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1370(void)
 {
@@ -4537,6 +4908,7 @@ void test_t1370(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1371(void)
 {
     /* Matrix: 03_questionmark/?? */
@@ -4548,6 +4920,7 @@ void test_t1371(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1372(void)
 {
@@ -4561,6 +4934,7 @@ void test_t1372(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1373(void)
 {
     /* Matrix: 03_questionmark/??, base=. */
@@ -4572,6 +4946,7 @@ void test_t1373(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1374(void)
 {
@@ -4585,6 +4960,7 @@ void test_t1374(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1375(void)
 {
     /* Matrix: 03_questionmark/??, flags=DOTMATCH */
@@ -4596,6 +4972,7 @@ void test_t1375(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1376(void)
 {
@@ -4609,6 +4986,7 @@ void test_t1376(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1377(void)
 {
     /* Matrix: 03_questionmark/??, flags=DOTMATCH, base=. */
@@ -4620,6 +4998,7 @@ void test_t1377(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1378(void)
 {
@@ -4633,6 +5012,7 @@ void test_t1378(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1379(void)
 {
     /* Matrix: 03_questionmark/??, flags=PATHNAME */
@@ -4644,6 +5024,7 @@ void test_t1379(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1380(void)
 {
@@ -4657,6 +5038,7 @@ void test_t1380(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1381(void)
 {
     /* Matrix: 03_questionmark/??, flags=PATHNAME, base=. */
@@ -4668,6 +5050,7 @@ void test_t1381(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1382(void)
 {
@@ -4681,6 +5064,7 @@ void test_t1382(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1383(void)
 {
     /* Matrix: 03_questionmark/??, flags=CASEFOLD */
@@ -4692,6 +5076,7 @@ void test_t1383(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1384(void)
 {
@@ -4705,6 +5090,7 @@ void test_t1384(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1385(void)
 {
     /* Matrix: 03_questionmark/??, flags=CASEFOLD, base=. */
@@ -4716,6 +5102,7 @@ void test_t1385(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1386(void)
 {
@@ -4729,6 +5116,7 @@ void test_t1386(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1387(void)
 {
     /* Matrix: 03_questionmark/??, flags=PATHNAME|DOTMATCH */
@@ -4740,6 +5128,7 @@ void test_t1387(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1388(void)
 {
@@ -4753,6 +5142,7 @@ void test_t1388(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1389(void)
 {
     /* Matrix: 03_questionmark/??, flags=PATHNAME|DOTMATCH, base=. */
@@ -4764,6 +5154,7 @@ void test_t1389(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1390(void)
 {
@@ -4777,6 +5168,7 @@ void test_t1390(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1391(void)
 {
     /* Matrix: 03_questionmark/??, flags=PATHNAME|CASEFOLD */
@@ -4788,6 +5180,7 @@ void test_t1391(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1392(void)
 {
@@ -4801,6 +5194,7 @@ void test_t1392(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1393(void)
 {
     /* Matrix: 03_questionmark/??, flags=PATHNAME|CASEFOLD, base=. */
@@ -4812,6 +5206,7 @@ void test_t1393(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1394(void)
 {
@@ -4825,6 +5220,7 @@ void test_t1394(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1395(void)
 {
     /* Matrix: 03_questionmark/??, flags=DOTMATCH|CASEFOLD */
@@ -4836,6 +5232,7 @@ void test_t1395(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1396(void)
 {
@@ -4849,6 +5246,7 @@ void test_t1396(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1397(void)
 {
     /* Matrix: 03_questionmark/??, flags=DOTMATCH|CASEFOLD, base=. */
@@ -4860,6 +5258,7 @@ void test_t1397(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1398(void)
 {
@@ -4873,6 +5272,7 @@ void test_t1398(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1399(void)
 {
     /* Matrix: 03_questionmark/??? */
@@ -4884,6 +5284,7 @@ void test_t1399(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1400(void)
 {
@@ -4897,6 +5298,7 @@ void test_t1400(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1401(void)
 {
     /* Matrix: 03_questionmark/???, base=. */
@@ -4908,6 +5310,7 @@ void test_t1401(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1402(void)
 {
@@ -4921,6 +5324,7 @@ void test_t1402(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1403(void)
 {
     /* Matrix: 03_questionmark/???, flags=DOTMATCH */
@@ -4932,6 +5336,7 @@ void test_t1403(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1404(void)
 {
@@ -4945,6 +5350,7 @@ void test_t1404(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1405(void)
 {
     /* Matrix: 03_questionmark/???, flags=DOTMATCH, base=. */
@@ -4956,6 +5362,7 @@ void test_t1405(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1406(void)
 {
@@ -4969,6 +5376,7 @@ void test_t1406(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1407(void)
 {
     /* Matrix: 03_questionmark/???, flags=PATHNAME */
@@ -4980,6 +5388,7 @@ void test_t1407(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1408(void)
 {
@@ -4993,6 +5402,7 @@ void test_t1408(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1409(void)
 {
     /* Matrix: 03_questionmark/???, flags=PATHNAME, base=. */
@@ -5004,6 +5414,7 @@ void test_t1409(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1410(void)
 {
@@ -5017,6 +5428,7 @@ void test_t1410(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1411(void)
 {
     /* Matrix: 03_questionmark/???, flags=CASEFOLD */
@@ -5028,6 +5440,7 @@ void test_t1411(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1412(void)
 {
@@ -5041,6 +5454,7 @@ void test_t1412(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1413(void)
 {
     /* Matrix: 03_questionmark/???, flags=CASEFOLD, base=. */
@@ -5052,6 +5466,7 @@ void test_t1413(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1414(void)
 {
@@ -5065,6 +5480,7 @@ void test_t1414(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1415(void)
 {
     /* Matrix: 03_questionmark/???, flags=PATHNAME|DOTMATCH */
@@ -5076,6 +5492,7 @@ void test_t1415(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1416(void)
 {
@@ -5089,6 +5506,7 @@ void test_t1416(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1417(void)
 {
     /* Matrix: 03_questionmark/???, flags=PATHNAME|DOTMATCH, base=. */
@@ -5100,6 +5518,7 @@ void test_t1417(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1418(void)
 {
@@ -5113,6 +5532,7 @@ void test_t1418(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1419(void)
 {
     /* Matrix: 03_questionmark/???, flags=PATHNAME|CASEFOLD */
@@ -5124,6 +5544,7 @@ void test_t1419(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1420(void)
 {
@@ -5137,6 +5558,7 @@ void test_t1420(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1421(void)
 {
     /* Matrix: 03_questionmark/???, flags=PATHNAME|CASEFOLD, base=. */
@@ -5148,6 +5570,7 @@ void test_t1421(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1422(void)
 {
@@ -5161,6 +5584,7 @@ void test_t1422(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1423(void)
 {
     /* Matrix: 03_questionmark/???, flags=DOTMATCH|CASEFOLD */
@@ -5172,6 +5596,7 @@ void test_t1423(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1424(void)
 {
@@ -5185,6 +5610,7 @@ void test_t1424(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1425(void)
 {
     /* Matrix: 03_questionmark/???, flags=DOTMATCH|CASEFOLD, base=. */
@@ -5196,6 +5622,7 @@ void test_t1425(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1426(void)
 {
@@ -5209,6 +5636,7 @@ void test_t1426(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1427(void)
 {
     /* Matrix: 03_questionmark/????.c */
@@ -5220,6 +5648,7 @@ void test_t1427(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1428(void)
 {
@@ -5233,6 +5662,7 @@ void test_t1428(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1429(void)
 {
     /* Matrix: 03_questionmark/????.c, base=/workspaces/dirglob/tests/fixtures/ */
@@ -5244,6 +5674,7 @@ void test_t1429(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1430(void)
 {
@@ -5257,6 +5688,7 @@ void test_t1430(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1431(void)
 {
     /* Matrix: 03_questionmark/????.c, base=. */
@@ -5268,6 +5700,7 @@ void test_t1431(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1432(void)
 {
@@ -5281,6 +5714,7 @@ void test_t1432(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1433(void)
 {
     /* Matrix: 03_questionmark/????.c, flags=DOTMATCH */
@@ -5292,6 +5726,7 @@ void test_t1433(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1434(void)
 {
@@ -5305,6 +5740,7 @@ void test_t1434(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1435(void)
 {
     /* Matrix: 03_questionmark/????.c, flags=DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -5316,6 +5752,7 @@ void test_t1435(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1436(void)
 {
@@ -5329,6 +5766,7 @@ void test_t1436(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1437(void)
 {
     /* Matrix: 03_questionmark/????.c, flags=DOTMATCH, base=. */
@@ -5340,6 +5778,7 @@ void test_t1437(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1438(void)
 {
@@ -5353,6 +5792,7 @@ void test_t1438(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1439(void)
 {
     /* Matrix: 03_questionmark/????.c, flags=PATHNAME */
@@ -5364,6 +5804,7 @@ void test_t1439(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1440(void)
 {
@@ -5377,6 +5818,7 @@ void test_t1440(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1441(void)
 {
     /* Matrix: 03_questionmark/????.c, flags=PATHNAME, base=/workspaces/dirglob/tests/fixtures/ */
@@ -5388,6 +5830,7 @@ void test_t1441(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1442(void)
 {
@@ -5401,6 +5844,7 @@ void test_t1442(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1443(void)
 {
     /* Matrix: 03_questionmark/????.c, flags=PATHNAME, base=. */
@@ -5412,6 +5856,7 @@ void test_t1443(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1444(void)
 {
@@ -5425,6 +5870,7 @@ void test_t1444(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1445(void)
 {
     /* Matrix: 03_questionmark/????.c, flags=CASEFOLD */
@@ -5436,6 +5882,7 @@ void test_t1445(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1446(void)
 {
@@ -5449,6 +5896,7 @@ void test_t1446(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1447(void)
 {
     /* Matrix: 03_questionmark/????.c, flags=CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -5460,6 +5908,7 @@ void test_t1447(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1448(void)
 {
@@ -5473,6 +5922,7 @@ void test_t1448(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1449(void)
 {
     /* Matrix: 03_questionmark/????.c, flags=CASEFOLD, base=. */
@@ -5484,6 +5934,7 @@ void test_t1449(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1450(void)
 {
@@ -5497,6 +5948,7 @@ void test_t1450(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1451(void)
 {
     /* Matrix: 03_questionmark/????.c, flags=PATHNAME|DOTMATCH */
@@ -5508,6 +5960,7 @@ void test_t1451(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1452(void)
 {
@@ -5521,6 +5974,7 @@ void test_t1452(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1453(void)
 {
     /* Matrix: 03_questionmark/????.c, flags=PATHNAME|DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -5532,6 +5986,7 @@ void test_t1453(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1454(void)
 {
@@ -5545,6 +6000,7 @@ void test_t1454(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1455(void)
 {
     /* Matrix: 03_questionmark/????.c, flags=PATHNAME|DOTMATCH, base=. */
@@ -5556,6 +6012,7 @@ void test_t1455(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1456(void)
 {
@@ -5569,6 +6026,7 @@ void test_t1456(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1457(void)
 {
     /* Matrix: 03_questionmark/????.c, flags=PATHNAME|CASEFOLD */
@@ -5580,6 +6038,7 @@ void test_t1457(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1458(void)
 {
@@ -5593,6 +6052,7 @@ void test_t1458(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1459(void)
 {
     /* Matrix: 03_questionmark/????.c, flags=PATHNAME|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -5604,6 +6064,7 @@ void test_t1459(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1460(void)
 {
@@ -5617,6 +6078,7 @@ void test_t1460(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1461(void)
 {
     /* Matrix: 03_questionmark/????.c, flags=PATHNAME|CASEFOLD, base=. */
@@ -5628,6 +6090,7 @@ void test_t1461(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1462(void)
 {
@@ -5641,6 +6104,7 @@ void test_t1462(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1463(void)
 {
     /* Matrix: 03_questionmark/????.c, flags=DOTMATCH|CASEFOLD */
@@ -5652,6 +6116,7 @@ void test_t1463(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1464(void)
 {
@@ -5665,6 +6130,7 @@ void test_t1464(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1465(void)
 {
     /* Matrix: 03_questionmark/????.c, flags=DOTMATCH|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -5676,6 +6142,7 @@ void test_t1465(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1466(void)
 {
@@ -5689,6 +6156,7 @@ void test_t1466(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1467(void)
 {
     /* Matrix: 03_questionmark/????.c, flags=DOTMATCH|CASEFOLD, base=. */
@@ -5700,6 +6168,7 @@ void test_t1467(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1468(void)
 {
@@ -5713,6 +6182,7 @@ void test_t1468(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1469(void)
 {
     /* Matrix: 03_questionmark/file.? */
@@ -5724,6 +6194,7 @@ void test_t1469(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1470(void)
 {
@@ -5737,6 +6208,7 @@ void test_t1470(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1471(void)
 {
     /* Matrix: 03_questionmark/file.?, base=. */
@@ -5748,6 +6220,7 @@ void test_t1471(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1472(void)
 {
@@ -5761,6 +6234,7 @@ void test_t1472(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1473(void)
 {
     /* Matrix: 03_questionmark/file.?, flags=DOTMATCH */
@@ -5772,6 +6246,7 @@ void test_t1473(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1474(void)
 {
@@ -5785,6 +6260,7 @@ void test_t1474(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1475(void)
 {
     /* Matrix: 03_questionmark/file.?, flags=DOTMATCH, base=. */
@@ -5796,6 +6272,7 @@ void test_t1475(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1476(void)
 {
@@ -5809,6 +6286,7 @@ void test_t1476(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1477(void)
 {
     /* Matrix: 03_questionmark/file.?, flags=PATHNAME */
@@ -5820,6 +6298,7 @@ void test_t1477(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1478(void)
 {
@@ -5833,6 +6312,7 @@ void test_t1478(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1479(void)
 {
     /* Matrix: 03_questionmark/file.?, flags=PATHNAME, base=. */
@@ -5844,6 +6324,7 @@ void test_t1479(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1480(void)
 {
@@ -5857,6 +6338,7 @@ void test_t1480(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1481(void)
 {
     /* Matrix: 03_questionmark/file.?, flags=CASEFOLD */
@@ -5868,6 +6350,7 @@ void test_t1481(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1482(void)
 {
@@ -5881,6 +6364,7 @@ void test_t1482(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1483(void)
 {
     /* Matrix: 03_questionmark/file.?, flags=CASEFOLD, base=. */
@@ -5892,6 +6376,7 @@ void test_t1483(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1484(void)
 {
@@ -5905,6 +6390,7 @@ void test_t1484(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1485(void)
 {
     /* Matrix: 03_questionmark/file.?, flags=PATHNAME|DOTMATCH */
@@ -5916,6 +6402,7 @@ void test_t1485(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1486(void)
 {
@@ -5929,6 +6416,7 @@ void test_t1486(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1487(void)
 {
     /* Matrix: 03_questionmark/file.?, flags=PATHNAME|DOTMATCH, base=. */
@@ -5940,6 +6428,7 @@ void test_t1487(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1488(void)
 {
@@ -5953,6 +6442,7 @@ void test_t1488(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1489(void)
 {
     /* Matrix: 03_questionmark/file.?, flags=PATHNAME|CASEFOLD */
@@ -5964,6 +6454,7 @@ void test_t1489(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1490(void)
 {
@@ -5977,6 +6468,7 @@ void test_t1490(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1491(void)
 {
     /* Matrix: 03_questionmark/file.?, flags=PATHNAME|CASEFOLD, base=. */
@@ -5988,6 +6480,7 @@ void test_t1491(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1492(void)
 {
@@ -6001,6 +6494,7 @@ void test_t1492(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1493(void)
 {
     /* Matrix: 03_questionmark/file.?, flags=DOTMATCH|CASEFOLD */
@@ -6012,6 +6506,7 @@ void test_t1493(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1494(void)
 {
@@ -6025,6 +6520,7 @@ void test_t1494(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1495(void)
 {
     /* Matrix: 03_questionmark/file.?, flags=DOTMATCH|CASEFOLD, base=. */
@@ -6036,6 +6532,7 @@ void test_t1495(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1496(void)
 {
@@ -6049,6 +6546,7 @@ void test_t1496(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1497(void)
 {
     /* Matrix: 03_questionmark/?/? */
@@ -6060,6 +6558,7 @@ void test_t1497(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1498(void)
 {
@@ -6073,6 +6572,7 @@ void test_t1498(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1499(void)
 {
     /* Matrix: 03_questionmark/?/?, base=. */
@@ -6084,6 +6584,7 @@ void test_t1499(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1500(void)
 {
@@ -6097,6 +6598,7 @@ void test_t1500(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1501(void)
 {
     /* Matrix: 03_questionmark/?/?, flags=DOTMATCH */
@@ -6108,6 +6610,7 @@ void test_t1501(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1502(void)
 {
@@ -6121,6 +6624,7 @@ void test_t1502(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1503(void)
 {
     /* Matrix: 03_questionmark/?/?, flags=DOTMATCH, base=. */
@@ -6132,6 +6636,7 @@ void test_t1503(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1504(void)
 {
@@ -6145,6 +6650,7 @@ void test_t1504(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1505(void)
 {
     /* Matrix: 03_questionmark/?/?, flags=PATHNAME */
@@ -6156,6 +6662,7 @@ void test_t1505(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1506(void)
 {
@@ -6169,6 +6676,7 @@ void test_t1506(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1507(void)
 {
     /* Matrix: 03_questionmark/?/?, flags=PATHNAME, base=. */
@@ -6180,6 +6688,7 @@ void test_t1507(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1508(void)
 {
@@ -6193,6 +6702,7 @@ void test_t1508(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1509(void)
 {
     /* Matrix: 03_questionmark/?/?, flags=CASEFOLD */
@@ -6204,6 +6714,7 @@ void test_t1509(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1510(void)
 {
@@ -6217,6 +6728,7 @@ void test_t1510(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1511(void)
 {
     /* Matrix: 03_questionmark/?/?, flags=CASEFOLD, base=. */
@@ -6228,6 +6740,7 @@ void test_t1511(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1512(void)
 {
@@ -6241,6 +6754,7 @@ void test_t1512(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1513(void)
 {
     /* Matrix: 03_questionmark/?/?, flags=PATHNAME|DOTMATCH */
@@ -6252,6 +6766,7 @@ void test_t1513(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1514(void)
 {
@@ -6265,6 +6780,7 @@ void test_t1514(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1515(void)
 {
     /* Matrix: 03_questionmark/?/?, flags=PATHNAME|DOTMATCH, base=. */
@@ -6276,6 +6792,7 @@ void test_t1515(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1516(void)
 {
@@ -6289,6 +6806,7 @@ void test_t1516(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1517(void)
 {
     /* Matrix: 03_questionmark/?/?, flags=PATHNAME|CASEFOLD */
@@ -6300,6 +6818,7 @@ void test_t1517(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1518(void)
 {
@@ -6313,6 +6832,7 @@ void test_t1518(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1519(void)
 {
     /* Matrix: 03_questionmark/?/?, flags=PATHNAME|CASEFOLD, base=. */
@@ -6324,6 +6844,7 @@ void test_t1519(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1520(void)
 {
@@ -6337,6 +6858,7 @@ void test_t1520(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1521(void)
 {
     /* Matrix: 03_questionmark/?/?, flags=DOTMATCH|CASEFOLD */
@@ -6348,6 +6870,7 @@ void test_t1521(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1522(void)
 {
@@ -6361,6 +6884,7 @@ void test_t1522(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1523(void)
 {
     /* Matrix: 03_questionmark/?/?, flags=DOTMATCH|CASEFOLD, base=. */
@@ -6372,6 +6896,7 @@ void test_t1523(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1524(void)
 {
@@ -6385,6 +6910,7 @@ void test_t1524(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1525(void)
 {
     /* Matrix: 03_questionmark/?/?/ */
@@ -6396,6 +6922,7 @@ void test_t1525(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1526(void)
 {
@@ -6409,6 +6936,7 @@ void test_t1526(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1527(void)
 {
     /* Matrix: 03_questionmark/?/?/, base=. */
@@ -6420,6 +6948,7 @@ void test_t1527(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1528(void)
 {
@@ -6433,6 +6962,7 @@ void test_t1528(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1529(void)
 {
     /* Matrix: 03_questionmark/?/?/, flags=DOTMATCH */
@@ -6444,6 +6974,7 @@ void test_t1529(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1530(void)
 {
@@ -6457,6 +6988,7 @@ void test_t1530(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1531(void)
 {
     /* Matrix: 03_questionmark/?/?/, flags=DOTMATCH, base=. */
@@ -6468,6 +7000,7 @@ void test_t1531(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1532(void)
 {
@@ -6481,6 +7014,7 @@ void test_t1532(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1533(void)
 {
     /* Matrix: 03_questionmark/?/?/, flags=PATHNAME */
@@ -6492,6 +7026,7 @@ void test_t1533(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1534(void)
 {
@@ -6505,6 +7040,7 @@ void test_t1534(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1535(void)
 {
     /* Matrix: 03_questionmark/?/?/, flags=PATHNAME, base=. */
@@ -6516,6 +7052,7 @@ void test_t1535(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1536(void)
 {
@@ -6529,6 +7066,7 @@ void test_t1536(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1537(void)
 {
     /* Matrix: 03_questionmark/?/?/, flags=CASEFOLD */
@@ -6540,6 +7078,7 @@ void test_t1537(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1538(void)
 {
@@ -6553,6 +7092,7 @@ void test_t1538(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1539(void)
 {
     /* Matrix: 03_questionmark/?/?/, flags=CASEFOLD, base=. */
@@ -6564,6 +7104,7 @@ void test_t1539(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1540(void)
 {
@@ -6577,6 +7118,7 @@ void test_t1540(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1541(void)
 {
     /* Matrix: 03_questionmark/?/?/, flags=PATHNAME|DOTMATCH */
@@ -6588,6 +7130,7 @@ void test_t1541(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1542(void)
 {
@@ -6601,6 +7144,7 @@ void test_t1542(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1543(void)
 {
     /* Matrix: 03_questionmark/?/?/, flags=PATHNAME|DOTMATCH, base=. */
@@ -6612,6 +7156,7 @@ void test_t1543(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1544(void)
 {
@@ -6625,6 +7170,7 @@ void test_t1544(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1545(void)
 {
     /* Matrix: 03_questionmark/?/?/, flags=PATHNAME|CASEFOLD */
@@ -6636,6 +7182,7 @@ void test_t1545(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1546(void)
 {
@@ -6649,6 +7196,7 @@ void test_t1546(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1547(void)
 {
     /* Matrix: 03_questionmark/?/?/, flags=PATHNAME|CASEFOLD, base=. */
@@ -6660,6 +7208,7 @@ void test_t1547(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1548(void)
 {
@@ -6673,6 +7222,7 @@ void test_t1548(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1549(void)
 {
     /* Matrix: 03_questionmark/?/?/, flags=DOTMATCH|CASEFOLD */
@@ -6684,6 +7234,7 @@ void test_t1549(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1550(void)
 {
@@ -6697,6 +7248,7 @@ void test_t1550(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1551(void)
 {
     /* Matrix: 03_questionmark/?/?/, flags=DOTMATCH|CASEFOLD, base=. */
@@ -6708,6 +7260,7 @@ void test_t1551(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1552(void)
 {
@@ -6721,6 +7274,7 @@ void test_t1552(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1553(void)
 {
     /* Matrix: 03_questionmark/??/?? */
@@ -6732,6 +7286,7 @@ void test_t1553(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1554(void)
 {
@@ -6745,6 +7300,7 @@ void test_t1554(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1555(void)
 {
     /* Matrix: 03_questionmark/??/??, base=. */
@@ -6756,6 +7312,7 @@ void test_t1555(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1556(void)
 {
@@ -6769,6 +7326,7 @@ void test_t1556(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1557(void)
 {
     /* Matrix: 03_questionmark/??/??, flags=DOTMATCH */
@@ -6780,6 +7338,7 @@ void test_t1557(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1558(void)
 {
@@ -6793,6 +7352,7 @@ void test_t1558(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1559(void)
 {
     /* Matrix: 03_questionmark/??/??, flags=DOTMATCH, base=. */
@@ -6804,6 +7364,7 @@ void test_t1559(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1560(void)
 {
@@ -6817,6 +7378,7 @@ void test_t1560(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1561(void)
 {
     /* Matrix: 03_questionmark/??/??, flags=PATHNAME */
@@ -6828,6 +7390,7 @@ void test_t1561(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1562(void)
 {
@@ -6841,6 +7404,7 @@ void test_t1562(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1563(void)
 {
     /* Matrix: 03_questionmark/??/??, flags=PATHNAME, base=. */
@@ -6852,6 +7416,7 @@ void test_t1563(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1564(void)
 {
@@ -6865,6 +7430,7 @@ void test_t1564(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1565(void)
 {
     /* Matrix: 03_questionmark/??/??, flags=CASEFOLD */
@@ -6876,6 +7442,7 @@ void test_t1565(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1566(void)
 {
@@ -6889,6 +7456,7 @@ void test_t1566(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1567(void)
 {
     /* Matrix: 03_questionmark/??/??, flags=CASEFOLD, base=. */
@@ -6900,6 +7468,7 @@ void test_t1567(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1568(void)
 {
@@ -6913,6 +7482,7 @@ void test_t1568(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1569(void)
 {
     /* Matrix: 03_questionmark/??/??, flags=PATHNAME|DOTMATCH */
@@ -6924,6 +7494,7 @@ void test_t1569(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1570(void)
 {
@@ -6937,6 +7508,7 @@ void test_t1570(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1571(void)
 {
     /* Matrix: 03_questionmark/??/??, flags=PATHNAME|DOTMATCH, base=. */
@@ -6948,6 +7520,7 @@ void test_t1571(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1572(void)
 {
@@ -6961,6 +7534,7 @@ void test_t1572(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1573(void)
 {
     /* Matrix: 03_questionmark/??/??, flags=PATHNAME|CASEFOLD */
@@ -6972,6 +7546,7 @@ void test_t1573(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1574(void)
 {
@@ -6985,6 +7560,7 @@ void test_t1574(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1575(void)
 {
     /* Matrix: 03_questionmark/??/??, flags=PATHNAME|CASEFOLD, base=. */
@@ -6996,6 +7572,7 @@ void test_t1575(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1576(void)
 {
@@ -7009,6 +7586,7 @@ void test_t1576(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1577(void)
 {
     /* Matrix: 03_questionmark/??/??, flags=DOTMATCH|CASEFOLD */
@@ -7020,6 +7598,7 @@ void test_t1577(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1578(void)
 {
@@ -7033,6 +7612,7 @@ void test_t1578(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1579(void)
 {
     /* Matrix: 03_questionmark/??/??, flags=DOTMATCH|CASEFOLD, base=. */
@@ -7044,6 +7624,7 @@ void test_t1579(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1580(void)
 {
@@ -7057,6 +7638,7 @@ void test_t1580(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1581(void)
 {
     /* Matrix: 03_questionmark/??/??/ */
@@ -7068,6 +7650,7 @@ void test_t1581(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1582(void)
 {
@@ -7081,6 +7664,7 @@ void test_t1582(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1583(void)
 {
     /* Matrix: 03_questionmark/??/??/, base=. */
@@ -7092,6 +7676,7 @@ void test_t1583(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1584(void)
 {
@@ -7105,6 +7690,7 @@ void test_t1584(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1585(void)
 {
     /* Matrix: 03_questionmark/??/??/, flags=DOTMATCH */
@@ -7116,6 +7702,7 @@ void test_t1585(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1586(void)
 {
@@ -7129,6 +7716,7 @@ void test_t1586(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1587(void)
 {
     /* Matrix: 03_questionmark/??/??/, flags=DOTMATCH, base=. */
@@ -7140,6 +7728,7 @@ void test_t1587(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1588(void)
 {
@@ -7153,6 +7742,7 @@ void test_t1588(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1589(void)
 {
     /* Matrix: 03_questionmark/??/??/, flags=PATHNAME */
@@ -7164,6 +7754,7 @@ void test_t1589(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1590(void)
 {
@@ -7177,6 +7768,7 @@ void test_t1590(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1591(void)
 {
     /* Matrix: 03_questionmark/??/??/, flags=PATHNAME, base=. */
@@ -7188,6 +7780,7 @@ void test_t1591(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1592(void)
 {
@@ -7201,6 +7794,7 @@ void test_t1592(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1593(void)
 {
     /* Matrix: 03_questionmark/??/??/, flags=CASEFOLD */
@@ -7212,6 +7806,7 @@ void test_t1593(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1594(void)
 {
@@ -7225,6 +7820,7 @@ void test_t1594(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1595(void)
 {
     /* Matrix: 03_questionmark/??/??/, flags=CASEFOLD, base=. */
@@ -7236,6 +7832,7 @@ void test_t1595(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1596(void)
 {
@@ -7249,6 +7846,7 @@ void test_t1596(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1597(void)
 {
     /* Matrix: 03_questionmark/??/??/, flags=PATHNAME|DOTMATCH */
@@ -7260,6 +7858,7 @@ void test_t1597(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1598(void)
 {
@@ -7273,6 +7872,7 @@ void test_t1598(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1599(void)
 {
     /* Matrix: 03_questionmark/??/??/, flags=PATHNAME|DOTMATCH, base=. */
@@ -7284,6 +7884,7 @@ void test_t1599(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1600(void)
 {
@@ -7297,6 +7898,7 @@ void test_t1600(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1601(void)
 {
     /* Matrix: 03_questionmark/??/??/, flags=PATHNAME|CASEFOLD */
@@ -7308,6 +7910,7 @@ void test_t1601(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1602(void)
 {
@@ -7321,6 +7924,7 @@ void test_t1602(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1603(void)
 {
     /* Matrix: 03_questionmark/??/??/, flags=PATHNAME|CASEFOLD, base=. */
@@ -7332,6 +7936,7 @@ void test_t1603(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1604(void)
 {
@@ -7345,6 +7950,7 @@ void test_t1604(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1605(void)
 {
     /* Matrix: 03_questionmark/??/??/, flags=DOTMATCH|CASEFOLD */
@@ -7356,6 +7962,7 @@ void test_t1605(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1606(void)
 {
@@ -7369,6 +7976,7 @@ void test_t1606(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1607(void)
 {
     /* Matrix: 03_questionmark/??/??/, flags=DOTMATCH|CASEFOLD, base=. */
@@ -7380,6 +7988,7 @@ void test_t1607(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1608(void)
 {
@@ -7393,6 +8002,7 @@ void test_t1608(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1609(void)
 {
     /* Matrix: 04_characterclass/[abc] */
@@ -7404,6 +8014,7 @@ void test_t1609(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1610(void)
 {
@@ -7417,6 +8028,7 @@ void test_t1610(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1611(void)
 {
     /* Matrix: 04_characterclass/[abc], base=. */
@@ -7428,6 +8040,7 @@ void test_t1611(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1612(void)
 {
@@ -7441,6 +8054,7 @@ void test_t1612(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1613(void)
 {
     /* Matrix: 04_characterclass/[abc], flags=DOTMATCH, unsorted */
@@ -7452,6 +8066,7 @@ void test_t1613(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1614(void)
 {
@@ -7465,6 +8080,7 @@ void test_t1614(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1615(void)
 {
     /* Matrix: 04_characterclass/[abc], flags=PATHNAME */
@@ -7476,6 +8092,7 @@ void test_t1615(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1616(void)
 {
@@ -7489,6 +8106,7 @@ void test_t1616(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1617(void)
 {
     /* Matrix: 04_characterclass/[abc], flags=PATHNAME, base=. */
@@ -7500,6 +8118,7 @@ void test_t1617(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1618(void)
 {
@@ -7513,6 +8132,7 @@ void test_t1618(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1619(void)
 {
     /* Matrix: 04_characterclass/[abc], flags=CASEFOLD, unsorted */
@@ -7524,6 +8144,7 @@ void test_t1619(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1620(void)
 {
@@ -7537,6 +8158,7 @@ void test_t1620(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1621(void)
 {
     /* Matrix: 04_characterclass/[abc], flags=PATHNAME|DOTMATCH */
@@ -7548,6 +8170,7 @@ void test_t1621(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1622(void)
 {
@@ -7561,6 +8184,7 @@ void test_t1622(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1623(void)
 {
     /* Matrix: 04_characterclass/[abc], flags=PATHNAME|DOTMATCH, base=. */
@@ -7572,6 +8196,7 @@ void test_t1623(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1624(void)
 {
@@ -7585,6 +8210,7 @@ void test_t1624(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1625(void)
 {
     /* Matrix: 04_characterclass/[abc], flags=PATHNAME|CASEFOLD, unsorted */
@@ -7596,6 +8222,7 @@ void test_t1625(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1626(void)
 {
@@ -7609,6 +8236,7 @@ void test_t1626(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1627(void)
 {
     /* Matrix: 04_characterclass/[abc], flags=DOTMATCH|CASEFOLD */
@@ -7620,6 +8248,7 @@ void test_t1627(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1628(void)
 {
@@ -7633,6 +8262,7 @@ void test_t1628(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1629(void)
 {
     /* Matrix: 04_characterclass/[abc], flags=DOTMATCH|CASEFOLD, base=. */
@@ -7644,6 +8274,7 @@ void test_t1629(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1630(void)
 {
@@ -7657,6 +8288,7 @@ void test_t1630(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1631(void)
 {
     /* Matrix: 04_characterclass/[x-z], unsorted */
@@ -7668,6 +8300,7 @@ void test_t1631(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1632(void)
 {
@@ -7681,6 +8314,7 @@ void test_t1632(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1633(void)
 {
     /* Matrix: 04_characterclass/[x-z], flags=DOTMATCH */
@@ -7692,6 +8326,7 @@ void test_t1633(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1634(void)
 {
@@ -7705,6 +8340,7 @@ void test_t1634(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1635(void)
 {
     /* Matrix: 04_characterclass/[x-z], flags=DOTMATCH, base=. */
@@ -7716,6 +8352,7 @@ void test_t1635(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1636(void)
 {
@@ -7729,6 +8366,7 @@ void test_t1636(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1637(void)
 {
     /* Matrix: 04_characterclass/[x-z], flags=PATHNAME, unsorted */
@@ -7740,6 +8378,7 @@ void test_t1637(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1638(void)
 {
@@ -7753,6 +8392,7 @@ void test_t1638(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1639(void)
 {
     /* Matrix: 04_characterclass/[x-z], flags=CASEFOLD */
@@ -7764,6 +8404,7 @@ void test_t1639(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1640(void)
 {
@@ -7777,6 +8418,7 @@ void test_t1640(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1641(void)
 {
     /* Matrix: 04_characterclass/[x-z], flags=CASEFOLD, base=. */
@@ -7788,6 +8430,7 @@ void test_t1641(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1642(void)
 {
@@ -7801,6 +8444,7 @@ void test_t1642(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1643(void)
 {
     /* Matrix: 04_characterclass/[x-z], flags=PATHNAME|DOTMATCH, unsorted */
@@ -7812,6 +8456,7 @@ void test_t1643(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1644(void)
 {
@@ -7825,6 +8470,7 @@ void test_t1644(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1645(void)
 {
     /* Matrix: 04_characterclass/[x-z], flags=PATHNAME|CASEFOLD */
@@ -7836,6 +8482,7 @@ void test_t1645(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1646(void)
 {
@@ -7849,6 +8496,7 @@ void test_t1646(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1647(void)
 {
     /* Matrix: 04_characterclass/[x-z], flags=PATHNAME|CASEFOLD, base=. */
@@ -7860,6 +8508,7 @@ void test_t1647(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1648(void)
 {
@@ -7873,6 +8522,7 @@ void test_t1648(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1649(void)
 {
     /* Matrix: 04_characterclass/[x-z], flags=DOTMATCH|CASEFOLD, unsorted */
@@ -7884,6 +8534,7 @@ void test_t1649(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1650(void)
 {
@@ -7897,6 +8548,7 @@ void test_t1650(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1651(void)
 {
     /* Matrix: 04_characterclass/file[0-9].txt */
@@ -7908,6 +8560,7 @@ void test_t1651(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1652(void)
 {
@@ -7921,6 +8574,7 @@ void test_t1652(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1653(void)
 {
     /* Matrix: 04_characterclass/file[0-9].txt, base=/workspaces/dirglob/tests/fixtures/ */
@@ -7932,6 +8586,7 @@ void test_t1653(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1654(void)
 {
@@ -7945,6 +8600,7 @@ void test_t1654(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1655(void)
 {
     /* Matrix: 04_characterclass/file[0-9].txt, flags=DOTMATCH */
@@ -7956,6 +8612,7 @@ void test_t1655(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1656(void)
 {
@@ -7969,6 +8626,7 @@ void test_t1656(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1657(void)
 {
     /* Matrix: 04_characterclass/file[0-9].txt, flags=DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -7980,6 +8638,7 @@ void test_t1657(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1658(void)
 {
@@ -7993,6 +8652,7 @@ void test_t1658(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1659(void)
 {
     /* Matrix: 04_characterclass/file[0-9].txt, flags=PATHNAME */
@@ -8004,6 +8664,7 @@ void test_t1659(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1660(void)
 {
@@ -8017,6 +8678,7 @@ void test_t1660(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1661(void)
 {
     /* Matrix: 04_characterclass/file[0-9].txt, flags=PATHNAME, base=/workspaces/dirglob/tests/fixtures/ */
@@ -8028,6 +8690,7 @@ void test_t1661(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1662(void)
 {
@@ -8041,6 +8704,7 @@ void test_t1662(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1663(void)
 {
     /* Matrix: 04_characterclass/file[0-9].txt, flags=CASEFOLD */
@@ -8052,6 +8716,7 @@ void test_t1663(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1664(void)
 {
@@ -8065,6 +8730,7 @@ void test_t1664(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1665(void)
 {
     /* Matrix: 04_characterclass/file[0-9].txt, flags=CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -8076,6 +8742,7 @@ void test_t1665(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1666(void)
 {
@@ -8089,6 +8756,7 @@ void test_t1666(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1667(void)
 {
     /* Matrix: 04_characterclass/file[0-9].txt, flags=PATHNAME|DOTMATCH */
@@ -8100,6 +8768,7 @@ void test_t1667(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1668(void)
 {
@@ -8113,6 +8782,7 @@ void test_t1668(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1669(void)
 {
     /* Matrix: 04_characterclass/file[0-9].txt, flags=PATHNAME|DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -8124,6 +8794,7 @@ void test_t1669(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1670(void)
 {
@@ -8137,6 +8808,7 @@ void test_t1670(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1671(void)
 {
     /* Matrix: 04_characterclass/file[0-9].txt, flags=PATHNAME|CASEFOLD */
@@ -8148,6 +8820,7 @@ void test_t1671(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1672(void)
 {
@@ -8161,6 +8834,7 @@ void test_t1672(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1673(void)
 {
     /* Matrix: 04_characterclass/file[0-9].txt, flags=PATHNAME|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -8172,6 +8846,7 @@ void test_t1673(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1674(void)
 {
@@ -8185,6 +8860,7 @@ void test_t1674(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1675(void)
 {
     /* Matrix: 04_characterclass/file[0-9].txt, flags=DOTMATCH|CASEFOLD */
@@ -8196,6 +8872,7 @@ void test_t1675(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1676(void)
 {
@@ -8209,6 +8886,7 @@ void test_t1676(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1677(void)
 {
     /* Matrix: 04_characterclass/file[0-9].txt, flags=DOTMATCH|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -8220,6 +8898,7 @@ void test_t1677(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1678(void)
 {
@@ -8233,6 +8912,7 @@ void test_t1678(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1679(void)
 {
     /* Matrix: 04_characterclass/[^a-c] */
@@ -8244,6 +8924,7 @@ void test_t1679(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1680(void)
 {
@@ -8257,6 +8938,7 @@ void test_t1680(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1681(void)
 {
     /* Matrix: 04_characterclass/[^a-c], base=. */
@@ -8268,6 +8950,7 @@ void test_t1681(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1682(void)
 {
@@ -8281,6 +8964,7 @@ void test_t1682(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1683(void)
 {
     /* Matrix: 04_characterclass/[^a-c], flags=DOTMATCH, unsorted */
@@ -8292,6 +8976,7 @@ void test_t1683(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1684(void)
 {
@@ -8305,6 +8990,7 @@ void test_t1684(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1685(void)
 {
     /* Matrix: 04_characterclass/[^a-c], flags=PATHNAME */
@@ -8316,6 +9002,7 @@ void test_t1685(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1686(void)
 {
@@ -8329,6 +9016,7 @@ void test_t1686(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1687(void)
 {
     /* Matrix: 04_characterclass/[^a-c], flags=PATHNAME, base=. */
@@ -8340,6 +9028,7 @@ void test_t1687(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1688(void)
 {
@@ -8353,6 +9042,7 @@ void test_t1688(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1689(void)
 {
     /* Matrix: 04_characterclass/[^a-c], flags=CASEFOLD, unsorted */
@@ -8364,6 +9054,7 @@ void test_t1689(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1690(void)
 {
@@ -8377,6 +9068,7 @@ void test_t1690(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1691(void)
 {
     /* Matrix: 04_characterclass/[^a-c], flags=PATHNAME|DOTMATCH */
@@ -8388,6 +9080,7 @@ void test_t1691(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1692(void)
 {
@@ -8401,6 +9094,7 @@ void test_t1692(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1693(void)
 {
     /* Matrix: 04_characterclass/[^a-c], flags=PATHNAME|DOTMATCH, base=. */
@@ -8412,6 +9106,7 @@ void test_t1693(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1694(void)
 {
@@ -8425,6 +9120,7 @@ void test_t1694(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1695(void)
 {
     /* Matrix: 04_characterclass/[^a-c], flags=PATHNAME|CASEFOLD, unsorted */
@@ -8436,6 +9132,7 @@ void test_t1695(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1696(void)
 {
@@ -8449,6 +9146,7 @@ void test_t1696(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1697(void)
 {
     /* Matrix: 04_characterclass/[^a-c], flags=DOTMATCH|CASEFOLD */
@@ -8460,6 +9158,7 @@ void test_t1697(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1698(void)
 {
@@ -8473,6 +9172,7 @@ void test_t1698(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1699(void)
 {
     /* Matrix: 04_characterclass/[^a-c], flags=DOTMATCH|CASEFOLD, base=. */
@@ -8484,6 +9184,7 @@ void test_t1699(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1700(void)
 {
@@ -8497,6 +9198,7 @@ void test_t1700(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1701(void)
 {
     /* Matrix: 04_characterclass/[!x-z], unsorted */
@@ -8508,6 +9210,7 @@ void test_t1701(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1702(void)
 {
@@ -8521,6 +9224,7 @@ void test_t1702(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1703(void)
 {
     /* Matrix: 04_characterclass/[!x-z], flags=DOTMATCH */
@@ -8532,6 +9236,7 @@ void test_t1703(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1704(void)
 {
@@ -8545,6 +9250,7 @@ void test_t1704(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1705(void)
 {
     /* Matrix: 04_characterclass/[!x-z], flags=DOTMATCH, base=. */
@@ -8556,6 +9262,7 @@ void test_t1705(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1706(void)
 {
@@ -8569,6 +9276,7 @@ void test_t1706(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1707(void)
 {
     /* Matrix: 04_characterclass/[!x-z], flags=PATHNAME, unsorted */
@@ -8580,6 +9288,7 @@ void test_t1707(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1708(void)
 {
@@ -8593,6 +9302,7 @@ void test_t1708(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1709(void)
 {
     /* Matrix: 04_characterclass/[!x-z], flags=CASEFOLD */
@@ -8604,6 +9314,7 @@ void test_t1709(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1710(void)
 {
@@ -8617,6 +9328,7 @@ void test_t1710(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1711(void)
 {
     /* Matrix: 04_characterclass/[!x-z], flags=CASEFOLD, base=. */
@@ -8628,6 +9340,7 @@ void test_t1711(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1712(void)
 {
@@ -8641,6 +9354,7 @@ void test_t1712(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1713(void)
 {
     /* Matrix: 04_characterclass/[!x-z], flags=PATHNAME|DOTMATCH, unsorted */
@@ -8652,6 +9366,7 @@ void test_t1713(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1714(void)
 {
@@ -8665,6 +9380,7 @@ void test_t1714(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1715(void)
 {
     /* Matrix: 04_characterclass/[!x-z], flags=PATHNAME|CASEFOLD */
@@ -8676,6 +9392,7 @@ void test_t1715(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1716(void)
 {
@@ -8689,6 +9406,7 @@ void test_t1716(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1717(void)
 {
     /* Matrix: 04_characterclass/[!x-z], flags=PATHNAME|CASEFOLD, base=. */
@@ -8700,6 +9418,7 @@ void test_t1717(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1718(void)
 {
@@ -8713,6 +9432,7 @@ void test_t1718(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1719(void)
 {
     /* Matrix: 04_characterclass/[!x-z], flags=DOTMATCH|CASEFOLD, unsorted */
@@ -8724,6 +9444,7 @@ void test_t1719(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1720(void)
 {
@@ -8737,6 +9458,7 @@ void test_t1720(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1721(void)
 {
     /* Matrix: 05_braceexpansion/{a} */
@@ -8748,6 +9470,7 @@ void test_t1721(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1722(void)
 {
@@ -8761,6 +9484,7 @@ void test_t1722(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1723(void)
 {
     /* Matrix: 05_braceexpansion/{a}, base=. */
@@ -8772,6 +9496,7 @@ void test_t1723(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1724(void)
 {
@@ -8785,6 +9510,7 @@ void test_t1724(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1725(void)
 {
     /* Matrix: 05_braceexpansion/{a}, flags=DOTMATCH, unsorted */
@@ -8796,6 +9522,7 @@ void test_t1725(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1726(void)
 {
@@ -8809,6 +9536,7 @@ void test_t1726(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1727(void)
 {
     /* Matrix: 05_braceexpansion/{a}, flags=PATHNAME */
@@ -8820,6 +9548,7 @@ void test_t1727(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1728(void)
 {
@@ -8833,6 +9562,7 @@ void test_t1728(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1729(void)
 {
     /* Matrix: 05_braceexpansion/{a}, flags=PATHNAME, base=. */
@@ -8844,6 +9574,7 @@ void test_t1729(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1730(void)
 {
@@ -8857,6 +9588,7 @@ void test_t1730(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1731(void)
 {
     /* Matrix: 05_braceexpansion/{a}, flags=CASEFOLD, unsorted */
@@ -8868,6 +9600,7 @@ void test_t1731(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1732(void)
 {
@@ -8881,6 +9614,7 @@ void test_t1732(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1733(void)
 {
     /* Matrix: 05_braceexpansion/{a}, flags=PATHNAME|DOTMATCH */
@@ -8892,6 +9626,7 @@ void test_t1733(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1734(void)
 {
@@ -8905,6 +9640,7 @@ void test_t1734(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1735(void)
 {
     /* Matrix: 05_braceexpansion/{a}, flags=PATHNAME|DOTMATCH, base=. */
@@ -8916,6 +9652,7 @@ void test_t1735(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1736(void)
 {
@@ -8929,6 +9666,7 @@ void test_t1736(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1737(void)
 {
     /* Matrix: 05_braceexpansion/{a}, flags=PATHNAME|CASEFOLD, unsorted */
@@ -8940,6 +9678,7 @@ void test_t1737(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1738(void)
 {
@@ -8953,6 +9692,7 @@ void test_t1738(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1739(void)
 {
     /* Matrix: 05_braceexpansion/{a}, flags=DOTMATCH|CASEFOLD */
@@ -8964,6 +9704,7 @@ void test_t1739(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1740(void)
 {
@@ -8977,6 +9718,7 @@ void test_t1740(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1741(void)
 {
     /* Matrix: 05_braceexpansion/{a}, flags=DOTMATCH|CASEFOLD, base=. */
@@ -8988,6 +9730,7 @@ void test_t1741(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1742(void)
 {
@@ -9001,6 +9744,7 @@ void test_t1742(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1743(void)
 {
     /* Matrix: 05_braceexpansion/{a,a}, unsorted */
@@ -9012,6 +9756,7 @@ void test_t1743(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1744(void)
 {
@@ -9025,6 +9770,7 @@ void test_t1744(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1745(void)
 {
     /* Matrix: 05_braceexpansion/{a,a}, flags=DOTMATCH */
@@ -9036,6 +9782,7 @@ void test_t1745(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1746(void)
 {
@@ -9049,6 +9796,7 @@ void test_t1746(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1747(void)
 {
     /* Matrix: 05_braceexpansion/{a,a}, flags=DOTMATCH, base=. */
@@ -9060,6 +9808,7 @@ void test_t1747(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1748(void)
 {
@@ -9073,6 +9822,7 @@ void test_t1748(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1749(void)
 {
     /* Matrix: 05_braceexpansion/{a,a}, flags=PATHNAME, unsorted */
@@ -9084,6 +9834,7 @@ void test_t1749(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1750(void)
 {
@@ -9097,6 +9848,7 @@ void test_t1750(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1751(void)
 {
     /* Matrix: 05_braceexpansion/{a,a}, flags=CASEFOLD */
@@ -9108,6 +9860,7 @@ void test_t1751(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1752(void)
 {
@@ -9121,6 +9874,7 @@ void test_t1752(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1753(void)
 {
     /* Matrix: 05_braceexpansion/{a,a}, flags=CASEFOLD, base=. */
@@ -9132,6 +9886,7 @@ void test_t1753(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1754(void)
 {
@@ -9145,6 +9900,7 @@ void test_t1754(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1755(void)
 {
     /* Matrix: 05_braceexpansion/{a,a}, flags=PATHNAME|DOTMATCH, unsorted */
@@ -9156,6 +9912,7 @@ void test_t1755(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1756(void)
 {
@@ -9169,6 +9926,7 @@ void test_t1756(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1757(void)
 {
     /* Matrix: 05_braceexpansion/{a,a}, flags=PATHNAME|CASEFOLD */
@@ -9180,6 +9938,7 @@ void test_t1757(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1758(void)
 {
@@ -9193,6 +9952,7 @@ void test_t1758(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1759(void)
 {
     /* Matrix: 05_braceexpansion/{a,a}, flags=PATHNAME|CASEFOLD, base=. */
@@ -9204,6 +9964,7 @@ void test_t1759(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1760(void)
 {
@@ -9217,6 +9978,7 @@ void test_t1760(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1761(void)
 {
     /* Matrix: 05_braceexpansion/{a,a}, flags=DOTMATCH|CASEFOLD, unsorted */
@@ -9228,6 +9990,7 @@ void test_t1761(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1762(void)
 {
@@ -9241,6 +10004,7 @@ void test_t1762(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1763(void)
 {
     /* Matrix: 05_braceexpansion/{a,b,c} */
@@ -9252,6 +10016,7 @@ void test_t1763(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1764(void)
 {
@@ -9265,6 +10030,7 @@ void test_t1764(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1765(void)
 {
     /* Matrix: 05_braceexpansion/{a,b,c}, base=. */
@@ -9276,6 +10042,7 @@ void test_t1765(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1766(void)
 {
@@ -9289,6 +10056,7 @@ void test_t1766(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1767(void)
 {
     /* Matrix: 05_braceexpansion/{a,b,c}, flags=DOTMATCH, unsorted */
@@ -9300,6 +10068,7 @@ void test_t1767(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1768(void)
 {
@@ -9313,6 +10082,7 @@ void test_t1768(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1769(void)
 {
     /* Matrix: 05_braceexpansion/{a,b,c}, flags=PATHNAME */
@@ -9324,6 +10094,7 @@ void test_t1769(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1770(void)
 {
@@ -9337,6 +10108,7 @@ void test_t1770(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1771(void)
 {
     /* Matrix: 05_braceexpansion/{a,b,c}, flags=PATHNAME, base=. */
@@ -9348,6 +10120,7 @@ void test_t1771(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1772(void)
 {
@@ -9361,6 +10134,7 @@ void test_t1772(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1773(void)
 {
     /* Matrix: 05_braceexpansion/{a,b,c}, flags=CASEFOLD, unsorted */
@@ -9372,6 +10146,7 @@ void test_t1773(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1774(void)
 {
@@ -9385,6 +10160,7 @@ void test_t1774(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1775(void)
 {
     /* Matrix: 05_braceexpansion/{a,b,c}, flags=PATHNAME|DOTMATCH */
@@ -9396,6 +10172,7 @@ void test_t1775(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1776(void)
 {
@@ -9409,6 +10186,7 @@ void test_t1776(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1777(void)
 {
     /* Matrix: 05_braceexpansion/{a,b,c}, flags=PATHNAME|DOTMATCH, base=. */
@@ -9420,6 +10198,7 @@ void test_t1777(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1778(void)
 {
@@ -9433,6 +10212,7 @@ void test_t1778(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1779(void)
 {
     /* Matrix: 05_braceexpansion/{a,b,c}, flags=PATHNAME|CASEFOLD, unsorted */
@@ -9444,6 +10224,7 @@ void test_t1779(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1780(void)
 {
@@ -9457,6 +10238,7 @@ void test_t1780(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1781(void)
 {
     /* Matrix: 05_braceexpansion/{a,b,c}, flags=DOTMATCH|CASEFOLD */
@@ -9468,6 +10250,7 @@ void test_t1781(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1782(void)
 {
@@ -9481,6 +10264,7 @@ void test_t1782(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1783(void)
 {
     /* Matrix: 05_braceexpansion/{a,b,c}, flags=DOTMATCH|CASEFOLD, base=. */
@@ -9492,6 +10276,7 @@ void test_t1783(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1784(void)
 {
@@ -9505,6 +10290,7 @@ void test_t1784(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1785(void)
 {
     /* Matrix: 05_braceexpansion/file{1,2,3}.txt, unsorted */
@@ -9516,6 +10302,7 @@ void test_t1785(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1786(void)
 {
@@ -9529,6 +10316,7 @@ void test_t1786(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1787(void)
 {
     /* Matrix: 05_braceexpansion/file{1,2,3}.txt, base=. */
@@ -9540,6 +10328,7 @@ void test_t1787(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1788(void)
 {
@@ -9553,6 +10342,7 @@ void test_t1788(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1789(void)
 {
     /* Matrix: 05_braceexpansion/file{1,2,3}.txt, flags=DOTMATCH, unsorted */
@@ -9564,6 +10354,7 @@ void test_t1789(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1790(void)
 {
@@ -9577,6 +10368,7 @@ void test_t1790(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1791(void)
 {
     /* Matrix: 05_braceexpansion/file{1,2,3}.txt, flags=DOTMATCH, base=. */
@@ -9588,6 +10380,7 @@ void test_t1791(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1792(void)
 {
@@ -9601,6 +10394,7 @@ void test_t1792(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1793(void)
 {
     /* Matrix: 05_braceexpansion/file{1,2,3}.txt, flags=PATHNAME, unsorted */
@@ -9612,6 +10406,7 @@ void test_t1793(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1794(void)
 {
@@ -9625,6 +10420,7 @@ void test_t1794(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1795(void)
 {
     /* Matrix: 05_braceexpansion/file{1,2,3}.txt, flags=PATHNAME, base=. */
@@ -9636,6 +10432,7 @@ void test_t1795(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1796(void)
 {
@@ -9649,6 +10446,7 @@ void test_t1796(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1797(void)
 {
     /* Matrix: 05_braceexpansion/file{1,2,3}.txt, flags=CASEFOLD, unsorted */
@@ -9660,6 +10458,7 @@ void test_t1797(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1798(void)
 {
@@ -9673,6 +10472,7 @@ void test_t1798(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1799(void)
 {
     /* Matrix: 05_braceexpansion/file{1,2,3}.txt, flags=CASEFOLD, base=. */
@@ -9684,6 +10484,7 @@ void test_t1799(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1800(void)
 {
@@ -9697,6 +10498,7 @@ void test_t1800(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1801(void)
 {
     /* Matrix: 05_braceexpansion/file{1,2,3}.txt, flags=PATHNAME|DOTMATCH, unsorted */
@@ -9708,6 +10510,7 @@ void test_t1801(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1802(void)
 {
@@ -9721,6 +10524,7 @@ void test_t1802(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1803(void)
 {
     /* Matrix: 05_braceexpansion/file{1,2,3}.txt, flags=PATHNAME|DOTMATCH, base=. */
@@ -9732,6 +10536,7 @@ void test_t1803(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1804(void)
 {
@@ -9745,6 +10550,7 @@ void test_t1804(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1805(void)
 {
     /* Matrix: 05_braceexpansion/file{1,2,3}.txt, flags=PATHNAME|CASEFOLD, unsorted */
@@ -9756,6 +10562,7 @@ void test_t1805(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1806(void)
 {
@@ -9769,6 +10576,7 @@ void test_t1806(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1807(void)
 {
     /* Matrix: 05_braceexpansion/file{1,2,3}.txt, flags=PATHNAME|CASEFOLD, base=. */
@@ -9780,6 +10588,7 @@ void test_t1807(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1808(void)
 {
@@ -9793,6 +10602,7 @@ void test_t1808(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1809(void)
 {
     /* Matrix: 05_braceexpansion/file{1,2,3}.txt, flags=DOTMATCH|CASEFOLD, unsorted */
@@ -9804,6 +10614,7 @@ void test_t1809(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1810(void)
 {
@@ -9817,6 +10628,7 @@ void test_t1810(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1811(void)
 {
     /* Matrix: 05_braceexpansion/file{1,2,3}.txt, flags=DOTMATCH|CASEFOLD, base=. */
@@ -9828,6 +10640,7 @@ void test_t1811(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1812(void)
 {
@@ -9841,6 +10654,7 @@ void test_t1812(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1813(void)
 {
     /* Matrix: 05_braceexpansion/{dir1, dir2}/file1.txt, unsorted */
@@ -9852,6 +10666,7 @@ void test_t1813(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1814(void)
 {
@@ -9865,6 +10680,7 @@ void test_t1814(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1815(void)
 {
     /* Matrix: 05_braceexpansion/{dir1, dir2}/file1.txt, base=. */
@@ -9876,6 +10692,7 @@ void test_t1815(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1816(void)
 {
@@ -9889,6 +10706,7 @@ void test_t1816(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1817(void)
 {
     /* Matrix: 05_braceexpansion/{dir1, dir2}/file1.txt, flags=DOTMATCH, unsorted */
@@ -9900,6 +10718,7 @@ void test_t1817(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1818(void)
 {
@@ -9913,6 +10732,7 @@ void test_t1818(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1819(void)
 {
     /* Matrix: 05_braceexpansion/{dir1, dir2}/file1.txt, flags=DOTMATCH, base=. */
@@ -9924,6 +10744,7 @@ void test_t1819(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1820(void)
 {
@@ -9937,6 +10758,7 @@ void test_t1820(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1821(void)
 {
     /* Matrix: 05_braceexpansion/{dir1, dir2}/file1.txt, flags=PATHNAME, unsorted */
@@ -9948,6 +10770,7 @@ void test_t1821(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1822(void)
 {
@@ -9961,6 +10784,7 @@ void test_t1822(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1823(void)
 {
     /* Matrix: 05_braceexpansion/{dir1, dir2}/file1.txt, flags=PATHNAME, base=. */
@@ -9972,6 +10796,7 @@ void test_t1823(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1824(void)
 {
@@ -9985,6 +10810,7 @@ void test_t1824(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1825(void)
 {
     /* Matrix: 05_braceexpansion/{dir1, dir2}/file1.txt, flags=CASEFOLD, unsorted */
@@ -9996,6 +10822,7 @@ void test_t1825(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1826(void)
 {
@@ -10009,6 +10836,7 @@ void test_t1826(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1827(void)
 {
     /* Matrix: 05_braceexpansion/{dir1, dir2}/file1.txt, flags=CASEFOLD, base=. */
@@ -10020,6 +10848,7 @@ void test_t1827(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1828(void)
 {
@@ -10033,6 +10862,7 @@ void test_t1828(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1829(void)
 {
     /* Matrix: 05_braceexpansion/{dir1, dir2}/file1.txt, flags=PATHNAME|DOTMATCH, unsorted */
@@ -10044,6 +10874,7 @@ void test_t1829(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1830(void)
 {
@@ -10057,6 +10888,7 @@ void test_t1830(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1831(void)
 {
     /* Matrix: 05_braceexpansion/{dir1, dir2}/file1.txt, flags=PATHNAME|DOTMATCH, base=. */
@@ -10068,6 +10900,7 @@ void test_t1831(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1832(void)
 {
@@ -10081,6 +10914,7 @@ void test_t1832(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1833(void)
 {
     /* Matrix: 05_braceexpansion/{dir1, dir2}/file1.txt, flags=PATHNAME|CASEFOLD, unsorted */
@@ -10092,6 +10926,7 @@ void test_t1833(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1834(void)
 {
@@ -10105,6 +10940,7 @@ void test_t1834(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1835(void)
 {
     /* Matrix: 05_braceexpansion/{dir1, dir2}/file1.txt, flags=PATHNAME|CASEFOLD, base=. */
@@ -10116,6 +10952,7 @@ void test_t1835(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1836(void)
 {
@@ -10129,6 +10966,7 @@ void test_t1836(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1837(void)
 {
     /* Matrix: 05_braceexpansion/{dir1, dir2}/file1.txt, flags=DOTMATCH|CASEFOLD, unsorted */
@@ -10140,6 +10978,7 @@ void test_t1837(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1838(void)
 {
@@ -10153,6 +10992,7 @@ void test_t1838(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1839(void)
 {
     /* Matrix: 05_braceexpansion/{dir1, dir2}/file1.txt, flags=DOTMATCH|CASEFOLD, base=. */
@@ -10164,6 +11004,7 @@ void test_t1839(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1840(void)
 {
@@ -10177,6 +11018,7 @@ void test_t1840(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1841(void)
 {
     /* Matrix: 05_braceexpansion/{{a,b},c}, unsorted */
@@ -10188,6 +11030,7 @@ void test_t1841(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1842(void)
 {
@@ -10201,6 +11044,7 @@ void test_t1842(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1843(void)
 {
     /* Matrix: 05_braceexpansion/{{a,b},c}, flags=DOTMATCH */
@@ -10212,6 +11056,7 @@ void test_t1843(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1844(void)
 {
@@ -10225,6 +11070,7 @@ void test_t1844(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1845(void)
 {
     /* Matrix: 05_braceexpansion/{{a,b},c}, flags=DOTMATCH, base=. */
@@ -10236,6 +11082,7 @@ void test_t1845(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1846(void)
 {
@@ -10249,6 +11096,7 @@ void test_t1846(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1847(void)
 {
     /* Matrix: 05_braceexpansion/{{a,b},c}, flags=PATHNAME, unsorted */
@@ -10260,6 +11108,7 @@ void test_t1847(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1848(void)
 {
@@ -10273,6 +11122,7 @@ void test_t1848(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1849(void)
 {
     /* Matrix: 05_braceexpansion/{{a,b},c}, flags=CASEFOLD */
@@ -10284,6 +11134,7 @@ void test_t1849(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1850(void)
 {
@@ -10297,6 +11148,7 @@ void test_t1850(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1851(void)
 {
     /* Matrix: 05_braceexpansion/{{a,b},c}, flags=CASEFOLD, base=. */
@@ -10308,6 +11160,7 @@ void test_t1851(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1852(void)
 {
@@ -10321,6 +11174,7 @@ void test_t1852(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1853(void)
 {
     /* Matrix: 05_braceexpansion/{{a,b},c}, flags=PATHNAME|DOTMATCH, unsorted */
@@ -10332,6 +11186,7 @@ void test_t1853(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1854(void)
 {
@@ -10345,6 +11200,7 @@ void test_t1854(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1855(void)
 {
     /* Matrix: 05_braceexpansion/{{a,b},c}, flags=PATHNAME|CASEFOLD */
@@ -10356,6 +11212,7 @@ void test_t1855(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1856(void)
 {
@@ -10369,6 +11226,7 @@ void test_t1856(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1857(void)
 {
     /* Matrix: 05_braceexpansion/{{a,b},c}, flags=PATHNAME|CASEFOLD, base=. */
@@ -10380,6 +11238,7 @@ void test_t1857(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1858(void)
 {
@@ -10393,6 +11252,7 @@ void test_t1858(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1859(void)
 {
     /* Matrix: 05_braceexpansion/{{a,b},c}, flags=DOTMATCH|CASEFOLD, unsorted */
@@ -10404,6 +11264,7 @@ void test_t1859(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1860(void)
 {
@@ -10417,6 +11278,7 @@ void test_t1860(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1861(void)
 {
     /* Matrix: 05_braceexpansion/{dir1,}/file1.txt */
@@ -10428,6 +11290,7 @@ void test_t1861(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1862(void)
 {
@@ -10441,6 +11304,7 @@ void test_t1862(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1863(void)
 {
     /* Matrix: 05_braceexpansion/{dir1,}/file1.txt, base=/workspaces/dirglob/tests/fixtures/ */
@@ -10452,6 +11316,7 @@ void test_t1863(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1864(void)
 {
@@ -10465,6 +11330,7 @@ void test_t1864(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1865(void)
 {
     /* Matrix: 05_braceexpansion/{dir1,}/file1.txt, flags=DOTMATCH */
@@ -10476,6 +11342,7 @@ void test_t1865(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1866(void)
 {
@@ -10489,6 +11356,7 @@ void test_t1866(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1867(void)
 {
     /* Matrix: 05_braceexpansion/{dir1,}/file1.txt, flags=DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -10500,6 +11368,7 @@ void test_t1867(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1868(void)
 {
@@ -10513,6 +11382,7 @@ void test_t1868(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1869(void)
 {
     /* Matrix: 05_braceexpansion/{dir1,}/file1.txt, flags=PATHNAME */
@@ -10524,6 +11394,7 @@ void test_t1869(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1870(void)
 {
@@ -10537,6 +11408,7 @@ void test_t1870(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1871(void)
 {
     /* Matrix: 05_braceexpansion/{dir1,}/file1.txt, flags=PATHNAME, base=/workspaces/dirglob/tests/fixtures/ */
@@ -10548,6 +11420,7 @@ void test_t1871(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1872(void)
 {
@@ -10561,6 +11434,7 @@ void test_t1872(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1873(void)
 {
     /* Matrix: 05_braceexpansion/{dir1,}/file1.txt, flags=CASEFOLD */
@@ -10572,6 +11446,7 @@ void test_t1873(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1874(void)
 {
@@ -10585,6 +11460,7 @@ void test_t1874(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1875(void)
 {
     /* Matrix: 05_braceexpansion/{dir1,}/file1.txt, flags=CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -10596,6 +11472,7 @@ void test_t1875(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1876(void)
 {
@@ -10609,6 +11486,7 @@ void test_t1876(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1877(void)
 {
     /* Matrix: 05_braceexpansion/{dir1,}/file1.txt, flags=PATHNAME|DOTMATCH */
@@ -10620,6 +11498,7 @@ void test_t1877(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1878(void)
 {
@@ -10633,6 +11512,7 @@ void test_t1878(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1879(void)
 {
     /* Matrix: 05_braceexpansion/{dir1,}/file1.txt, flags=PATHNAME|DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -10644,6 +11524,7 @@ void test_t1879(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1880(void)
 {
@@ -10657,6 +11538,7 @@ void test_t1880(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1881(void)
 {
     /* Matrix: 05_braceexpansion/{dir1,}/file1.txt, flags=PATHNAME|CASEFOLD */
@@ -10668,6 +11550,7 @@ void test_t1881(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1882(void)
 {
@@ -10681,6 +11564,7 @@ void test_t1882(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1883(void)
 {
     /* Matrix: 05_braceexpansion/{dir1,}/file1.txt, flags=PATHNAME|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -10692,6 +11576,7 @@ void test_t1883(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1884(void)
 {
@@ -10705,6 +11590,7 @@ void test_t1884(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1885(void)
 {
     /* Matrix: 05_braceexpansion/{dir1,}/file1.txt, flags=DOTMATCH|CASEFOLD */
@@ -10716,6 +11602,7 @@ void test_t1885(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1886(void)
 {
@@ -10729,6 +11616,7 @@ void test_t1886(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1887(void)
 {
     /* Matrix: 05_braceexpansion/{dir1,}/file1.txt, flags=DOTMATCH|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -10740,6 +11628,7 @@ void test_t1887(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1888(void)
 {
@@ -10753,6 +11642,7 @@ void test_t1888(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1889(void)
 {
     /* Matrix: 06_casefold/lower.txt */
@@ -10764,6 +11654,7 @@ void test_t1889(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1890(void)
 {
@@ -10777,6 +11668,7 @@ void test_t1890(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1891(void)
 {
     /* Matrix: 06_casefold/lower.txt, base=/workspaces/dirglob/tests/fixtures/ */
@@ -10788,6 +11680,7 @@ void test_t1891(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1892(void)
 {
@@ -10801,6 +11694,7 @@ void test_t1892(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1893(void)
 {
     /* Matrix: 06_casefold/lower.txt, flags=DOTMATCH */
@@ -10812,6 +11706,7 @@ void test_t1893(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1894(void)
 {
@@ -10825,6 +11720,7 @@ void test_t1894(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1895(void)
 {
     /* Matrix: 06_casefold/lower.txt, flags=DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -10836,6 +11732,7 @@ void test_t1895(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1896(void)
 {
@@ -10849,6 +11746,7 @@ void test_t1896(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1897(void)
 {
     /* Matrix: 06_casefold/lower.txt, flags=PATHNAME */
@@ -10860,6 +11758,7 @@ void test_t1897(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1898(void)
 {
@@ -10873,6 +11772,7 @@ void test_t1898(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1899(void)
 {
     /* Matrix: 06_casefold/lower.txt, flags=PATHNAME, base=/workspaces/dirglob/tests/fixtures/ */
@@ -10884,6 +11784,7 @@ void test_t1899(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1900(void)
 {
@@ -10897,6 +11798,7 @@ void test_t1900(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1901(void)
 {
     /* Matrix: 06_casefold/lower.txt, flags=CASEFOLD */
@@ -10908,6 +11810,7 @@ void test_t1901(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1902(void)
 {
@@ -10921,6 +11824,7 @@ void test_t1902(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1903(void)
 {
     /* Matrix: 06_casefold/lower.txt, flags=CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -10932,6 +11836,7 @@ void test_t1903(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1904(void)
 {
@@ -10945,6 +11850,7 @@ void test_t1904(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1905(void)
 {
     /* Matrix: 06_casefold/lower.txt, flags=PATHNAME|DOTMATCH */
@@ -10956,6 +11862,7 @@ void test_t1905(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1906(void)
 {
@@ -10969,6 +11876,7 @@ void test_t1906(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1907(void)
 {
     /* Matrix: 06_casefold/lower.txt, flags=PATHNAME|DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -10980,6 +11888,7 @@ void test_t1907(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1908(void)
 {
@@ -10993,6 +11902,7 @@ void test_t1908(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1909(void)
 {
     /* Matrix: 06_casefold/lower.txt, flags=PATHNAME|CASEFOLD */
@@ -11004,6 +11914,7 @@ void test_t1909(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1910(void)
 {
@@ -11017,6 +11928,7 @@ void test_t1910(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1911(void)
 {
     /* Matrix: 06_casefold/lower.txt, flags=PATHNAME|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -11028,6 +11940,7 @@ void test_t1911(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1912(void)
 {
@@ -11041,6 +11954,7 @@ void test_t1912(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1913(void)
 {
     /* Matrix: 06_casefold/lower.txt, flags=DOTMATCH|CASEFOLD */
@@ -11052,6 +11966,7 @@ void test_t1913(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1914(void)
 {
@@ -11065,6 +11980,7 @@ void test_t1914(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1915(void)
 {
     /* Matrix: 06_casefold/lower.txt, flags=DOTMATCH|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -11076,6 +11992,7 @@ void test_t1915(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1916(void)
 {
@@ -11089,6 +12006,7 @@ void test_t1916(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1917(void)
 {
     /* Matrix: 06_casefold/UPPER.TXT */
@@ -11100,6 +12018,7 @@ void test_t1917(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1918(void)
 {
@@ -11113,6 +12032,7 @@ void test_t1918(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1919(void)
 {
     /* Matrix: 06_casefold/UPPER.TXT, base=. */
@@ -11124,6 +12044,7 @@ void test_t1919(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1920(void)
 {
@@ -11137,6 +12058,7 @@ void test_t1920(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1921(void)
 {
     /* Matrix: 06_casefold/UPPER.TXT, flags=DOTMATCH, unsorted */
@@ -11148,6 +12070,7 @@ void test_t1921(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1922(void)
 {
@@ -11161,6 +12084,7 @@ void test_t1922(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1923(void)
 {
     /* Matrix: 06_casefold/UPPER.TXT, flags=PATHNAME */
@@ -11172,6 +12096,7 @@ void test_t1923(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1924(void)
 {
@@ -11185,6 +12110,7 @@ void test_t1924(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1925(void)
 {
     /* Matrix: 06_casefold/UPPER.TXT, flags=PATHNAME, base=. */
@@ -11196,6 +12122,7 @@ void test_t1925(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1926(void)
 {
@@ -11209,6 +12136,7 @@ void test_t1926(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1927(void)
 {
     /* Matrix: 06_casefold/UPPER.TXT, flags=CASEFOLD, unsorted */
@@ -11220,6 +12148,7 @@ void test_t1927(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1928(void)
 {
@@ -11233,6 +12162,7 @@ void test_t1928(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1929(void)
 {
     /* Matrix: 06_casefold/UPPER.TXT, flags=PATHNAME|DOTMATCH */
@@ -11244,6 +12174,7 @@ void test_t1929(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1930(void)
 {
@@ -11257,6 +12188,7 @@ void test_t1930(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1931(void)
 {
     /* Matrix: 06_casefold/UPPER.TXT, flags=PATHNAME|DOTMATCH, base=. */
@@ -11268,6 +12200,7 @@ void test_t1931(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1932(void)
 {
@@ -11281,6 +12214,7 @@ void test_t1932(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1933(void)
 {
     /* Matrix: 06_casefold/UPPER.TXT, flags=PATHNAME|CASEFOLD, unsorted */
@@ -11292,6 +12226,7 @@ void test_t1933(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1934(void)
 {
@@ -11305,6 +12240,7 @@ void test_t1934(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1935(void)
 {
     /* Matrix: 06_casefold/UPPER.TXT, flags=DOTMATCH|CASEFOLD */
@@ -11316,6 +12252,7 @@ void test_t1935(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1936(void)
 {
@@ -11329,6 +12266,7 @@ void test_t1936(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1937(void)
 {
     /* Matrix: 06_casefold/UPPER.TXT, flags=DOTMATCH|CASEFOLD, base=. */
@@ -11340,6 +12278,7 @@ void test_t1937(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1938(void)
 {
@@ -11353,6 +12292,7 @@ void test_t1938(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1939(void)
 {
     /* Matrix: 06_casefold/MiXeD.TxT, unsorted */
@@ -11364,6 +12304,7 @@ void test_t1939(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1940(void)
 {
@@ -11377,6 +12318,7 @@ void test_t1940(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1941(void)
 {
     /* Matrix: 06_casefold/MiXeD.TxT, flags=DOTMATCH */
@@ -11388,6 +12330,7 @@ void test_t1941(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1942(void)
 {
@@ -11401,6 +12344,7 @@ void test_t1942(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1943(void)
 {
     /* Matrix: 06_casefold/MiXeD.TxT, flags=DOTMATCH, base=. */
@@ -11412,6 +12356,7 @@ void test_t1943(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1944(void)
 {
@@ -11425,6 +12370,7 @@ void test_t1944(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1945(void)
 {
     /* Matrix: 06_casefold/MiXeD.TxT, flags=PATHNAME, unsorted */
@@ -11436,6 +12382,7 @@ void test_t1945(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1946(void)
 {
@@ -11449,6 +12396,7 @@ void test_t1946(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1947(void)
 {
     /* Matrix: 06_casefold/MiXeD.TxT, flags=CASEFOLD */
@@ -11460,6 +12408,7 @@ void test_t1947(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1948(void)
 {
@@ -11473,6 +12422,7 @@ void test_t1948(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1949(void)
 {
     /* Matrix: 06_casefold/MiXeD.TxT, flags=CASEFOLD, base=. */
@@ -11484,6 +12434,7 @@ void test_t1949(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1950(void)
 {
@@ -11497,6 +12448,7 @@ void test_t1950(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1951(void)
 {
     /* Matrix: 06_casefold/MiXeD.TxT, flags=PATHNAME|DOTMATCH, unsorted */
@@ -11508,6 +12460,7 @@ void test_t1951(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1952(void)
 {
@@ -11521,6 +12474,7 @@ void test_t1952(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1953(void)
 {
     /* Matrix: 06_casefold/MiXeD.TxT, flags=PATHNAME|CASEFOLD */
@@ -11532,6 +12486,7 @@ void test_t1953(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1954(void)
 {
@@ -11545,6 +12500,7 @@ void test_t1954(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1955(void)
 {
     /* Matrix: 06_casefold/MiXeD.TxT, flags=PATHNAME|CASEFOLD, base=. */
@@ -11556,6 +12512,7 @@ void test_t1955(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1956(void)
 {
@@ -11569,6 +12526,7 @@ void test_t1956(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1957(void)
 {
     /* Matrix: 06_casefold/MiXeD.TxT, flags=DOTMATCH|CASEFOLD, unsorted */
@@ -11580,6 +12538,7 @@ void test_t1957(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1958(void)
 {
@@ -11593,6 +12552,7 @@ void test_t1958(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1959(void)
 {
     /* Matrix: 07_recursive/** */
@@ -11604,6 +12564,7 @@ void test_t1959(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1960(void)
 {
@@ -11617,6 +12578,7 @@ void test_t1960(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1961(void)
 {
     /* Matrix: 07_recursive/**, base=/workspaces/dirglob/tests/fixtures/ */
@@ -11628,6 +12590,7 @@ void test_t1961(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1962(void)
 {
@@ -11641,6 +12604,7 @@ void test_t1962(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1963(void)
 {
     /* Matrix: 07_recursive/**, base=. */
@@ -11652,6 +12616,7 @@ void test_t1963(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1964(void)
 {
@@ -11665,6 +12630,7 @@ void test_t1964(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1965(void)
 {
     /* Matrix: 07_recursive/**, flags=DOTMATCH */
@@ -11676,6 +12642,7 @@ void test_t1965(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1966(void)
 {
@@ -11689,6 +12656,7 @@ void test_t1966(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1967(void)
 {
     /* Matrix: 07_recursive/**, flags=DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -11700,6 +12668,7 @@ void test_t1967(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1968(void)
 {
@@ -11713,6 +12682,7 @@ void test_t1968(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1969(void)
 {
     /* Matrix: 07_recursive/**, flags=DOTMATCH, base=. */
@@ -11724,6 +12694,7 @@ void test_t1969(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1970(void)
 {
@@ -11737,6 +12708,7 @@ void test_t1970(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1971(void)
 {
     /* Matrix: 07_recursive/**, flags=PATHNAME */
@@ -11748,6 +12720,7 @@ void test_t1971(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1972(void)
 {
@@ -11761,6 +12734,7 @@ void test_t1972(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1973(void)
 {
     /* Matrix: 07_recursive/**, flags=PATHNAME, base=/workspaces/dirglob/tests/fixtures/ */
@@ -11772,6 +12746,7 @@ void test_t1973(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1974(void)
 {
@@ -11785,6 +12760,7 @@ void test_t1974(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1975(void)
 {
     /* Matrix: 07_recursive/**, flags=PATHNAME, base=. */
@@ -11796,6 +12772,7 @@ void test_t1975(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1976(void)
 {
@@ -11809,6 +12786,7 @@ void test_t1976(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1977(void)
 {
     /* Matrix: 07_recursive/**, flags=CASEFOLD */
@@ -11820,6 +12798,7 @@ void test_t1977(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1978(void)
 {
@@ -11833,6 +12812,7 @@ void test_t1978(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1979(void)
 {
     /* Matrix: 07_recursive/**, flags=CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -11844,6 +12824,7 @@ void test_t1979(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1980(void)
 {
@@ -11857,6 +12838,7 @@ void test_t1980(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1981(void)
 {
     /* Matrix: 07_recursive/**, flags=CASEFOLD, base=. */
@@ -11868,6 +12850,7 @@ void test_t1981(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1982(void)
 {
@@ -11881,6 +12864,7 @@ void test_t1982(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1983(void)
 {
     /* Matrix: 07_recursive/**, flags=PATHNAME|DOTMATCH */
@@ -11892,6 +12876,7 @@ void test_t1983(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1984(void)
 {
@@ -11905,6 +12890,7 @@ void test_t1984(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1985(void)
 {
     /* Matrix: 07_recursive/**, flags=PATHNAME|DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -11916,6 +12902,7 @@ void test_t1985(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1986(void)
 {
@@ -11929,6 +12916,7 @@ void test_t1986(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1987(void)
 {
     /* Matrix: 07_recursive/**, flags=PATHNAME|DOTMATCH, base=. */
@@ -11940,6 +12928,7 @@ void test_t1987(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1988(void)
 {
@@ -11953,6 +12942,7 @@ void test_t1988(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1989(void)
 {
     /* Matrix: 07_recursive/**, flags=PATHNAME|CASEFOLD */
@@ -11964,6 +12954,7 @@ void test_t1989(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1990(void)
 {
@@ -11977,6 +12968,7 @@ void test_t1990(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1991(void)
 {
     /* Matrix: 07_recursive/**, flags=PATHNAME|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -11988,6 +12980,7 @@ void test_t1991(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1992(void)
 {
@@ -12001,6 +12994,7 @@ void test_t1992(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1993(void)
 {
     /* Matrix: 07_recursive/**, flags=PATHNAME|CASEFOLD, base=. */
@@ -12012,6 +13006,7 @@ void test_t1993(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1994(void)
 {
@@ -12025,6 +13020,7 @@ void test_t1994(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1995(void)
 {
     /* Matrix: 07_recursive/**, flags=DOTMATCH|CASEFOLD */
@@ -12036,6 +13032,7 @@ void test_t1995(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1996(void)
 {
@@ -12049,6 +13046,7 @@ void test_t1996(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1997(void)
 {
     /* Matrix: 07_recursive/**, flags=DOTMATCH|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -12060,6 +13058,7 @@ void test_t1997(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t1998(void)
 {
@@ -12073,6 +13072,7 @@ void test_t1998(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t1999(void)
 {
     /* Matrix: 07_recursive/**, flags=DOTMATCH|CASEFOLD, base=. */
@@ -12084,6 +13084,7 @@ void test_t1999(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2000(void)
 {
@@ -12097,6 +13098,7 @@ void test_t2000(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2001(void)
 {
     /* Matrix: 07_recursive/** / */
@@ -12108,6 +13110,7 @@ void test_t2001(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2002(void)
 {
@@ -12121,6 +13124,7 @@ void test_t2002(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2003(void)
 {
     /* Matrix: 07_recursive/** /, base=/workspaces/dirglob/tests/fixtures/ */
@@ -12132,6 +13136,7 @@ void test_t2003(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2004(void)
 {
@@ -12145,6 +13150,7 @@ void test_t2004(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2005(void)
 {
     /* Matrix: 07_recursive/** /, base=. */
@@ -12156,6 +13162,7 @@ void test_t2005(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2006(void)
 {
@@ -12169,6 +13176,7 @@ void test_t2006(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2007(void)
 {
     /* Matrix: 07_recursive/** /, flags=DOTMATCH */
@@ -12180,6 +13188,7 @@ void test_t2007(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2008(void)
 {
@@ -12193,6 +13202,7 @@ void test_t2008(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2009(void)
 {
     /* Matrix: 07_recursive/** /, flags=DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -12204,6 +13214,7 @@ void test_t2009(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2010(void)
 {
@@ -12217,6 +13228,7 @@ void test_t2010(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2011(void)
 {
     /* Matrix: 07_recursive/** /, flags=DOTMATCH, base=. */
@@ -12228,6 +13240,7 @@ void test_t2011(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2012(void)
 {
@@ -12241,6 +13254,7 @@ void test_t2012(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2013(void)
 {
     /* Matrix: 07_recursive/** /, flags=PATHNAME */
@@ -12252,6 +13266,7 @@ void test_t2013(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2014(void)
 {
@@ -12265,6 +13280,7 @@ void test_t2014(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2015(void)
 {
     /* Matrix: 07_recursive/** /, flags=PATHNAME, base=/workspaces/dirglob/tests/fixtures/ */
@@ -12276,6 +13292,7 @@ void test_t2015(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2016(void)
 {
@@ -12289,6 +13306,7 @@ void test_t2016(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2017(void)
 {
     /* Matrix: 07_recursive/** /, flags=PATHNAME, base=. */
@@ -12300,6 +13318,7 @@ void test_t2017(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2018(void)
 {
@@ -12313,6 +13332,7 @@ void test_t2018(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2019(void)
 {
     /* Matrix: 07_recursive/** /, flags=CASEFOLD */
@@ -12324,6 +13344,7 @@ void test_t2019(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2020(void)
 {
@@ -12337,6 +13358,7 @@ void test_t2020(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2021(void)
 {
     /* Matrix: 07_recursive/** /, flags=CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -12348,6 +13370,7 @@ void test_t2021(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2022(void)
 {
@@ -12361,6 +13384,7 @@ void test_t2022(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2023(void)
 {
     /* Matrix: 07_recursive/** /, flags=CASEFOLD, base=. */
@@ -12372,6 +13396,7 @@ void test_t2023(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2024(void)
 {
@@ -12385,6 +13410,7 @@ void test_t2024(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2025(void)
 {
     /* Matrix: 07_recursive/** /, flags=PATHNAME|DOTMATCH */
@@ -12396,6 +13422,7 @@ void test_t2025(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2026(void)
 {
@@ -12409,6 +13436,7 @@ void test_t2026(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2027(void)
 {
     /* Matrix: 07_recursive/** /, flags=PATHNAME|DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -12420,6 +13448,7 @@ void test_t2027(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2028(void)
 {
@@ -12433,6 +13462,7 @@ void test_t2028(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2029(void)
 {
     /* Matrix: 07_recursive/** /, flags=PATHNAME|DOTMATCH, base=. */
@@ -12444,6 +13474,7 @@ void test_t2029(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2030(void)
 {
@@ -12457,6 +13488,7 @@ void test_t2030(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2031(void)
 {
     /* Matrix: 07_recursive/** /, flags=PATHNAME|CASEFOLD */
@@ -12468,6 +13500,7 @@ void test_t2031(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2032(void)
 {
@@ -12481,6 +13514,7 @@ void test_t2032(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2033(void)
 {
     /* Matrix: 07_recursive/** /, flags=PATHNAME|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -12492,6 +13526,7 @@ void test_t2033(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2034(void)
 {
@@ -12505,6 +13540,7 @@ void test_t2034(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2035(void)
 {
     /* Matrix: 07_recursive/** /, flags=PATHNAME|CASEFOLD, base=. */
@@ -12516,6 +13552,7 @@ void test_t2035(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2036(void)
 {
@@ -12529,6 +13566,7 @@ void test_t2036(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2037(void)
 {
     /* Matrix: 07_recursive/** /, flags=DOTMATCH|CASEFOLD */
@@ -12540,6 +13578,7 @@ void test_t2037(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2038(void)
 {
@@ -12553,6 +13592,7 @@ void test_t2038(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2039(void)
 {
     /* Matrix: 07_recursive/** /, flags=DOTMATCH|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -12564,6 +13604,7 @@ void test_t2039(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2040(void)
 {
@@ -12577,6 +13618,7 @@ void test_t2040(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2041(void)
 {
     /* Matrix: 07_recursive/** /, flags=DOTMATCH|CASEFOLD, base=. */
@@ -12588,6 +13630,7 @@ void test_t2041(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2042(void)
 {
@@ -12601,6 +13644,7 @@ void test_t2042(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2043(void)
 {
     /* Matrix: 07_recursive/** /** */
@@ -12612,6 +13656,7 @@ void test_t2043(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2044(void)
 {
@@ -12625,6 +13670,7 @@ void test_t2044(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2045(void)
 {
     /* Matrix: 07_recursive/** /**, base=/workspaces/dirglob/tests/fixtures/ */
@@ -12636,6 +13682,7 @@ void test_t2045(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2046(void)
 {
@@ -12649,6 +13696,7 @@ void test_t2046(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2047(void)
 {
     /* Matrix: 07_recursive/** /**, base=. */
@@ -12660,6 +13708,7 @@ void test_t2047(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2048(void)
 {
@@ -12673,6 +13722,7 @@ void test_t2048(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2049(void)
 {
     /* Matrix: 07_recursive/** /**, flags=DOTMATCH */
@@ -12684,6 +13734,7 @@ void test_t2049(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2050(void)
 {
@@ -12697,6 +13748,7 @@ void test_t2050(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2051(void)
 {
     /* Matrix: 07_recursive/** /**, flags=DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -12708,6 +13760,7 @@ void test_t2051(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2052(void)
 {
@@ -12721,6 +13774,7 @@ void test_t2052(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2053(void)
 {
     /* Matrix: 07_recursive/** /**, flags=DOTMATCH, base=. */
@@ -12732,6 +13786,7 @@ void test_t2053(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2054(void)
 {
@@ -12745,6 +13800,7 @@ void test_t2054(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2055(void)
 {
     /* Matrix: 07_recursive/** /**, flags=PATHNAME */
@@ -12756,6 +13812,7 @@ void test_t2055(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2056(void)
 {
@@ -12769,6 +13826,7 @@ void test_t2056(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2057(void)
 {
     /* Matrix: 07_recursive/** /**, flags=PATHNAME, base=/workspaces/dirglob/tests/fixtures/ */
@@ -12780,6 +13838,7 @@ void test_t2057(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2058(void)
 {
@@ -12793,6 +13852,7 @@ void test_t2058(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2059(void)
 {
     /* Matrix: 07_recursive/** /**, flags=PATHNAME, base=. */
@@ -12804,6 +13864,7 @@ void test_t2059(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2060(void)
 {
@@ -12817,6 +13878,7 @@ void test_t2060(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2061(void)
 {
     /* Matrix: 07_recursive/** /**, flags=CASEFOLD */
@@ -12828,6 +13890,7 @@ void test_t2061(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2062(void)
 {
@@ -12841,6 +13904,7 @@ void test_t2062(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2063(void)
 {
     /* Matrix: 07_recursive/** /**, flags=CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -12852,6 +13916,7 @@ void test_t2063(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2064(void)
 {
@@ -12865,6 +13930,7 @@ void test_t2064(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2065(void)
 {
     /* Matrix: 07_recursive/** /**, flags=CASEFOLD, base=. */
@@ -12876,6 +13942,7 @@ void test_t2065(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2066(void)
 {
@@ -12889,6 +13956,7 @@ void test_t2066(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2067(void)
 {
     /* Matrix: 07_recursive/** /**, flags=PATHNAME|DOTMATCH */
@@ -12900,6 +13968,7 @@ void test_t2067(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2068(void)
 {
@@ -12913,6 +13982,7 @@ void test_t2068(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2069(void)
 {
     /* Matrix: 07_recursive/** /**, flags=PATHNAME|DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -12924,6 +13994,7 @@ void test_t2069(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2070(void)
 {
@@ -12937,6 +14008,7 @@ void test_t2070(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2071(void)
 {
     /* Matrix: 07_recursive/** /**, flags=PATHNAME|DOTMATCH, base=. */
@@ -12948,6 +14020,7 @@ void test_t2071(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2072(void)
 {
@@ -12961,6 +14034,7 @@ void test_t2072(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2073(void)
 {
     /* Matrix: 07_recursive/** /**, flags=PATHNAME|CASEFOLD */
@@ -12972,6 +14046,7 @@ void test_t2073(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2074(void)
 {
@@ -12985,6 +14060,7 @@ void test_t2074(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2075(void)
 {
     /* Matrix: 07_recursive/** /**, flags=PATHNAME|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -12996,6 +14072,7 @@ void test_t2075(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2076(void)
 {
@@ -13009,6 +14086,7 @@ void test_t2076(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2077(void)
 {
     /* Matrix: 07_recursive/** /**, flags=PATHNAME|CASEFOLD, base=. */
@@ -13020,6 +14098,7 @@ void test_t2077(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2078(void)
 {
@@ -13033,6 +14112,7 @@ void test_t2078(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2079(void)
 {
     /* Matrix: 07_recursive/** /**, flags=DOTMATCH|CASEFOLD */
@@ -13044,6 +14124,7 @@ void test_t2079(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2080(void)
 {
@@ -13057,6 +14138,7 @@ void test_t2080(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2081(void)
 {
     /* Matrix: 07_recursive/** /**, flags=DOTMATCH|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -13068,6 +14150,7 @@ void test_t2081(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2082(void)
 {
@@ -13081,6 +14164,7 @@ void test_t2082(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2083(void)
 {
     /* Matrix: 07_recursive/** /**, flags=DOTMATCH|CASEFOLD, base=. */
@@ -13092,6 +14176,7 @@ void test_t2083(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2084(void)
 {
@@ -13105,6 +14190,7 @@ void test_t2084(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2085(void)
 {
     /* Matrix: 07_recursive/** /** / */
@@ -13116,6 +14202,7 @@ void test_t2085(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2086(void)
 {
@@ -13129,6 +14216,7 @@ void test_t2086(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2087(void)
 {
     /* Matrix: 07_recursive/** /** /, base=/workspaces/dirglob/tests/fixtures/ */
@@ -13140,6 +14228,7 @@ void test_t2087(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2088(void)
 {
@@ -13153,6 +14242,7 @@ void test_t2088(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2089(void)
 {
     /* Matrix: 07_recursive/** /** /, base=. */
@@ -13164,6 +14254,7 @@ void test_t2089(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2090(void)
 {
@@ -13177,6 +14268,7 @@ void test_t2090(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2091(void)
 {
     /* Matrix: 07_recursive/** /** /, flags=DOTMATCH */
@@ -13188,6 +14280,7 @@ void test_t2091(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2092(void)
 {
@@ -13201,6 +14294,7 @@ void test_t2092(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2093(void)
 {
     /* Matrix: 07_recursive/** /** /, flags=DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -13212,6 +14306,7 @@ void test_t2093(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2094(void)
 {
@@ -13225,6 +14320,7 @@ void test_t2094(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2095(void)
 {
     /* Matrix: 07_recursive/** /** /, flags=DOTMATCH, base=. */
@@ -13236,6 +14332,7 @@ void test_t2095(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2096(void)
 {
@@ -13249,6 +14346,7 @@ void test_t2096(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2097(void)
 {
     /* Matrix: 07_recursive/** /** /, flags=PATHNAME */
@@ -13260,6 +14358,7 @@ void test_t2097(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2098(void)
 {
@@ -13273,6 +14372,7 @@ void test_t2098(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2099(void)
 {
     /* Matrix: 07_recursive/** /** /, flags=PATHNAME, base=/workspaces/dirglob/tests/fixtures/ */
@@ -13284,6 +14384,7 @@ void test_t2099(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2100(void)
 {
@@ -13297,6 +14398,7 @@ void test_t2100(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2101(void)
 {
     /* Matrix: 07_recursive/** /** /, flags=PATHNAME, base=. */
@@ -13308,6 +14410,7 @@ void test_t2101(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2102(void)
 {
@@ -13321,6 +14424,7 @@ void test_t2102(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2103(void)
 {
     /* Matrix: 07_recursive/** /** /, flags=CASEFOLD */
@@ -13332,6 +14436,7 @@ void test_t2103(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2104(void)
 {
@@ -13345,6 +14450,7 @@ void test_t2104(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2105(void)
 {
     /* Matrix: 07_recursive/** /** /, flags=CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -13356,6 +14462,7 @@ void test_t2105(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2106(void)
 {
@@ -13369,6 +14476,7 @@ void test_t2106(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2107(void)
 {
     /* Matrix: 07_recursive/** /** /, flags=CASEFOLD, base=. */
@@ -13380,6 +14488,7 @@ void test_t2107(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2108(void)
 {
@@ -13393,6 +14502,7 @@ void test_t2108(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2109(void)
 {
     /* Matrix: 07_recursive/** /** /, flags=PATHNAME|DOTMATCH */
@@ -13404,6 +14514,7 @@ void test_t2109(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2110(void)
 {
@@ -13417,6 +14528,7 @@ void test_t2110(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2111(void)
 {
     /* Matrix: 07_recursive/** /** /, flags=PATHNAME|DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -13428,6 +14540,7 @@ void test_t2111(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2112(void)
 {
@@ -13441,6 +14554,7 @@ void test_t2112(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2113(void)
 {
     /* Matrix: 07_recursive/** /** /, flags=PATHNAME|DOTMATCH, base=. */
@@ -13452,6 +14566,7 @@ void test_t2113(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2114(void)
 {
@@ -13465,6 +14580,7 @@ void test_t2114(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2115(void)
 {
     /* Matrix: 07_recursive/** /** /, flags=PATHNAME|CASEFOLD */
@@ -13476,6 +14592,7 @@ void test_t2115(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2116(void)
 {
@@ -13489,6 +14606,7 @@ void test_t2116(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2117(void)
 {
     /* Matrix: 07_recursive/** /** /, flags=PATHNAME|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -13500,6 +14618,7 @@ void test_t2117(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2118(void)
 {
@@ -13513,6 +14632,7 @@ void test_t2118(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2119(void)
 {
     /* Matrix: 07_recursive/** /** /, flags=PATHNAME|CASEFOLD, base=. */
@@ -13524,6 +14644,7 @@ void test_t2119(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2120(void)
 {
@@ -13537,6 +14658,7 @@ void test_t2120(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2121(void)
 {
     /* Matrix: 07_recursive/** /** /, flags=DOTMATCH|CASEFOLD */
@@ -13548,6 +14670,7 @@ void test_t2121(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2122(void)
 {
@@ -13561,6 +14684,7 @@ void test_t2122(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2123(void)
 {
     /* Matrix: 07_recursive/** /** /, flags=DOTMATCH|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -13572,6 +14696,7 @@ void test_t2123(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2124(void)
 {
@@ -13585,6 +14710,7 @@ void test_t2124(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2125(void)
 {
     /* Matrix: 07_recursive/** /** /, flags=DOTMATCH|CASEFOLD, base=. */
@@ -13596,6 +14722,7 @@ void test_t2125(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2126(void)
 {
@@ -13609,6 +14736,7 @@ void test_t2126(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2127(void)
 {
     /* Matrix: 07_recursive/** /*.txt */
@@ -13620,6 +14748,7 @@ void test_t2127(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2128(void)
 {
@@ -13633,6 +14762,7 @@ void test_t2128(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2129(void)
 {
     /* Matrix: 07_recursive/** /*.txt, base=/workspaces/dirglob/tests/fixtures/ */
@@ -13644,6 +14774,7 @@ void test_t2129(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2130(void)
 {
@@ -13657,6 +14788,7 @@ void test_t2130(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2131(void)
 {
     /* Matrix: 07_recursive/** /*.txt, base=. */
@@ -13668,6 +14800,7 @@ void test_t2131(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2132(void)
 {
@@ -13681,6 +14814,7 @@ void test_t2132(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2133(void)
 {
     /* Matrix: 07_recursive/** /*.txt, flags=DOTMATCH */
@@ -13692,6 +14826,7 @@ void test_t2133(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2134(void)
 {
@@ -13705,6 +14840,7 @@ void test_t2134(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2135(void)
 {
     /* Matrix: 07_recursive/** /*.txt, flags=DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -13716,6 +14852,7 @@ void test_t2135(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2136(void)
 {
@@ -13729,6 +14866,7 @@ void test_t2136(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2137(void)
 {
     /* Matrix: 07_recursive/** /*.txt, flags=DOTMATCH, base=. */
@@ -13740,6 +14878,7 @@ void test_t2137(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2138(void)
 {
@@ -13753,6 +14892,7 @@ void test_t2138(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2139(void)
 {
     /* Matrix: 07_recursive/** /*.txt, flags=PATHNAME */
@@ -13764,6 +14904,7 @@ void test_t2139(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2140(void)
 {
@@ -13777,6 +14918,7 @@ void test_t2140(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2141(void)
 {
     /* Matrix: 07_recursive/** /*.txt, flags=PATHNAME, base=/workspaces/dirglob/tests/fixtures/ */
@@ -13788,6 +14930,7 @@ void test_t2141(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2142(void)
 {
@@ -13801,6 +14944,7 @@ void test_t2142(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2143(void)
 {
     /* Matrix: 07_recursive/** /*.txt, flags=PATHNAME, base=. */
@@ -13812,6 +14956,7 @@ void test_t2143(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2144(void)
 {
@@ -13825,6 +14970,7 @@ void test_t2144(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2145(void)
 {
     /* Matrix: 07_recursive/** /*.txt, flags=CASEFOLD */
@@ -13836,6 +14982,7 @@ void test_t2145(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2146(void)
 {
@@ -13849,6 +14996,7 @@ void test_t2146(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2147(void)
 {
     /* Matrix: 07_recursive/** /*.txt, flags=CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -13860,6 +15008,7 @@ void test_t2147(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2148(void)
 {
@@ -13873,6 +15022,7 @@ void test_t2148(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2149(void)
 {
     /* Matrix: 07_recursive/** /*.txt, flags=CASEFOLD, base=. */
@@ -13884,6 +15034,7 @@ void test_t2149(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2150(void)
 {
@@ -13897,6 +15048,7 @@ void test_t2150(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2151(void)
 {
     /* Matrix: 07_recursive/** /*.txt, flags=PATHNAME|DOTMATCH */
@@ -13908,6 +15060,7 @@ void test_t2151(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2152(void)
 {
@@ -13921,6 +15074,7 @@ void test_t2152(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2153(void)
 {
     /* Matrix: 07_recursive/** /*.txt, flags=PATHNAME|DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -13932,6 +15086,7 @@ void test_t2153(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2154(void)
 {
@@ -13945,6 +15100,7 @@ void test_t2154(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2155(void)
 {
     /* Matrix: 07_recursive/** /*.txt, flags=PATHNAME|DOTMATCH, base=. */
@@ -13956,6 +15112,7 @@ void test_t2155(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2156(void)
 {
@@ -13969,6 +15126,7 @@ void test_t2156(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2157(void)
 {
     /* Matrix: 07_recursive/** /*.txt, flags=PATHNAME|CASEFOLD */
@@ -13980,6 +15138,7 @@ void test_t2157(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2158(void)
 {
@@ -13993,6 +15152,7 @@ void test_t2158(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2159(void)
 {
     /* Matrix: 07_recursive/** /*.txt, flags=PATHNAME|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -14004,6 +15164,7 @@ void test_t2159(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2160(void)
 {
@@ -14017,6 +15178,7 @@ void test_t2160(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2161(void)
 {
     /* Matrix: 07_recursive/** /*.txt, flags=PATHNAME|CASEFOLD, base=. */
@@ -14028,6 +15190,7 @@ void test_t2161(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2162(void)
 {
@@ -14041,6 +15204,7 @@ void test_t2162(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2163(void)
 {
     /* Matrix: 07_recursive/** /*.txt, flags=DOTMATCH|CASEFOLD */
@@ -14052,6 +15216,7 @@ void test_t2163(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2164(void)
 {
@@ -14065,6 +15230,7 @@ void test_t2164(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2165(void)
 {
     /* Matrix: 07_recursive/** /*.txt, flags=DOTMATCH|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -14076,6 +15242,7 @@ void test_t2165(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2166(void)
 {
@@ -14089,6 +15256,7 @@ void test_t2166(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2167(void)
 {
     /* Matrix: 07_recursive/** /*.txt, flags=DOTMATCH|CASEFOLD, base=. */
@@ -14100,6 +15268,7 @@ void test_t2167(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2168(void)
 {
@@ -14113,6 +15282,7 @@ void test_t2168(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2169(void)
 {
     /* Matrix: 08_escapechars/\[brackets\].txt */
@@ -14124,6 +15294,7 @@ void test_t2169(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2170(void)
 {
@@ -14137,6 +15308,7 @@ void test_t2170(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2171(void)
 {
     /* Matrix: 08_escapechars/\[brackets\].txt, base=/workspaces/dirglob/tests/fixtures/ */
@@ -14148,6 +15320,7 @@ void test_t2171(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2172(void)
 {
@@ -14161,6 +15334,7 @@ void test_t2172(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2173(void)
 {
     /* Matrix: 08_escapechars/\[brackets\].txt, flags=DOTMATCH */
@@ -14172,6 +15346,7 @@ void test_t2173(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2174(void)
 {
@@ -14185,6 +15360,7 @@ void test_t2174(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2175(void)
 {
     /* Matrix: 08_escapechars/\[brackets\].txt, flags=DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -14196,6 +15372,7 @@ void test_t2175(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2176(void)
 {
@@ -14209,6 +15386,7 @@ void test_t2176(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2177(void)
 {
     /* Matrix: 08_escapechars/\[brackets\].txt, flags=PATHNAME */
@@ -14220,6 +15398,7 @@ void test_t2177(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2178(void)
 {
@@ -14233,6 +15412,7 @@ void test_t2178(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2179(void)
 {
     /* Matrix: 08_escapechars/\[brackets\].txt, flags=PATHNAME, base=/workspaces/dirglob/tests/fixtures/ */
@@ -14244,6 +15424,7 @@ void test_t2179(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2180(void)
 {
@@ -14257,6 +15438,7 @@ void test_t2180(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2181(void)
 {
     /* Matrix: 08_escapechars/\[brackets\].txt, flags=CASEFOLD */
@@ -14268,6 +15450,7 @@ void test_t2181(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2182(void)
 {
@@ -14281,6 +15464,7 @@ void test_t2182(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2183(void)
 {
     /* Matrix: 08_escapechars/\[brackets\].txt, flags=CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -14292,6 +15476,7 @@ void test_t2183(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2184(void)
 {
@@ -14305,6 +15490,7 @@ void test_t2184(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2185(void)
 {
     /* Matrix: 08_escapechars/\[brackets\].txt, flags=PATHNAME|DOTMATCH */
@@ -14316,6 +15502,7 @@ void test_t2185(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2186(void)
 {
@@ -14329,6 +15516,7 @@ void test_t2186(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2187(void)
 {
     /* Matrix: 08_escapechars/\[brackets\].txt, flags=PATHNAME|DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -14340,6 +15528,7 @@ void test_t2187(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2188(void)
 {
@@ -14353,6 +15542,7 @@ void test_t2188(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2189(void)
 {
     /* Matrix: 08_escapechars/\[brackets\].txt, flags=PATHNAME|CASEFOLD */
@@ -14364,6 +15554,7 @@ void test_t2189(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2190(void)
 {
@@ -14377,6 +15568,7 @@ void test_t2190(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2191(void)
 {
     /* Matrix: 08_escapechars/\[brackets\].txt, flags=PATHNAME|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -14388,6 +15580,7 @@ void test_t2191(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2192(void)
 {
@@ -14401,6 +15594,7 @@ void test_t2192(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2193(void)
 {
     /* Matrix: 08_escapechars/\[brackets\].txt, flags=DOTMATCH|CASEFOLD */
@@ -14412,6 +15606,7 @@ void test_t2193(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2194(void)
 {
@@ -14425,6 +15620,7 @@ void test_t2194(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2195(void)
 {
     /* Matrix: 08_escapechars/\[brackets\].txt, flags=DOTMATCH|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -14436,6 +15632,7 @@ void test_t2195(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2196(void)
 {
@@ -14449,6 +15646,7 @@ void test_t2196(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2197(void)
 {
     /* Matrix: 08_escapechars/\{braces\}.txt */
@@ -14460,6 +15658,7 @@ void test_t2197(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2198(void)
 {
@@ -14473,6 +15672,7 @@ void test_t2198(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2199(void)
 {
     /* Matrix: 08_escapechars/\{braces\}.txt, base=/workspaces/dirglob/tests/fixtures/ */
@@ -14484,6 +15684,7 @@ void test_t2199(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2200(void)
 {
@@ -14497,6 +15698,7 @@ void test_t2200(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2201(void)
 {
     /* Matrix: 08_escapechars/\{braces\}.txt, flags=DOTMATCH */
@@ -14508,6 +15710,7 @@ void test_t2201(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2202(void)
 {
@@ -14521,6 +15724,7 @@ void test_t2202(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2203(void)
 {
     /* Matrix: 08_escapechars/\{braces\}.txt, flags=DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -14532,6 +15736,7 @@ void test_t2203(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2204(void)
 {
@@ -14545,6 +15750,7 @@ void test_t2204(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2205(void)
 {
     /* Matrix: 08_escapechars/\{braces\}.txt, flags=PATHNAME */
@@ -14556,6 +15762,7 @@ void test_t2205(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2206(void)
 {
@@ -14569,6 +15776,7 @@ void test_t2206(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2207(void)
 {
     /* Matrix: 08_escapechars/\{braces\}.txt, flags=PATHNAME, base=/workspaces/dirglob/tests/fixtures/ */
@@ -14580,6 +15788,7 @@ void test_t2207(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2208(void)
 {
@@ -14593,6 +15802,7 @@ void test_t2208(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2209(void)
 {
     /* Matrix: 08_escapechars/\{braces\}.txt, flags=CASEFOLD */
@@ -14604,6 +15814,7 @@ void test_t2209(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2210(void)
 {
@@ -14617,6 +15828,7 @@ void test_t2210(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2211(void)
 {
     /* Matrix: 08_escapechars/\{braces\}.txt, flags=CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -14628,6 +15840,7 @@ void test_t2211(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2212(void)
 {
@@ -14641,6 +15854,7 @@ void test_t2212(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2213(void)
 {
     /* Matrix: 08_escapechars/\{braces\}.txt, flags=PATHNAME|DOTMATCH */
@@ -14652,6 +15866,7 @@ void test_t2213(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2214(void)
 {
@@ -14665,6 +15880,7 @@ void test_t2214(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2215(void)
 {
     /* Matrix: 08_escapechars/\{braces\}.txt, flags=PATHNAME|DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -14676,6 +15892,7 @@ void test_t2215(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2216(void)
 {
@@ -14689,6 +15906,7 @@ void test_t2216(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2217(void)
 {
     /* Matrix: 08_escapechars/\{braces\}.txt, flags=PATHNAME|CASEFOLD */
@@ -14700,6 +15918,7 @@ void test_t2217(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2218(void)
 {
@@ -14713,6 +15932,7 @@ void test_t2218(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2219(void)
 {
     /* Matrix: 08_escapechars/\{braces\}.txt, flags=PATHNAME|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -14724,6 +15944,7 @@ void test_t2219(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2220(void)
 {
@@ -14737,6 +15958,7 @@ void test_t2220(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2221(void)
 {
     /* Matrix: 08_escapechars/\{braces\}.txt, flags=DOTMATCH|CASEFOLD */
@@ -14748,6 +15970,7 @@ void test_t2221(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2222(void)
 {
@@ -14761,6 +15984,7 @@ void test_t2222(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2223(void)
 {
     /* Matrix: 08_escapechars/\{braces\}.txt, flags=DOTMATCH|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -14772,6 +15996,7 @@ void test_t2223(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2224(void)
 {
@@ -14785,6 +16010,7 @@ void test_t2224(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2225(void)
 {
     /* Matrix: 08_escapechars/\*asterisk.txt */
@@ -14796,6 +16022,7 @@ void test_t2225(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2226(void)
 {
@@ -14809,6 +16036,7 @@ void test_t2226(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2227(void)
 {
     /* Matrix: 08_escapechars/\*asterisk.txt, base=/workspaces/dirglob/tests/fixtures/ */
@@ -14820,6 +16048,7 @@ void test_t2227(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2228(void)
 {
@@ -14833,6 +16062,7 @@ void test_t2228(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2229(void)
 {
     /* Matrix: 08_escapechars/\*asterisk.txt, base=. */
@@ -14844,6 +16074,7 @@ void test_t2229(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2230(void)
 {
@@ -14857,6 +16088,7 @@ void test_t2230(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2231(void)
 {
     /* Matrix: 08_escapechars/\*asterisk.txt, flags=DOTMATCH */
@@ -14868,6 +16100,7 @@ void test_t2231(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2232(void)
 {
@@ -14881,6 +16114,7 @@ void test_t2232(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2233(void)
 {
     /* Matrix: 08_escapechars/\*asterisk.txt, flags=DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -14892,6 +16126,7 @@ void test_t2233(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2234(void)
 {
@@ -14905,6 +16140,7 @@ void test_t2234(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2235(void)
 {
     /* Matrix: 08_escapechars/\*asterisk.txt, flags=DOTMATCH, base=. */
@@ -14916,6 +16152,7 @@ void test_t2235(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2236(void)
 {
@@ -14929,6 +16166,7 @@ void test_t2236(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2237(void)
 {
     /* Matrix: 08_escapechars/\*asterisk.txt, flags=PATHNAME */
@@ -14940,6 +16178,7 @@ void test_t2237(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2238(void)
 {
@@ -14953,6 +16192,7 @@ void test_t2238(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2239(void)
 {
     /* Matrix: 08_escapechars/\*asterisk.txt, flags=PATHNAME, base=/workspaces/dirglob/tests/fixtures/ */
@@ -14964,6 +16204,7 @@ void test_t2239(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2240(void)
 {
@@ -14977,6 +16218,7 @@ void test_t2240(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2241(void)
 {
     /* Matrix: 08_escapechars/\*asterisk.txt, flags=PATHNAME, base=. */
@@ -14988,6 +16230,7 @@ void test_t2241(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2242(void)
 {
@@ -15001,6 +16244,7 @@ void test_t2242(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2243(void)
 {
     /* Matrix: 08_escapechars/\*asterisk.txt, flags=CASEFOLD */
@@ -15012,6 +16256,7 @@ void test_t2243(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2244(void)
 {
@@ -15025,6 +16270,7 @@ void test_t2244(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2245(void)
 {
     /* Matrix: 08_escapechars/\*asterisk.txt, flags=CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -15036,6 +16282,7 @@ void test_t2245(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2246(void)
 {
@@ -15049,6 +16296,7 @@ void test_t2246(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2247(void)
 {
     /* Matrix: 08_escapechars/\*asterisk.txt, flags=CASEFOLD, base=. */
@@ -15060,6 +16308,7 @@ void test_t2247(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2248(void)
 {
@@ -15073,6 +16322,7 @@ void test_t2248(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2249(void)
 {
     /* Matrix: 08_escapechars/\*asterisk.txt, flags=PATHNAME|DOTMATCH */
@@ -15084,6 +16334,7 @@ void test_t2249(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2250(void)
 {
@@ -15097,6 +16348,7 @@ void test_t2250(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2251(void)
 {
     /* Matrix: 08_escapechars/\*asterisk.txt, flags=PATHNAME|DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -15108,6 +16360,7 @@ void test_t2251(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2252(void)
 {
@@ -15121,6 +16374,7 @@ void test_t2252(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2253(void)
 {
     /* Matrix: 08_escapechars/\*asterisk.txt, flags=PATHNAME|DOTMATCH, base=. */
@@ -15132,6 +16386,7 @@ void test_t2253(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2254(void)
 {
@@ -15145,6 +16400,7 @@ void test_t2254(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2255(void)
 {
     /* Matrix: 08_escapechars/\*asterisk.txt, flags=PATHNAME|CASEFOLD */
@@ -15156,6 +16412,7 @@ void test_t2255(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2256(void)
 {
@@ -15169,6 +16426,7 @@ void test_t2256(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2257(void)
 {
     /* Matrix: 08_escapechars/\*asterisk.txt, flags=PATHNAME|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -15180,6 +16438,7 @@ void test_t2257(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2258(void)
 {
@@ -15193,6 +16452,7 @@ void test_t2258(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2259(void)
 {
     /* Matrix: 08_escapechars/\*asterisk.txt, flags=PATHNAME|CASEFOLD, base=. */
@@ -15204,6 +16464,7 @@ void test_t2259(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2260(void)
 {
@@ -15217,6 +16478,7 @@ void test_t2260(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2261(void)
 {
     /* Matrix: 08_escapechars/\*asterisk.txt, flags=DOTMATCH|CASEFOLD */
@@ -15228,6 +16490,7 @@ void test_t2261(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2262(void)
 {
@@ -15241,6 +16504,7 @@ void test_t2262(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2263(void)
 {
     /* Matrix: 08_escapechars/\*asterisk.txt, flags=DOTMATCH|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -15252,6 +16516,7 @@ void test_t2263(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2264(void)
 {
@@ -15265,6 +16530,7 @@ void test_t2264(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2265(void)
 {
     /* Matrix: 08_escapechars/\*asterisk.txt, flags=DOTMATCH|CASEFOLD, base=. */
@@ -15276,6 +16542,7 @@ void test_t2265(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2266(void)
 {
@@ -15289,6 +16556,7 @@ void test_t2266(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2267(void)
 {
     /* Matrix: 08_escapechars/\?question.txt */
@@ -15300,6 +16568,7 @@ void test_t2267(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2268(void)
 {
@@ -15313,6 +16582,7 @@ void test_t2268(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2269(void)
 {
     /* Matrix: 08_escapechars/\?question.txt, base=/workspaces/dirglob/tests/fixtures/ */
@@ -15324,6 +16594,7 @@ void test_t2269(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2270(void)
 {
@@ -15337,6 +16608,7 @@ void test_t2270(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2271(void)
 {
     /* Matrix: 08_escapechars/\?question.txt, base=. */
@@ -15348,6 +16620,7 @@ void test_t2271(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2272(void)
 {
@@ -15361,6 +16634,7 @@ void test_t2272(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2273(void)
 {
     /* Matrix: 08_escapechars/\?question.txt, flags=DOTMATCH */
@@ -15372,6 +16646,7 @@ void test_t2273(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2274(void)
 {
@@ -15385,6 +16660,7 @@ void test_t2274(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2275(void)
 {
     /* Matrix: 08_escapechars/\?question.txt, flags=DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -15396,6 +16672,7 @@ void test_t2275(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2276(void)
 {
@@ -15409,6 +16686,7 @@ void test_t2276(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2277(void)
 {
     /* Matrix: 08_escapechars/\?question.txt, flags=DOTMATCH, base=. */
@@ -15420,6 +16698,7 @@ void test_t2277(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2278(void)
 {
@@ -15433,6 +16712,7 @@ void test_t2278(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2279(void)
 {
     /* Matrix: 08_escapechars/\?question.txt, flags=PATHNAME */
@@ -15444,6 +16724,7 @@ void test_t2279(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2280(void)
 {
@@ -15457,6 +16738,7 @@ void test_t2280(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2281(void)
 {
     /* Matrix: 08_escapechars/\?question.txt, flags=PATHNAME, base=/workspaces/dirglob/tests/fixtures/ */
@@ -15468,6 +16750,7 @@ void test_t2281(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2282(void)
 {
@@ -15481,6 +16764,7 @@ void test_t2282(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2283(void)
 {
     /* Matrix: 08_escapechars/\?question.txt, flags=PATHNAME, base=. */
@@ -15492,6 +16776,7 @@ void test_t2283(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2284(void)
 {
@@ -15505,6 +16790,7 @@ void test_t2284(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2285(void)
 {
     /* Matrix: 08_escapechars/\?question.txt, flags=CASEFOLD */
@@ -15516,6 +16802,7 @@ void test_t2285(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2286(void)
 {
@@ -15529,6 +16816,7 @@ void test_t2286(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2287(void)
 {
     /* Matrix: 08_escapechars/\?question.txt, flags=CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -15540,6 +16828,7 @@ void test_t2287(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2288(void)
 {
@@ -15553,6 +16842,7 @@ void test_t2288(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2289(void)
 {
     /* Matrix: 08_escapechars/\?question.txt, flags=CASEFOLD, base=. */
@@ -15564,6 +16854,7 @@ void test_t2289(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2290(void)
 {
@@ -15577,6 +16868,7 @@ void test_t2290(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2291(void)
 {
     /* Matrix: 08_escapechars/\?question.txt, flags=PATHNAME|DOTMATCH */
@@ -15588,6 +16880,7 @@ void test_t2291(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2292(void)
 {
@@ -15601,6 +16894,7 @@ void test_t2292(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2293(void)
 {
     /* Matrix: 08_escapechars/\?question.txt, flags=PATHNAME|DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -15612,6 +16906,7 @@ void test_t2293(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2294(void)
 {
@@ -15625,6 +16920,7 @@ void test_t2294(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2295(void)
 {
     /* Matrix: 08_escapechars/\?question.txt, flags=PATHNAME|DOTMATCH, base=. */
@@ -15636,6 +16932,7 @@ void test_t2295(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2296(void)
 {
@@ -15649,6 +16946,7 @@ void test_t2296(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2297(void)
 {
     /* Matrix: 08_escapechars/\?question.txt, flags=PATHNAME|CASEFOLD */
@@ -15660,6 +16958,7 @@ void test_t2297(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2298(void)
 {
@@ -15673,6 +16972,7 @@ void test_t2298(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2299(void)
 {
     /* Matrix: 08_escapechars/\?question.txt, flags=PATHNAME|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -15684,6 +16984,7 @@ void test_t2299(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2300(void)
 {
@@ -15697,6 +16998,7 @@ void test_t2300(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2301(void)
 {
     /* Matrix: 08_escapechars/\?question.txt, flags=PATHNAME|CASEFOLD, base=. */
@@ -15708,6 +17010,7 @@ void test_t2301(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2302(void)
 {
@@ -15721,6 +17024,7 @@ void test_t2302(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2303(void)
 {
     /* Matrix: 08_escapechars/\?question.txt, flags=DOTMATCH|CASEFOLD */
@@ -15732,6 +17036,7 @@ void test_t2303(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2304(void)
 {
@@ -15745,6 +17050,7 @@ void test_t2304(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2305(void)
 {
     /* Matrix: 08_escapechars/\?question.txt, flags=DOTMATCH|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -15756,6 +17062,7 @@ void test_t2305(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2306(void)
 {
@@ -15769,6 +17076,7 @@ void test_t2306(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2307(void)
 {
     /* Matrix: 08_escapechars/\?question.txt, flags=DOTMATCH|CASEFOLD, base=. */
@@ -15780,6 +17088,7 @@ void test_t2307(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2308(void)
 {
@@ -15793,6 +17102,7 @@ void test_t2308(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2309(void)
 {
     /* Matrix: 08_escapechars/\\backslash.txt */
@@ -15804,6 +17114,7 @@ void test_t2309(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2310(void)
 {
@@ -15817,6 +17128,7 @@ void test_t2310(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2311(void)
 {
     /* Matrix: 08_escapechars/\\backslash.txt, base=/workspaces/dirglob/tests/fixtures/ */
@@ -15828,6 +17140,7 @@ void test_t2311(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2312(void)
 {
@@ -15841,6 +17154,7 @@ void test_t2312(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2313(void)
 {
     /* Matrix: 08_escapechars/\\backslash.txt, flags=DOTMATCH */
@@ -15852,6 +17166,7 @@ void test_t2313(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2314(void)
 {
@@ -15865,6 +17180,7 @@ void test_t2314(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2315(void)
 {
     /* Matrix: 08_escapechars/\\backslash.txt, flags=DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -15876,6 +17192,7 @@ void test_t2315(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2316(void)
 {
@@ -15889,6 +17206,7 @@ void test_t2316(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2317(void)
 {
     /* Matrix: 08_escapechars/\\backslash.txt, flags=PATHNAME */
@@ -15900,6 +17218,7 @@ void test_t2317(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2318(void)
 {
@@ -15913,6 +17232,7 @@ void test_t2318(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2319(void)
 {
     /* Matrix: 08_escapechars/\\backslash.txt, flags=PATHNAME, base=/workspaces/dirglob/tests/fixtures/ */
@@ -15924,6 +17244,7 @@ void test_t2319(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2320(void)
 {
@@ -15937,6 +17258,7 @@ void test_t2320(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2321(void)
 {
     /* Matrix: 08_escapechars/\\backslash.txt, flags=CASEFOLD */
@@ -15948,6 +17270,7 @@ void test_t2321(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2322(void)
 {
@@ -15961,6 +17284,7 @@ void test_t2322(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2323(void)
 {
     /* Matrix: 08_escapechars/\\backslash.txt, flags=CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -15972,6 +17296,7 @@ void test_t2323(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2324(void)
 {
@@ -15985,6 +17310,7 @@ void test_t2324(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2325(void)
 {
     /* Matrix: 08_escapechars/\\backslash.txt, flags=PATHNAME|DOTMATCH */
@@ -15996,6 +17322,7 @@ void test_t2325(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2326(void)
 {
@@ -16009,6 +17336,7 @@ void test_t2326(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2327(void)
 {
     /* Matrix: 08_escapechars/\\backslash.txt, flags=PATHNAME|DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -16020,6 +17348,7 @@ void test_t2327(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2328(void)
 {
@@ -16033,6 +17362,7 @@ void test_t2328(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2329(void)
 {
     /* Matrix: 08_escapechars/\\backslash.txt, flags=PATHNAME|CASEFOLD */
@@ -16044,6 +17374,7 @@ void test_t2329(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2330(void)
 {
@@ -16057,6 +17388,7 @@ void test_t2330(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2331(void)
 {
     /* Matrix: 08_escapechars/\\backslash.txt, flags=PATHNAME|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -16068,6 +17400,7 @@ void test_t2331(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2332(void)
 {
@@ -16081,6 +17414,7 @@ void test_t2332(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2333(void)
 {
     /* Matrix: 08_escapechars/\\backslash.txt, flags=DOTMATCH|CASEFOLD */
@@ -16092,6 +17426,7 @@ void test_t2333(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2334(void)
 {
@@ -16105,6 +17440,7 @@ void test_t2334(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2335(void)
 {
     /* Matrix: 08_escapechars/\\backslash.txt, flags=DOTMATCH|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -16116,6 +17452,7 @@ void test_t2335(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2336(void)
 {
@@ -16129,6 +17466,7 @@ void test_t2336(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2337(void)
 {
     /* Matrix: 08_escapechars/\(parentheses\).txt */
@@ -16140,6 +17478,7 @@ void test_t2337(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2338(void)
 {
@@ -16153,6 +17492,7 @@ void test_t2338(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2339(void)
 {
     /* Matrix: 08_escapechars/\(parentheses\).txt, base=/workspaces/dirglob/tests/fixtures/ */
@@ -16164,6 +17504,7 @@ void test_t2339(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2340(void)
 {
@@ -16177,6 +17518,7 @@ void test_t2340(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2341(void)
 {
     /* Matrix: 08_escapechars/\(parentheses\).txt, flags=DOTMATCH */
@@ -16188,6 +17530,7 @@ void test_t2341(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2342(void)
 {
@@ -16201,6 +17544,7 @@ void test_t2342(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2343(void)
 {
     /* Matrix: 08_escapechars/\(parentheses\).txt, flags=DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -16212,6 +17556,7 @@ void test_t2343(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2344(void)
 {
@@ -16225,6 +17570,7 @@ void test_t2344(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2345(void)
 {
     /* Matrix: 08_escapechars/\(parentheses\).txt, flags=PATHNAME */
@@ -16236,6 +17582,7 @@ void test_t2345(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2346(void)
 {
@@ -16249,6 +17596,7 @@ void test_t2346(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2347(void)
 {
     /* Matrix: 08_escapechars/\(parentheses\).txt, flags=PATHNAME, base=/workspaces/dirglob/tests/fixtures/ */
@@ -16260,6 +17608,7 @@ void test_t2347(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2348(void)
 {
@@ -16273,6 +17622,7 @@ void test_t2348(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2349(void)
 {
     /* Matrix: 08_escapechars/\(parentheses\).txt, flags=CASEFOLD */
@@ -16284,6 +17634,7 @@ void test_t2349(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2350(void)
 {
@@ -16297,6 +17648,7 @@ void test_t2350(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2351(void)
 {
     /* Matrix: 08_escapechars/\(parentheses\).txt, flags=CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -16308,6 +17660,7 @@ void test_t2351(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2352(void)
 {
@@ -16321,6 +17674,7 @@ void test_t2352(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2353(void)
 {
     /* Matrix: 08_escapechars/\(parentheses\).txt, flags=PATHNAME|DOTMATCH */
@@ -16332,6 +17686,7 @@ void test_t2353(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2354(void)
 {
@@ -16345,6 +17700,7 @@ void test_t2354(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2355(void)
 {
     /* Matrix: 08_escapechars/\(parentheses\).txt, flags=PATHNAME|DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -16356,6 +17712,7 @@ void test_t2355(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2356(void)
 {
@@ -16369,6 +17726,7 @@ void test_t2356(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2357(void)
 {
     /* Matrix: 08_escapechars/\(parentheses\).txt, flags=PATHNAME|CASEFOLD */
@@ -16380,6 +17738,7 @@ void test_t2357(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2358(void)
 {
@@ -16393,6 +17752,7 @@ void test_t2358(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2359(void)
 {
     /* Matrix: 08_escapechars/\(parentheses\).txt, flags=PATHNAME|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -16404,6 +17764,7 @@ void test_t2359(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2360(void)
 {
@@ -16417,6 +17778,7 @@ void test_t2360(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2361(void)
 {
     /* Matrix: 08_escapechars/\(parentheses\).txt, flags=DOTMATCH|CASEFOLD */
@@ -16428,6 +17790,7 @@ void test_t2361(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2362(void)
 {
@@ -16441,6 +17804,7 @@ void test_t2362(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2363(void)
 {
     /* Matrix: 08_escapechars/\(parentheses\).txt, flags=DOTMATCH|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -16452,6 +17816,7 @@ void test_t2363(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2364(void)
 {
@@ -16465,6 +17830,7 @@ void test_t2364(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2365(void)
 {
     /* Matrix: 09_combined/* /*.{c,h} */
@@ -16476,6 +17842,7 @@ void test_t2365(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2366(void)
 {
@@ -16489,6 +17856,7 @@ void test_t2366(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2367(void)
 {
     /* Matrix: 09_combined/* /*.{c,h}, base=/workspaces/dirglob/tests/fixtures/ */
@@ -16500,6 +17868,7 @@ void test_t2367(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2368(void)
 {
@@ -16513,6 +17882,7 @@ void test_t2368(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2369(void)
 {
     /* Matrix: 09_combined/* /*.{c,h}, base=. */
@@ -16524,6 +17894,7 @@ void test_t2369(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2370(void)
 {
@@ -16537,6 +17908,7 @@ void test_t2370(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2371(void)
 {
     /* Matrix: 09_combined/* /*.{c,h}, flags=DOTMATCH */
@@ -16548,6 +17920,7 @@ void test_t2371(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2372(void)
 {
@@ -16561,6 +17934,7 @@ void test_t2372(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2373(void)
 {
     /* Matrix: 09_combined/* /*.{c,h}, flags=DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -16572,6 +17946,7 @@ void test_t2373(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2374(void)
 {
@@ -16585,6 +17960,7 @@ void test_t2374(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2375(void)
 {
     /* Matrix: 09_combined/* /*.{c,h}, flags=DOTMATCH, base=. */
@@ -16596,6 +17972,7 @@ void test_t2375(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2376(void)
 {
@@ -16609,6 +17986,7 @@ void test_t2376(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2377(void)
 {
     /* Matrix: 09_combined/* /*.{c,h}, flags=PATHNAME */
@@ -16620,6 +17998,7 @@ void test_t2377(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2378(void)
 {
@@ -16633,6 +18012,7 @@ void test_t2378(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2379(void)
 {
     /* Matrix: 09_combined/* /*.{c,h}, flags=PATHNAME, base=/workspaces/dirglob/tests/fixtures/ */
@@ -16644,6 +18024,7 @@ void test_t2379(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2380(void)
 {
@@ -16657,6 +18038,7 @@ void test_t2380(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2381(void)
 {
     /* Matrix: 09_combined/* /*.{c,h}, flags=PATHNAME, base=. */
@@ -16668,6 +18050,7 @@ void test_t2381(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2382(void)
 {
@@ -16681,6 +18064,7 @@ void test_t2382(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2383(void)
 {
     /* Matrix: 09_combined/* /*.{c,h}, flags=CASEFOLD */
@@ -16692,6 +18076,7 @@ void test_t2383(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2384(void)
 {
@@ -16705,6 +18090,7 @@ void test_t2384(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2385(void)
 {
     /* Matrix: 09_combined/* /*.{c,h}, flags=CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -16716,6 +18102,7 @@ void test_t2385(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2386(void)
 {
@@ -16729,6 +18116,7 @@ void test_t2386(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2387(void)
 {
     /* Matrix: 09_combined/* /*.{c,h}, flags=CASEFOLD, base=. */
@@ -16740,6 +18128,7 @@ void test_t2387(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2388(void)
 {
@@ -16753,6 +18142,7 @@ void test_t2388(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2389(void)
 {
     /* Matrix: 09_combined/* /*.{c,h}, flags=PATHNAME|DOTMATCH */
@@ -16764,6 +18154,7 @@ void test_t2389(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2390(void)
 {
@@ -16777,6 +18168,7 @@ void test_t2390(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2391(void)
 {
     /* Matrix: 09_combined/* /*.{c,h}, flags=PATHNAME|DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -16788,6 +18180,7 @@ void test_t2391(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2392(void)
 {
@@ -16801,6 +18194,7 @@ void test_t2392(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2393(void)
 {
     /* Matrix: 09_combined/* /*.{c,h}, flags=PATHNAME|DOTMATCH, base=. */
@@ -16812,6 +18206,7 @@ void test_t2393(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2394(void)
 {
@@ -16825,6 +18220,7 @@ void test_t2394(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2395(void)
 {
     /* Matrix: 09_combined/* /*.{c,h}, flags=PATHNAME|CASEFOLD */
@@ -16836,6 +18232,7 @@ void test_t2395(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2396(void)
 {
@@ -16849,6 +18246,7 @@ void test_t2396(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2397(void)
 {
     /* Matrix: 09_combined/* /*.{c,h}, flags=PATHNAME|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -16860,6 +18258,7 @@ void test_t2397(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2398(void)
 {
@@ -16873,6 +18272,7 @@ void test_t2398(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2399(void)
 {
     /* Matrix: 09_combined/* /*.{c,h}, flags=PATHNAME|CASEFOLD, base=. */
@@ -16884,6 +18284,7 @@ void test_t2399(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2400(void)
 {
@@ -16897,6 +18298,7 @@ void test_t2400(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2401(void)
 {
     /* Matrix: 09_combined/* /*.{c,h}, flags=DOTMATCH|CASEFOLD */
@@ -16908,6 +18310,7 @@ void test_t2401(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2402(void)
 {
@@ -16921,6 +18324,7 @@ void test_t2402(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2403(void)
 {
     /* Matrix: 09_combined/* /*.{c,h}, flags=DOTMATCH|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -16932,6 +18336,7 @@ void test_t2403(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2404(void)
 {
@@ -16945,6 +18350,7 @@ void test_t2404(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2405(void)
 {
     /* Matrix: 09_combined/* /*.{c,h}, flags=DOTMATCH|CASEFOLD, base=. */
@@ -16956,6 +18362,7 @@ void test_t2405(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2406(void)
 {
@@ -16969,6 +18376,7 @@ void test_t2406(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2407(void)
 {
     /* Matrix: 09_combined/** /fil?.[ch] */
@@ -16980,6 +18388,7 @@ void test_t2407(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2408(void)
 {
@@ -16993,6 +18402,7 @@ void test_t2408(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2409(void)
 {
     /* Matrix: 09_combined/** /fil?.[ch], base=/workspaces/dirglob/tests/fixtures/ */
@@ -17004,6 +18414,7 @@ void test_t2409(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2410(void)
 {
@@ -17017,6 +18428,7 @@ void test_t2410(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2411(void)
 {
     /* Matrix: 09_combined/** /fil?.[ch], base=. */
@@ -17028,6 +18440,7 @@ void test_t2411(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2412(void)
 {
@@ -17041,6 +18454,7 @@ void test_t2412(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2413(void)
 {
     /* Matrix: 09_combined/** /fil?.[ch], flags=DOTMATCH */
@@ -17052,6 +18466,7 @@ void test_t2413(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2414(void)
 {
@@ -17065,6 +18480,7 @@ void test_t2414(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2415(void)
 {
     /* Matrix: 09_combined/** /fil?.[ch], flags=DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -17076,6 +18492,7 @@ void test_t2415(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2416(void)
 {
@@ -17089,6 +18506,7 @@ void test_t2416(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2417(void)
 {
     /* Matrix: 09_combined/** /fil?.[ch], flags=DOTMATCH, base=. */
@@ -17100,6 +18518,7 @@ void test_t2417(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2418(void)
 {
@@ -17113,6 +18532,7 @@ void test_t2418(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2419(void)
 {
     /* Matrix: 09_combined/** /fil?.[ch], flags=PATHNAME */
@@ -17124,6 +18544,7 @@ void test_t2419(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2420(void)
 {
@@ -17137,6 +18558,7 @@ void test_t2420(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2421(void)
 {
     /* Matrix: 09_combined/** /fil?.[ch], flags=PATHNAME, base=/workspaces/dirglob/tests/fixtures/ */
@@ -17148,6 +18570,7 @@ void test_t2421(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2422(void)
 {
@@ -17161,6 +18584,7 @@ void test_t2422(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2423(void)
 {
     /* Matrix: 09_combined/** /fil?.[ch], flags=PATHNAME, base=. */
@@ -17172,6 +18596,7 @@ void test_t2423(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2424(void)
 {
@@ -17185,6 +18610,7 @@ void test_t2424(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2425(void)
 {
     /* Matrix: 09_combined/** /fil?.[ch], flags=CASEFOLD */
@@ -17196,6 +18622,7 @@ void test_t2425(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2426(void)
 {
@@ -17209,6 +18636,7 @@ void test_t2426(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2427(void)
 {
     /* Matrix: 09_combined/** /fil?.[ch], flags=CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -17220,6 +18648,7 @@ void test_t2427(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2428(void)
 {
@@ -17233,6 +18662,7 @@ void test_t2428(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2429(void)
 {
     /* Matrix: 09_combined/** /fil?.[ch], flags=CASEFOLD, base=. */
@@ -17244,6 +18674,7 @@ void test_t2429(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2430(void)
 {
@@ -17257,6 +18688,7 @@ void test_t2430(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2431(void)
 {
     /* Matrix: 09_combined/** /fil?.[ch], flags=PATHNAME|DOTMATCH */
@@ -17268,6 +18700,7 @@ void test_t2431(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2432(void)
 {
@@ -17281,6 +18714,7 @@ void test_t2432(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2433(void)
 {
     /* Matrix: 09_combined/** /fil?.[ch], flags=PATHNAME|DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -17292,6 +18726,7 @@ void test_t2433(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2434(void)
 {
@@ -17305,6 +18740,7 @@ void test_t2434(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2435(void)
 {
     /* Matrix: 09_combined/** /fil?.[ch], flags=PATHNAME|DOTMATCH, base=. */
@@ -17316,6 +18752,7 @@ void test_t2435(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2436(void)
 {
@@ -17329,6 +18766,7 @@ void test_t2436(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2437(void)
 {
     /* Matrix: 09_combined/** /fil?.[ch], flags=PATHNAME|CASEFOLD */
@@ -17340,6 +18778,7 @@ void test_t2437(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2438(void)
 {
@@ -17353,6 +18792,7 @@ void test_t2438(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2439(void)
 {
     /* Matrix: 09_combined/** /fil?.[ch], flags=PATHNAME|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -17364,6 +18804,7 @@ void test_t2439(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2440(void)
 {
@@ -17377,6 +18818,7 @@ void test_t2440(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2441(void)
 {
     /* Matrix: 09_combined/** /fil?.[ch], flags=PATHNAME|CASEFOLD, base=. */
@@ -17388,6 +18830,7 @@ void test_t2441(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2442(void)
 {
@@ -17401,6 +18844,7 @@ void test_t2442(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2443(void)
 {
     /* Matrix: 09_combined/** /fil?.[ch], flags=DOTMATCH|CASEFOLD */
@@ -17412,6 +18856,7 @@ void test_t2443(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2444(void)
 {
@@ -17425,6 +18870,7 @@ void test_t2444(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2445(void)
 {
     /* Matrix: 09_combined/** /fil?.[ch], flags=DOTMATCH|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -17436,6 +18882,7 @@ void test_t2445(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2446(void)
 {
@@ -17449,6 +18896,7 @@ void test_t2446(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2447(void)
 {
     /* Matrix: 09_combined/** /fil?.[ch], flags=DOTMATCH|CASEFOLD, base=. */
@@ -17460,6 +18908,7 @@ void test_t2447(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2448(void)
 {
@@ -17473,6 +18922,7 @@ void test_t2448(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2449(void)
 {
     /* Matrix: 09_combined/{file[0-9].txt,[a-z]} */
@@ -17484,6 +18934,7 @@ void test_t2449(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2450(void)
 {
@@ -17497,6 +18948,7 @@ void test_t2450(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2451(void)
 {
     /* Matrix: 09_combined/{file[0-9].txt,[a-z]}, base=/workspaces/dirglob/tests/fixtures/ */
@@ -17508,6 +18960,7 @@ void test_t2451(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2452(void)
 {
@@ -17521,6 +18974,7 @@ void test_t2452(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2453(void)
 {
     /* Matrix: 09_combined/{file[0-9].txt,[a-z]}, flags=DOTMATCH */
@@ -17532,6 +18986,7 @@ void test_t2453(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2454(void)
 {
@@ -17545,6 +19000,7 @@ void test_t2454(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2455(void)
 {
     /* Matrix: 09_combined/{file[0-9].txt,[a-z]}, flags=DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -17556,6 +19012,7 @@ void test_t2455(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2456(void)
 {
@@ -17569,6 +19026,7 @@ void test_t2456(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2457(void)
 {
     /* Matrix: 09_combined/{file[0-9].txt,[a-z]}, flags=PATHNAME */
@@ -17580,6 +19038,7 @@ void test_t2457(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2458(void)
 {
@@ -17593,6 +19052,7 @@ void test_t2458(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2459(void)
 {
     /* Matrix: 09_combined/{file[0-9].txt,[a-z]}, flags=PATHNAME, base=/workspaces/dirglob/tests/fixtures/ */
@@ -17604,6 +19064,7 @@ void test_t2459(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2460(void)
 {
@@ -17617,6 +19078,7 @@ void test_t2460(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2461(void)
 {
     /* Matrix: 09_combined/{file[0-9].txt,[a-z]}, flags=CASEFOLD */
@@ -17628,6 +19090,7 @@ void test_t2461(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2462(void)
 {
@@ -17641,6 +19104,7 @@ void test_t2462(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2463(void)
 {
     /* Matrix: 09_combined/{file[0-9].txt,[a-z]}, flags=CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -17652,6 +19116,7 @@ void test_t2463(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2464(void)
 {
@@ -17665,6 +19130,7 @@ void test_t2464(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2465(void)
 {
     /* Matrix: 09_combined/{file[0-9].txt,[a-z]}, flags=PATHNAME|DOTMATCH */
@@ -17676,6 +19142,7 @@ void test_t2465(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2466(void)
 {
@@ -17689,6 +19156,7 @@ void test_t2466(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2467(void)
 {
     /* Matrix: 09_combined/{file[0-9].txt,[a-z]}, flags=PATHNAME|DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -17700,6 +19168,7 @@ void test_t2467(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2468(void)
 {
@@ -17713,6 +19182,7 @@ void test_t2468(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2469(void)
 {
     /* Matrix: 09_combined/{file[0-9].txt,[a-z]}, flags=PATHNAME|CASEFOLD */
@@ -17724,6 +19194,7 @@ void test_t2469(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2470(void)
 {
@@ -17737,6 +19208,7 @@ void test_t2470(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2471(void)
 {
     /* Matrix: 09_combined/{file[0-9].txt,[a-z]}, flags=PATHNAME|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -17748,6 +19220,7 @@ void test_t2471(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2472(void)
 {
@@ -17761,6 +19234,7 @@ void test_t2472(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2473(void)
 {
     /* Matrix: 09_combined/{file[0-9].txt,[a-z]}, flags=DOTMATCH|CASEFOLD */
@@ -17772,6 +19246,7 @@ void test_t2473(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2474(void)
 {
@@ -17785,6 +19260,7 @@ void test_t2474(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2475(void)
 {
     /* Matrix: 09_combined/{file[0-9].txt,[a-z]}, flags=DOTMATCH|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -17796,6 +19272,7 @@ void test_t2475(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2476(void)
 {
@@ -17809,6 +19286,7 @@ void test_t2476(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2477(void)
 {
     /* Matrix: 09_combined/{**, *}/*.txt */
@@ -17820,6 +19298,7 @@ void test_t2477(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2478(void)
 {
@@ -17833,6 +19312,7 @@ void test_t2478(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2479(void)
 {
     /* Matrix: 09_combined/{**, *}/*.txt, base=/workspaces/dirglob/tests/fixtures/ */
@@ -17844,6 +19324,7 @@ void test_t2479(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2480(void)
 {
@@ -17857,6 +19338,7 @@ void test_t2480(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2481(void)
 {
     /* Matrix: 09_combined/{**, *}/*.txt, base=. */
@@ -17868,6 +19350,7 @@ void test_t2481(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2482(void)
 {
@@ -17881,6 +19364,7 @@ void test_t2482(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2483(void)
 {
     /* Matrix: 09_combined/{**, *}/*.txt, flags=DOTMATCH */
@@ -17892,6 +19376,7 @@ void test_t2483(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2484(void)
 {
@@ -17905,6 +19390,7 @@ void test_t2484(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2485(void)
 {
     /* Matrix: 09_combined/{**, *}/*.txt, flags=DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -17916,6 +19402,7 @@ void test_t2485(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2486(void)
 {
@@ -17929,6 +19416,7 @@ void test_t2486(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2487(void)
 {
     /* Matrix: 09_combined/{**, *}/*.txt, flags=DOTMATCH, base=. */
@@ -17940,6 +19428,7 @@ void test_t2487(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2488(void)
 {
@@ -17953,6 +19442,7 @@ void test_t2488(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2489(void)
 {
     /* Matrix: 09_combined/{**, *}/*.txt, flags=PATHNAME */
@@ -17964,6 +19454,7 @@ void test_t2489(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2490(void)
 {
@@ -17977,6 +19468,7 @@ void test_t2490(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2491(void)
 {
     /* Matrix: 09_combined/{**, *}/*.txt, flags=PATHNAME, base=/workspaces/dirglob/tests/fixtures/ */
@@ -17988,6 +19480,7 @@ void test_t2491(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2492(void)
 {
@@ -18001,6 +19494,7 @@ void test_t2492(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2493(void)
 {
     /* Matrix: 09_combined/{**, *}/*.txt, flags=PATHNAME, base=. */
@@ -18012,6 +19506,7 @@ void test_t2493(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2494(void)
 {
@@ -18025,6 +19520,7 @@ void test_t2494(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2495(void)
 {
     /* Matrix: 09_combined/{**, *}/*.txt, flags=CASEFOLD */
@@ -18036,6 +19532,7 @@ void test_t2495(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2496(void)
 {
@@ -18049,6 +19546,7 @@ void test_t2496(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2497(void)
 {
     /* Matrix: 09_combined/{**, *}/*.txt, flags=CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -18060,6 +19558,7 @@ void test_t2497(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2498(void)
 {
@@ -18073,6 +19572,7 @@ void test_t2498(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2499(void)
 {
     /* Matrix: 09_combined/{**, *}/*.txt, flags=CASEFOLD, base=. */
@@ -18084,6 +19584,7 @@ void test_t2499(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2500(void)
 {
@@ -18097,6 +19598,7 @@ void test_t2500(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2501(void)
 {
     /* Matrix: 09_combined/{**, *}/*.txt, flags=PATHNAME|DOTMATCH */
@@ -18108,6 +19610,7 @@ void test_t2501(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2502(void)
 {
@@ -18121,6 +19624,7 @@ void test_t2502(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2503(void)
 {
     /* Matrix: 09_combined/{**, *}/*.txt, flags=PATHNAME|DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -18132,6 +19636,7 @@ void test_t2503(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2504(void)
 {
@@ -18145,6 +19650,7 @@ void test_t2504(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2505(void)
 {
     /* Matrix: 09_combined/{**, *}/*.txt, flags=PATHNAME|DOTMATCH, base=. */
@@ -18156,6 +19662,7 @@ void test_t2505(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2506(void)
 {
@@ -18169,6 +19676,7 @@ void test_t2506(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2507(void)
 {
     /* Matrix: 09_combined/{**, *}/*.txt, flags=PATHNAME|CASEFOLD */
@@ -18180,6 +19688,7 @@ void test_t2507(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2508(void)
 {
@@ -18193,6 +19702,7 @@ void test_t2508(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2509(void)
 {
     /* Matrix: 09_combined/{**, *}/*.txt, flags=PATHNAME|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -18204,6 +19714,7 @@ void test_t2509(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2510(void)
 {
@@ -18217,6 +19728,7 @@ void test_t2510(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2511(void)
 {
     /* Matrix: 09_combined/{**, *}/*.txt, flags=PATHNAME|CASEFOLD, base=. */
@@ -18228,6 +19740,7 @@ void test_t2511(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2512(void)
 {
@@ -18241,6 +19754,7 @@ void test_t2512(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2513(void)
 {
     /* Matrix: 09_combined/{**, *}/*.txt, flags=DOTMATCH|CASEFOLD */
@@ -18252,6 +19766,7 @@ void test_t2513(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2514(void)
 {
@@ -18265,6 +19780,7 @@ void test_t2514(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2515(void)
 {
     /* Matrix: 09_combined/{**, *}/*.txt, flags=DOTMATCH|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -18276,6 +19792,7 @@ void test_t2515(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2516(void)
 {
@@ -18289,6 +19806,7 @@ void test_t2516(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2517(void)
 {
     /* Matrix: 09_combined/{**, *}/*.txt, flags=DOTMATCH|CASEFOLD, base=. */
@@ -18300,6 +19818,7 @@ void test_t2517(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2518(void)
 {
@@ -18313,6 +19832,7 @@ void test_t2518(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2519(void)
 {
     /* Matrix: * */
@@ -18324,6 +19844,7 @@ void test_t2519(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2520(void)
 {
@@ -18337,6 +19858,7 @@ void test_t2520(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2521(void)
 {
     /* Matrix: *, base=/workspaces/dirglob/tests/fixtures/ */
@@ -18348,6 +19870,7 @@ void test_t2521(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2522(void)
 {
@@ -18361,6 +19884,7 @@ void test_t2522(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2523(void)
 {
     /* Matrix: *, base=. */
@@ -18372,6 +19896,7 @@ void test_t2523(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2524(void)
 {
@@ -18385,6 +19910,7 @@ void test_t2524(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2525(void)
 {
     /* Matrix: *, flags=DOTMATCH */
@@ -18396,6 +19922,7 @@ void test_t2525(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2526(void)
 {
@@ -18409,6 +19936,7 @@ void test_t2526(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2527(void)
 {
     /* Matrix: *, flags=DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -18420,6 +19948,7 @@ void test_t2527(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2528(void)
 {
@@ -18433,6 +19962,7 @@ void test_t2528(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2529(void)
 {
     /* Matrix: *, flags=DOTMATCH, base=. */
@@ -18444,6 +19974,7 @@ void test_t2529(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2530(void)
 {
@@ -18457,6 +19988,7 @@ void test_t2530(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2531(void)
 {
     /* Matrix: *, flags=PATHNAME */
@@ -18468,6 +20000,7 @@ void test_t2531(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2532(void)
 {
@@ -18481,6 +20014,7 @@ void test_t2532(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2533(void)
 {
     /* Matrix: *, flags=PATHNAME, base=/workspaces/dirglob/tests/fixtures/ */
@@ -18492,6 +20026,7 @@ void test_t2533(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2534(void)
 {
@@ -18505,6 +20040,7 @@ void test_t2534(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2535(void)
 {
     /* Matrix: *, flags=PATHNAME, base=. */
@@ -18516,6 +20052,7 @@ void test_t2535(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2536(void)
 {
@@ -18529,6 +20066,7 @@ void test_t2536(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2537(void)
 {
     /* Matrix: *, flags=CASEFOLD */
@@ -18540,6 +20078,7 @@ void test_t2537(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2538(void)
 {
@@ -18553,6 +20092,7 @@ void test_t2538(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2539(void)
 {
     /* Matrix: *, flags=CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -18564,6 +20104,7 @@ void test_t2539(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2540(void)
 {
@@ -18577,6 +20118,7 @@ void test_t2540(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2541(void)
 {
     /* Matrix: *, flags=CASEFOLD, base=. */
@@ -18588,6 +20130,7 @@ void test_t2541(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2542(void)
 {
@@ -18601,6 +20144,7 @@ void test_t2542(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2543(void)
 {
     /* Matrix: *, flags=PATHNAME|DOTMATCH */
@@ -18612,6 +20156,7 @@ void test_t2543(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2544(void)
 {
@@ -18625,6 +20170,7 @@ void test_t2544(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2545(void)
 {
     /* Matrix: *, flags=PATHNAME|DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -18636,6 +20182,7 @@ void test_t2545(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2546(void)
 {
@@ -18649,6 +20196,7 @@ void test_t2546(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2547(void)
 {
     /* Matrix: *, flags=PATHNAME|DOTMATCH, base=. */
@@ -18660,6 +20208,7 @@ void test_t2547(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2548(void)
 {
@@ -18673,6 +20222,7 @@ void test_t2548(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2549(void)
 {
     /* Matrix: *, flags=PATHNAME|CASEFOLD */
@@ -18684,6 +20234,7 @@ void test_t2549(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2550(void)
 {
@@ -18697,6 +20248,7 @@ void test_t2550(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2551(void)
 {
     /* Matrix: *, flags=PATHNAME|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -18708,6 +20260,7 @@ void test_t2551(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2552(void)
 {
@@ -18721,6 +20274,7 @@ void test_t2552(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2553(void)
 {
     /* Matrix: *, flags=PATHNAME|CASEFOLD, base=. */
@@ -18732,6 +20286,7 @@ void test_t2553(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2554(void)
 {
@@ -18745,6 +20300,7 @@ void test_t2554(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2555(void)
 {
     /* Matrix: *, flags=DOTMATCH|CASEFOLD */
@@ -18756,6 +20312,7 @@ void test_t2555(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2556(void)
 {
@@ -18769,6 +20326,7 @@ void test_t2556(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2557(void)
 {
     /* Matrix: *, flags=DOTMATCH|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -18780,6 +20338,7 @@ void test_t2557(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2558(void)
 {
@@ -18793,6 +20352,7 @@ void test_t2558(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2559(void)
 {
     /* Matrix: *, flags=DOTMATCH|CASEFOLD, base=. */
@@ -18804,6 +20364,7 @@ void test_t2559(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2560(void)
 {
@@ -18817,6 +20378,7 @@ void test_t2560(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2561(void)
 {
     /* Matrix: * / */
@@ -18828,6 +20390,7 @@ void test_t2561(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2562(void)
 {
@@ -18841,6 +20404,7 @@ void test_t2562(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2563(void)
 {
     /* Matrix: * /, base=/workspaces/dirglob/tests/fixtures/ */
@@ -18852,6 +20416,7 @@ void test_t2563(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2564(void)
 {
@@ -18865,6 +20430,7 @@ void test_t2564(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2565(void)
 {
     /* Matrix: * /, base=. */
@@ -18876,6 +20442,7 @@ void test_t2565(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2566(void)
 {
@@ -18889,6 +20456,7 @@ void test_t2566(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2567(void)
 {
     /* Matrix: * /, flags=DOTMATCH */
@@ -18900,6 +20468,7 @@ void test_t2567(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2568(void)
 {
@@ -18913,6 +20482,7 @@ void test_t2568(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2569(void)
 {
     /* Matrix: * /, flags=DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -18924,6 +20494,7 @@ void test_t2569(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2570(void)
 {
@@ -18937,6 +20508,7 @@ void test_t2570(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2571(void)
 {
     /* Matrix: * /, flags=DOTMATCH, base=. */
@@ -18948,6 +20520,7 @@ void test_t2571(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2572(void)
 {
@@ -18961,6 +20534,7 @@ void test_t2572(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2573(void)
 {
     /* Matrix: * /, flags=PATHNAME */
@@ -18972,6 +20546,7 @@ void test_t2573(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2574(void)
 {
@@ -18985,6 +20560,7 @@ void test_t2574(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2575(void)
 {
     /* Matrix: * /, flags=PATHNAME, base=/workspaces/dirglob/tests/fixtures/ */
@@ -18996,6 +20572,7 @@ void test_t2575(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2576(void)
 {
@@ -19009,6 +20586,7 @@ void test_t2576(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2577(void)
 {
     /* Matrix: * /, flags=PATHNAME, base=. */
@@ -19020,6 +20598,7 @@ void test_t2577(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2578(void)
 {
@@ -19033,6 +20612,7 @@ void test_t2578(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2579(void)
 {
     /* Matrix: * /, flags=CASEFOLD */
@@ -19044,6 +20624,7 @@ void test_t2579(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2580(void)
 {
@@ -19057,6 +20638,7 @@ void test_t2580(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2581(void)
 {
     /* Matrix: * /, flags=CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -19068,6 +20650,7 @@ void test_t2581(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2582(void)
 {
@@ -19081,6 +20664,7 @@ void test_t2582(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2583(void)
 {
     /* Matrix: * /, flags=CASEFOLD, base=. */
@@ -19092,6 +20676,7 @@ void test_t2583(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2584(void)
 {
@@ -19105,6 +20690,7 @@ void test_t2584(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2585(void)
 {
     /* Matrix: * /, flags=PATHNAME|DOTMATCH */
@@ -19116,6 +20702,7 @@ void test_t2585(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2586(void)
 {
@@ -19129,6 +20716,7 @@ void test_t2586(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2587(void)
 {
     /* Matrix: * /, flags=PATHNAME|DOTMATCH, base=/workspaces/dirglob/tests/fixtures/ */
@@ -19140,6 +20728,7 @@ void test_t2587(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2588(void)
 {
@@ -19153,6 +20742,7 @@ void test_t2588(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2589(void)
 {
     /* Matrix: * /, flags=PATHNAME|DOTMATCH, base=. */
@@ -19164,6 +20754,7 @@ void test_t2589(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2590(void)
 {
@@ -19177,6 +20768,7 @@ void test_t2590(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2591(void)
 {
     /* Matrix: * /, flags=PATHNAME|CASEFOLD */
@@ -19188,6 +20780,7 @@ void test_t2591(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2592(void)
 {
@@ -19201,6 +20794,7 @@ void test_t2592(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2593(void)
 {
     /* Matrix: * /, flags=PATHNAME|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -19212,6 +20806,7 @@ void test_t2593(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2594(void)
 {
@@ -19225,6 +20820,7 @@ void test_t2594(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2595(void)
 {
     /* Matrix: * /, flags=PATHNAME|CASEFOLD, base=. */
@@ -19236,6 +20832,7 @@ void test_t2595(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2596(void)
 {
@@ -19249,6 +20846,7 @@ void test_t2596(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2597(void)
 {
     /* Matrix: * /, flags=DOTMATCH|CASEFOLD */
@@ -19260,6 +20858,7 @@ void test_t2597(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2598(void)
 {
@@ -19273,6 +20872,7 @@ void test_t2598(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2599(void)
 {
     /* Matrix: * /, flags=DOTMATCH|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/ */
@@ -19284,6 +20884,7 @@ void test_t2599(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2600(void)
 {
@@ -19297,6 +20898,7 @@ void test_t2600(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2601(void)
 {
     /* Matrix: * /, flags=DOTMATCH|CASEFOLD, base=. */
@@ -19308,6 +20910,7 @@ void test_t2601(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2602(void)
 {
@@ -19321,6 +20924,7 @@ void test_t2602(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2603(void)
 {
     /* Matrix: README.md */
@@ -19332,6 +20936,7 @@ void test_t2603(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2604(void)
 {
@@ -19345,6 +20950,7 @@ void test_t2604(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2605(void)
 {
     /* Matrix: README.md, base=. */
@@ -19356,6 +20962,7 @@ void test_t2605(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2606(void)
 {
@@ -19369,6 +20976,7 @@ void test_t2606(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2607(void)
 {
     /* Matrix: README.md, flags=DOTMATCH, unsorted */
@@ -19380,6 +20988,7 @@ void test_t2607(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2608(void)
 {
@@ -19393,6 +21002,7 @@ void test_t2608(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2609(void)
 {
     /* Matrix: README.md, flags=PATHNAME */
@@ -19404,6 +21014,7 @@ void test_t2609(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2610(void)
 {
@@ -19417,6 +21028,7 @@ void test_t2610(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2611(void)
 {
     /* Matrix: README.md, flags=PATHNAME, base=. */
@@ -19428,6 +21040,7 @@ void test_t2611(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2612(void)
 {
@@ -19441,6 +21054,7 @@ void test_t2612(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2613(void)
 {
     /* Matrix: README.md, flags=CASEFOLD, unsorted */
@@ -19452,6 +21066,7 @@ void test_t2613(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2614(void)
 {
@@ -19465,6 +21080,7 @@ void test_t2614(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2615(void)
 {
     /* Matrix: README.md, flags=PATHNAME|DOTMATCH */
@@ -19476,6 +21092,7 @@ void test_t2615(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2616(void)
 {
@@ -19489,6 +21106,7 @@ void test_t2616(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2617(void)
 {
     /* Matrix: README.md, flags=PATHNAME|DOTMATCH, base=. */
@@ -19500,6 +21118,7 @@ void test_t2617(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2618(void)
 {
@@ -19513,6 +21132,7 @@ void test_t2618(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2619(void)
 {
     /* Matrix: README.md, flags=PATHNAME|CASEFOLD, unsorted */
@@ -19524,6 +21144,7 @@ void test_t2619(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2620(void)
 {
@@ -19537,6 +21158,7 @@ void test_t2620(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2621(void)
 {
     /* Matrix: README.md, flags=DOTMATCH|CASEFOLD */
@@ -19548,6 +21170,7 @@ void test_t2621(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2622(void)
 {
@@ -19561,6 +21184,7 @@ void test_t2622(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2623(void)
 {
     /* Matrix: README.md, flags=DOTMATCH|CASEFOLD, base=. */
@@ -19572,6 +21196,7 @@ void test_t2623(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2624(void)
 {
@@ -19585,6 +21210,7 @@ void test_t2624(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2625(void)
 {
     /* Matrix: .*, flags=DOTMATCH, unsorted */
@@ -19596,6 +21222,7 @@ void test_t2625(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2626(void)
 {
@@ -19609,6 +21236,7 @@ void test_t2626(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2627(void)
 {
     /* Matrix: .*, flags=DOTMATCH, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -19620,6 +21248,7 @@ void test_t2627(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2628(void)
 {
@@ -19633,6 +21262,7 @@ void test_t2628(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2629(void)
 {
     /* Matrix: .*, flags=DOTMATCH, base=., unsorted */
@@ -19644,6 +21274,7 @@ void test_t2629(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2630(void)
 {
@@ -19657,6 +21288,7 @@ void test_t2630(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2631(void)
 {
     /* Matrix: .*, flags=PATHNAME, unsorted */
@@ -19668,6 +21300,7 @@ void test_t2631(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2632(void)
 {
@@ -19681,6 +21314,7 @@ void test_t2632(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2633(void)
 {
     /* Matrix: .*, flags=PATHNAME, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -19692,6 +21326,7 @@ void test_t2633(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2634(void)
 {
@@ -19705,6 +21340,7 @@ void test_t2634(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2635(void)
 {
     /* Matrix: .*, flags=PATHNAME, base=., unsorted */
@@ -19716,6 +21352,7 @@ void test_t2635(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2636(void)
 {
@@ -19729,6 +21366,7 @@ void test_t2636(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2637(void)
 {
     /* Matrix: .*, flags=CASEFOLD, unsorted */
@@ -19740,6 +21378,7 @@ void test_t2637(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2638(void)
 {
@@ -19753,6 +21392,7 @@ void test_t2638(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2639(void)
 {
     /* Matrix: .*, flags=CASEFOLD, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -19764,6 +21404,7 @@ void test_t2639(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2640(void)
 {
@@ -19777,6 +21418,7 @@ void test_t2640(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2641(void)
 {
     /* Matrix: .*, flags=CASEFOLD, base=., unsorted */
@@ -19788,6 +21430,7 @@ void test_t2641(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2642(void)
 {
@@ -19801,6 +21444,7 @@ void test_t2642(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2643(void)
 {
     /* Matrix: .*, flags=PATHNAME|DOTMATCH, unsorted */
@@ -19812,6 +21456,7 @@ void test_t2643(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2644(void)
 {
@@ -19825,6 +21470,7 @@ void test_t2644(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2645(void)
 {
     /* Matrix: .*, flags=PATHNAME|DOTMATCH, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -19836,6 +21482,7 @@ void test_t2645(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2646(void)
 {
@@ -19849,6 +21496,7 @@ void test_t2646(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2647(void)
 {
     /* Matrix: .*, flags=PATHNAME|DOTMATCH, base=., unsorted */
@@ -19860,6 +21508,7 @@ void test_t2647(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2648(void)
 {
@@ -19873,6 +21522,7 @@ void test_t2648(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2649(void)
 {
     /* Matrix: .*, flags=PATHNAME|CASEFOLD, unsorted */
@@ -19884,6 +21534,7 @@ void test_t2649(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2650(void)
 {
@@ -19897,6 +21548,7 @@ void test_t2650(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2651(void)
 {
     /* Matrix: .*, flags=PATHNAME|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -19908,6 +21560,7 @@ void test_t2651(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2652(void)
 {
@@ -19921,6 +21574,7 @@ void test_t2652(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2653(void)
 {
     /* Matrix: .*, flags=PATHNAME|CASEFOLD, base=., unsorted */
@@ -19932,6 +21586,7 @@ void test_t2653(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2654(void)
 {
@@ -19945,6 +21600,7 @@ void test_t2654(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2655(void)
 {
     /* Matrix: .*, flags=DOTMATCH|CASEFOLD, unsorted */
@@ -19956,6 +21612,7 @@ void test_t2655(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2656(void)
 {
@@ -19969,6 +21626,7 @@ void test_t2656(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2657(void)
 {
     /* Matrix: .*, flags=DOTMATCH|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -19980,6 +21638,7 @@ void test_t2657(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2658(void)
 {
@@ -19993,6 +21652,7 @@ void test_t2658(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2659(void)
 {
     /* Matrix: .*, flags=DOTMATCH|CASEFOLD, base=., unsorted */
@@ -20004,6 +21664,7 @@ void test_t2659(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2660(void)
 {
@@ -20017,6 +21678,7 @@ void test_t2660(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2661(void)
 {
     /* Matrix: .?, unsorted */
@@ -20028,6 +21690,7 @@ void test_t2661(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2662(void)
 {
@@ -20041,6 +21704,7 @@ void test_t2662(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2663(void)
 {
     /* Matrix: .?, base=., unsorted */
@@ -20052,6 +21716,7 @@ void test_t2663(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2664(void)
 {
@@ -20065,6 +21730,7 @@ void test_t2664(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2665(void)
 {
     /* Matrix: .?, flags=DOTMATCH, unsorted */
@@ -20076,6 +21742,7 @@ void test_t2665(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2666(void)
 {
@@ -20089,6 +21756,7 @@ void test_t2666(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2667(void)
 {
     /* Matrix: .?, flags=DOTMATCH, base=., unsorted */
@@ -20100,6 +21768,7 @@ void test_t2667(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2668(void)
 {
@@ -20113,6 +21782,7 @@ void test_t2668(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2669(void)
 {
     /* Matrix: .?, flags=PATHNAME, unsorted */
@@ -20124,6 +21794,7 @@ void test_t2669(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2670(void)
 {
@@ -20137,6 +21808,7 @@ void test_t2670(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2671(void)
 {
     /* Matrix: .?, flags=PATHNAME, base=., unsorted */
@@ -20148,6 +21820,7 @@ void test_t2671(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2672(void)
 {
@@ -20161,6 +21834,7 @@ void test_t2672(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2673(void)
 {
     /* Matrix: .?, flags=CASEFOLD, unsorted */
@@ -20172,6 +21846,7 @@ void test_t2673(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2674(void)
 {
@@ -20185,6 +21860,7 @@ void test_t2674(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2675(void)
 {
     /* Matrix: .?, flags=CASEFOLD, base=., unsorted */
@@ -20196,6 +21872,7 @@ void test_t2675(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2676(void)
 {
@@ -20209,6 +21886,7 @@ void test_t2676(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2677(void)
 {
     /* Matrix: .?, flags=PATHNAME|DOTMATCH, unsorted */
@@ -20220,6 +21898,7 @@ void test_t2677(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2678(void)
 {
@@ -20233,6 +21912,7 @@ void test_t2678(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2679(void)
 {
     /* Matrix: .?, flags=PATHNAME|DOTMATCH, base=., unsorted */
@@ -20244,6 +21924,7 @@ void test_t2679(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2680(void)
 {
@@ -20257,6 +21938,7 @@ void test_t2680(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2681(void)
 {
     /* Matrix: .?, flags=PATHNAME|CASEFOLD, unsorted */
@@ -20268,6 +21950,7 @@ void test_t2681(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2682(void)
 {
@@ -20281,6 +21964,7 @@ void test_t2682(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2683(void)
 {
     /* Matrix: .?, flags=PATHNAME|CASEFOLD, base=., unsorted */
@@ -20292,6 +21976,7 @@ void test_t2683(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2684(void)
 {
@@ -20305,6 +21990,7 @@ void test_t2684(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2685(void)
 {
     /* Matrix: .?, flags=DOTMATCH|CASEFOLD, unsorted */
@@ -20316,6 +22002,7 @@ void test_t2685(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2686(void)
 {
@@ -20329,6 +22016,7 @@ void test_t2686(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2687(void)
 {
     /* Matrix: .?, flags=DOTMATCH|CASEFOLD, base=., unsorted */
@@ -20340,6 +22028,7 @@ void test_t2687(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2688(void)
 {
@@ -20353,6 +22042,7 @@ void test_t2688(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2689(void)
 {
     /* Matrix: .** /* /, unsorted */
@@ -20364,6 +22054,7 @@ void test_t2689(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2690(void)
 {
@@ -20377,6 +22068,7 @@ void test_t2690(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2691(void)
 {
     /* Matrix: .** /* /, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -20388,6 +22080,7 @@ void test_t2691(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2692(void)
 {
@@ -20401,6 +22094,7 @@ void test_t2692(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2693(void)
 {
     /* Matrix: .** /* /, base=., unsorted */
@@ -20412,6 +22106,7 @@ void test_t2693(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2694(void)
 {
@@ -20425,6 +22120,7 @@ void test_t2694(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2695(void)
 {
     /* Matrix: .** /* /, flags=DOTMATCH, unsorted */
@@ -20436,6 +22132,7 @@ void test_t2695(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2696(void)
 {
@@ -20449,6 +22146,7 @@ void test_t2696(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2697(void)
 {
     /* Matrix: .** /* /, flags=DOTMATCH, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -20460,6 +22158,7 @@ void test_t2697(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2698(void)
 {
@@ -20473,6 +22172,7 @@ void test_t2698(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2699(void)
 {
     /* Matrix: .** /* /, flags=DOTMATCH, base=., unsorted */
@@ -20484,6 +22184,7 @@ void test_t2699(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2700(void)
 {
@@ -20497,6 +22198,7 @@ void test_t2700(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2701(void)
 {
     /* Matrix: .** /* /, flags=PATHNAME, unsorted */
@@ -20508,6 +22210,7 @@ void test_t2701(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2702(void)
 {
@@ -20521,6 +22224,7 @@ void test_t2702(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2703(void)
 {
     /* Matrix: .** /* /, flags=PATHNAME, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -20532,6 +22236,7 @@ void test_t2703(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2704(void)
 {
@@ -20545,6 +22250,7 @@ void test_t2704(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2705(void)
 {
     /* Matrix: .** /* /, flags=PATHNAME, base=., unsorted */
@@ -20556,6 +22262,7 @@ void test_t2705(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2706(void)
 {
@@ -20569,6 +22276,7 @@ void test_t2706(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2707(void)
 {
     /* Matrix: .** /* /, flags=CASEFOLD, unsorted */
@@ -20580,6 +22288,7 @@ void test_t2707(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2708(void)
 {
@@ -20593,6 +22302,7 @@ void test_t2708(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2709(void)
 {
     /* Matrix: .** /* /, flags=CASEFOLD, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -20604,6 +22314,7 @@ void test_t2709(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2710(void)
 {
@@ -20617,6 +22328,7 @@ void test_t2710(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2711(void)
 {
     /* Matrix: .** /* /, flags=CASEFOLD, base=., unsorted */
@@ -20628,6 +22340,7 @@ void test_t2711(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2712(void)
 {
@@ -20641,6 +22354,7 @@ void test_t2712(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2713(void)
 {
     /* Matrix: .** /* /, flags=PATHNAME|DOTMATCH, unsorted */
@@ -20652,6 +22366,7 @@ void test_t2713(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2714(void)
 {
@@ -20665,6 +22380,7 @@ void test_t2714(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2715(void)
 {
     /* Matrix: .** /* /, flags=PATHNAME|DOTMATCH, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -20676,6 +22392,7 @@ void test_t2715(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2716(void)
 {
@@ -20689,6 +22406,7 @@ void test_t2716(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2717(void)
 {
     /* Matrix: .** /* /, flags=PATHNAME|DOTMATCH, base=., unsorted */
@@ -20700,6 +22418,7 @@ void test_t2717(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2718(void)
 {
@@ -20713,6 +22432,7 @@ void test_t2718(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2719(void)
 {
     /* Matrix: .** /* /, flags=PATHNAME|CASEFOLD, unsorted */
@@ -20724,6 +22444,7 @@ void test_t2719(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2720(void)
 {
@@ -20737,6 +22458,7 @@ void test_t2720(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2721(void)
 {
     /* Matrix: .** /* /, flags=PATHNAME|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -20748,6 +22470,7 @@ void test_t2721(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2722(void)
 {
@@ -20761,6 +22484,7 @@ void test_t2722(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2723(void)
 {
     /* Matrix: .** /* /, flags=PATHNAME|CASEFOLD, base=., unsorted */
@@ -20772,6 +22496,7 @@ void test_t2723(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2724(void)
 {
@@ -20785,6 +22510,7 @@ void test_t2724(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2725(void)
 {
     /* Matrix: .** /* /, flags=DOTMATCH|CASEFOLD, unsorted */
@@ -20796,6 +22522,7 @@ void test_t2725(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2726(void)
 {
@@ -20809,6 +22536,7 @@ void test_t2726(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2727(void)
 {
     /* Matrix: .** /* /, flags=DOTMATCH|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -20820,6 +22548,7 @@ void test_t2727(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2728(void)
 {
@@ -20833,6 +22562,7 @@ void test_t2728(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2729(void)
 {
     /* Matrix: .** /* /, flags=DOTMATCH|CASEFOLD, base=., unsorted */
@@ -20844,6 +22574,7 @@ void test_t2729(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2730(void)
 {
@@ -20857,6 +22588,7 @@ void test_t2730(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2731(void)
 {
     /* Matrix: .** /.* /, unsorted */
@@ -20868,6 +22600,7 @@ void test_t2731(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2732(void)
 {
@@ -20881,6 +22614,7 @@ void test_t2732(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2733(void)
 {
     /* Matrix: .** /.* /, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -20892,6 +22626,7 @@ void test_t2733(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2734(void)
 {
@@ -20905,6 +22640,7 @@ void test_t2734(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2735(void)
 {
     /* Matrix: .** /.* /, base=., unsorted */
@@ -20916,6 +22652,7 @@ void test_t2735(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2736(void)
 {
@@ -20929,6 +22666,7 @@ void test_t2736(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2737(void)
 {
     /* Matrix: .** /.* /, flags=DOTMATCH, unsorted */
@@ -20940,6 +22678,7 @@ void test_t2737(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2738(void)
 {
@@ -20953,6 +22692,7 @@ void test_t2738(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2739(void)
 {
     /* Matrix: .** /.* /, flags=DOTMATCH, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -20964,6 +22704,7 @@ void test_t2739(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2740(void)
 {
@@ -20977,6 +22718,7 @@ void test_t2740(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2741(void)
 {
     /* Matrix: .** /.* /, flags=DOTMATCH, base=., unsorted */
@@ -20988,6 +22730,7 @@ void test_t2741(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2742(void)
 {
@@ -21001,6 +22744,7 @@ void test_t2742(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2743(void)
 {
     /* Matrix: .** /.* /, flags=PATHNAME, unsorted */
@@ -21012,6 +22756,7 @@ void test_t2743(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2744(void)
 {
@@ -21025,6 +22770,7 @@ void test_t2744(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2745(void)
 {
     /* Matrix: .** /.* /, flags=PATHNAME, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -21036,6 +22782,7 @@ void test_t2745(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2746(void)
 {
@@ -21049,6 +22796,7 @@ void test_t2746(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2747(void)
 {
     /* Matrix: .** /.* /, flags=PATHNAME, base=., unsorted */
@@ -21060,6 +22808,7 @@ void test_t2747(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2748(void)
 {
@@ -21073,6 +22822,7 @@ void test_t2748(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2749(void)
 {
     /* Matrix: .** /.* /, flags=CASEFOLD, unsorted */
@@ -21084,6 +22834,7 @@ void test_t2749(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2750(void)
 {
@@ -21097,6 +22848,7 @@ void test_t2750(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2751(void)
 {
     /* Matrix: .** /.* /, flags=CASEFOLD, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -21108,6 +22860,7 @@ void test_t2751(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2752(void)
 {
@@ -21121,6 +22874,7 @@ void test_t2752(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2753(void)
 {
     /* Matrix: .** /.* /, flags=CASEFOLD, base=., unsorted */
@@ -21132,6 +22886,7 @@ void test_t2753(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2754(void)
 {
@@ -21145,6 +22900,7 @@ void test_t2754(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2755(void)
 {
     /* Matrix: .** /.* /, flags=PATHNAME|DOTMATCH, unsorted */
@@ -21156,6 +22912,7 @@ void test_t2755(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2756(void)
 {
@@ -21169,6 +22926,7 @@ void test_t2756(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2757(void)
 {
     /* Matrix: .** /.* /, flags=PATHNAME|DOTMATCH, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -21180,6 +22938,7 @@ void test_t2757(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2758(void)
 {
@@ -21193,6 +22952,7 @@ void test_t2758(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2759(void)
 {
     /* Matrix: .** /.* /, flags=PATHNAME|DOTMATCH, base=., unsorted */
@@ -21204,6 +22964,7 @@ void test_t2759(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2760(void)
 {
@@ -21217,6 +22978,7 @@ void test_t2760(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2761(void)
 {
     /* Matrix: .** /.* /, flags=PATHNAME|CASEFOLD, unsorted */
@@ -21228,6 +22990,7 @@ void test_t2761(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2762(void)
 {
@@ -21241,6 +23004,7 @@ void test_t2762(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2763(void)
 {
     /* Matrix: .** /.* /, flags=PATHNAME|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -21252,6 +23016,7 @@ void test_t2763(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2764(void)
 {
@@ -21265,6 +23030,7 @@ void test_t2764(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2765(void)
 {
     /* Matrix: .** /.* /, flags=PATHNAME|CASEFOLD, base=., unsorted */
@@ -21276,6 +23042,7 @@ void test_t2765(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2766(void)
 {
@@ -21289,6 +23056,7 @@ void test_t2766(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2767(void)
 {
     /* Matrix: .** /.* /, flags=DOTMATCH|CASEFOLD, unsorted */
@@ -21300,6 +23068,7 @@ void test_t2767(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2768(void)
 {
@@ -21313,6 +23082,7 @@ void test_t2768(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2769(void)
 {
     /* Matrix: .** /.* /, flags=DOTMATCH|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -21324,6 +23094,7 @@ void test_t2769(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2770(void)
 {
@@ -21337,6 +23108,7 @@ void test_t2770(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2771(void)
 {
     /* Matrix: .** /.* /, flags=DOTMATCH|CASEFOLD, base=., unsorted */
@@ -21348,6 +23120,7 @@ void test_t2771(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2772(void)
 {
@@ -21361,6 +23134,7 @@ void test_t2772(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2773(void)
 {
     /* Matrix: .hidden/.** /*, unsorted */
@@ -21372,6 +23146,7 @@ void test_t2773(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2774(void)
 {
@@ -21385,6 +23160,7 @@ void test_t2774(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2775(void)
 {
     /* Matrix: .hidden/.** /*, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -21396,6 +23172,7 @@ void test_t2775(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2776(void)
 {
@@ -21409,6 +23186,7 @@ void test_t2776(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2777(void)
 {
     /* Matrix: .hidden/.** /*, base=., unsorted */
@@ -21420,6 +23198,7 @@ void test_t2777(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2778(void)
 {
@@ -21433,6 +23212,7 @@ void test_t2778(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2779(void)
 {
     /* Matrix: .hidden/.** /*, flags=DOTMATCH, unsorted */
@@ -21444,6 +23224,7 @@ void test_t2779(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2780(void)
 {
@@ -21457,6 +23238,7 @@ void test_t2780(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2781(void)
 {
     /* Matrix: .hidden/.** /*, flags=DOTMATCH, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -21468,6 +23250,7 @@ void test_t2781(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2782(void)
 {
@@ -21481,6 +23264,7 @@ void test_t2782(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2783(void)
 {
     /* Matrix: .hidden/.** /*, flags=DOTMATCH, base=., unsorted */
@@ -21492,6 +23276,7 @@ void test_t2783(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2784(void)
 {
@@ -21505,6 +23290,7 @@ void test_t2784(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2785(void)
 {
     /* Matrix: .hidden/.** /*, flags=PATHNAME, unsorted */
@@ -21516,6 +23302,7 @@ void test_t2785(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2786(void)
 {
@@ -21529,6 +23316,7 @@ void test_t2786(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2787(void)
 {
     /* Matrix: .hidden/.** /*, flags=PATHNAME, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -21540,6 +23328,7 @@ void test_t2787(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2788(void)
 {
@@ -21553,6 +23342,7 @@ void test_t2788(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2789(void)
 {
     /* Matrix: .hidden/.** /*, flags=PATHNAME, base=., unsorted */
@@ -21564,6 +23354,7 @@ void test_t2789(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2790(void)
 {
@@ -21577,6 +23368,7 @@ void test_t2790(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2791(void)
 {
     /* Matrix: .hidden/.** /*, flags=CASEFOLD, unsorted */
@@ -21588,6 +23380,7 @@ void test_t2791(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2792(void)
 {
@@ -21601,6 +23394,7 @@ void test_t2792(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2793(void)
 {
     /* Matrix: .hidden/.** /*, flags=CASEFOLD, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -21612,6 +23406,7 @@ void test_t2793(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2794(void)
 {
@@ -21625,6 +23420,7 @@ void test_t2794(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2795(void)
 {
     /* Matrix: .hidden/.** /*, flags=CASEFOLD, base=., unsorted */
@@ -21636,6 +23432,7 @@ void test_t2795(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2796(void)
 {
@@ -21649,6 +23446,7 @@ void test_t2796(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2797(void)
 {
     /* Matrix: .hidden/.** /*, flags=PATHNAME|DOTMATCH, unsorted */
@@ -21660,6 +23458,7 @@ void test_t2797(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2798(void)
 {
@@ -21673,6 +23472,7 @@ void test_t2798(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2799(void)
 {
     /* Matrix: .hidden/.** /*, flags=PATHNAME|DOTMATCH, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -21684,6 +23484,7 @@ void test_t2799(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2800(void)
 {
@@ -21697,6 +23498,7 @@ void test_t2800(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2801(void)
 {
     /* Matrix: .hidden/.** /*, flags=PATHNAME|DOTMATCH, base=., unsorted */
@@ -21708,6 +23510,7 @@ void test_t2801(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2802(void)
 {
@@ -21721,6 +23524,7 @@ void test_t2802(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2803(void)
 {
     /* Matrix: .hidden/.** /*, flags=PATHNAME|CASEFOLD, unsorted */
@@ -21732,6 +23536,7 @@ void test_t2803(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2804(void)
 {
@@ -21745,6 +23550,7 @@ void test_t2804(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2805(void)
 {
     /* Matrix: .hidden/.** /*, flags=PATHNAME|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -21756,6 +23562,7 @@ void test_t2805(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2806(void)
 {
@@ -21769,6 +23576,7 @@ void test_t2806(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2807(void)
 {
     /* Matrix: .hidden/.** /*, flags=PATHNAME|CASEFOLD, base=., unsorted */
@@ -21780,6 +23588,7 @@ void test_t2807(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2808(void)
 {
@@ -21793,6 +23602,7 @@ void test_t2808(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2809(void)
 {
     /* Matrix: .hidden/.** /*, flags=DOTMATCH|CASEFOLD, unsorted */
@@ -21804,6 +23614,7 @@ void test_t2809(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2810(void)
 {
@@ -21817,6 +23628,7 @@ void test_t2810(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2811(void)
 {
     /* Matrix: .hidden/.** /*, flags=DOTMATCH|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -21828,6 +23640,7 @@ void test_t2811(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2812(void)
 {
@@ -21841,6 +23654,7 @@ void test_t2812(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2813(void)
 {
     /* Matrix: .hidden/.** /*, flags=DOTMATCH|CASEFOLD, base=., unsorted */
@@ -21852,6 +23666,7 @@ void test_t2813(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2814(void)
 {
@@ -21865,6 +23680,7 @@ void test_t2814(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2815(void)
 {
     /* Matrix: .hidden/.** /.*, unsorted */
@@ -21876,6 +23692,7 @@ void test_t2815(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2816(void)
 {
@@ -21889,6 +23706,7 @@ void test_t2816(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2817(void)
 {
     /* Matrix: .hidden/.** /.*, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -21900,6 +23718,7 @@ void test_t2817(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2818(void)
 {
@@ -21913,6 +23732,7 @@ void test_t2818(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2819(void)
 {
     /* Matrix: .hidden/.** /.*, base=., unsorted */
@@ -21924,6 +23744,7 @@ void test_t2819(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2820(void)
 {
@@ -21937,6 +23758,7 @@ void test_t2820(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2821(void)
 {
     /* Matrix: .hidden/.** /.*, flags=DOTMATCH, unsorted */
@@ -21948,6 +23770,7 @@ void test_t2821(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2822(void)
 {
@@ -21961,6 +23784,7 @@ void test_t2822(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2823(void)
 {
     /* Matrix: .hidden/.** /.*, flags=DOTMATCH, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -21972,6 +23796,7 @@ void test_t2823(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2824(void)
 {
@@ -21985,6 +23810,7 @@ void test_t2824(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2825(void)
 {
     /* Matrix: .hidden/.** /.*, flags=DOTMATCH, base=., unsorted */
@@ -21996,6 +23822,7 @@ void test_t2825(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2826(void)
 {
@@ -22009,6 +23836,7 @@ void test_t2826(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2827(void)
 {
     /* Matrix: .hidden/.** /.*, flags=PATHNAME, unsorted */
@@ -22020,6 +23848,7 @@ void test_t2827(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2828(void)
 {
@@ -22033,6 +23862,7 @@ void test_t2828(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2829(void)
 {
     /* Matrix: .hidden/.** /.*, flags=PATHNAME, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -22044,6 +23874,7 @@ void test_t2829(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2830(void)
 {
@@ -22057,6 +23888,7 @@ void test_t2830(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2831(void)
 {
     /* Matrix: .hidden/.** /.*, flags=PATHNAME, base=., unsorted */
@@ -22068,6 +23900,7 @@ void test_t2831(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2832(void)
 {
@@ -22081,6 +23914,7 @@ void test_t2832(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2833(void)
 {
     /* Matrix: .hidden/.** /.*, flags=CASEFOLD, unsorted */
@@ -22092,6 +23926,7 @@ void test_t2833(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2834(void)
 {
@@ -22105,6 +23940,7 @@ void test_t2834(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2835(void)
 {
     /* Matrix: .hidden/.** /.*, flags=CASEFOLD, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -22116,6 +23952,7 @@ void test_t2835(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2836(void)
 {
@@ -22129,6 +23966,7 @@ void test_t2836(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2837(void)
 {
     /* Matrix: .hidden/.** /.*, flags=CASEFOLD, base=., unsorted */
@@ -22140,6 +23978,7 @@ void test_t2837(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2838(void)
 {
@@ -22153,6 +23992,7 @@ void test_t2838(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2839(void)
 {
     /* Matrix: .hidden/.** /.*, flags=PATHNAME|DOTMATCH, unsorted */
@@ -22164,6 +24004,7 @@ void test_t2839(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2840(void)
 {
@@ -22177,6 +24018,7 @@ void test_t2840(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2841(void)
 {
     /* Matrix: .hidden/.** /.*, flags=PATHNAME|DOTMATCH, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -22188,6 +24030,7 @@ void test_t2841(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2842(void)
 {
@@ -22201,6 +24044,7 @@ void test_t2842(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2843(void)
 {
     /* Matrix: .hidden/.** /.*, flags=PATHNAME|DOTMATCH, base=., unsorted */
@@ -22212,6 +24056,7 @@ void test_t2843(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2844(void)
 {
@@ -22225,6 +24070,7 @@ void test_t2844(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2845(void)
 {
     /* Matrix: .hidden/.** /.*, flags=PATHNAME|CASEFOLD, unsorted */
@@ -22236,6 +24082,7 @@ void test_t2845(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2846(void)
 {
@@ -22249,6 +24096,7 @@ void test_t2846(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2847(void)
 {
     /* Matrix: .hidden/.** /.*, flags=PATHNAME|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -22260,6 +24108,7 @@ void test_t2847(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2848(void)
 {
@@ -22273,6 +24122,7 @@ void test_t2848(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2849(void)
 {
     /* Matrix: .hidden/.** /.*, flags=PATHNAME|CASEFOLD, base=., unsorted */
@@ -22284,6 +24134,7 @@ void test_t2849(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2850(void)
 {
@@ -22297,6 +24148,7 @@ void test_t2850(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2851(void)
 {
     /* Matrix: .hidden/.** /.*, flags=DOTMATCH|CASEFOLD, unsorted */
@@ -22308,6 +24160,7 @@ void test_t2851(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2852(void)
 {
@@ -22321,6 +24174,7 @@ void test_t2852(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2853(void)
 {
     /* Matrix: .hidden/.** /.*, flags=DOTMATCH|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -22332,6 +24186,7 @@ void test_t2853(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2854(void)
 {
@@ -22345,6 +24200,7 @@ void test_t2854(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2855(void)
 {
     /* Matrix: .hidden/.** /.*, flags=DOTMATCH|CASEFOLD, base=., unsorted */
@@ -22356,6 +24212,7 @@ void test_t2855(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2856(void)
 {
@@ -22369,6 +24226,7 @@ void test_t2856(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2857(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/*, unsorted */
@@ -22380,6 +24238,7 @@ void test_t2857(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2858(void)
 {
@@ -22393,6 +24252,7 @@ void test_t2858(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2859(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/*, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -22404,6 +24264,7 @@ void test_t2859(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2860(void)
 {
@@ -22417,6 +24278,7 @@ void test_t2860(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2861(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/*, base=., unsorted */
@@ -22428,6 +24290,7 @@ void test_t2861(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2862(void)
 {
@@ -22441,6 +24304,7 @@ void test_t2862(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2863(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/*, flags=DOTMATCH, unsorted */
@@ -22452,6 +24316,7 @@ void test_t2863(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2864(void)
 {
@@ -22465,6 +24330,7 @@ void test_t2864(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2865(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/*, flags=DOTMATCH, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -22476,6 +24342,7 @@ void test_t2865(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2866(void)
 {
@@ -22489,6 +24356,7 @@ void test_t2866(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2867(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/*, flags=DOTMATCH, base=., unsorted */
@@ -22500,6 +24368,7 @@ void test_t2867(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2868(void)
 {
@@ -22513,6 +24382,7 @@ void test_t2868(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2869(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/*, flags=PATHNAME, unsorted */
@@ -22524,6 +24394,7 @@ void test_t2869(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2870(void)
 {
@@ -22537,6 +24408,7 @@ void test_t2870(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2871(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/*, flags=PATHNAME, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -22548,6 +24420,7 @@ void test_t2871(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2872(void)
 {
@@ -22561,6 +24434,7 @@ void test_t2872(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2873(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/*, flags=PATHNAME, base=., unsorted */
@@ -22572,6 +24446,7 @@ void test_t2873(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2874(void)
 {
@@ -22585,6 +24460,7 @@ void test_t2874(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2875(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/*, flags=CASEFOLD, unsorted */
@@ -22596,6 +24472,7 @@ void test_t2875(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2876(void)
 {
@@ -22609,6 +24486,7 @@ void test_t2876(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2877(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/*, flags=CASEFOLD, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -22620,6 +24498,7 @@ void test_t2877(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2878(void)
 {
@@ -22633,6 +24512,7 @@ void test_t2878(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2879(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/*, flags=CASEFOLD, base=., unsorted */
@@ -22644,6 +24524,7 @@ void test_t2879(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2880(void)
 {
@@ -22657,6 +24538,7 @@ void test_t2880(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2881(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/*, flags=PATHNAME|DOTMATCH, unsorted */
@@ -22668,6 +24550,7 @@ void test_t2881(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2882(void)
 {
@@ -22681,6 +24564,7 @@ void test_t2882(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2883(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/*, flags=PATHNAME|DOTMATCH, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -22692,6 +24576,7 @@ void test_t2883(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2884(void)
 {
@@ -22705,6 +24590,7 @@ void test_t2884(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2885(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/*, flags=PATHNAME|DOTMATCH, base=., unsorted */
@@ -22716,6 +24602,7 @@ void test_t2885(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2886(void)
 {
@@ -22729,6 +24616,7 @@ void test_t2886(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2887(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/*, flags=PATHNAME|CASEFOLD, unsorted */
@@ -22740,6 +24628,7 @@ void test_t2887(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2888(void)
 {
@@ -22753,6 +24642,7 @@ void test_t2888(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2889(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/*, flags=PATHNAME|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -22764,6 +24654,7 @@ void test_t2889(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2890(void)
 {
@@ -22777,6 +24668,7 @@ void test_t2890(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2891(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/*, flags=PATHNAME|CASEFOLD, base=., unsorted */
@@ -22788,6 +24680,7 @@ void test_t2891(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2892(void)
 {
@@ -22801,6 +24694,7 @@ void test_t2892(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2893(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/*, flags=DOTMATCH|CASEFOLD, unsorted */
@@ -22812,6 +24706,7 @@ void test_t2893(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2894(void)
 {
@@ -22825,6 +24720,7 @@ void test_t2894(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2895(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/*, flags=DOTMATCH|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -22836,6 +24732,7 @@ void test_t2895(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2896(void)
 {
@@ -22849,6 +24746,7 @@ void test_t2896(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2897(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/*, flags=DOTMATCH|CASEFOLD, base=., unsorted */
@@ -22860,6 +24758,7 @@ void test_t2897(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2898(void)
 {
@@ -22873,6 +24772,7 @@ void test_t2898(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2899(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/* /, unsorted */
@@ -22884,6 +24784,7 @@ void test_t2899(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2900(void)
 {
@@ -22897,6 +24798,7 @@ void test_t2900(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2901(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/* /, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -22908,6 +24810,7 @@ void test_t2901(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2902(void)
 {
@@ -22921,6 +24824,7 @@ void test_t2902(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2903(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/* /, base=., unsorted */
@@ -22932,6 +24836,7 @@ void test_t2903(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2904(void)
 {
@@ -22945,6 +24850,7 @@ void test_t2904(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2905(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/* /, flags=DOTMATCH, unsorted */
@@ -22956,6 +24862,7 @@ void test_t2905(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2906(void)
 {
@@ -22969,6 +24876,7 @@ void test_t2906(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2907(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/* /, flags=DOTMATCH, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -22980,6 +24888,7 @@ void test_t2907(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2908(void)
 {
@@ -22993,6 +24902,7 @@ void test_t2908(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2909(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/* /, flags=DOTMATCH, base=., unsorted */
@@ -23004,6 +24914,7 @@ void test_t2909(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2910(void)
 {
@@ -23017,6 +24928,7 @@ void test_t2910(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2911(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/* /, flags=PATHNAME, unsorted */
@@ -23028,6 +24940,7 @@ void test_t2911(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2912(void)
 {
@@ -23041,6 +24954,7 @@ void test_t2912(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2913(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/* /, flags=PATHNAME, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -23052,6 +24966,7 @@ void test_t2913(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2914(void)
 {
@@ -23065,6 +24980,7 @@ void test_t2914(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2915(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/* /, flags=PATHNAME, base=., unsorted */
@@ -23076,6 +24992,7 @@ void test_t2915(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2916(void)
 {
@@ -23089,6 +25006,7 @@ void test_t2916(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2917(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/* /, flags=CASEFOLD, unsorted */
@@ -23100,6 +25018,7 @@ void test_t2917(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2918(void)
 {
@@ -23113,6 +25032,7 @@ void test_t2918(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2919(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/* /, flags=CASEFOLD, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -23124,6 +25044,7 @@ void test_t2919(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2920(void)
 {
@@ -23137,6 +25058,7 @@ void test_t2920(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2921(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/* /, flags=CASEFOLD, base=., unsorted */
@@ -23148,6 +25070,7 @@ void test_t2921(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2922(void)
 {
@@ -23161,6 +25084,7 @@ void test_t2922(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2923(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/* /, flags=PATHNAME|DOTMATCH, unsorted */
@@ -23172,6 +25096,7 @@ void test_t2923(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2924(void)
 {
@@ -23185,6 +25110,7 @@ void test_t2924(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2925(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/* /, flags=PATHNAME|DOTMATCH, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -23196,6 +25122,7 @@ void test_t2925(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2926(void)
 {
@@ -23209,6 +25136,7 @@ void test_t2926(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2927(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/* /, flags=PATHNAME|DOTMATCH, base=., unsorted */
@@ -23220,6 +25148,7 @@ void test_t2927(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2928(void)
 {
@@ -23233,6 +25162,7 @@ void test_t2928(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2929(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/* /, flags=PATHNAME|CASEFOLD, unsorted */
@@ -23244,6 +25174,7 @@ void test_t2929(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2930(void)
 {
@@ -23257,6 +25188,7 @@ void test_t2930(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2931(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/* /, flags=PATHNAME|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -23268,6 +25200,7 @@ void test_t2931(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2932(void)
 {
@@ -23281,6 +25214,7 @@ void test_t2932(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2933(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/* /, flags=PATHNAME|CASEFOLD, base=., unsorted */
@@ -23292,6 +25226,7 @@ void test_t2933(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2934(void)
 {
@@ -23305,6 +25240,7 @@ void test_t2934(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2935(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/* /, flags=DOTMATCH|CASEFOLD, unsorted */
@@ -23316,6 +25252,7 @@ void test_t2935(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2936(void)
 {
@@ -23329,6 +25266,7 @@ void test_t2936(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2937(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/* /, flags=DOTMATCH|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -23340,6 +25278,7 @@ void test_t2937(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2938(void)
 {
@@ -23353,6 +25292,7 @@ void test_t2938(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2939(void)
 {
     /* Matrix: /workspaces/dirglob/tests/fixtures/* /, flags=DOTMATCH|CASEFOLD, base=., unsorted */
@@ -23364,6 +25304,7 @@ void test_t2939(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2940(void)
 {
@@ -23377,6 +25318,7 @@ void test_t2940(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2941(void)
 {
     /* Matrix: ./*, unsorted */
@@ -23388,6 +25330,7 @@ void test_t2941(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2942(void)
 {
@@ -23401,6 +25344,7 @@ void test_t2942(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2943(void)
 {
     /* Matrix: ./*, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -23412,6 +25356,7 @@ void test_t2943(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2944(void)
 {
@@ -23425,6 +25370,7 @@ void test_t2944(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2945(void)
 {
     /* Matrix: ./*, base=., unsorted */
@@ -23436,6 +25382,7 @@ void test_t2945(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2946(void)
 {
@@ -23449,6 +25396,7 @@ void test_t2946(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2947(void)
 {
     /* Matrix: ./*, flags=DOTMATCH, unsorted */
@@ -23460,6 +25408,7 @@ void test_t2947(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2948(void)
 {
@@ -23473,6 +25422,7 @@ void test_t2948(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2949(void)
 {
     /* Matrix: ./*, flags=DOTMATCH, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -23484,6 +25434,7 @@ void test_t2949(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2950(void)
 {
@@ -23497,6 +25448,7 @@ void test_t2950(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2951(void)
 {
     /* Matrix: ./*, flags=DOTMATCH, base=., unsorted */
@@ -23508,6 +25460,7 @@ void test_t2951(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2952(void)
 {
@@ -23521,6 +25474,7 @@ void test_t2952(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2953(void)
 {
     /* Matrix: ./*, flags=PATHNAME, unsorted */
@@ -23532,6 +25486,7 @@ void test_t2953(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2954(void)
 {
@@ -23545,6 +25500,7 @@ void test_t2954(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2955(void)
 {
     /* Matrix: ./*, flags=PATHNAME, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -23556,6 +25512,7 @@ void test_t2955(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2956(void)
 {
@@ -23569,6 +25526,7 @@ void test_t2956(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2957(void)
 {
     /* Matrix: ./*, flags=PATHNAME, base=., unsorted */
@@ -23580,6 +25538,7 @@ void test_t2957(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2958(void)
 {
@@ -23593,6 +25552,7 @@ void test_t2958(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2959(void)
 {
     /* Matrix: ./*, flags=CASEFOLD, unsorted */
@@ -23604,6 +25564,7 @@ void test_t2959(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2960(void)
 {
@@ -23617,6 +25578,7 @@ void test_t2960(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2961(void)
 {
     /* Matrix: ./*, flags=CASEFOLD, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -23628,6 +25590,7 @@ void test_t2961(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2962(void)
 {
@@ -23641,6 +25604,7 @@ void test_t2962(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2963(void)
 {
     /* Matrix: ./*, flags=CASEFOLD, base=., unsorted */
@@ -23652,6 +25616,7 @@ void test_t2963(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2964(void)
 {
@@ -23665,6 +25630,7 @@ void test_t2964(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2965(void)
 {
     /* Matrix: ./*, flags=PATHNAME|DOTMATCH, unsorted */
@@ -23676,6 +25642,7 @@ void test_t2965(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2966(void)
 {
@@ -23689,6 +25656,7 @@ void test_t2966(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2967(void)
 {
     /* Matrix: ./*, flags=PATHNAME|DOTMATCH, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -23700,6 +25668,7 @@ void test_t2967(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2968(void)
 {
@@ -23713,6 +25682,7 @@ void test_t2968(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2969(void)
 {
     /* Matrix: ./*, flags=PATHNAME|DOTMATCH, base=., unsorted */
@@ -23724,6 +25694,7 @@ void test_t2969(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2970(void)
 {
@@ -23737,6 +25708,7 @@ void test_t2970(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2971(void)
 {
     /* Matrix: ./*, flags=PATHNAME|CASEFOLD, unsorted */
@@ -23748,6 +25720,7 @@ void test_t2971(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2972(void)
 {
@@ -23761,6 +25734,7 @@ void test_t2972(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2973(void)
 {
     /* Matrix: ./*, flags=PATHNAME|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -23772,6 +25746,7 @@ void test_t2973(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2974(void)
 {
@@ -23785,6 +25760,7 @@ void test_t2974(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2975(void)
 {
     /* Matrix: ./*, flags=PATHNAME|CASEFOLD, base=., unsorted */
@@ -23796,6 +25772,7 @@ void test_t2975(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2976(void)
 {
@@ -23809,6 +25786,7 @@ void test_t2976(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2977(void)
 {
     /* Matrix: ./*, flags=DOTMATCH|CASEFOLD, unsorted */
@@ -23820,6 +25798,7 @@ void test_t2977(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2978(void)
 {
@@ -23833,6 +25812,7 @@ void test_t2978(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2979(void)
 {
     /* Matrix: ./*, flags=DOTMATCH|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -23844,6 +25824,7 @@ void test_t2979(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2980(void)
 {
@@ -23857,6 +25838,7 @@ void test_t2980(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2981(void)
 {
     /* Matrix: ./*, flags=DOTMATCH|CASEFOLD, base=., unsorted */
@@ -23868,6 +25850,7 @@ void test_t2981(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2982(void)
 {
@@ -23881,6 +25864,7 @@ void test_t2982(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2983(void)
 {
     /* Matrix: ./* /, unsorted */
@@ -23892,6 +25876,7 @@ void test_t2983(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2984(void)
 {
@@ -23905,6 +25890,7 @@ void test_t2984(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2985(void)
 {
     /* Matrix: ./* /, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -23916,6 +25902,7 @@ void test_t2985(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2986(void)
 {
@@ -23929,6 +25916,7 @@ void test_t2986(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2987(void)
 {
     /* Matrix: ./* /, base=., unsorted */
@@ -23940,6 +25928,7 @@ void test_t2987(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2988(void)
 {
@@ -23953,6 +25942,7 @@ void test_t2988(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2989(void)
 {
     /* Matrix: ./* /, flags=DOTMATCH, unsorted */
@@ -23964,6 +25954,7 @@ void test_t2989(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2990(void)
 {
@@ -23977,6 +25968,7 @@ void test_t2990(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2991(void)
 {
     /* Matrix: ./* /, flags=DOTMATCH, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -23988,6 +25980,7 @@ void test_t2991(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2992(void)
 {
@@ -24001,6 +25994,7 @@ void test_t2992(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2993(void)
 {
     /* Matrix: ./* /, flags=DOTMATCH, base=., unsorted */
@@ -24012,6 +26006,7 @@ void test_t2993(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2994(void)
 {
@@ -24025,6 +26020,7 @@ void test_t2994(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2995(void)
 {
     /* Matrix: ./* /, flags=PATHNAME, unsorted */
@@ -24036,6 +26032,7 @@ void test_t2995(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2996(void)
 {
@@ -24049,6 +26046,7 @@ void test_t2996(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2997(void)
 {
     /* Matrix: ./* /, flags=PATHNAME, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -24060,6 +26058,7 @@ void test_t2997(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t2998(void)
 {
@@ -24073,6 +26072,7 @@ void test_t2998(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t2999(void)
 {
     /* Matrix: ./* /, flags=PATHNAME, base=., unsorted */
@@ -24084,6 +26084,7 @@ void test_t2999(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3000(void)
 {
@@ -24097,6 +26098,7 @@ void test_t3000(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3001(void)
 {
     /* Matrix: ./* /, flags=CASEFOLD, unsorted */
@@ -24108,6 +26110,7 @@ void test_t3001(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3002(void)
 {
@@ -24121,6 +26124,7 @@ void test_t3002(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3003(void)
 {
     /* Matrix: ./* /, flags=CASEFOLD, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -24132,6 +26136,7 @@ void test_t3003(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3004(void)
 {
@@ -24145,6 +26150,7 @@ void test_t3004(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3005(void)
 {
     /* Matrix: ./* /, flags=CASEFOLD, base=., unsorted */
@@ -24156,6 +26162,7 @@ void test_t3005(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3006(void)
 {
@@ -24169,6 +26176,7 @@ void test_t3006(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3007(void)
 {
     /* Matrix: ./* /, flags=PATHNAME|DOTMATCH, unsorted */
@@ -24180,6 +26188,7 @@ void test_t3007(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3008(void)
 {
@@ -24193,6 +26202,7 @@ void test_t3008(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3009(void)
 {
     /* Matrix: ./* /, flags=PATHNAME|DOTMATCH, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -24204,6 +26214,7 @@ void test_t3009(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3010(void)
 {
@@ -24217,6 +26228,7 @@ void test_t3010(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3011(void)
 {
     /* Matrix: ./* /, flags=PATHNAME|DOTMATCH, base=., unsorted */
@@ -24228,6 +26240,7 @@ void test_t3011(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3012(void)
 {
@@ -24241,6 +26254,7 @@ void test_t3012(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3013(void)
 {
     /* Matrix: ./* /, flags=PATHNAME|CASEFOLD, unsorted */
@@ -24252,6 +26266,7 @@ void test_t3013(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3014(void)
 {
@@ -24265,6 +26280,7 @@ void test_t3014(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3015(void)
 {
     /* Matrix: ./* /, flags=PATHNAME|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -24276,6 +26292,7 @@ void test_t3015(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3016(void)
 {
@@ -24289,6 +26306,7 @@ void test_t3016(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3017(void)
 {
     /* Matrix: ./* /, flags=PATHNAME|CASEFOLD, base=., unsorted */
@@ -24300,6 +26318,7 @@ void test_t3017(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3018(void)
 {
@@ -24313,6 +26332,7 @@ void test_t3018(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3019(void)
 {
     /* Matrix: ./* /, flags=DOTMATCH|CASEFOLD, unsorted */
@@ -24324,6 +26344,7 @@ void test_t3019(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3020(void)
 {
@@ -24337,6 +26358,7 @@ void test_t3020(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3021(void)
 {
     /* Matrix: ./* /, flags=DOTMATCH|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -24348,6 +26370,7 @@ void test_t3021(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3022(void)
 {
@@ -24361,6 +26384,7 @@ void test_t3022(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3023(void)
 {
     /* Matrix: ./* /, flags=DOTMATCH|CASEFOLD, base=., unsorted */
@@ -24372,6 +26396,7 @@ void test_t3023(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3024(void)
 {
@@ -24385,6 +26410,7 @@ void test_t3024(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3025(void)
 {
     /* Matrix: , unsorted */
@@ -24396,6 +26422,7 @@ void test_t3025(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3026(void)
 {
@@ -24409,6 +26436,7 @@ void test_t3026(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3027(void)
 {
     /* Matrix: , flags=DOTMATCH */
@@ -24420,6 +26448,7 @@ void test_t3027(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3028(void)
 {
@@ -24433,6 +26462,7 @@ void test_t3028(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3029(void)
 {
     /* Matrix: , flags=DOTMATCH, base=. */
@@ -24444,6 +26474,7 @@ void test_t3029(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3030(void)
 {
@@ -24457,6 +26488,7 @@ void test_t3030(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3031(void)
 {
     /* Matrix: , flags=PATHNAME, unsorted */
@@ -24468,6 +26500,7 @@ void test_t3031(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3032(void)
 {
@@ -24481,6 +26514,7 @@ void test_t3032(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3033(void)
 {
     /* Matrix: , flags=CASEFOLD */
@@ -24492,6 +26526,7 @@ void test_t3033(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3034(void)
 {
@@ -24505,6 +26540,7 @@ void test_t3034(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3035(void)
 {
     /* Matrix: , flags=CASEFOLD, base=. */
@@ -24516,6 +26552,7 @@ void test_t3035(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3036(void)
 {
@@ -24529,6 +26566,7 @@ void test_t3036(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3037(void)
 {
     /* Matrix: , flags=PATHNAME|DOTMATCH, unsorted */
@@ -24540,6 +26578,7 @@ void test_t3037(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3038(void)
 {
@@ -24553,6 +26592,7 @@ void test_t3038(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3039(void)
 {
     /* Matrix: , flags=PATHNAME|CASEFOLD */
@@ -24564,6 +26604,7 @@ void test_t3039(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3040(void)
 {
@@ -24577,6 +26618,7 @@ void test_t3040(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3041(void)
 {
     /* Matrix: , flags=PATHNAME|CASEFOLD, base=. */
@@ -24588,6 +26630,7 @@ void test_t3041(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3042(void)
 {
@@ -24601,6 +26644,7 @@ void test_t3042(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3043(void)
 {
     /* Matrix: , flags=DOTMATCH|CASEFOLD, unsorted */
@@ -24612,6 +26656,7 @@ void test_t3043(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3044(void)
 {
@@ -24625,6 +26670,7 @@ void test_t3044(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3045(void)
 {
     /* Matrix: . */
@@ -24636,6 +26682,7 @@ void test_t3045(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3046(void)
 {
@@ -24649,6 +26696,7 @@ void test_t3046(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3047(void)
 {
     /* Matrix: ., base=. */
@@ -24660,6 +26708,7 @@ void test_t3047(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3048(void)
 {
@@ -24673,6 +26722,7 @@ void test_t3048(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3049(void)
 {
     /* Matrix: ., flags=DOTMATCH, unsorted */
@@ -24684,6 +26734,7 @@ void test_t3049(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3050(void)
 {
@@ -24697,6 +26748,7 @@ void test_t3050(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3051(void)
 {
     /* Matrix: ., flags=PATHNAME */
@@ -24708,6 +26760,7 @@ void test_t3051(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3052(void)
 {
@@ -24721,6 +26774,7 @@ void test_t3052(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3053(void)
 {
     /* Matrix: ., flags=PATHNAME, base=. */
@@ -24732,6 +26786,7 @@ void test_t3053(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3054(void)
 {
@@ -24745,6 +26800,7 @@ void test_t3054(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3055(void)
 {
     /* Matrix: ., flags=CASEFOLD, unsorted */
@@ -24756,6 +26812,7 @@ void test_t3055(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3056(void)
 {
@@ -24769,6 +26826,7 @@ void test_t3056(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3057(void)
 {
     /* Matrix: ., flags=PATHNAME|DOTMATCH */
@@ -24780,6 +26838,7 @@ void test_t3057(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3058(void)
 {
@@ -24793,6 +26852,7 @@ void test_t3058(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3059(void)
 {
     /* Matrix: ., flags=PATHNAME|DOTMATCH, base=. */
@@ -24804,6 +26864,7 @@ void test_t3059(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3060(void)
 {
@@ -24817,6 +26878,7 @@ void test_t3060(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3061(void)
 {
     /* Matrix: ., flags=PATHNAME|CASEFOLD, unsorted */
@@ -24828,6 +26890,7 @@ void test_t3061(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3062(void)
 {
@@ -24841,6 +26904,7 @@ void test_t3062(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3063(void)
 {
     /* Matrix: ., flags=DOTMATCH|CASEFOLD */
@@ -24852,6 +26916,7 @@ void test_t3063(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3064(void)
 {
@@ -24865,6 +26930,7 @@ void test_t3064(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3065(void)
 {
     /* Matrix: ., flags=DOTMATCH|CASEFOLD, base=. */
@@ -24876,6 +26942,7 @@ void test_t3065(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3066(void)
 {
@@ -24889,6 +26956,7 @@ void test_t3066(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3067(void)
 {
     /* Matrix: .., unsorted */
@@ -24900,6 +26968,7 @@ void test_t3067(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3068(void)
 {
@@ -24913,6 +26982,7 @@ void test_t3068(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3069(void)
 {
     /* Matrix: .., flags=DOTMATCH */
@@ -24924,6 +26994,7 @@ void test_t3069(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3070(void)
 {
@@ -24937,6 +27008,7 @@ void test_t3070(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3071(void)
 {
     /* Matrix: .., flags=DOTMATCH, base=. */
@@ -24948,6 +27020,7 @@ void test_t3071(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3072(void)
 {
@@ -24961,6 +27034,7 @@ void test_t3072(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3073(void)
 {
     /* Matrix: .., flags=PATHNAME, unsorted */
@@ -24972,6 +27046,7 @@ void test_t3073(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3074(void)
 {
@@ -24985,6 +27060,7 @@ void test_t3074(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3075(void)
 {
     /* Matrix: .., flags=CASEFOLD */
@@ -24996,6 +27072,7 @@ void test_t3075(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3076(void)
 {
@@ -25009,6 +27086,7 @@ void test_t3076(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3077(void)
 {
     /* Matrix: .., flags=CASEFOLD, base=. */
@@ -25020,6 +27098,7 @@ void test_t3077(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3078(void)
 {
@@ -25033,6 +27112,7 @@ void test_t3078(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3079(void)
 {
     /* Matrix: .., flags=PATHNAME|DOTMATCH, unsorted */
@@ -25044,6 +27124,7 @@ void test_t3079(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3080(void)
 {
@@ -25057,6 +27138,7 @@ void test_t3080(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3081(void)
 {
     /* Matrix: .., flags=PATHNAME|CASEFOLD */
@@ -25068,6 +27150,7 @@ void test_t3081(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3082(void)
 {
@@ -25081,6 +27164,7 @@ void test_t3082(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3083(void)
 {
     /* Matrix: .., flags=PATHNAME|CASEFOLD, base=. */
@@ -25092,6 +27176,7 @@ void test_t3083(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3084(void)
 {
@@ -25105,6 +27190,7 @@ void test_t3084(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3085(void)
 {
     /* Matrix: .., flags=DOTMATCH|CASEFOLD, unsorted */
@@ -25116,6 +27202,7 @@ void test_t3085(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3086(void)
 {
@@ -25129,6 +27216,7 @@ void test_t3086(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3087(void)
 {
     /* Matrix: / */
@@ -25140,6 +27228,7 @@ void test_t3087(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3088(void)
 {
@@ -25153,6 +27242,7 @@ void test_t3088(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3089(void)
 {
     /* Matrix: /, base=. */
@@ -25164,6 +27254,7 @@ void test_t3089(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3090(void)
 {
@@ -25177,6 +27268,7 @@ void test_t3090(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3091(void)
 {
     /* Matrix: /, flags=DOTMATCH, unsorted */
@@ -25188,6 +27280,7 @@ void test_t3091(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3092(void)
 {
@@ -25201,6 +27294,7 @@ void test_t3092(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3093(void)
 {
     /* Matrix: /, flags=PATHNAME */
@@ -25212,6 +27306,7 @@ void test_t3093(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3094(void)
 {
@@ -25225,6 +27320,7 @@ void test_t3094(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3095(void)
 {
     /* Matrix: /, flags=PATHNAME, base=. */
@@ -25236,6 +27332,7 @@ void test_t3095(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3096(void)
 {
@@ -25249,6 +27346,7 @@ void test_t3096(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3097(void)
 {
     /* Matrix: /, flags=CASEFOLD, unsorted */
@@ -25260,6 +27358,7 @@ void test_t3097(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3098(void)
 {
@@ -25273,6 +27372,7 @@ void test_t3098(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3099(void)
 {
     /* Matrix: /, flags=PATHNAME|DOTMATCH */
@@ -25284,6 +27384,7 @@ void test_t3099(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3100(void)
 {
@@ -25297,6 +27398,7 @@ void test_t3100(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3101(void)
 {
     /* Matrix: /, flags=PATHNAME|DOTMATCH, base=. */
@@ -25308,6 +27410,7 @@ void test_t3101(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3102(void)
 {
@@ -25321,6 +27424,7 @@ void test_t3102(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3103(void)
 {
     /* Matrix: /, flags=PATHNAME|CASEFOLD, unsorted */
@@ -25332,6 +27436,7 @@ void test_t3103(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3104(void)
 {
@@ -25345,6 +27450,7 @@ void test_t3104(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3105(void)
 {
     /* Matrix: /, flags=DOTMATCH|CASEFOLD */
@@ -25356,6 +27462,7 @@ void test_t3105(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3106(void)
 {
@@ -25369,6 +27476,7 @@ void test_t3106(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3107(void)
 {
     /* Matrix: /, flags=DOTMATCH|CASEFOLD, base=. */
@@ -25380,6 +27488,7 @@ void test_t3107(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3108(void)
 {
@@ -25393,6 +27502,7 @@ void test_t3108(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3109(void)
 {
     /* Matrix: * /* //* ///*, unsorted */
@@ -25404,6 +27514,7 @@ void test_t3109(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3110(void)
 {
@@ -25417,6 +27528,7 @@ void test_t3110(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3111(void)
 {
     /* Matrix: * /* //* ///*, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -25428,6 +27540,7 @@ void test_t3111(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3112(void)
 {
@@ -25441,6 +27554,7 @@ void test_t3112(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3113(void)
 {
     /* Matrix: * /* //* ///*, base=., unsorted */
@@ -25452,6 +27566,7 @@ void test_t3113(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3114(void)
 {
@@ -25465,6 +27580,7 @@ void test_t3114(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3115(void)
 {
     /* Matrix: * /* //* ///*, flags=DOTMATCH, unsorted */
@@ -25476,6 +27592,7 @@ void test_t3115(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3116(void)
 {
@@ -25489,6 +27606,7 @@ void test_t3116(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3117(void)
 {
     /* Matrix: * /* //* ///*, flags=DOTMATCH, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -25500,6 +27618,7 @@ void test_t3117(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3118(void)
 {
@@ -25513,6 +27632,7 @@ void test_t3118(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3119(void)
 {
     /* Matrix: * /* //* ///*, flags=DOTMATCH, base=., unsorted */
@@ -25524,6 +27644,7 @@ void test_t3119(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3120(void)
 {
@@ -25537,6 +27658,7 @@ void test_t3120(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3121(void)
 {
     /* Matrix: * /* //* ///*, flags=PATHNAME, unsorted */
@@ -25548,6 +27670,7 @@ void test_t3121(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3122(void)
 {
@@ -25561,6 +27684,7 @@ void test_t3122(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3123(void)
 {
     /* Matrix: * /* //* ///*, flags=PATHNAME, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -25572,6 +27696,7 @@ void test_t3123(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3124(void)
 {
@@ -25585,6 +27710,7 @@ void test_t3124(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3125(void)
 {
     /* Matrix: * /* //* ///*, flags=PATHNAME, base=., unsorted */
@@ -25596,6 +27722,7 @@ void test_t3125(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3126(void)
 {
@@ -25609,6 +27736,7 @@ void test_t3126(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3127(void)
 {
     /* Matrix: * /* //* ///*, flags=CASEFOLD, unsorted */
@@ -25620,6 +27748,7 @@ void test_t3127(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3128(void)
 {
@@ -25633,6 +27762,7 @@ void test_t3128(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3129(void)
 {
     /* Matrix: * /* //* ///*, flags=CASEFOLD, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -25644,6 +27774,7 @@ void test_t3129(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3130(void)
 {
@@ -25657,6 +27788,7 @@ void test_t3130(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3131(void)
 {
     /* Matrix: * /* //* ///*, flags=CASEFOLD, base=., unsorted */
@@ -25668,6 +27800,7 @@ void test_t3131(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3132(void)
 {
@@ -25681,6 +27814,7 @@ void test_t3132(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3133(void)
 {
     /* Matrix: * /* //* ///*, flags=PATHNAME|DOTMATCH, unsorted */
@@ -25692,6 +27826,7 @@ void test_t3133(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3134(void)
 {
@@ -25705,6 +27840,7 @@ void test_t3134(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3135(void)
 {
     /* Matrix: * /* //* ///*, flags=PATHNAME|DOTMATCH, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -25716,6 +27852,7 @@ void test_t3135(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3136(void)
 {
@@ -25729,6 +27866,7 @@ void test_t3136(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3137(void)
 {
     /* Matrix: * /* //* ///*, flags=PATHNAME|DOTMATCH, base=., unsorted */
@@ -25740,6 +27878,7 @@ void test_t3137(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3138(void)
 {
@@ -25753,6 +27892,7 @@ void test_t3138(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3139(void)
 {
     /* Matrix: * /* //* ///*, flags=PATHNAME|CASEFOLD, unsorted */
@@ -25764,6 +27904,7 @@ void test_t3139(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3140(void)
 {
@@ -25777,6 +27918,7 @@ void test_t3140(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3141(void)
 {
     /* Matrix: * /* //* ///*, flags=PATHNAME|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -25788,6 +27930,7 @@ void test_t3141(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3142(void)
 {
@@ -25801,6 +27944,7 @@ void test_t3142(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3143(void)
 {
     /* Matrix: * /* //* ///*, flags=PATHNAME|CASEFOLD, base=., unsorted */
@@ -25812,6 +27956,7 @@ void test_t3143(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3144(void)
 {
@@ -25825,6 +27970,7 @@ void test_t3144(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3145(void)
 {
     /* Matrix: * /* //* ///*, flags=DOTMATCH|CASEFOLD, unsorted */
@@ -25836,6 +27982,7 @@ void test_t3145(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3146(void)
 {
@@ -25849,6 +27996,7 @@ void test_t3146(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3147(void)
 {
     /* Matrix: * /* //* ///*, flags=DOTMATCH|CASEFOLD, base=/workspaces/dirglob/tests/fixtures/, unsorted */
@@ -25860,6 +28008,7 @@ void test_t3147(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3148(void)
 {
@@ -25873,6 +28022,7 @@ void test_t3148(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3149(void)
 {
     /* Matrix: * /* //* ///*, flags=DOTMATCH|CASEFOLD, base=., unsorted */
@@ -25884,6 +28034,7 @@ void test_t3149(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3150(void)
 {
@@ -25897,6 +28048,7 @@ void test_t3150(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3151(void)
 {
     /* Matrix: 日本語.txt, unsorted */
@@ -25908,6 +28060,7 @@ void test_t3151(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3152(void)
 {
@@ -25921,6 +28074,7 @@ void test_t3152(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3153(void)
 {
     /* Matrix: 日本語.txt, base=. */
@@ -25932,6 +28086,7 @@ void test_t3153(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3154(void)
 {
@@ -25945,6 +28100,7 @@ void test_t3154(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3155(void)
 {
     /* Matrix: 日本語.txt, flags=DOTMATCH, unsorted */
@@ -25956,6 +28112,7 @@ void test_t3155(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3156(void)
 {
@@ -25969,6 +28126,7 @@ void test_t3156(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3157(void)
 {
     /* Matrix: 日本語.txt, flags=DOTMATCH, base=. */
@@ -25980,6 +28138,7 @@ void test_t3157(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3158(void)
 {
@@ -25993,6 +28152,7 @@ void test_t3158(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3159(void)
 {
     /* Matrix: 日本語.txt, flags=PATHNAME, unsorted */
@@ -26004,6 +28164,7 @@ void test_t3159(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3160(void)
 {
@@ -26017,6 +28178,7 @@ void test_t3160(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3161(void)
 {
     /* Matrix: 日本語.txt, flags=PATHNAME, base=. */
@@ -26028,6 +28190,7 @@ void test_t3161(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3162(void)
 {
@@ -26041,6 +28204,7 @@ void test_t3162(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3163(void)
 {
     /* Matrix: 日本語.txt, flags=CASEFOLD, unsorted */
@@ -26052,6 +28216,7 @@ void test_t3163(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3164(void)
 {
@@ -26065,6 +28230,7 @@ void test_t3164(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3165(void)
 {
     /* Matrix: 日本語.txt, flags=CASEFOLD, base=. */
@@ -26076,6 +28242,7 @@ void test_t3165(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3166(void)
 {
@@ -26089,6 +28256,7 @@ void test_t3166(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3167(void)
 {
     /* Matrix: 日本語.txt, flags=PATHNAME|DOTMATCH, unsorted */
@@ -26100,6 +28268,7 @@ void test_t3167(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3168(void)
 {
@@ -26113,6 +28282,7 @@ void test_t3168(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3169(void)
 {
     /* Matrix: 日本語.txt, flags=PATHNAME|DOTMATCH, base=. */
@@ -26124,6 +28294,7 @@ void test_t3169(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3170(void)
 {
@@ -26137,6 +28308,7 @@ void test_t3170(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3171(void)
 {
     /* Matrix: 日本語.txt, flags=PATHNAME|CASEFOLD, unsorted */
@@ -26148,6 +28320,7 @@ void test_t3171(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3172(void)
 {
@@ -26161,6 +28334,7 @@ void test_t3172(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3173(void)
 {
     /* Matrix: 日本語.txt, flags=PATHNAME|CASEFOLD, base=. */
@@ -26172,6 +28346,7 @@ void test_t3173(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3174(void)
 {
@@ -26185,6 +28360,7 @@ void test_t3174(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3175(void)
 {
     /* Matrix: 日本語.txt, flags=DOTMATCH|CASEFOLD, unsorted */
@@ -26196,6 +28372,7 @@ void test_t3175(void)
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
+
 
 void test_t3176(void)
 {
@@ -26209,6 +28386,7 @@ void test_t3176(void)
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
+
 void test_t3177(void)
 {
     /* Matrix: 日本語.txt, flags=DOTMATCH|CASEFOLD, base=. */
@@ -26219,4 +28397,2197 @@ void test_t3177(void)
     const char *expected_file = "../ruby_expected/t3177.txt";
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
+}
+
+
+/* ========== Unity Boilerplate ========== */
+
+/* Unity required functions */
+void setUp(void) {}
+void tearDown(void) {}
+
+int main(void)
+{
+    UNITY_BEGIN();
+
+    RUN_TEST(test_t1000);
+    RUN_TEST(test_t1001);
+    RUN_TEST(test_t1002);
+    RUN_TEST(test_t1003);
+    RUN_TEST(test_t1004);
+    RUN_TEST(test_t1005);
+    RUN_TEST(test_t1006);
+    RUN_TEST(test_t1007);
+    RUN_TEST(test_t1008);
+    RUN_TEST(test_t1009);
+    RUN_TEST(test_t1010);
+    RUN_TEST(test_t1011);
+    RUN_TEST(test_t1012);
+    RUN_TEST(test_t1013);
+    RUN_TEST(test_t1014);
+    RUN_TEST(test_t1015);
+    RUN_TEST(test_t1016);
+    RUN_TEST(test_t1017);
+    RUN_TEST(test_t1018);
+    RUN_TEST(test_t1019);
+    RUN_TEST(test_t1020);
+    RUN_TEST(test_t1021);
+    RUN_TEST(test_t1022);
+    RUN_TEST(test_t1023);
+    RUN_TEST(test_t1024);
+    RUN_TEST(test_t1025);
+    RUN_TEST(test_t1026);
+    RUN_TEST(test_t1027);
+    RUN_TEST(test_t1028);
+    RUN_TEST(test_t1029);
+    RUN_TEST(test_t1030);
+    RUN_TEST(test_t1031);
+    RUN_TEST(test_t1032);
+    RUN_TEST(test_t1033);
+    RUN_TEST(test_t1034);
+    RUN_TEST(test_t1035);
+    RUN_TEST(test_t1036);
+    RUN_TEST(test_t1037);
+    RUN_TEST(test_t1038);
+    RUN_TEST(test_t1039);
+    RUN_TEST(test_t1040);
+    RUN_TEST(test_t1041);
+    RUN_TEST(test_t1042);
+    RUN_TEST(test_t1043);
+    RUN_TEST(test_t1044);
+    RUN_TEST(test_t1045);
+    RUN_TEST(test_t1046);
+    RUN_TEST(test_t1047);
+    RUN_TEST(test_t1048);
+    RUN_TEST(test_t1049);
+    RUN_TEST(test_t1050);
+    RUN_TEST(test_t1051);
+    RUN_TEST(test_t1052);
+    RUN_TEST(test_t1053);
+    RUN_TEST(test_t1054);
+    RUN_TEST(test_t1055);
+    RUN_TEST(test_t1056);
+    RUN_TEST(test_t1057);
+    RUN_TEST(test_t1058);
+    RUN_TEST(test_t1059);
+    RUN_TEST(test_t1060);
+    RUN_TEST(test_t1061);
+    RUN_TEST(test_t1062);
+    RUN_TEST(test_t1063);
+    RUN_TEST(test_t1064);
+    RUN_TEST(test_t1065);
+    RUN_TEST(test_t1066);
+    RUN_TEST(test_t1067);
+    RUN_TEST(test_t1068);
+    RUN_TEST(test_t1069);
+    RUN_TEST(test_t1070);
+    RUN_TEST(test_t1071);
+    RUN_TEST(test_t1072);
+    RUN_TEST(test_t1073);
+    RUN_TEST(test_t1074);
+    RUN_TEST(test_t1075);
+    RUN_TEST(test_t1076);
+    RUN_TEST(test_t1077);
+    RUN_TEST(test_t1078);
+    RUN_TEST(test_t1079);
+    RUN_TEST(test_t1080);
+    RUN_TEST(test_t1081);
+    RUN_TEST(test_t1082);
+    RUN_TEST(test_t1083);
+    RUN_TEST(test_t1084);
+    RUN_TEST(test_t1085);
+    RUN_TEST(test_t1086);
+    RUN_TEST(test_t1087);
+    RUN_TEST(test_t1088);
+    RUN_TEST(test_t1089);
+    RUN_TEST(test_t1090);
+    RUN_TEST(test_t1091);
+    RUN_TEST(test_t1092);
+    RUN_TEST(test_t1093);
+    RUN_TEST(test_t1094);
+    RUN_TEST(test_t1095);
+    RUN_TEST(test_t1096);
+    RUN_TEST(test_t1097);
+    RUN_TEST(test_t1098);
+    RUN_TEST(test_t1099);
+    RUN_TEST(test_t1100);
+    RUN_TEST(test_t1101);
+    RUN_TEST(test_t1102);
+    RUN_TEST(test_t1103);
+    RUN_TEST(test_t1104);
+    RUN_TEST(test_t1105);
+    RUN_TEST(test_t1106);
+    RUN_TEST(test_t1107);
+    RUN_TEST(test_t1108);
+    RUN_TEST(test_t1109);
+    RUN_TEST(test_t1110);
+    RUN_TEST(test_t1111);
+    RUN_TEST(test_t1112);
+    RUN_TEST(test_t1113);
+    RUN_TEST(test_t1114);
+    RUN_TEST(test_t1115);
+    RUN_TEST(test_t1116);
+    RUN_TEST(test_t1117);
+    RUN_TEST(test_t1118);
+    RUN_TEST(test_t1119);
+    RUN_TEST(test_t1120);
+    RUN_TEST(test_t1121);
+    RUN_TEST(test_t1122);
+    RUN_TEST(test_t1123);
+    RUN_TEST(test_t1124);
+    RUN_TEST(test_t1125);
+    RUN_TEST(test_t1126);
+    RUN_TEST(test_t1127);
+    RUN_TEST(test_t1128);
+    RUN_TEST(test_t1129);
+    RUN_TEST(test_t1130);
+    RUN_TEST(test_t1131);
+    RUN_TEST(test_t1132);
+    RUN_TEST(test_t1133);
+    RUN_TEST(test_t1134);
+    RUN_TEST(test_t1135);
+    RUN_TEST(test_t1136);
+    RUN_TEST(test_t1137);
+    RUN_TEST(test_t1138);
+    RUN_TEST(test_t1139);
+    RUN_TEST(test_t1140);
+    RUN_TEST(test_t1141);
+    RUN_TEST(test_t1142);
+    RUN_TEST(test_t1143);
+    RUN_TEST(test_t1144);
+    RUN_TEST(test_t1145);
+    RUN_TEST(test_t1146);
+    RUN_TEST(test_t1147);
+    RUN_TEST(test_t1148);
+    RUN_TEST(test_t1149);
+    RUN_TEST(test_t1150);
+    RUN_TEST(test_t1151);
+    RUN_TEST(test_t1152);
+    RUN_TEST(test_t1153);
+    RUN_TEST(test_t1154);
+    RUN_TEST(test_t1155);
+    RUN_TEST(test_t1156);
+    RUN_TEST(test_t1157);
+    RUN_TEST(test_t1158);
+    RUN_TEST(test_t1159);
+    RUN_TEST(test_t1160);
+    RUN_TEST(test_t1161);
+    RUN_TEST(test_t1162);
+    RUN_TEST(test_t1163);
+    RUN_TEST(test_t1164);
+    RUN_TEST(test_t1165);
+    RUN_TEST(test_t1166);
+    RUN_TEST(test_t1167);
+    RUN_TEST(test_t1168);
+    RUN_TEST(test_t1169);
+    RUN_TEST(test_t1170);
+    RUN_TEST(test_t1171);
+    RUN_TEST(test_t1172);
+    RUN_TEST(test_t1173);
+    RUN_TEST(test_t1174);
+    RUN_TEST(test_t1175);
+    RUN_TEST(test_t1176);
+    RUN_TEST(test_t1177);
+    RUN_TEST(test_t1178);
+    RUN_TEST(test_t1179);
+    RUN_TEST(test_t1180);
+    RUN_TEST(test_t1181);
+    RUN_TEST(test_t1182);
+    RUN_TEST(test_t1183);
+    RUN_TEST(test_t1184);
+    RUN_TEST(test_t1185);
+    RUN_TEST(test_t1186);
+    RUN_TEST(test_t1187);
+    RUN_TEST(test_t1188);
+    RUN_TEST(test_t1189);
+    RUN_TEST(test_t1190);
+    RUN_TEST(test_t1191);
+    RUN_TEST(test_t1192);
+    RUN_TEST(test_t1193);
+    RUN_TEST(test_t1194);
+    RUN_TEST(test_t1195);
+    RUN_TEST(test_t1196);
+    RUN_TEST(test_t1197);
+    RUN_TEST(test_t1198);
+    RUN_TEST(test_t1199);
+    RUN_TEST(test_t1200);
+    RUN_TEST(test_t1201);
+    RUN_TEST(test_t1202);
+    RUN_TEST(test_t1203);
+    RUN_TEST(test_t1204);
+    RUN_TEST(test_t1205);
+    RUN_TEST(test_t1206);
+    RUN_TEST(test_t1207);
+    RUN_TEST(test_t1208);
+    RUN_TEST(test_t1209);
+    RUN_TEST(test_t1210);
+    RUN_TEST(test_t1211);
+    RUN_TEST(test_t1212);
+    RUN_TEST(test_t1213);
+    RUN_TEST(test_t1214);
+    RUN_TEST(test_t1215);
+    RUN_TEST(test_t1216);
+    RUN_TEST(test_t1217);
+    RUN_TEST(test_t1218);
+    RUN_TEST(test_t1219);
+    RUN_TEST(test_t1220);
+    RUN_TEST(test_t1221);
+    RUN_TEST(test_t1222);
+    RUN_TEST(test_t1223);
+    RUN_TEST(test_t1224);
+    RUN_TEST(test_t1225);
+    RUN_TEST(test_t1226);
+    RUN_TEST(test_t1227);
+    RUN_TEST(test_t1228);
+    RUN_TEST(test_t1229);
+    RUN_TEST(test_t1230);
+    RUN_TEST(test_t1231);
+    RUN_TEST(test_t1232);
+    RUN_TEST(test_t1233);
+    RUN_TEST(test_t1234);
+    RUN_TEST(test_t1235);
+    RUN_TEST(test_t1236);
+    RUN_TEST(test_t1237);
+    RUN_TEST(test_t1238);
+    RUN_TEST(test_t1239);
+    RUN_TEST(test_t1240);
+    RUN_TEST(test_t1241);
+    RUN_TEST(test_t1242);
+    RUN_TEST(test_t1243);
+    RUN_TEST(test_t1244);
+    RUN_TEST(test_t1245);
+    RUN_TEST(test_t1246);
+    RUN_TEST(test_t1247);
+    RUN_TEST(test_t1248);
+    RUN_TEST(test_t1249);
+    RUN_TEST(test_t1250);
+    RUN_TEST(test_t1251);
+    RUN_TEST(test_t1252);
+    RUN_TEST(test_t1253);
+    RUN_TEST(test_t1254);
+    RUN_TEST(test_t1255);
+    RUN_TEST(test_t1256);
+    RUN_TEST(test_t1257);
+    RUN_TEST(test_t1258);
+    RUN_TEST(test_t1259);
+    RUN_TEST(test_t1260);
+    RUN_TEST(test_t1261);
+    RUN_TEST(test_t1262);
+    RUN_TEST(test_t1263);
+    RUN_TEST(test_t1264);
+    RUN_TEST(test_t1265);
+    RUN_TEST(test_t1266);
+    RUN_TEST(test_t1267);
+    RUN_TEST(test_t1268);
+    RUN_TEST(test_t1269);
+    RUN_TEST(test_t1270);
+    RUN_TEST(test_t1271);
+    RUN_TEST(test_t1272);
+    RUN_TEST(test_t1273);
+    RUN_TEST(test_t1274);
+    RUN_TEST(test_t1275);
+    RUN_TEST(test_t1276);
+    RUN_TEST(test_t1277);
+    RUN_TEST(test_t1278);
+    RUN_TEST(test_t1279);
+    RUN_TEST(test_t1280);
+    RUN_TEST(test_t1281);
+    RUN_TEST(test_t1282);
+    RUN_TEST(test_t1283);
+    RUN_TEST(test_t1284);
+    RUN_TEST(test_t1285);
+    RUN_TEST(test_t1286);
+    RUN_TEST(test_t1287);
+    RUN_TEST(test_t1288);
+    RUN_TEST(test_t1289);
+    RUN_TEST(test_t1290);
+    RUN_TEST(test_t1291);
+    RUN_TEST(test_t1292);
+    RUN_TEST(test_t1293);
+    RUN_TEST(test_t1294);
+    RUN_TEST(test_t1295);
+    RUN_TEST(test_t1296);
+    RUN_TEST(test_t1297);
+    RUN_TEST(test_t1298);
+    RUN_TEST(test_t1299);
+    RUN_TEST(test_t1300);
+    RUN_TEST(test_t1301);
+    RUN_TEST(test_t1302);
+    RUN_TEST(test_t1303);
+    RUN_TEST(test_t1304);
+    RUN_TEST(test_t1305);
+    RUN_TEST(test_t1306);
+    RUN_TEST(test_t1307);
+    RUN_TEST(test_t1308);
+    RUN_TEST(test_t1309);
+    RUN_TEST(test_t1310);
+    RUN_TEST(test_t1311);
+    RUN_TEST(test_t1312);
+    RUN_TEST(test_t1313);
+    RUN_TEST(test_t1314);
+    RUN_TEST(test_t1315);
+    RUN_TEST(test_t1316);
+    RUN_TEST(test_t1317);
+    RUN_TEST(test_t1318);
+    RUN_TEST(test_t1319);
+    RUN_TEST(test_t1320);
+    RUN_TEST(test_t1321);
+    RUN_TEST(test_t1322);
+    RUN_TEST(test_t1323);
+    RUN_TEST(test_t1324);
+    RUN_TEST(test_t1325);
+    RUN_TEST(test_t1326);
+    RUN_TEST(test_t1327);
+    RUN_TEST(test_t1328);
+    RUN_TEST(test_t1329);
+    RUN_TEST(test_t1330);
+    RUN_TEST(test_t1331);
+    RUN_TEST(test_t1332);
+    RUN_TEST(test_t1333);
+    RUN_TEST(test_t1334);
+    RUN_TEST(test_t1335);
+    RUN_TEST(test_t1336);
+    RUN_TEST(test_t1337);
+    RUN_TEST(test_t1338);
+    RUN_TEST(test_t1339);
+    RUN_TEST(test_t1340);
+    RUN_TEST(test_t1341);
+    RUN_TEST(test_t1342);
+    RUN_TEST(test_t1343);
+    RUN_TEST(test_t1344);
+    RUN_TEST(test_t1345);
+    RUN_TEST(test_t1346);
+    RUN_TEST(test_t1347);
+    RUN_TEST(test_t1348);
+    RUN_TEST(test_t1349);
+    RUN_TEST(test_t1350);
+    RUN_TEST(test_t1351);
+    RUN_TEST(test_t1352);
+    RUN_TEST(test_t1353);
+    RUN_TEST(test_t1354);
+    RUN_TEST(test_t1355);
+    RUN_TEST(test_t1356);
+    RUN_TEST(test_t1357);
+    RUN_TEST(test_t1358);
+    RUN_TEST(test_t1359);
+    RUN_TEST(test_t1360);
+    RUN_TEST(test_t1361);
+    RUN_TEST(test_t1362);
+    RUN_TEST(test_t1363);
+    RUN_TEST(test_t1364);
+    RUN_TEST(test_t1365);
+    RUN_TEST(test_t1366);
+    RUN_TEST(test_t1367);
+    RUN_TEST(test_t1368);
+    RUN_TEST(test_t1369);
+    RUN_TEST(test_t1370);
+    RUN_TEST(test_t1371);
+    RUN_TEST(test_t1372);
+    RUN_TEST(test_t1373);
+    RUN_TEST(test_t1374);
+    RUN_TEST(test_t1375);
+    RUN_TEST(test_t1376);
+    RUN_TEST(test_t1377);
+    RUN_TEST(test_t1378);
+    RUN_TEST(test_t1379);
+    RUN_TEST(test_t1380);
+    RUN_TEST(test_t1381);
+    RUN_TEST(test_t1382);
+    RUN_TEST(test_t1383);
+    RUN_TEST(test_t1384);
+    RUN_TEST(test_t1385);
+    RUN_TEST(test_t1386);
+    RUN_TEST(test_t1387);
+    RUN_TEST(test_t1388);
+    RUN_TEST(test_t1389);
+    RUN_TEST(test_t1390);
+    RUN_TEST(test_t1391);
+    RUN_TEST(test_t1392);
+    RUN_TEST(test_t1393);
+    RUN_TEST(test_t1394);
+    RUN_TEST(test_t1395);
+    RUN_TEST(test_t1396);
+    RUN_TEST(test_t1397);
+    RUN_TEST(test_t1398);
+    RUN_TEST(test_t1399);
+    RUN_TEST(test_t1400);
+    RUN_TEST(test_t1401);
+    RUN_TEST(test_t1402);
+    RUN_TEST(test_t1403);
+    RUN_TEST(test_t1404);
+    RUN_TEST(test_t1405);
+    RUN_TEST(test_t1406);
+    RUN_TEST(test_t1407);
+    RUN_TEST(test_t1408);
+    RUN_TEST(test_t1409);
+    RUN_TEST(test_t1410);
+    RUN_TEST(test_t1411);
+    RUN_TEST(test_t1412);
+    RUN_TEST(test_t1413);
+    RUN_TEST(test_t1414);
+    RUN_TEST(test_t1415);
+    RUN_TEST(test_t1416);
+    RUN_TEST(test_t1417);
+    RUN_TEST(test_t1418);
+    RUN_TEST(test_t1419);
+    RUN_TEST(test_t1420);
+    RUN_TEST(test_t1421);
+    RUN_TEST(test_t1422);
+    RUN_TEST(test_t1423);
+    RUN_TEST(test_t1424);
+    RUN_TEST(test_t1425);
+    RUN_TEST(test_t1426);
+    RUN_TEST(test_t1427);
+    RUN_TEST(test_t1428);
+    RUN_TEST(test_t1429);
+    RUN_TEST(test_t1430);
+    RUN_TEST(test_t1431);
+    RUN_TEST(test_t1432);
+    RUN_TEST(test_t1433);
+    RUN_TEST(test_t1434);
+    RUN_TEST(test_t1435);
+    RUN_TEST(test_t1436);
+    RUN_TEST(test_t1437);
+    RUN_TEST(test_t1438);
+    RUN_TEST(test_t1439);
+    RUN_TEST(test_t1440);
+    RUN_TEST(test_t1441);
+    RUN_TEST(test_t1442);
+    RUN_TEST(test_t1443);
+    RUN_TEST(test_t1444);
+    RUN_TEST(test_t1445);
+    RUN_TEST(test_t1446);
+    RUN_TEST(test_t1447);
+    RUN_TEST(test_t1448);
+    RUN_TEST(test_t1449);
+    RUN_TEST(test_t1450);
+    RUN_TEST(test_t1451);
+    RUN_TEST(test_t1452);
+    RUN_TEST(test_t1453);
+    RUN_TEST(test_t1454);
+    RUN_TEST(test_t1455);
+    RUN_TEST(test_t1456);
+    RUN_TEST(test_t1457);
+    RUN_TEST(test_t1458);
+    RUN_TEST(test_t1459);
+    RUN_TEST(test_t1460);
+    RUN_TEST(test_t1461);
+    RUN_TEST(test_t1462);
+    RUN_TEST(test_t1463);
+    RUN_TEST(test_t1464);
+    RUN_TEST(test_t1465);
+    RUN_TEST(test_t1466);
+    RUN_TEST(test_t1467);
+    RUN_TEST(test_t1468);
+    RUN_TEST(test_t1469);
+    RUN_TEST(test_t1470);
+    RUN_TEST(test_t1471);
+    RUN_TEST(test_t1472);
+    RUN_TEST(test_t1473);
+    RUN_TEST(test_t1474);
+    RUN_TEST(test_t1475);
+    RUN_TEST(test_t1476);
+    RUN_TEST(test_t1477);
+    RUN_TEST(test_t1478);
+    RUN_TEST(test_t1479);
+    RUN_TEST(test_t1480);
+    RUN_TEST(test_t1481);
+    RUN_TEST(test_t1482);
+    RUN_TEST(test_t1483);
+    RUN_TEST(test_t1484);
+    RUN_TEST(test_t1485);
+    RUN_TEST(test_t1486);
+    RUN_TEST(test_t1487);
+    RUN_TEST(test_t1488);
+    RUN_TEST(test_t1489);
+    RUN_TEST(test_t1490);
+    RUN_TEST(test_t1491);
+    RUN_TEST(test_t1492);
+    RUN_TEST(test_t1493);
+    RUN_TEST(test_t1494);
+    RUN_TEST(test_t1495);
+    RUN_TEST(test_t1496);
+    RUN_TEST(test_t1497);
+    RUN_TEST(test_t1498);
+    RUN_TEST(test_t1499);
+    RUN_TEST(test_t1500);
+    RUN_TEST(test_t1501);
+    RUN_TEST(test_t1502);
+    RUN_TEST(test_t1503);
+    RUN_TEST(test_t1504);
+    RUN_TEST(test_t1505);
+    RUN_TEST(test_t1506);
+    RUN_TEST(test_t1507);
+    RUN_TEST(test_t1508);
+    RUN_TEST(test_t1509);
+    RUN_TEST(test_t1510);
+    RUN_TEST(test_t1511);
+    RUN_TEST(test_t1512);
+    RUN_TEST(test_t1513);
+    RUN_TEST(test_t1514);
+    RUN_TEST(test_t1515);
+    RUN_TEST(test_t1516);
+    RUN_TEST(test_t1517);
+    RUN_TEST(test_t1518);
+    RUN_TEST(test_t1519);
+    RUN_TEST(test_t1520);
+    RUN_TEST(test_t1521);
+    RUN_TEST(test_t1522);
+    RUN_TEST(test_t1523);
+    RUN_TEST(test_t1524);
+    RUN_TEST(test_t1525);
+    RUN_TEST(test_t1526);
+    RUN_TEST(test_t1527);
+    RUN_TEST(test_t1528);
+    RUN_TEST(test_t1529);
+    RUN_TEST(test_t1530);
+    RUN_TEST(test_t1531);
+    RUN_TEST(test_t1532);
+    RUN_TEST(test_t1533);
+    RUN_TEST(test_t1534);
+    RUN_TEST(test_t1535);
+    RUN_TEST(test_t1536);
+    RUN_TEST(test_t1537);
+    RUN_TEST(test_t1538);
+    RUN_TEST(test_t1539);
+    RUN_TEST(test_t1540);
+    RUN_TEST(test_t1541);
+    RUN_TEST(test_t1542);
+    RUN_TEST(test_t1543);
+    RUN_TEST(test_t1544);
+    RUN_TEST(test_t1545);
+    RUN_TEST(test_t1546);
+    RUN_TEST(test_t1547);
+    RUN_TEST(test_t1548);
+    RUN_TEST(test_t1549);
+    RUN_TEST(test_t1550);
+    RUN_TEST(test_t1551);
+    RUN_TEST(test_t1552);
+    RUN_TEST(test_t1553);
+    RUN_TEST(test_t1554);
+    RUN_TEST(test_t1555);
+    RUN_TEST(test_t1556);
+    RUN_TEST(test_t1557);
+    RUN_TEST(test_t1558);
+    RUN_TEST(test_t1559);
+    RUN_TEST(test_t1560);
+    RUN_TEST(test_t1561);
+    RUN_TEST(test_t1562);
+    RUN_TEST(test_t1563);
+    RUN_TEST(test_t1564);
+    RUN_TEST(test_t1565);
+    RUN_TEST(test_t1566);
+    RUN_TEST(test_t1567);
+    RUN_TEST(test_t1568);
+    RUN_TEST(test_t1569);
+    RUN_TEST(test_t1570);
+    RUN_TEST(test_t1571);
+    RUN_TEST(test_t1572);
+    RUN_TEST(test_t1573);
+    RUN_TEST(test_t1574);
+    RUN_TEST(test_t1575);
+    RUN_TEST(test_t1576);
+    RUN_TEST(test_t1577);
+    RUN_TEST(test_t1578);
+    RUN_TEST(test_t1579);
+    RUN_TEST(test_t1580);
+    RUN_TEST(test_t1581);
+    RUN_TEST(test_t1582);
+    RUN_TEST(test_t1583);
+    RUN_TEST(test_t1584);
+    RUN_TEST(test_t1585);
+    RUN_TEST(test_t1586);
+    RUN_TEST(test_t1587);
+    RUN_TEST(test_t1588);
+    RUN_TEST(test_t1589);
+    RUN_TEST(test_t1590);
+    RUN_TEST(test_t1591);
+    RUN_TEST(test_t1592);
+    RUN_TEST(test_t1593);
+    RUN_TEST(test_t1594);
+    RUN_TEST(test_t1595);
+    RUN_TEST(test_t1596);
+    RUN_TEST(test_t1597);
+    RUN_TEST(test_t1598);
+    RUN_TEST(test_t1599);
+    RUN_TEST(test_t1600);
+    RUN_TEST(test_t1601);
+    RUN_TEST(test_t1602);
+    RUN_TEST(test_t1603);
+    RUN_TEST(test_t1604);
+    RUN_TEST(test_t1605);
+    RUN_TEST(test_t1606);
+    RUN_TEST(test_t1607);
+    RUN_TEST(test_t1608);
+    RUN_TEST(test_t1609);
+    RUN_TEST(test_t1610);
+    RUN_TEST(test_t1611);
+    RUN_TEST(test_t1612);
+    RUN_TEST(test_t1613);
+    RUN_TEST(test_t1614);
+    RUN_TEST(test_t1615);
+    RUN_TEST(test_t1616);
+    RUN_TEST(test_t1617);
+    RUN_TEST(test_t1618);
+    RUN_TEST(test_t1619);
+    RUN_TEST(test_t1620);
+    RUN_TEST(test_t1621);
+    RUN_TEST(test_t1622);
+    RUN_TEST(test_t1623);
+    RUN_TEST(test_t1624);
+    RUN_TEST(test_t1625);
+    RUN_TEST(test_t1626);
+    RUN_TEST(test_t1627);
+    RUN_TEST(test_t1628);
+    RUN_TEST(test_t1629);
+    RUN_TEST(test_t1630);
+    RUN_TEST(test_t1631);
+    RUN_TEST(test_t1632);
+    RUN_TEST(test_t1633);
+    RUN_TEST(test_t1634);
+    RUN_TEST(test_t1635);
+    RUN_TEST(test_t1636);
+    RUN_TEST(test_t1637);
+    RUN_TEST(test_t1638);
+    RUN_TEST(test_t1639);
+    RUN_TEST(test_t1640);
+    RUN_TEST(test_t1641);
+    RUN_TEST(test_t1642);
+    RUN_TEST(test_t1643);
+    RUN_TEST(test_t1644);
+    RUN_TEST(test_t1645);
+    RUN_TEST(test_t1646);
+    RUN_TEST(test_t1647);
+    RUN_TEST(test_t1648);
+    RUN_TEST(test_t1649);
+    RUN_TEST(test_t1650);
+    RUN_TEST(test_t1651);
+    RUN_TEST(test_t1652);
+    RUN_TEST(test_t1653);
+    RUN_TEST(test_t1654);
+    RUN_TEST(test_t1655);
+    RUN_TEST(test_t1656);
+    RUN_TEST(test_t1657);
+    RUN_TEST(test_t1658);
+    RUN_TEST(test_t1659);
+    RUN_TEST(test_t1660);
+    RUN_TEST(test_t1661);
+    RUN_TEST(test_t1662);
+    RUN_TEST(test_t1663);
+    RUN_TEST(test_t1664);
+    RUN_TEST(test_t1665);
+    RUN_TEST(test_t1666);
+    RUN_TEST(test_t1667);
+    RUN_TEST(test_t1668);
+    RUN_TEST(test_t1669);
+    RUN_TEST(test_t1670);
+    RUN_TEST(test_t1671);
+    RUN_TEST(test_t1672);
+    RUN_TEST(test_t1673);
+    RUN_TEST(test_t1674);
+    RUN_TEST(test_t1675);
+    RUN_TEST(test_t1676);
+    RUN_TEST(test_t1677);
+    RUN_TEST(test_t1678);
+    RUN_TEST(test_t1679);
+    RUN_TEST(test_t1680);
+    RUN_TEST(test_t1681);
+    RUN_TEST(test_t1682);
+    RUN_TEST(test_t1683);
+    RUN_TEST(test_t1684);
+    RUN_TEST(test_t1685);
+    RUN_TEST(test_t1686);
+    RUN_TEST(test_t1687);
+    RUN_TEST(test_t1688);
+    RUN_TEST(test_t1689);
+    RUN_TEST(test_t1690);
+    RUN_TEST(test_t1691);
+    RUN_TEST(test_t1692);
+    RUN_TEST(test_t1693);
+    RUN_TEST(test_t1694);
+    RUN_TEST(test_t1695);
+    RUN_TEST(test_t1696);
+    RUN_TEST(test_t1697);
+    RUN_TEST(test_t1698);
+    RUN_TEST(test_t1699);
+    RUN_TEST(test_t1700);
+    RUN_TEST(test_t1701);
+    RUN_TEST(test_t1702);
+    RUN_TEST(test_t1703);
+    RUN_TEST(test_t1704);
+    RUN_TEST(test_t1705);
+    RUN_TEST(test_t1706);
+    RUN_TEST(test_t1707);
+    RUN_TEST(test_t1708);
+    RUN_TEST(test_t1709);
+    RUN_TEST(test_t1710);
+    RUN_TEST(test_t1711);
+    RUN_TEST(test_t1712);
+    RUN_TEST(test_t1713);
+    RUN_TEST(test_t1714);
+    RUN_TEST(test_t1715);
+    RUN_TEST(test_t1716);
+    RUN_TEST(test_t1717);
+    RUN_TEST(test_t1718);
+    RUN_TEST(test_t1719);
+    RUN_TEST(test_t1720);
+    RUN_TEST(test_t1721);
+    RUN_TEST(test_t1722);
+    RUN_TEST(test_t1723);
+    RUN_TEST(test_t1724);
+    RUN_TEST(test_t1725);
+    RUN_TEST(test_t1726);
+    RUN_TEST(test_t1727);
+    RUN_TEST(test_t1728);
+    RUN_TEST(test_t1729);
+    RUN_TEST(test_t1730);
+    RUN_TEST(test_t1731);
+    RUN_TEST(test_t1732);
+    RUN_TEST(test_t1733);
+    RUN_TEST(test_t1734);
+    RUN_TEST(test_t1735);
+    RUN_TEST(test_t1736);
+    RUN_TEST(test_t1737);
+    RUN_TEST(test_t1738);
+    RUN_TEST(test_t1739);
+    RUN_TEST(test_t1740);
+    RUN_TEST(test_t1741);
+    RUN_TEST(test_t1742);
+    RUN_TEST(test_t1743);
+    RUN_TEST(test_t1744);
+    RUN_TEST(test_t1745);
+    RUN_TEST(test_t1746);
+    RUN_TEST(test_t1747);
+    RUN_TEST(test_t1748);
+    RUN_TEST(test_t1749);
+    RUN_TEST(test_t1750);
+    RUN_TEST(test_t1751);
+    RUN_TEST(test_t1752);
+    RUN_TEST(test_t1753);
+    RUN_TEST(test_t1754);
+    RUN_TEST(test_t1755);
+    RUN_TEST(test_t1756);
+    RUN_TEST(test_t1757);
+    RUN_TEST(test_t1758);
+    RUN_TEST(test_t1759);
+    RUN_TEST(test_t1760);
+    RUN_TEST(test_t1761);
+    RUN_TEST(test_t1762);
+    RUN_TEST(test_t1763);
+    RUN_TEST(test_t1764);
+    RUN_TEST(test_t1765);
+    RUN_TEST(test_t1766);
+    RUN_TEST(test_t1767);
+    RUN_TEST(test_t1768);
+    RUN_TEST(test_t1769);
+    RUN_TEST(test_t1770);
+    RUN_TEST(test_t1771);
+    RUN_TEST(test_t1772);
+    RUN_TEST(test_t1773);
+    RUN_TEST(test_t1774);
+    RUN_TEST(test_t1775);
+    RUN_TEST(test_t1776);
+    RUN_TEST(test_t1777);
+    RUN_TEST(test_t1778);
+    RUN_TEST(test_t1779);
+    RUN_TEST(test_t1780);
+    RUN_TEST(test_t1781);
+    RUN_TEST(test_t1782);
+    RUN_TEST(test_t1783);
+    RUN_TEST(test_t1784);
+    RUN_TEST(test_t1785);
+    RUN_TEST(test_t1786);
+    RUN_TEST(test_t1787);
+    RUN_TEST(test_t1788);
+    RUN_TEST(test_t1789);
+    RUN_TEST(test_t1790);
+    RUN_TEST(test_t1791);
+    RUN_TEST(test_t1792);
+    RUN_TEST(test_t1793);
+    RUN_TEST(test_t1794);
+    RUN_TEST(test_t1795);
+    RUN_TEST(test_t1796);
+    RUN_TEST(test_t1797);
+    RUN_TEST(test_t1798);
+    RUN_TEST(test_t1799);
+    RUN_TEST(test_t1800);
+    RUN_TEST(test_t1801);
+    RUN_TEST(test_t1802);
+    RUN_TEST(test_t1803);
+    RUN_TEST(test_t1804);
+    RUN_TEST(test_t1805);
+    RUN_TEST(test_t1806);
+    RUN_TEST(test_t1807);
+    RUN_TEST(test_t1808);
+    RUN_TEST(test_t1809);
+    RUN_TEST(test_t1810);
+    RUN_TEST(test_t1811);
+    RUN_TEST(test_t1812);
+    RUN_TEST(test_t1813);
+    RUN_TEST(test_t1814);
+    RUN_TEST(test_t1815);
+    RUN_TEST(test_t1816);
+    RUN_TEST(test_t1817);
+    RUN_TEST(test_t1818);
+    RUN_TEST(test_t1819);
+    RUN_TEST(test_t1820);
+    RUN_TEST(test_t1821);
+    RUN_TEST(test_t1822);
+    RUN_TEST(test_t1823);
+    RUN_TEST(test_t1824);
+    RUN_TEST(test_t1825);
+    RUN_TEST(test_t1826);
+    RUN_TEST(test_t1827);
+    RUN_TEST(test_t1828);
+    RUN_TEST(test_t1829);
+    RUN_TEST(test_t1830);
+    RUN_TEST(test_t1831);
+    RUN_TEST(test_t1832);
+    RUN_TEST(test_t1833);
+    RUN_TEST(test_t1834);
+    RUN_TEST(test_t1835);
+    RUN_TEST(test_t1836);
+    RUN_TEST(test_t1837);
+    RUN_TEST(test_t1838);
+    RUN_TEST(test_t1839);
+    RUN_TEST(test_t1840);
+    RUN_TEST(test_t1841);
+    RUN_TEST(test_t1842);
+    RUN_TEST(test_t1843);
+    RUN_TEST(test_t1844);
+    RUN_TEST(test_t1845);
+    RUN_TEST(test_t1846);
+    RUN_TEST(test_t1847);
+    RUN_TEST(test_t1848);
+    RUN_TEST(test_t1849);
+    RUN_TEST(test_t1850);
+    RUN_TEST(test_t1851);
+    RUN_TEST(test_t1852);
+    RUN_TEST(test_t1853);
+    RUN_TEST(test_t1854);
+    RUN_TEST(test_t1855);
+    RUN_TEST(test_t1856);
+    RUN_TEST(test_t1857);
+    RUN_TEST(test_t1858);
+    RUN_TEST(test_t1859);
+    RUN_TEST(test_t1860);
+    RUN_TEST(test_t1861);
+    RUN_TEST(test_t1862);
+    RUN_TEST(test_t1863);
+    RUN_TEST(test_t1864);
+    RUN_TEST(test_t1865);
+    RUN_TEST(test_t1866);
+    RUN_TEST(test_t1867);
+    RUN_TEST(test_t1868);
+    RUN_TEST(test_t1869);
+    RUN_TEST(test_t1870);
+    RUN_TEST(test_t1871);
+    RUN_TEST(test_t1872);
+    RUN_TEST(test_t1873);
+    RUN_TEST(test_t1874);
+    RUN_TEST(test_t1875);
+    RUN_TEST(test_t1876);
+    RUN_TEST(test_t1877);
+    RUN_TEST(test_t1878);
+    RUN_TEST(test_t1879);
+    RUN_TEST(test_t1880);
+    RUN_TEST(test_t1881);
+    RUN_TEST(test_t1882);
+    RUN_TEST(test_t1883);
+    RUN_TEST(test_t1884);
+    RUN_TEST(test_t1885);
+    RUN_TEST(test_t1886);
+    RUN_TEST(test_t1887);
+    RUN_TEST(test_t1888);
+    RUN_TEST(test_t1889);
+    RUN_TEST(test_t1890);
+    RUN_TEST(test_t1891);
+    RUN_TEST(test_t1892);
+    RUN_TEST(test_t1893);
+    RUN_TEST(test_t1894);
+    RUN_TEST(test_t1895);
+    RUN_TEST(test_t1896);
+    RUN_TEST(test_t1897);
+    RUN_TEST(test_t1898);
+    RUN_TEST(test_t1899);
+    RUN_TEST(test_t1900);
+    RUN_TEST(test_t1901);
+    RUN_TEST(test_t1902);
+    RUN_TEST(test_t1903);
+    RUN_TEST(test_t1904);
+    RUN_TEST(test_t1905);
+    RUN_TEST(test_t1906);
+    RUN_TEST(test_t1907);
+    RUN_TEST(test_t1908);
+    RUN_TEST(test_t1909);
+    RUN_TEST(test_t1910);
+    RUN_TEST(test_t1911);
+    RUN_TEST(test_t1912);
+    RUN_TEST(test_t1913);
+    RUN_TEST(test_t1914);
+    RUN_TEST(test_t1915);
+    RUN_TEST(test_t1916);
+    RUN_TEST(test_t1917);
+    RUN_TEST(test_t1918);
+    RUN_TEST(test_t1919);
+    RUN_TEST(test_t1920);
+    RUN_TEST(test_t1921);
+    RUN_TEST(test_t1922);
+    RUN_TEST(test_t1923);
+    RUN_TEST(test_t1924);
+    RUN_TEST(test_t1925);
+    RUN_TEST(test_t1926);
+    RUN_TEST(test_t1927);
+    RUN_TEST(test_t1928);
+    RUN_TEST(test_t1929);
+    RUN_TEST(test_t1930);
+    RUN_TEST(test_t1931);
+    RUN_TEST(test_t1932);
+    RUN_TEST(test_t1933);
+    RUN_TEST(test_t1934);
+    RUN_TEST(test_t1935);
+    RUN_TEST(test_t1936);
+    RUN_TEST(test_t1937);
+    RUN_TEST(test_t1938);
+    RUN_TEST(test_t1939);
+    RUN_TEST(test_t1940);
+    RUN_TEST(test_t1941);
+    RUN_TEST(test_t1942);
+    RUN_TEST(test_t1943);
+    RUN_TEST(test_t1944);
+    RUN_TEST(test_t1945);
+    RUN_TEST(test_t1946);
+    RUN_TEST(test_t1947);
+    RUN_TEST(test_t1948);
+    RUN_TEST(test_t1949);
+    RUN_TEST(test_t1950);
+    RUN_TEST(test_t1951);
+    RUN_TEST(test_t1952);
+    RUN_TEST(test_t1953);
+    RUN_TEST(test_t1954);
+    RUN_TEST(test_t1955);
+    RUN_TEST(test_t1956);
+    RUN_TEST(test_t1957);
+    RUN_TEST(test_t1958);
+    RUN_TEST(test_t1959);
+    RUN_TEST(test_t1960);
+    RUN_TEST(test_t1961);
+    RUN_TEST(test_t1962);
+    RUN_TEST(test_t1963);
+    RUN_TEST(test_t1964);
+    RUN_TEST(test_t1965);
+    RUN_TEST(test_t1966);
+    RUN_TEST(test_t1967);
+    RUN_TEST(test_t1968);
+    RUN_TEST(test_t1969);
+    RUN_TEST(test_t1970);
+    RUN_TEST(test_t1971);
+    RUN_TEST(test_t1972);
+    RUN_TEST(test_t1973);
+    RUN_TEST(test_t1974);
+    RUN_TEST(test_t1975);
+    RUN_TEST(test_t1976);
+    RUN_TEST(test_t1977);
+    RUN_TEST(test_t1978);
+    RUN_TEST(test_t1979);
+    RUN_TEST(test_t1980);
+    RUN_TEST(test_t1981);
+    RUN_TEST(test_t1982);
+    RUN_TEST(test_t1983);
+    RUN_TEST(test_t1984);
+    RUN_TEST(test_t1985);
+    RUN_TEST(test_t1986);
+    RUN_TEST(test_t1987);
+    RUN_TEST(test_t1988);
+    RUN_TEST(test_t1989);
+    RUN_TEST(test_t1990);
+    RUN_TEST(test_t1991);
+    RUN_TEST(test_t1992);
+    RUN_TEST(test_t1993);
+    RUN_TEST(test_t1994);
+    RUN_TEST(test_t1995);
+    RUN_TEST(test_t1996);
+    RUN_TEST(test_t1997);
+    RUN_TEST(test_t1998);
+    RUN_TEST(test_t1999);
+    RUN_TEST(test_t2000);
+    RUN_TEST(test_t2001);
+    RUN_TEST(test_t2002);
+    RUN_TEST(test_t2003);
+    RUN_TEST(test_t2004);
+    RUN_TEST(test_t2005);
+    RUN_TEST(test_t2006);
+    RUN_TEST(test_t2007);
+    RUN_TEST(test_t2008);
+    RUN_TEST(test_t2009);
+    RUN_TEST(test_t2010);
+    RUN_TEST(test_t2011);
+    RUN_TEST(test_t2012);
+    RUN_TEST(test_t2013);
+    RUN_TEST(test_t2014);
+    RUN_TEST(test_t2015);
+    RUN_TEST(test_t2016);
+    RUN_TEST(test_t2017);
+    RUN_TEST(test_t2018);
+    RUN_TEST(test_t2019);
+    RUN_TEST(test_t2020);
+    RUN_TEST(test_t2021);
+    RUN_TEST(test_t2022);
+    RUN_TEST(test_t2023);
+    RUN_TEST(test_t2024);
+    RUN_TEST(test_t2025);
+    RUN_TEST(test_t2026);
+    RUN_TEST(test_t2027);
+    RUN_TEST(test_t2028);
+    RUN_TEST(test_t2029);
+    RUN_TEST(test_t2030);
+    RUN_TEST(test_t2031);
+    RUN_TEST(test_t2032);
+    RUN_TEST(test_t2033);
+    RUN_TEST(test_t2034);
+    RUN_TEST(test_t2035);
+    RUN_TEST(test_t2036);
+    RUN_TEST(test_t2037);
+    RUN_TEST(test_t2038);
+    RUN_TEST(test_t2039);
+    RUN_TEST(test_t2040);
+    RUN_TEST(test_t2041);
+    RUN_TEST(test_t2042);
+    RUN_TEST(test_t2043);
+    RUN_TEST(test_t2044);
+    RUN_TEST(test_t2045);
+    RUN_TEST(test_t2046);
+    RUN_TEST(test_t2047);
+    RUN_TEST(test_t2048);
+    RUN_TEST(test_t2049);
+    RUN_TEST(test_t2050);
+    RUN_TEST(test_t2051);
+    RUN_TEST(test_t2052);
+    RUN_TEST(test_t2053);
+    RUN_TEST(test_t2054);
+    RUN_TEST(test_t2055);
+    RUN_TEST(test_t2056);
+    RUN_TEST(test_t2057);
+    RUN_TEST(test_t2058);
+    RUN_TEST(test_t2059);
+    RUN_TEST(test_t2060);
+    RUN_TEST(test_t2061);
+    RUN_TEST(test_t2062);
+    RUN_TEST(test_t2063);
+    RUN_TEST(test_t2064);
+    RUN_TEST(test_t2065);
+    RUN_TEST(test_t2066);
+    RUN_TEST(test_t2067);
+    RUN_TEST(test_t2068);
+    RUN_TEST(test_t2069);
+    RUN_TEST(test_t2070);
+    RUN_TEST(test_t2071);
+    RUN_TEST(test_t2072);
+    RUN_TEST(test_t2073);
+    RUN_TEST(test_t2074);
+    RUN_TEST(test_t2075);
+    RUN_TEST(test_t2076);
+    RUN_TEST(test_t2077);
+    RUN_TEST(test_t2078);
+    RUN_TEST(test_t2079);
+    RUN_TEST(test_t2080);
+    RUN_TEST(test_t2081);
+    RUN_TEST(test_t2082);
+    RUN_TEST(test_t2083);
+    RUN_TEST(test_t2084);
+    RUN_TEST(test_t2085);
+    RUN_TEST(test_t2086);
+    RUN_TEST(test_t2087);
+    RUN_TEST(test_t2088);
+    RUN_TEST(test_t2089);
+    RUN_TEST(test_t2090);
+    RUN_TEST(test_t2091);
+    RUN_TEST(test_t2092);
+    RUN_TEST(test_t2093);
+    RUN_TEST(test_t2094);
+    RUN_TEST(test_t2095);
+    RUN_TEST(test_t2096);
+    RUN_TEST(test_t2097);
+    RUN_TEST(test_t2098);
+    RUN_TEST(test_t2099);
+    RUN_TEST(test_t2100);
+    RUN_TEST(test_t2101);
+    RUN_TEST(test_t2102);
+    RUN_TEST(test_t2103);
+    RUN_TEST(test_t2104);
+    RUN_TEST(test_t2105);
+    RUN_TEST(test_t2106);
+    RUN_TEST(test_t2107);
+    RUN_TEST(test_t2108);
+    RUN_TEST(test_t2109);
+    RUN_TEST(test_t2110);
+    RUN_TEST(test_t2111);
+    RUN_TEST(test_t2112);
+    RUN_TEST(test_t2113);
+    RUN_TEST(test_t2114);
+    RUN_TEST(test_t2115);
+    RUN_TEST(test_t2116);
+    RUN_TEST(test_t2117);
+    RUN_TEST(test_t2118);
+    RUN_TEST(test_t2119);
+    RUN_TEST(test_t2120);
+    RUN_TEST(test_t2121);
+    RUN_TEST(test_t2122);
+    RUN_TEST(test_t2123);
+    RUN_TEST(test_t2124);
+    RUN_TEST(test_t2125);
+    RUN_TEST(test_t2126);
+    RUN_TEST(test_t2127);
+    RUN_TEST(test_t2128);
+    RUN_TEST(test_t2129);
+    RUN_TEST(test_t2130);
+    RUN_TEST(test_t2131);
+    RUN_TEST(test_t2132);
+    RUN_TEST(test_t2133);
+    RUN_TEST(test_t2134);
+    RUN_TEST(test_t2135);
+    RUN_TEST(test_t2136);
+    RUN_TEST(test_t2137);
+    RUN_TEST(test_t2138);
+    RUN_TEST(test_t2139);
+    RUN_TEST(test_t2140);
+    RUN_TEST(test_t2141);
+    RUN_TEST(test_t2142);
+    RUN_TEST(test_t2143);
+    RUN_TEST(test_t2144);
+    RUN_TEST(test_t2145);
+    RUN_TEST(test_t2146);
+    RUN_TEST(test_t2147);
+    RUN_TEST(test_t2148);
+    RUN_TEST(test_t2149);
+    RUN_TEST(test_t2150);
+    RUN_TEST(test_t2151);
+    RUN_TEST(test_t2152);
+    RUN_TEST(test_t2153);
+    RUN_TEST(test_t2154);
+    RUN_TEST(test_t2155);
+    RUN_TEST(test_t2156);
+    RUN_TEST(test_t2157);
+    RUN_TEST(test_t2158);
+    RUN_TEST(test_t2159);
+    RUN_TEST(test_t2160);
+    RUN_TEST(test_t2161);
+    RUN_TEST(test_t2162);
+    RUN_TEST(test_t2163);
+    RUN_TEST(test_t2164);
+    RUN_TEST(test_t2165);
+    RUN_TEST(test_t2166);
+    RUN_TEST(test_t2167);
+    RUN_TEST(test_t2168);
+    RUN_TEST(test_t2169);
+    RUN_TEST(test_t2170);
+    RUN_TEST(test_t2171);
+    RUN_TEST(test_t2172);
+    RUN_TEST(test_t2173);
+    RUN_TEST(test_t2174);
+    RUN_TEST(test_t2175);
+    RUN_TEST(test_t2176);
+    RUN_TEST(test_t2177);
+    RUN_TEST(test_t2178);
+    RUN_TEST(test_t2179);
+    RUN_TEST(test_t2180);
+    RUN_TEST(test_t2181);
+    RUN_TEST(test_t2182);
+    RUN_TEST(test_t2183);
+    RUN_TEST(test_t2184);
+    RUN_TEST(test_t2185);
+    RUN_TEST(test_t2186);
+    RUN_TEST(test_t2187);
+    RUN_TEST(test_t2188);
+    RUN_TEST(test_t2189);
+    RUN_TEST(test_t2190);
+    RUN_TEST(test_t2191);
+    RUN_TEST(test_t2192);
+    RUN_TEST(test_t2193);
+    RUN_TEST(test_t2194);
+    RUN_TEST(test_t2195);
+    RUN_TEST(test_t2196);
+    RUN_TEST(test_t2197);
+    RUN_TEST(test_t2198);
+    RUN_TEST(test_t2199);
+    RUN_TEST(test_t2200);
+    RUN_TEST(test_t2201);
+    RUN_TEST(test_t2202);
+    RUN_TEST(test_t2203);
+    RUN_TEST(test_t2204);
+    RUN_TEST(test_t2205);
+    RUN_TEST(test_t2206);
+    RUN_TEST(test_t2207);
+    RUN_TEST(test_t2208);
+    RUN_TEST(test_t2209);
+    RUN_TEST(test_t2210);
+    RUN_TEST(test_t2211);
+    RUN_TEST(test_t2212);
+    RUN_TEST(test_t2213);
+    RUN_TEST(test_t2214);
+    RUN_TEST(test_t2215);
+    RUN_TEST(test_t2216);
+    RUN_TEST(test_t2217);
+    RUN_TEST(test_t2218);
+    RUN_TEST(test_t2219);
+    RUN_TEST(test_t2220);
+    RUN_TEST(test_t2221);
+    RUN_TEST(test_t2222);
+    RUN_TEST(test_t2223);
+    RUN_TEST(test_t2224);
+    RUN_TEST(test_t2225);
+    RUN_TEST(test_t2226);
+    RUN_TEST(test_t2227);
+    RUN_TEST(test_t2228);
+    RUN_TEST(test_t2229);
+    RUN_TEST(test_t2230);
+    RUN_TEST(test_t2231);
+    RUN_TEST(test_t2232);
+    RUN_TEST(test_t2233);
+    RUN_TEST(test_t2234);
+    RUN_TEST(test_t2235);
+    RUN_TEST(test_t2236);
+    RUN_TEST(test_t2237);
+    RUN_TEST(test_t2238);
+    RUN_TEST(test_t2239);
+    RUN_TEST(test_t2240);
+    RUN_TEST(test_t2241);
+    RUN_TEST(test_t2242);
+    RUN_TEST(test_t2243);
+    RUN_TEST(test_t2244);
+    RUN_TEST(test_t2245);
+    RUN_TEST(test_t2246);
+    RUN_TEST(test_t2247);
+    RUN_TEST(test_t2248);
+    RUN_TEST(test_t2249);
+    RUN_TEST(test_t2250);
+    RUN_TEST(test_t2251);
+    RUN_TEST(test_t2252);
+    RUN_TEST(test_t2253);
+    RUN_TEST(test_t2254);
+    RUN_TEST(test_t2255);
+    RUN_TEST(test_t2256);
+    RUN_TEST(test_t2257);
+    RUN_TEST(test_t2258);
+    RUN_TEST(test_t2259);
+    RUN_TEST(test_t2260);
+    RUN_TEST(test_t2261);
+    RUN_TEST(test_t2262);
+    RUN_TEST(test_t2263);
+    RUN_TEST(test_t2264);
+    RUN_TEST(test_t2265);
+    RUN_TEST(test_t2266);
+    RUN_TEST(test_t2267);
+    RUN_TEST(test_t2268);
+    RUN_TEST(test_t2269);
+    RUN_TEST(test_t2270);
+    RUN_TEST(test_t2271);
+    RUN_TEST(test_t2272);
+    RUN_TEST(test_t2273);
+    RUN_TEST(test_t2274);
+    RUN_TEST(test_t2275);
+    RUN_TEST(test_t2276);
+    RUN_TEST(test_t2277);
+    RUN_TEST(test_t2278);
+    RUN_TEST(test_t2279);
+    RUN_TEST(test_t2280);
+    RUN_TEST(test_t2281);
+    RUN_TEST(test_t2282);
+    RUN_TEST(test_t2283);
+    RUN_TEST(test_t2284);
+    RUN_TEST(test_t2285);
+    RUN_TEST(test_t2286);
+    RUN_TEST(test_t2287);
+    RUN_TEST(test_t2288);
+    RUN_TEST(test_t2289);
+    RUN_TEST(test_t2290);
+    RUN_TEST(test_t2291);
+    RUN_TEST(test_t2292);
+    RUN_TEST(test_t2293);
+    RUN_TEST(test_t2294);
+    RUN_TEST(test_t2295);
+    RUN_TEST(test_t2296);
+    RUN_TEST(test_t2297);
+    RUN_TEST(test_t2298);
+    RUN_TEST(test_t2299);
+    RUN_TEST(test_t2300);
+    RUN_TEST(test_t2301);
+    RUN_TEST(test_t2302);
+    RUN_TEST(test_t2303);
+    RUN_TEST(test_t2304);
+    RUN_TEST(test_t2305);
+    RUN_TEST(test_t2306);
+    RUN_TEST(test_t2307);
+    RUN_TEST(test_t2308);
+    RUN_TEST(test_t2309);
+    RUN_TEST(test_t2310);
+    RUN_TEST(test_t2311);
+    RUN_TEST(test_t2312);
+    RUN_TEST(test_t2313);
+    RUN_TEST(test_t2314);
+    RUN_TEST(test_t2315);
+    RUN_TEST(test_t2316);
+    RUN_TEST(test_t2317);
+    RUN_TEST(test_t2318);
+    RUN_TEST(test_t2319);
+    RUN_TEST(test_t2320);
+    RUN_TEST(test_t2321);
+    RUN_TEST(test_t2322);
+    RUN_TEST(test_t2323);
+    RUN_TEST(test_t2324);
+    RUN_TEST(test_t2325);
+    RUN_TEST(test_t2326);
+    RUN_TEST(test_t2327);
+    RUN_TEST(test_t2328);
+    RUN_TEST(test_t2329);
+    RUN_TEST(test_t2330);
+    RUN_TEST(test_t2331);
+    RUN_TEST(test_t2332);
+    RUN_TEST(test_t2333);
+    RUN_TEST(test_t2334);
+    RUN_TEST(test_t2335);
+    RUN_TEST(test_t2336);
+    RUN_TEST(test_t2337);
+    RUN_TEST(test_t2338);
+    RUN_TEST(test_t2339);
+    RUN_TEST(test_t2340);
+    RUN_TEST(test_t2341);
+    RUN_TEST(test_t2342);
+    RUN_TEST(test_t2343);
+    RUN_TEST(test_t2344);
+    RUN_TEST(test_t2345);
+    RUN_TEST(test_t2346);
+    RUN_TEST(test_t2347);
+    RUN_TEST(test_t2348);
+    RUN_TEST(test_t2349);
+    RUN_TEST(test_t2350);
+    RUN_TEST(test_t2351);
+    RUN_TEST(test_t2352);
+    RUN_TEST(test_t2353);
+    RUN_TEST(test_t2354);
+    RUN_TEST(test_t2355);
+    RUN_TEST(test_t2356);
+    RUN_TEST(test_t2357);
+    RUN_TEST(test_t2358);
+    RUN_TEST(test_t2359);
+    RUN_TEST(test_t2360);
+    RUN_TEST(test_t2361);
+    RUN_TEST(test_t2362);
+    RUN_TEST(test_t2363);
+    RUN_TEST(test_t2364);
+    RUN_TEST(test_t2365);
+    RUN_TEST(test_t2366);
+    RUN_TEST(test_t2367);
+    RUN_TEST(test_t2368);
+    RUN_TEST(test_t2369);
+    RUN_TEST(test_t2370);
+    RUN_TEST(test_t2371);
+    RUN_TEST(test_t2372);
+    RUN_TEST(test_t2373);
+    RUN_TEST(test_t2374);
+    RUN_TEST(test_t2375);
+    RUN_TEST(test_t2376);
+    RUN_TEST(test_t2377);
+    RUN_TEST(test_t2378);
+    RUN_TEST(test_t2379);
+    RUN_TEST(test_t2380);
+    RUN_TEST(test_t2381);
+    RUN_TEST(test_t2382);
+    RUN_TEST(test_t2383);
+    RUN_TEST(test_t2384);
+    RUN_TEST(test_t2385);
+    RUN_TEST(test_t2386);
+    RUN_TEST(test_t2387);
+    RUN_TEST(test_t2388);
+    RUN_TEST(test_t2389);
+    RUN_TEST(test_t2390);
+    RUN_TEST(test_t2391);
+    RUN_TEST(test_t2392);
+    RUN_TEST(test_t2393);
+    RUN_TEST(test_t2394);
+    RUN_TEST(test_t2395);
+    RUN_TEST(test_t2396);
+    RUN_TEST(test_t2397);
+    RUN_TEST(test_t2398);
+    RUN_TEST(test_t2399);
+    RUN_TEST(test_t2400);
+    RUN_TEST(test_t2401);
+    RUN_TEST(test_t2402);
+    RUN_TEST(test_t2403);
+    RUN_TEST(test_t2404);
+    RUN_TEST(test_t2405);
+    RUN_TEST(test_t2406);
+    RUN_TEST(test_t2407);
+    RUN_TEST(test_t2408);
+    RUN_TEST(test_t2409);
+    RUN_TEST(test_t2410);
+    RUN_TEST(test_t2411);
+    RUN_TEST(test_t2412);
+    RUN_TEST(test_t2413);
+    RUN_TEST(test_t2414);
+    RUN_TEST(test_t2415);
+    RUN_TEST(test_t2416);
+    RUN_TEST(test_t2417);
+    RUN_TEST(test_t2418);
+    RUN_TEST(test_t2419);
+    RUN_TEST(test_t2420);
+    RUN_TEST(test_t2421);
+    RUN_TEST(test_t2422);
+    RUN_TEST(test_t2423);
+    RUN_TEST(test_t2424);
+    RUN_TEST(test_t2425);
+    RUN_TEST(test_t2426);
+    RUN_TEST(test_t2427);
+    RUN_TEST(test_t2428);
+    RUN_TEST(test_t2429);
+    RUN_TEST(test_t2430);
+    RUN_TEST(test_t2431);
+    RUN_TEST(test_t2432);
+    RUN_TEST(test_t2433);
+    RUN_TEST(test_t2434);
+    RUN_TEST(test_t2435);
+    RUN_TEST(test_t2436);
+    RUN_TEST(test_t2437);
+    RUN_TEST(test_t2438);
+    RUN_TEST(test_t2439);
+    RUN_TEST(test_t2440);
+    RUN_TEST(test_t2441);
+    RUN_TEST(test_t2442);
+    RUN_TEST(test_t2443);
+    RUN_TEST(test_t2444);
+    RUN_TEST(test_t2445);
+    RUN_TEST(test_t2446);
+    RUN_TEST(test_t2447);
+    RUN_TEST(test_t2448);
+    RUN_TEST(test_t2449);
+    RUN_TEST(test_t2450);
+    RUN_TEST(test_t2451);
+    RUN_TEST(test_t2452);
+    RUN_TEST(test_t2453);
+    RUN_TEST(test_t2454);
+    RUN_TEST(test_t2455);
+    RUN_TEST(test_t2456);
+    RUN_TEST(test_t2457);
+    RUN_TEST(test_t2458);
+    RUN_TEST(test_t2459);
+    RUN_TEST(test_t2460);
+    RUN_TEST(test_t2461);
+    RUN_TEST(test_t2462);
+    RUN_TEST(test_t2463);
+    RUN_TEST(test_t2464);
+    RUN_TEST(test_t2465);
+    RUN_TEST(test_t2466);
+    RUN_TEST(test_t2467);
+    RUN_TEST(test_t2468);
+    RUN_TEST(test_t2469);
+    RUN_TEST(test_t2470);
+    RUN_TEST(test_t2471);
+    RUN_TEST(test_t2472);
+    RUN_TEST(test_t2473);
+    RUN_TEST(test_t2474);
+    RUN_TEST(test_t2475);
+    RUN_TEST(test_t2476);
+    RUN_TEST(test_t2477);
+    RUN_TEST(test_t2478);
+    RUN_TEST(test_t2479);
+    RUN_TEST(test_t2480);
+    RUN_TEST(test_t2481);
+    RUN_TEST(test_t2482);
+    RUN_TEST(test_t2483);
+    RUN_TEST(test_t2484);
+    RUN_TEST(test_t2485);
+    RUN_TEST(test_t2486);
+    RUN_TEST(test_t2487);
+    RUN_TEST(test_t2488);
+    RUN_TEST(test_t2489);
+    RUN_TEST(test_t2490);
+    RUN_TEST(test_t2491);
+    RUN_TEST(test_t2492);
+    RUN_TEST(test_t2493);
+    RUN_TEST(test_t2494);
+    RUN_TEST(test_t2495);
+    RUN_TEST(test_t2496);
+    RUN_TEST(test_t2497);
+    RUN_TEST(test_t2498);
+    RUN_TEST(test_t2499);
+    RUN_TEST(test_t2500);
+    RUN_TEST(test_t2501);
+    RUN_TEST(test_t2502);
+    RUN_TEST(test_t2503);
+    RUN_TEST(test_t2504);
+    RUN_TEST(test_t2505);
+    RUN_TEST(test_t2506);
+    RUN_TEST(test_t2507);
+    RUN_TEST(test_t2508);
+    RUN_TEST(test_t2509);
+    RUN_TEST(test_t2510);
+    RUN_TEST(test_t2511);
+    RUN_TEST(test_t2512);
+    RUN_TEST(test_t2513);
+    RUN_TEST(test_t2514);
+    RUN_TEST(test_t2515);
+    RUN_TEST(test_t2516);
+    RUN_TEST(test_t2517);
+    RUN_TEST(test_t2518);
+    RUN_TEST(test_t2519);
+    RUN_TEST(test_t2520);
+    RUN_TEST(test_t2521);
+    RUN_TEST(test_t2522);
+    RUN_TEST(test_t2523);
+    RUN_TEST(test_t2524);
+    RUN_TEST(test_t2525);
+    RUN_TEST(test_t2526);
+    RUN_TEST(test_t2527);
+    RUN_TEST(test_t2528);
+    RUN_TEST(test_t2529);
+    RUN_TEST(test_t2530);
+    RUN_TEST(test_t2531);
+    RUN_TEST(test_t2532);
+    RUN_TEST(test_t2533);
+    RUN_TEST(test_t2534);
+    RUN_TEST(test_t2535);
+    RUN_TEST(test_t2536);
+    RUN_TEST(test_t2537);
+    RUN_TEST(test_t2538);
+    RUN_TEST(test_t2539);
+    RUN_TEST(test_t2540);
+    RUN_TEST(test_t2541);
+    RUN_TEST(test_t2542);
+    RUN_TEST(test_t2543);
+    RUN_TEST(test_t2544);
+    RUN_TEST(test_t2545);
+    RUN_TEST(test_t2546);
+    RUN_TEST(test_t2547);
+    RUN_TEST(test_t2548);
+    RUN_TEST(test_t2549);
+    RUN_TEST(test_t2550);
+    RUN_TEST(test_t2551);
+    RUN_TEST(test_t2552);
+    RUN_TEST(test_t2553);
+    RUN_TEST(test_t2554);
+    RUN_TEST(test_t2555);
+    RUN_TEST(test_t2556);
+    RUN_TEST(test_t2557);
+    RUN_TEST(test_t2558);
+    RUN_TEST(test_t2559);
+    RUN_TEST(test_t2560);
+    RUN_TEST(test_t2561);
+    RUN_TEST(test_t2562);
+    RUN_TEST(test_t2563);
+    RUN_TEST(test_t2564);
+    RUN_TEST(test_t2565);
+    RUN_TEST(test_t2566);
+    RUN_TEST(test_t2567);
+    RUN_TEST(test_t2568);
+    RUN_TEST(test_t2569);
+    RUN_TEST(test_t2570);
+    RUN_TEST(test_t2571);
+    RUN_TEST(test_t2572);
+    RUN_TEST(test_t2573);
+    RUN_TEST(test_t2574);
+    RUN_TEST(test_t2575);
+    RUN_TEST(test_t2576);
+    RUN_TEST(test_t2577);
+    RUN_TEST(test_t2578);
+    RUN_TEST(test_t2579);
+    RUN_TEST(test_t2580);
+    RUN_TEST(test_t2581);
+    RUN_TEST(test_t2582);
+    RUN_TEST(test_t2583);
+    RUN_TEST(test_t2584);
+    RUN_TEST(test_t2585);
+    RUN_TEST(test_t2586);
+    RUN_TEST(test_t2587);
+    RUN_TEST(test_t2588);
+    RUN_TEST(test_t2589);
+    RUN_TEST(test_t2590);
+    RUN_TEST(test_t2591);
+    RUN_TEST(test_t2592);
+    RUN_TEST(test_t2593);
+    RUN_TEST(test_t2594);
+    RUN_TEST(test_t2595);
+    RUN_TEST(test_t2596);
+    RUN_TEST(test_t2597);
+    RUN_TEST(test_t2598);
+    RUN_TEST(test_t2599);
+    RUN_TEST(test_t2600);
+    RUN_TEST(test_t2601);
+    RUN_TEST(test_t2602);
+    RUN_TEST(test_t2603);
+    RUN_TEST(test_t2604);
+    RUN_TEST(test_t2605);
+    RUN_TEST(test_t2606);
+    RUN_TEST(test_t2607);
+    RUN_TEST(test_t2608);
+    RUN_TEST(test_t2609);
+    RUN_TEST(test_t2610);
+    RUN_TEST(test_t2611);
+    RUN_TEST(test_t2612);
+    RUN_TEST(test_t2613);
+    RUN_TEST(test_t2614);
+    RUN_TEST(test_t2615);
+    RUN_TEST(test_t2616);
+    RUN_TEST(test_t2617);
+    RUN_TEST(test_t2618);
+    RUN_TEST(test_t2619);
+    RUN_TEST(test_t2620);
+    RUN_TEST(test_t2621);
+    RUN_TEST(test_t2622);
+    RUN_TEST(test_t2623);
+    RUN_TEST(test_t2624);
+    RUN_TEST(test_t2625);
+    RUN_TEST(test_t2626);
+    RUN_TEST(test_t2627);
+    RUN_TEST(test_t2628);
+    RUN_TEST(test_t2629);
+    RUN_TEST(test_t2630);
+    RUN_TEST(test_t2631);
+    RUN_TEST(test_t2632);
+    RUN_TEST(test_t2633);
+    RUN_TEST(test_t2634);
+    RUN_TEST(test_t2635);
+    RUN_TEST(test_t2636);
+    RUN_TEST(test_t2637);
+    RUN_TEST(test_t2638);
+    RUN_TEST(test_t2639);
+    RUN_TEST(test_t2640);
+    RUN_TEST(test_t2641);
+    RUN_TEST(test_t2642);
+    RUN_TEST(test_t2643);
+    RUN_TEST(test_t2644);
+    RUN_TEST(test_t2645);
+    RUN_TEST(test_t2646);
+    RUN_TEST(test_t2647);
+    RUN_TEST(test_t2648);
+    RUN_TEST(test_t2649);
+    RUN_TEST(test_t2650);
+    RUN_TEST(test_t2651);
+    RUN_TEST(test_t2652);
+    RUN_TEST(test_t2653);
+    RUN_TEST(test_t2654);
+    RUN_TEST(test_t2655);
+    RUN_TEST(test_t2656);
+    RUN_TEST(test_t2657);
+    RUN_TEST(test_t2658);
+    RUN_TEST(test_t2659);
+    RUN_TEST(test_t2660);
+    RUN_TEST(test_t2661);
+    RUN_TEST(test_t2662);
+    RUN_TEST(test_t2663);
+    RUN_TEST(test_t2664);
+    RUN_TEST(test_t2665);
+    RUN_TEST(test_t2666);
+    RUN_TEST(test_t2667);
+    RUN_TEST(test_t2668);
+    RUN_TEST(test_t2669);
+    RUN_TEST(test_t2670);
+    RUN_TEST(test_t2671);
+    RUN_TEST(test_t2672);
+    RUN_TEST(test_t2673);
+    RUN_TEST(test_t2674);
+    RUN_TEST(test_t2675);
+    RUN_TEST(test_t2676);
+    RUN_TEST(test_t2677);
+    RUN_TEST(test_t2678);
+    RUN_TEST(test_t2679);
+    RUN_TEST(test_t2680);
+    RUN_TEST(test_t2681);
+    RUN_TEST(test_t2682);
+    RUN_TEST(test_t2683);
+    RUN_TEST(test_t2684);
+    RUN_TEST(test_t2685);
+    RUN_TEST(test_t2686);
+    RUN_TEST(test_t2687);
+    RUN_TEST(test_t2688);
+    RUN_TEST(test_t2689);
+    RUN_TEST(test_t2690);
+    RUN_TEST(test_t2691);
+    RUN_TEST(test_t2692);
+    RUN_TEST(test_t2693);
+    RUN_TEST(test_t2694);
+    RUN_TEST(test_t2695);
+    RUN_TEST(test_t2696);
+    RUN_TEST(test_t2697);
+    RUN_TEST(test_t2698);
+    RUN_TEST(test_t2699);
+    RUN_TEST(test_t2700);
+    RUN_TEST(test_t2701);
+    RUN_TEST(test_t2702);
+    RUN_TEST(test_t2703);
+    RUN_TEST(test_t2704);
+    RUN_TEST(test_t2705);
+    RUN_TEST(test_t2706);
+    RUN_TEST(test_t2707);
+    RUN_TEST(test_t2708);
+    RUN_TEST(test_t2709);
+    RUN_TEST(test_t2710);
+    RUN_TEST(test_t2711);
+    RUN_TEST(test_t2712);
+    RUN_TEST(test_t2713);
+    RUN_TEST(test_t2714);
+    RUN_TEST(test_t2715);
+    RUN_TEST(test_t2716);
+    RUN_TEST(test_t2717);
+    RUN_TEST(test_t2718);
+    RUN_TEST(test_t2719);
+    RUN_TEST(test_t2720);
+    RUN_TEST(test_t2721);
+    RUN_TEST(test_t2722);
+    RUN_TEST(test_t2723);
+    RUN_TEST(test_t2724);
+    RUN_TEST(test_t2725);
+    RUN_TEST(test_t2726);
+    RUN_TEST(test_t2727);
+    RUN_TEST(test_t2728);
+    RUN_TEST(test_t2729);
+    RUN_TEST(test_t2730);
+    RUN_TEST(test_t2731);
+    RUN_TEST(test_t2732);
+    RUN_TEST(test_t2733);
+    RUN_TEST(test_t2734);
+    RUN_TEST(test_t2735);
+    RUN_TEST(test_t2736);
+    RUN_TEST(test_t2737);
+    RUN_TEST(test_t2738);
+    RUN_TEST(test_t2739);
+    RUN_TEST(test_t2740);
+    RUN_TEST(test_t2741);
+    RUN_TEST(test_t2742);
+    RUN_TEST(test_t2743);
+    RUN_TEST(test_t2744);
+    RUN_TEST(test_t2745);
+    RUN_TEST(test_t2746);
+    RUN_TEST(test_t2747);
+    RUN_TEST(test_t2748);
+    RUN_TEST(test_t2749);
+    RUN_TEST(test_t2750);
+    RUN_TEST(test_t2751);
+    RUN_TEST(test_t2752);
+    RUN_TEST(test_t2753);
+    RUN_TEST(test_t2754);
+    RUN_TEST(test_t2755);
+    RUN_TEST(test_t2756);
+    RUN_TEST(test_t2757);
+    RUN_TEST(test_t2758);
+    RUN_TEST(test_t2759);
+    RUN_TEST(test_t2760);
+    RUN_TEST(test_t2761);
+    RUN_TEST(test_t2762);
+    RUN_TEST(test_t2763);
+    RUN_TEST(test_t2764);
+    RUN_TEST(test_t2765);
+    RUN_TEST(test_t2766);
+    RUN_TEST(test_t2767);
+    RUN_TEST(test_t2768);
+    RUN_TEST(test_t2769);
+    RUN_TEST(test_t2770);
+    RUN_TEST(test_t2771);
+    RUN_TEST(test_t2772);
+    RUN_TEST(test_t2773);
+    RUN_TEST(test_t2774);
+    RUN_TEST(test_t2775);
+    RUN_TEST(test_t2776);
+    RUN_TEST(test_t2777);
+    RUN_TEST(test_t2778);
+    RUN_TEST(test_t2779);
+    RUN_TEST(test_t2780);
+    RUN_TEST(test_t2781);
+    RUN_TEST(test_t2782);
+    RUN_TEST(test_t2783);
+    RUN_TEST(test_t2784);
+    RUN_TEST(test_t2785);
+    RUN_TEST(test_t2786);
+    RUN_TEST(test_t2787);
+    RUN_TEST(test_t2788);
+    RUN_TEST(test_t2789);
+    RUN_TEST(test_t2790);
+    RUN_TEST(test_t2791);
+    RUN_TEST(test_t2792);
+    RUN_TEST(test_t2793);
+    RUN_TEST(test_t2794);
+    RUN_TEST(test_t2795);
+    RUN_TEST(test_t2796);
+    RUN_TEST(test_t2797);
+    RUN_TEST(test_t2798);
+    RUN_TEST(test_t2799);
+    RUN_TEST(test_t2800);
+    RUN_TEST(test_t2801);
+    RUN_TEST(test_t2802);
+    RUN_TEST(test_t2803);
+    RUN_TEST(test_t2804);
+    RUN_TEST(test_t2805);
+    RUN_TEST(test_t2806);
+    RUN_TEST(test_t2807);
+    RUN_TEST(test_t2808);
+    RUN_TEST(test_t2809);
+    RUN_TEST(test_t2810);
+    RUN_TEST(test_t2811);
+    RUN_TEST(test_t2812);
+    RUN_TEST(test_t2813);
+    RUN_TEST(test_t2814);
+    RUN_TEST(test_t2815);
+    RUN_TEST(test_t2816);
+    RUN_TEST(test_t2817);
+    RUN_TEST(test_t2818);
+    RUN_TEST(test_t2819);
+    RUN_TEST(test_t2820);
+    RUN_TEST(test_t2821);
+    RUN_TEST(test_t2822);
+    RUN_TEST(test_t2823);
+    RUN_TEST(test_t2824);
+    RUN_TEST(test_t2825);
+    RUN_TEST(test_t2826);
+    RUN_TEST(test_t2827);
+    RUN_TEST(test_t2828);
+    RUN_TEST(test_t2829);
+    RUN_TEST(test_t2830);
+    RUN_TEST(test_t2831);
+    RUN_TEST(test_t2832);
+    RUN_TEST(test_t2833);
+    RUN_TEST(test_t2834);
+    RUN_TEST(test_t2835);
+    RUN_TEST(test_t2836);
+    RUN_TEST(test_t2837);
+    RUN_TEST(test_t2838);
+    RUN_TEST(test_t2839);
+    RUN_TEST(test_t2840);
+    RUN_TEST(test_t2841);
+    RUN_TEST(test_t2842);
+    RUN_TEST(test_t2843);
+    RUN_TEST(test_t2844);
+    RUN_TEST(test_t2845);
+    RUN_TEST(test_t2846);
+    RUN_TEST(test_t2847);
+    RUN_TEST(test_t2848);
+    RUN_TEST(test_t2849);
+    RUN_TEST(test_t2850);
+    RUN_TEST(test_t2851);
+    RUN_TEST(test_t2852);
+    RUN_TEST(test_t2853);
+    RUN_TEST(test_t2854);
+    RUN_TEST(test_t2855);
+    RUN_TEST(test_t2856);
+    RUN_TEST(test_t2857);
+    RUN_TEST(test_t2858);
+    RUN_TEST(test_t2859);
+    RUN_TEST(test_t2860);
+    RUN_TEST(test_t2861);
+    RUN_TEST(test_t2862);
+    RUN_TEST(test_t2863);
+    RUN_TEST(test_t2864);
+    RUN_TEST(test_t2865);
+    RUN_TEST(test_t2866);
+    RUN_TEST(test_t2867);
+    RUN_TEST(test_t2868);
+    RUN_TEST(test_t2869);
+    RUN_TEST(test_t2870);
+    RUN_TEST(test_t2871);
+    RUN_TEST(test_t2872);
+    RUN_TEST(test_t2873);
+    RUN_TEST(test_t2874);
+    RUN_TEST(test_t2875);
+    RUN_TEST(test_t2876);
+    RUN_TEST(test_t2877);
+    RUN_TEST(test_t2878);
+    RUN_TEST(test_t2879);
+    RUN_TEST(test_t2880);
+    RUN_TEST(test_t2881);
+    RUN_TEST(test_t2882);
+    RUN_TEST(test_t2883);
+    RUN_TEST(test_t2884);
+    RUN_TEST(test_t2885);
+    RUN_TEST(test_t2886);
+    RUN_TEST(test_t2887);
+    RUN_TEST(test_t2888);
+    RUN_TEST(test_t2889);
+    RUN_TEST(test_t2890);
+    RUN_TEST(test_t2891);
+    RUN_TEST(test_t2892);
+    RUN_TEST(test_t2893);
+    RUN_TEST(test_t2894);
+    RUN_TEST(test_t2895);
+    RUN_TEST(test_t2896);
+    RUN_TEST(test_t2897);
+    RUN_TEST(test_t2898);
+    RUN_TEST(test_t2899);
+    RUN_TEST(test_t2900);
+    RUN_TEST(test_t2901);
+    RUN_TEST(test_t2902);
+    RUN_TEST(test_t2903);
+    RUN_TEST(test_t2904);
+    RUN_TEST(test_t2905);
+    RUN_TEST(test_t2906);
+    RUN_TEST(test_t2907);
+    RUN_TEST(test_t2908);
+    RUN_TEST(test_t2909);
+    RUN_TEST(test_t2910);
+    RUN_TEST(test_t2911);
+    RUN_TEST(test_t2912);
+    RUN_TEST(test_t2913);
+    RUN_TEST(test_t2914);
+    RUN_TEST(test_t2915);
+    RUN_TEST(test_t2916);
+    RUN_TEST(test_t2917);
+    RUN_TEST(test_t2918);
+    RUN_TEST(test_t2919);
+    RUN_TEST(test_t2920);
+    RUN_TEST(test_t2921);
+    RUN_TEST(test_t2922);
+    RUN_TEST(test_t2923);
+    RUN_TEST(test_t2924);
+    RUN_TEST(test_t2925);
+    RUN_TEST(test_t2926);
+    RUN_TEST(test_t2927);
+    RUN_TEST(test_t2928);
+    RUN_TEST(test_t2929);
+    RUN_TEST(test_t2930);
+    RUN_TEST(test_t2931);
+    RUN_TEST(test_t2932);
+    RUN_TEST(test_t2933);
+    RUN_TEST(test_t2934);
+    RUN_TEST(test_t2935);
+    RUN_TEST(test_t2936);
+    RUN_TEST(test_t2937);
+    RUN_TEST(test_t2938);
+    RUN_TEST(test_t2939);
+    RUN_TEST(test_t2940);
+    RUN_TEST(test_t2941);
+    RUN_TEST(test_t2942);
+    RUN_TEST(test_t2943);
+    RUN_TEST(test_t2944);
+    RUN_TEST(test_t2945);
+    RUN_TEST(test_t2946);
+    RUN_TEST(test_t2947);
+    RUN_TEST(test_t2948);
+    RUN_TEST(test_t2949);
+    RUN_TEST(test_t2950);
+    RUN_TEST(test_t2951);
+    RUN_TEST(test_t2952);
+    RUN_TEST(test_t2953);
+    RUN_TEST(test_t2954);
+    RUN_TEST(test_t2955);
+    RUN_TEST(test_t2956);
+    RUN_TEST(test_t2957);
+    RUN_TEST(test_t2958);
+    RUN_TEST(test_t2959);
+    RUN_TEST(test_t2960);
+    RUN_TEST(test_t2961);
+    RUN_TEST(test_t2962);
+    RUN_TEST(test_t2963);
+    RUN_TEST(test_t2964);
+    RUN_TEST(test_t2965);
+    RUN_TEST(test_t2966);
+    RUN_TEST(test_t2967);
+    RUN_TEST(test_t2968);
+    RUN_TEST(test_t2969);
+    RUN_TEST(test_t2970);
+    RUN_TEST(test_t2971);
+    RUN_TEST(test_t2972);
+    RUN_TEST(test_t2973);
+    RUN_TEST(test_t2974);
+    RUN_TEST(test_t2975);
+    RUN_TEST(test_t2976);
+    RUN_TEST(test_t2977);
+    RUN_TEST(test_t2978);
+    RUN_TEST(test_t2979);
+    RUN_TEST(test_t2980);
+    RUN_TEST(test_t2981);
+    RUN_TEST(test_t2982);
+    RUN_TEST(test_t2983);
+    RUN_TEST(test_t2984);
+    RUN_TEST(test_t2985);
+    RUN_TEST(test_t2986);
+    RUN_TEST(test_t2987);
+    RUN_TEST(test_t2988);
+    RUN_TEST(test_t2989);
+    RUN_TEST(test_t2990);
+    RUN_TEST(test_t2991);
+    RUN_TEST(test_t2992);
+    RUN_TEST(test_t2993);
+    RUN_TEST(test_t2994);
+    RUN_TEST(test_t2995);
+    RUN_TEST(test_t2996);
+    RUN_TEST(test_t2997);
+    RUN_TEST(test_t2998);
+    RUN_TEST(test_t2999);
+    RUN_TEST(test_t3000);
+    RUN_TEST(test_t3001);
+    RUN_TEST(test_t3002);
+    RUN_TEST(test_t3003);
+    RUN_TEST(test_t3004);
+    RUN_TEST(test_t3005);
+    RUN_TEST(test_t3006);
+    RUN_TEST(test_t3007);
+    RUN_TEST(test_t3008);
+    RUN_TEST(test_t3009);
+    RUN_TEST(test_t3010);
+    RUN_TEST(test_t3011);
+    RUN_TEST(test_t3012);
+    RUN_TEST(test_t3013);
+    RUN_TEST(test_t3014);
+    RUN_TEST(test_t3015);
+    RUN_TEST(test_t3016);
+    RUN_TEST(test_t3017);
+    RUN_TEST(test_t3018);
+    RUN_TEST(test_t3019);
+    RUN_TEST(test_t3020);
+    RUN_TEST(test_t3021);
+    RUN_TEST(test_t3022);
+    RUN_TEST(test_t3023);
+    RUN_TEST(test_t3024);
+    RUN_TEST(test_t3025);
+    RUN_TEST(test_t3026);
+    RUN_TEST(test_t3027);
+    RUN_TEST(test_t3028);
+    RUN_TEST(test_t3029);
+    RUN_TEST(test_t3030);
+    RUN_TEST(test_t3031);
+    RUN_TEST(test_t3032);
+    RUN_TEST(test_t3033);
+    RUN_TEST(test_t3034);
+    RUN_TEST(test_t3035);
+    RUN_TEST(test_t3036);
+    RUN_TEST(test_t3037);
+    RUN_TEST(test_t3038);
+    RUN_TEST(test_t3039);
+    RUN_TEST(test_t3040);
+    RUN_TEST(test_t3041);
+    RUN_TEST(test_t3042);
+    RUN_TEST(test_t3043);
+    RUN_TEST(test_t3044);
+    RUN_TEST(test_t3045);
+    RUN_TEST(test_t3046);
+    RUN_TEST(test_t3047);
+    RUN_TEST(test_t3048);
+    RUN_TEST(test_t3049);
+    RUN_TEST(test_t3050);
+    RUN_TEST(test_t3051);
+    RUN_TEST(test_t3052);
+    RUN_TEST(test_t3053);
+    RUN_TEST(test_t3054);
+    RUN_TEST(test_t3055);
+    RUN_TEST(test_t3056);
+    RUN_TEST(test_t3057);
+    RUN_TEST(test_t3058);
+    RUN_TEST(test_t3059);
+    RUN_TEST(test_t3060);
+    RUN_TEST(test_t3061);
+    RUN_TEST(test_t3062);
+    RUN_TEST(test_t3063);
+    RUN_TEST(test_t3064);
+    RUN_TEST(test_t3065);
+    RUN_TEST(test_t3066);
+    RUN_TEST(test_t3067);
+    RUN_TEST(test_t3068);
+    RUN_TEST(test_t3069);
+    RUN_TEST(test_t3070);
+    RUN_TEST(test_t3071);
+    RUN_TEST(test_t3072);
+    RUN_TEST(test_t3073);
+    RUN_TEST(test_t3074);
+    RUN_TEST(test_t3075);
+    RUN_TEST(test_t3076);
+    RUN_TEST(test_t3077);
+    RUN_TEST(test_t3078);
+    RUN_TEST(test_t3079);
+    RUN_TEST(test_t3080);
+    RUN_TEST(test_t3081);
+    RUN_TEST(test_t3082);
+    RUN_TEST(test_t3083);
+    RUN_TEST(test_t3084);
+    RUN_TEST(test_t3085);
+    RUN_TEST(test_t3086);
+    RUN_TEST(test_t3087);
+    RUN_TEST(test_t3088);
+    RUN_TEST(test_t3089);
+    RUN_TEST(test_t3090);
+    RUN_TEST(test_t3091);
+    RUN_TEST(test_t3092);
+    RUN_TEST(test_t3093);
+    RUN_TEST(test_t3094);
+    RUN_TEST(test_t3095);
+    RUN_TEST(test_t3096);
+    RUN_TEST(test_t3097);
+    RUN_TEST(test_t3098);
+    RUN_TEST(test_t3099);
+    RUN_TEST(test_t3100);
+    RUN_TEST(test_t3101);
+    RUN_TEST(test_t3102);
+    RUN_TEST(test_t3103);
+    RUN_TEST(test_t3104);
+    RUN_TEST(test_t3105);
+    RUN_TEST(test_t3106);
+    RUN_TEST(test_t3107);
+    RUN_TEST(test_t3108);
+    RUN_TEST(test_t3109);
+    RUN_TEST(test_t3110);
+    RUN_TEST(test_t3111);
+    RUN_TEST(test_t3112);
+    RUN_TEST(test_t3113);
+    RUN_TEST(test_t3114);
+    RUN_TEST(test_t3115);
+    RUN_TEST(test_t3116);
+    RUN_TEST(test_t3117);
+    RUN_TEST(test_t3118);
+    RUN_TEST(test_t3119);
+    RUN_TEST(test_t3120);
+    RUN_TEST(test_t3121);
+    RUN_TEST(test_t3122);
+    RUN_TEST(test_t3123);
+    RUN_TEST(test_t3124);
+    RUN_TEST(test_t3125);
+    RUN_TEST(test_t3126);
+    RUN_TEST(test_t3127);
+    RUN_TEST(test_t3128);
+    RUN_TEST(test_t3129);
+    RUN_TEST(test_t3130);
+    RUN_TEST(test_t3131);
+    RUN_TEST(test_t3132);
+    RUN_TEST(test_t3133);
+    RUN_TEST(test_t3134);
+    RUN_TEST(test_t3135);
+    RUN_TEST(test_t3136);
+    RUN_TEST(test_t3137);
+    RUN_TEST(test_t3138);
+    RUN_TEST(test_t3139);
+    RUN_TEST(test_t3140);
+    RUN_TEST(test_t3141);
+    RUN_TEST(test_t3142);
+    RUN_TEST(test_t3143);
+    RUN_TEST(test_t3144);
+    RUN_TEST(test_t3145);
+    RUN_TEST(test_t3146);
+    RUN_TEST(test_t3147);
+    RUN_TEST(test_t3148);
+    RUN_TEST(test_t3149);
+    RUN_TEST(test_t3150);
+    RUN_TEST(test_t3151);
+    RUN_TEST(test_t3152);
+    RUN_TEST(test_t3153);
+    RUN_TEST(test_t3154);
+    RUN_TEST(test_t3155);
+    RUN_TEST(test_t3156);
+    RUN_TEST(test_t3157);
+    RUN_TEST(test_t3158);
+    RUN_TEST(test_t3159);
+    RUN_TEST(test_t3160);
+    RUN_TEST(test_t3161);
+    RUN_TEST(test_t3162);
+    RUN_TEST(test_t3163);
+    RUN_TEST(test_t3164);
+    RUN_TEST(test_t3165);
+    RUN_TEST(test_t3166);
+    RUN_TEST(test_t3167);
+    RUN_TEST(test_t3168);
+    RUN_TEST(test_t3169);
+    RUN_TEST(test_t3170);
+    RUN_TEST(test_t3171);
+    RUN_TEST(test_t3172);
+    RUN_TEST(test_t3173);
+    RUN_TEST(test_t3174);
+    RUN_TEST(test_t3175);
+    RUN_TEST(test_t3176);
+    RUN_TEST(test_t3177);
+
+    return UNITY_END();
 }

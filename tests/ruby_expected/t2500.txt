@@ -3,6 +3,8 @@
 09_combined/file1.txt
 09_combined/file0.txt
 09_combined/file4.txt
-09_combined/dir2/test.txt
-09_combined/dir3/test.txt
-09_combined/dir1/test.txt
+09_combined/file5.txt
+09_combined/file7.txt
+09_combined/file6.txt
+09_combined/file8.txt
+09_combined/file9.txt

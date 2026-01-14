@@ -120,6 +120,11 @@ static void test_glob_against_ruby(const char *pattern, int flags,
             line[len-1] = '\\0';
         }}
 
+        /* Skip empty lines (Ruby puts always adds newline, even for empty results) */
+        if (strlen(line) == 0) {{
+            continue;
+        }}
+
         if (expected_count >= capacity) {{
             capacity *= 2;
             expected_lines = realloc(expected_lines, capacity * sizeof(char*));
@@ -161,11 +166,36 @@ static void test_glob_against_ruby(const char *pattern, int flags,
     for i, test_case in enumerate(test_cases, 1):
         test_functions.append(generate_test_function(test_case, i))
 
-    # ファイル書き込み（setUp/tearDown/mainは含めない）
+    # setUp/tearDownとmain関数
+    setup_teardown = '''
+/* Unity required functions */
+void setUp(void) {}
+void tearDown(void) {}
+'''
+
+    main_function = f'''
+int main(void)
+{{
+    UNITY_BEGIN();
+
+'''
+    # すべてのテストケースを実行
+    for test_case in test_cases:
+        main_function += f'    RUN_TEST(test_{test_case.id});\n'
+
+    main_function += '''
+    return UNITY_END();
+}
+'''
+
+    # ファイル書き込み
     with open(output_file, 'w') as f:
         f.write(header)
         f.write("\n\n/* ========== Test Functions ========== */\n")
         f.write("\n".join(test_functions))
+        f.write("\n\n/* ========== Unity Boilerplate ========== */\n")
+        f.write(setup_teardown)
+        f.write(main_function)
 
 
 def main():

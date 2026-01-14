@@ -77,7 +77,10 @@ add_test(NAME dirglob_test COMMAND test_dirglob WORKING_DIRECTORY ${CMAKE_SOURCE
 
 # Generated compatibility test (test_glob_generated.c)
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_glob_generated.c)
-  add_executable(test_glob_generated test_glob_generated.c)
+  add_executable(test_glob_generated
+    test_glob_generated.c
+    test_helpers.c
+  )
   target_include_directories(test_glob_generated PRIVATE
     "${PROJECT_SOURCE_DIR}/include"
     "${PROJECT_SOURCE_DIR}/src"

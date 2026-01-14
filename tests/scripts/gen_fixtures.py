@@ -29,11 +29,6 @@ def create_fixtures(fixtures_dir):
     (fixtures_dir / "main.h").write_text("// top main.h\n")
     (fixtures_dir / "data.txt").write_text("data\n")
 
-    # 隠しファイル
-    (fixtures_dir / ".hiddenfile1").write_text("hidden\n")
-    (fixtures_dir / ".hiddenfile2").write_text("hidden\n")
-    (fixtures_dir / ".hiddenfile3").write_text("hidden\n")
-
 
     # ========================================
     # 01_basic/
@@ -42,14 +37,12 @@ def create_fixtures(fixtures_dir):
     basic = fixtures_dir / "01_basic"
     basic.mkdir()
 
+    (basic / ".file").write_text(".file\n")
     (basic / "file").write_text("file\n")
     (basic / "file.txt").write_text("file.txt\n")
-    (basic / "file.c").write_text("// C\n")
-    (basic / "file.h").write_text("// H\n")
-
-    dir_path = basic / "dir"
-    dir_path.mkdir()
-    (dir_path / "nested.txt").write_text("nested\n")
+    (basic / "file.csv").write_text("file.csv\n")
+    (basic / "dir").mkdir()
+    (basic / ".dir").mkdir()
 
     # ========================================
     # 02_asterisk/
@@ -58,22 +51,21 @@ def create_fixtures(fixtures_dir):
     asterisk = fixtures_dir / "02_asterisk"
     asterisk.mkdir()
 
-    (asterisk / "file1.txt").write_text("file1\n")
-    (asterisk / "file2.txt").write_text("file2\n")
-    (asterisk / "file.c").write_text("// c\n")
-    (asterisk / "file.h").write_text("// h\n")
-    (asterisk / "file.cpp").write_text("// cpp\n")
-    (asterisk / "test.txt").write_text("test\n")
+    for i in "012":
+        dir_i = asterisk / f"dir{i}"
+        dir_i.mkdir()
+        file_i = dir_i / f"file{i}.txt"
+        file_i.write_text(f"dir{i}\n")
+        for j in "012":
+            dir_j = dir_i / f"subdir{j}"
+            dir_j.mkdir()
+            file_j = dir_j / f"file{j}.txt"
+            file_j.write_text(f"dir{i}/subdir{j}/file{j}\n")
 
-    # ディレクトリ構造
-    for i in range(3):
-        dir1 = asterisk / f"dir{i}"
-        dir1.mkdir()
-        (dir1 / "file.txt").write_text(f"dir{i}\n")
-
-        dir2 = dir1 / f"subdir{i}"
-        dir2.mkdir()
-        (dir2 / "nested.txt").write_text(f"nested{i}\n")
+    for c in "012":
+        (asterisk / f"file{c}.txt").write_text(f"{c}\n")
+    for ext in "ch":
+        (asterisk / f"file.{ext}").write_text(f"// {ext}\n")
 
     # ========================================
     # 03_questionmark/
@@ -83,19 +75,19 @@ def create_fixtures(fixtures_dir):
     qmark.mkdir()
 
     # 1文字
-    for char in "abcxyz":
+    for char in "abcdefghijklmnopqrstuvwxyz":
         (qmark / char).write_text(f"{char}\n")
 
     # 2文字
-    for name in ["ab", "cd", "xy"]:
+    for name in ["ab", "xy", "cd", "ef", "gh", "ij", "kl", "mn", "op", "qr", "st", "uv", "wx", "yz"]:
         (qmark / name).write_text(f"{name}\n")
 
     # 3文字
-    for name in ["abc", "xyz", "foo"]:
+    for name in ["abc", "def", "ghi", "jkl", "mno", "pqr", "stu", "vwx", "yza"]:
         (qmark / name).write_text(f"{name}\n")
 
     # 4文字.c
-    for name in ["test", "main", "file", "glob"]:
+    for name in ["abcd", "efgh", "ijkl", "mnop", "qrst", "uvwx", "yzab"]:
         (qmark / f"{name}.c").write_text(f"// {name}\n")
 
     # file.?
@@ -103,18 +95,22 @@ def create_fixtures(fixtures_dir):
         (qmark / f"file.{ext}").write_text(f"file.{ext}\n")
 
     # ?/? 構造（ファイル名と被らないようにディレクトリ名を選択）
-    for c1 in "pq":  # abcxyzfooと被らない
-        dir1 = qmark / c1
-        dir1.mkdir()
-        for c2 in "rs":
-            (dir1 / c2).write_text(f"{c1}/{c2}\n")
+    for i in "0123456789":
+        dir_i = qmark / i
+        dir_i.mkdir()
+        for j in "0123456789":
+            (dir_i / j).mkdir()
+        for j in "abcdefghijklmnopqrstuvwxyz":
+            (dir_i / j).write_text(f"{i}/{j}\n")
 
     # ??/?? 構造
-    for d1 in ["mn", "op"]:
-        dir1 = qmark / d1
-        dir1.mkdir()
-        for d2 in ["uv", "wx"]:
-            (dir1 / d2).write_text(f"{d1}/{d2}\n")
+    for i in ["01", "23", "45", "67", "89"]:
+        dir_i = qmark / i
+        dir_i.mkdir()
+        for j in ["01", "23", "45", "67", "89"]:
+            (dir_i / j).mkdir()
+        for j in ["ab", "xy", "cd", "ef", "gh", "ij", "kl", "mn", "op", "qr", "st", "uv", "wx", "yz"]:
+            (dir_i / j).write_text(f"{i}/{j}\n")
 
     # ========================================
     # 04_characterclass/
@@ -124,15 +120,12 @@ def create_fixtures(fixtures_dir):
     charclass.mkdir()
 
     # [abc], [x-z]
-    for char in "abcdefxyz":
+    for char in "abcdefghijklmnopqrstuvwxyz":
         (charclass / char).write_text(f"{char}\n")
 
     # file[0-9].txt
-    for i in range(10):
+    for i in "0123456789":
         (charclass / f"file{i}.txt").write_text(f"file{i}\n")
-
-    (charclass / "test.txt").write_text("test\n")
-    (charclass / "other.txt").write_text("other\n")
 
     # ========================================
     # 05_braceexpansion/
@@ -142,21 +135,19 @@ def create_fixtures(fixtures_dir):
     brace.mkdir()
 
     # {a}, {a,b,c}
-    for char in "abc":
+    for char in "abcdefghijklmnopqrstuvwxyz":
         (brace / char).write_text(f"{char}\n")
 
     # file{1,2,3}.txt
-    for i in range(1, 4):
+    for i in "0123456789":
         (brace / f"file{i}.txt").write_text(f"file{i}\n")
 
     # {dir1,dir2}/file1.txt
-    for dirname in ["dir1", "dir2"]:
-        dir_path = brace / dirname
-        dir_path.mkdir()
-        (dir_path / "file1.txt").write_text(f"{dirname}/file1\n")
-        (dir_path / "file2.txt").write_text(f"{dirname}/file2\n")
-
-    (brace / "file.txt").write_text("file\n")
+    for i in "0123456789":
+        dir_i = brace / f"dir{i}"
+        dir_i.mkdir()
+        for j in "0123456789":
+            (dir_i / f"file{j}.txt").write_text(f"dir{i}/file{j}\n")
 
     # ========================================
     # 06_casefold/
@@ -166,12 +157,8 @@ def create_fixtures(fixtures_dir):
     casefold.mkdir()
 
     (casefold / "lower.txt").write_text("lower\n")
-    (casefold / "test.txt").write_text("test\n")
-
-    # Case-insensitive対応
-    (casefold / "UPPER_FILE.TXT").write_text("UPPER\n")
-    (casefold / "MiXeD_CaSe.TxT").write_text("MiXeD\n")
-    (casefold / "CamelCase.txt").write_text("Camel\n")
+    (casefold / "UPPER.TXT").write_text("UPPER\n")
+    (casefold / "MiXeD.TxT").write_text("MiXeD\n")
 
     # ========================================
     # 07_recursive/
@@ -180,22 +167,24 @@ def create_fixtures(fixtures_dir):
     recursive = fixtures_dir / "07_recursive"
     recursive.mkdir()
 
-    (recursive / "file1.txt").write_text("l1\n")
-    (recursive / "file1.c").write_text("// l1\n")
+    for i in "012":
+        (recursive / f"file{i}.txt").write_text(f"file{i}\n")
 
-    level2 = recursive / "level2"
-    level2.mkdir()
-    (level2 / "file2.txt").write_text("l2\n")
-    (level2 / "file2.c").write_text("// l2\n")
-
-    level3 = level2 / "level3"
-    level3.mkdir()
-    (level3 / "file3.txt").write_text("l3\n")
-    (level3 / "file3.c").write_text("// l3\n")
-
-    branch = recursive / "branch"
-    branch.mkdir()
-    (branch / "branch.txt").write_text("branch\n")
+    for i in "012":
+        dir_i = recursive / f"dir{i}"
+        dir_i.mkdir()
+        for j in "012":
+            (dir_i / f"file{j}.txt").write_text(f"dir{i}/file{j}\n")
+        for j in "012":
+            dir_j = dir_i / f"dir{j}"
+            dir_j.mkdir()
+            for k in "012":
+                (dir_j / f"file{k}.txt").write_text(f"dir{i}/dir{j}/file{k}\n")
+            for k in "012":
+                dir_k = dir_j / f"dir{k}"
+                dir_k.mkdir()
+                for l in "012":
+                    (dir_k / f"file{l}.txt").write_text(f"dir{i}/dir{j}/dir{k}/file{l}\n")
 
     # ========================================
     # 08_escapechars/
@@ -218,20 +207,28 @@ def create_fixtures(fixtures_dir):
     combined = fixtures_dir / "09_combined"
     combined.mkdir()
 
-    for dirname in ["dir1", "dir2", "dir3"]:
-        dir_path = combined / dirname
-        dir_path.mkdir()
-        (dir_path / "file.c").write_text(f"// {dirname}\n")
-        (dir_path / "file.h").write_text(f"// {dirname}\n")
-        (dir_path / "fila.c").write_text(f"// fila\n")
-        (dir_path / "filb.h").write_text(f"// filb\n")
-        (dir_path / "test.txt").write_text(f"test\n")
+    for c in "ch":
+        (combined / f"fila.{c}").write_text(f"// fila.{c}\n")
+        (combined / f"filb.{c}").write_text(f"// filb.{c}\n")
+        (combined / f"filc.{c}").write_text(f"// filc.{c}\n")
+        (combined / f"fild.{c}").write_text(f"// fild.{c}\n")
+        (combined / f"file.{c}").write_text(f"// file.{c}\n")
 
-    # トップレベル
-    (combined / "a").write_text("a\n")
-    (combined / "b").write_text("b\n")
-    for i in range(5):
+    for i in "0123456789":
         (combined / f"file{i}.txt").write_text(f"file{i}\n")
+
+    for c in "abcdefghijklmnopqrstuvwxyz":
+        (combined / f"{c}").write_text(f"{c}\n")
+
+    for i in "0123456789":
+        dir_i = combined / f"dir{i}"
+        dir_i.mkdir()
+        for c in "ch":
+            (dir_i / f"fila.{c}").write_text(f"// dir{i}/fila.{c}\n")
+            (dir_i / f"filb.{c}").write_text(f"// dir{i}/filb.{c}\n")
+            (dir_i / f"filc.{c}").write_text(f"// dir{i}/filc.{c}\n")
+            (dir_i / f"fild.{c}").write_text(f"// dir{i}/fild.{c}\n")
+            (dir_i / f"file.{c}").write_text(f"// dir{i}/file.{c}\n")
 
     # ========================================
     # .hidden/
@@ -240,18 +237,28 @@ def create_fixtures(fixtures_dir):
     hidden = fixtures_dir / ".hidden"
     hidden.mkdir()
 
-    (hidden / "visible.txt").write_text("visible\n")
-    (hidden / "normal.c").write_text("// normal\n")
-    (hidden / "dotfile").write_text("dotfile\n")
-    (hidden / "config").write_text("config\n")
+    # top-level hidden files
+    for c in "abcdefghijklmnopqrstuvwxyz":
+        (fixtures_dir / f".{c}").write_text(f".{c}\n")
+    for i in "0123456789":
+        (fixtures_dir / f".hiddenfile{i}").write_text(f".hiddenfile{i}\n")
 
-    subdir = hidden / "subdir"
-    subdir.mkdir()
-    (subdir / "file.txt").write_text("in subdir\n")
+    def create_hidden_files_in_dir(dir_path, maxdepth, depth):
+        if depth < maxdepth:
+            for i in "012":
+                sub_dir = dir_path / f"sub{i}"
+                sub_dir.mkdir()
+                (sub_dir / f"file{i}.txt").write_text(f"file{i}\n")
+                (sub_dir / f".hiddenfile{i}").write_text(f".hiddenfile{i}\n")
+                create_hidden_files_in_dir(sub_dir, maxdepth, depth + 1)
 
-    nested = subdir / "nested"
-    nested.mkdir()
-    (nested / "deep.txt").write_text("deep\n")
+                sub_hidden_dir = dir_path / f".subhidden{i}"
+                sub_hidden_dir.mkdir()
+                (sub_hidden_dir / f"file{i}.txt").write_text(f"file{i}\n")
+                (sub_hidden_dir / f".hiddenfile{i}").write_text(f".hiddenfile{i}\n")
+                create_hidden_files_in_dir(sub_hidden_dir, maxdepth, depth + 1)
+
+    create_hidden_files_in_dir(hidden, maxdepth=2, depth=0)
 
     # ========================================
     # エッジケース
@@ -278,8 +285,8 @@ def validate_fixtures(fixtures_dir):
 
     required_dirs = [
         "01_basic", "02_asterisk", "03_questionmark", "04_characterclass",
-        "05_braceexpansion", "06_casefold", "07_recursive", "08_combined",
-        ".hidden"
+        "05_braceexpansion", "06_casefold", "07_recursive", "08_escapechars",
+        "09_combined", ".hidden"
     ]
 
     all_ok = True

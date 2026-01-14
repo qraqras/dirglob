@@ -1,5 +1,7 @@
 07_recursive/.
-07_recursive/branch
-07_recursive/file1.c
+07_recursive/dir0
+07_recursive/dir1
+07_recursive/dir2
+07_recursive/file0.txt
 07_recursive/file1.txt
-07_recursive/level2
+07_recursive/file2.txt

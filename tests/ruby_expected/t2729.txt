@@ -9,4 +9,9 @@
 ./09_combined/
 ./05_braceexpansion/
 ./08_escapechars/
-.hidden/subdir/
+.hidden/sub1/
+.hidden/.subhidden0/
+.hidden/.subhidden1/
+.hidden/sub0/
+.hidden/sub2/
+.hidden/.subhidden2/

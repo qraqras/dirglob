@@ -9,4 +9,9 @@
 ./08_escapechars/
 ./09_combined/
 ./multi/
-.hidden/subdir/
+.hidden/.subhidden0/
+.hidden/.subhidden1/
+.hidden/.subhidden2/
+.hidden/sub0/
+.hidden/sub1/
+.hidden/sub2/

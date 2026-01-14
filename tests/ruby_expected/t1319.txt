@@ -1,3 +1,2 @@
 02_asterisk/file.c
-02_asterisk/file.cpp
 02_asterisk/file.h

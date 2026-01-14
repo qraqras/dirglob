@@ -1,1 +1,1 @@
-// dir2
+// dir2/file.c

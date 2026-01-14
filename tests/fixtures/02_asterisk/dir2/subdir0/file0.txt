@@ -1,0 +1,1 @@
+dir2/subdir0/file0

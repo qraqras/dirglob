@@ -1,1 +1,4 @@
 ./.hidden/
+.hidden/.subhidden0/
+.hidden/.subhidden1/
+.hidden/.subhidden2/
