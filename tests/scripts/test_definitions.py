@@ -109,6 +109,24 @@ PATTERNS = [
     "09_combined/**/fil?.[ch]",
     "09_combined/{file[0-9].txt,[a-z]}",
     "09_combined/{**, *}/*.txt",
+    # 10_SpecialChars (spaces, tabs, multiple dots)
+    "10_specialchars/file with spaces.txt",
+    "10_specialchars/file\twith\ttabs.txt",
+    "10_specialchars/multiple..dots...txt",
+    "10_specialchars/.dotfile",
+    "10_specialchars/..doubledot",
+    "10_specialchars/trailing ",
+    "10_specialchars/ leading",
+    # 11_DeepRecursion
+    "11_deeprecursion/**/*.txt",
+    "11_deeprecursion/**/deep",
+    # 12_EmptyAndSingle
+    "12_empty/*",
+    "12_single/*",
+    # 13_Symlinks
+    "13_symlinks/link_to_file",
+    "13_symlinks/link_to_dir/*",
+    "13_symlinks/**/linked",
     # TopLevel
     "*",
     "*/",
@@ -133,17 +151,30 @@ PATTERNS = [
     "/",
     "*/*//*///*",
     "日本語.txt",
+    # LongPath
+    "a" * 100 + "/*.txt",
+    # MultipleStars
+    "***",
+    "*****",
+    # DotPatterns
+    ".*.*",
+    ".*/.*",
+    "**/.*",
 ]
 
 # フラグ組み合わせ（重要なもの）
 FLAG_OPTIONS = [
     FNMFlags.NONE,                                   # No flags
+    FNMFlags.NOESCAPE,                               # Disable backslash escaping
     FNMFlags.DOTMATCH,                               # Show hidden files
     FNMFlags.PATHNAME,                               # Slash handling
     FNMFlags.CASEFOLD,                               # Case insensitive
+    FNMFlags.EXTGLOB,                                # Brace expansion {a,b}
     FNMFlags.DOTMATCH | FNMFlags.PATHNAME,           # Common combo
     FNMFlags.PATHNAME | FNMFlags.CASEFOLD,           # Common combo
     FNMFlags.DOTMATCH | FNMFlags.CASEFOLD,           # Common combo
+    FNMFlags.NOESCAPE | FNMFlags.PATHNAME,           # Escape handling
+    FNMFlags.PATHNAME | FNMFlags.EXTGLOB,            # Brace with pathname
 ]
 
 # Base path variations

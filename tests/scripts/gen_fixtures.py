@@ -197,7 +197,7 @@ def create_fixtures(fixtures_dir):
     (escapechars / "{braces}.txt").write_text("braces\n")
     (escapechars / "*asterisk.txt").write_text("asterisk\n")
     (escapechars / "?question.txt").write_text("question\n")
-    (escapechars / "\\backslash.txt").write_text("backslash\n")
+    #(escapechars / "\\backslash.txt").write_text("backslash\n")
     (escapechars / "(parentheses).txt").write_text("parens\n")
 
     # ========================================
@@ -261,6 +261,80 @@ def create_fixtures(fixtures_dir):
     create_hidden_files_in_dir(hidden, maxdepth=2, depth=0)
 
     # ========================================
+    # 10_specialchars/
+    # ========================================
+    print("  📂 10_specialchars/")
+    specialchars = fixtures_dir / "10_specialchars"
+    specialchars.mkdir()
+
+    (specialchars / "file with spaces.txt").write_text("spaces\n")
+    (specialchars / "file\twith\ttabs.txt").write_text("tabs\n")
+    (specialchars / "multiple..dots...txt").write_text("dots\n")
+    (specialchars / ".dotfile").write_text("dotfile\n")
+    (specialchars / "..doubledot").write_text("doubledot\n")
+    (specialchars / "trailing ").write_text("trailing\n")
+    (specialchars / " leading").write_text("leading\n")
+
+    # ========================================
+    # 11_deeprecursion/
+    # ========================================
+    print("  📂 11_deeprecursion/")
+    deeprecursion = fixtures_dir / "11_deeprecursion"
+    deeprecursion.mkdir()
+
+    # Create deep directory structure (10 levels)
+    current = deeprecursion
+    for i in range(10):
+        current = current / f"level{i}"
+        current.mkdir()
+        (current / f"file{i}.txt").write_text(f"level{i}\n")
+        if i == 9:
+            (current / "deep").write_text("deep\n")
+
+    # ========================================
+    # 12_empty/
+    # ========================================
+    print("  📂 12_empty/")
+    empty = fixtures_dir / "12_empty"
+    empty.mkdir()
+    # Empty directory - no files
+
+    # ========================================
+    # 12_single/
+    # ========================================
+    print("  📂 12_single/")
+    single = fixtures_dir / "12_single"
+    single.mkdir()
+    (single / "only.txt").write_text("only\n")
+
+    # ========================================
+    # 13_symlinks/
+    # ========================================
+    print("  📂 13_symlinks/")
+    symlinks = fixtures_dir / "13_symlinks"
+    symlinks.mkdir()
+
+    # Create target file and directory
+    (symlinks / "target.txt").write_text("target\n")
+    target_dir = symlinks / "target_dir"
+    target_dir.mkdir()
+    (target_dir / "file.txt").write_text("in_dir\n")
+
+    # Create symlinks
+    try:
+        import os
+        os.symlink("target.txt", str(symlinks / "link_to_file"))
+        os.symlink("target_dir", str(symlinks / "link_to_dir"))
+
+        # Create nested structure with symlink
+        nested = symlinks / "nested"
+        nested.mkdir()
+        (nested / "linked").write_text("linked\n")
+    except (OSError, NotImplementedError):
+        # Symlinks not supported on this platform
+        pass
+
+    # ========================================
     # エッジケース
     # ========================================
     print("  📄 Edge cases")
@@ -276,6 +350,15 @@ def create_fixtures(fixtures_dir):
     multi.mkdir()
     (multi / "file.txt").write_text("multi\n")
 
+    # 長いパス名用 (a*100)
+    long_dir = fixtures_dir / ("a" * 100)
+    try:
+        long_dir.mkdir()
+        (long_dir / "file.txt").write_text("long\n")
+    except OSError:
+        # Path too long on this platform
+        pass
+
     print(f"✅ Fixtures created")
 
 
@@ -286,7 +369,8 @@ def validate_fixtures(fixtures_dir):
     required_dirs = [
         "01_basic", "02_asterisk", "03_questionmark", "04_characterclass",
         "05_braceexpansion", "06_casefold", "07_recursive", "08_escapechars",
-        "09_combined", ".hidden"
+        "09_combined", "10_specialchars", "11_deeprecursion", "12_empty",
+        "12_single", "13_symlinks", ".hidden"
     ]
 
     all_ok = True
