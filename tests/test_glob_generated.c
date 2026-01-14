@@ -12,29 +12,29 @@
 #include <string.h>
 
 /* Helper function to compare glob results with Ruby expected output */
-static void test_glob_against_ruby(const char *pattern, int flags, 
+static void test_glob_against_ruby(const char *pattern, int flags,
                                    const char *base, bool sort,
                                    const char *expected_file)
 {
     char **results = NULL;
     size_t count = 0;
     size_t *lengths = NULL;
-    
+
     /* Execute rbc_glob */
     const char *patterns[] = {pattern};
     bool ret = rbc_glob(patterns, 1, flags, base, sort, &results, &count, &lengths);
     TEST_ASSERT_TRUE_MESSAGE(ret, "rbc_glob failed");
-    
+
     /* Load expected results from Ruby */
     FILE *fp = fopen(expected_file, "r");
     TEST_ASSERT_NOT_NULL_MESSAGE(fp, "Failed to open expected file");
-    
+
     char **expected_lines = NULL;
     size_t expected_count = 0;
     size_t capacity = 16;
     expected_lines = malloc(capacity * sizeof(char*));
     TEST_ASSERT_NOT_NULL(expected_lines);
-    
+
     char line[4096];
     while (fgets(line, sizeof(line), fp)) {
         /* Remove trailing newline */
@@ -42,48 +42,40 @@ static void test_glob_against_ruby(const char *pattern, int flags,
         if (len > 0 && line[len-1] == '\n') {
             line[len-1] = '\0';
         }
-        
+
         if (expected_count >= capacity) {
             capacity *= 2;
             expected_lines = realloc(expected_lines, capacity * sizeof(char*));
             TEST_ASSERT_NOT_NULL(expected_lines);
         }
-        
+
         expected_lines[expected_count++] = strdup(line);
     }
     fclose(fp);
-    
+
     /* Compare counts */
     char count_msg[256];
-    snprintf(count_msg, sizeof(count_msg), 
+    snprintf(count_msg, sizeof(count_msg),
              "Pattern: %s, Expected: %zu, Got: %zu",
              pattern, expected_count, count);
     TEST_ASSERT_EQUAL_size_t_MESSAGE(expected_count, count, count_msg);
-    
+
     /* Compare each result */
     for (size_t i = 0; i < expected_count; i++) {
         char msg[512];
-        snprintf(msg, sizeof(msg), 
+        snprintf(msg, sizeof(msg),
                  "Pattern: %s, Index: %zu, Expected: %s, Got: %s",
-                 pattern, i, expected_lines[i], 
+                 pattern, i, expected_lines[i],
                  i < count ? results[i] : "NULL");
         TEST_ASSERT_EQUAL_STRING_MESSAGE(expected_lines[i], results[i], msg);
     }
-    
+
     /* Cleanup */
     for (size_t i = 0; i < expected_count; i++) {
         free(expected_lines[i]);
     }
     free(expected_lines);
     rbc_glob_free(results, count, lengths);
-}
-
-void setUp(void) {
-    /* Set up code (if needed) */
-}
-
-void tearDown(void) {
-    /* Tear down code (if needed) */
 }
 
 
@@ -97,7 +89,7 @@ void test_t1000(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1000.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -110,7 +102,7 @@ void test_t1001(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1001.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -123,7 +115,7 @@ void test_t1002(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1002.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -136,7 +128,7 @@ void test_t1003(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1003.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -149,7 +141,7 @@ void test_t1004(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1004.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -162,7 +154,7 @@ void test_t1005(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1005.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -175,7 +167,7 @@ void test_t1006(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1006.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -188,7 +180,7 @@ void test_t1007(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1007.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -201,7 +193,7 @@ void test_t1008(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1008.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -214,7 +206,7 @@ void test_t1009(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1009.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -227,7 +219,7 @@ void test_t1010(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1010.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -240,7 +232,7 @@ void test_t1011(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1011.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -253,7 +245,7 @@ void test_t1012(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1012.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -266,7 +258,7 @@ void test_t1013(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1013.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -279,7 +271,7 @@ void test_t1014(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1014.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -292,7 +284,7 @@ void test_t1015(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1015.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -305,7 +297,7 @@ void test_t1016(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1016.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -318,7 +310,7 @@ void test_t1017(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1017.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -331,7 +323,7 @@ void test_t1018(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1018.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -344,7 +336,7 @@ void test_t1019(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1019.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -357,7 +349,7 @@ void test_t1020(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1020.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -370,7 +362,7 @@ void test_t1021(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1021.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -383,7 +375,7 @@ void test_t1022(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1022.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -396,7 +388,7 @@ void test_t1023(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1023.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -409,7 +401,7 @@ void test_t1024(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1024.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -422,7 +414,7 @@ void test_t1025(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1025.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -435,7 +427,7 @@ void test_t1026(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1026.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -448,7 +440,7 @@ void test_t1027(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1027.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -461,7 +453,7 @@ void test_t1028(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1028.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -474,7 +466,7 @@ void test_t1029(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1029.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -487,7 +479,7 @@ void test_t1030(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1030.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -500,7 +492,7 @@ void test_t1031(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1031.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -513,7 +505,7 @@ void test_t1032(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1032.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -526,7 +518,7 @@ void test_t1033(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1033.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -539,7 +531,7 @@ void test_t1034(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1034.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -552,7 +544,7 @@ void test_t1035(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1035.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -565,7 +557,7 @@ void test_t1036(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1036.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -578,7 +570,7 @@ void test_t1037(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1037.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -591,7 +583,7 @@ void test_t1038(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1038.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -604,7 +596,7 @@ void test_t1039(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1039.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -617,7 +609,7 @@ void test_t1040(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1040.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -630,7 +622,7 @@ void test_t1041(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1041.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -643,7 +635,7 @@ void test_t1042(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1042.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -656,7 +648,7 @@ void test_t1043(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1043.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -669,7 +661,7 @@ void test_t1044(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1044.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -682,7 +674,7 @@ void test_t1045(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1045.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -695,7 +687,7 @@ void test_t1046(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1046.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -708,7 +700,7 @@ void test_t1047(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1047.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -721,7 +713,7 @@ void test_t1048(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1048.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -734,7 +726,7 @@ void test_t1049(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1049.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -747,7 +739,7 @@ void test_t1050(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1050.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -760,7 +752,7 @@ void test_t1051(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1051.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -773,7 +765,7 @@ void test_t1052(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1052.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -786,7 +778,7 @@ void test_t1053(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1053.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -799,7 +791,7 @@ void test_t1054(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1054.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -812,7 +804,7 @@ void test_t1055(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1055.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -825,7 +817,7 @@ void test_t1056(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1056.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -838,7 +830,7 @@ void test_t1057(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1057.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -851,7 +843,7 @@ void test_t1058(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1058.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -864,7 +856,7 @@ void test_t1059(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1059.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -877,7 +869,7 @@ void test_t1060(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1060.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -890,7 +882,7 @@ void test_t1061(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1061.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -903,7 +895,7 @@ void test_t1062(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1062.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -916,7 +908,7 @@ void test_t1063(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1063.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -929,7 +921,7 @@ void test_t1064(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1064.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -942,7 +934,7 @@ void test_t1065(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1065.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -955,7 +947,7 @@ void test_t1066(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1066.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -968,7 +960,7 @@ void test_t1067(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1067.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -981,7 +973,7 @@ void test_t1068(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1068.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -994,7 +986,7 @@ void test_t1069(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1069.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1007,7 +999,7 @@ void test_t1070(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1070.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1020,7 +1012,7 @@ void test_t1071(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1071.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1033,7 +1025,7 @@ void test_t1072(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1072.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1046,7 +1038,7 @@ void test_t1073(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1073.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1059,7 +1051,7 @@ void test_t1074(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1074.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1072,7 +1064,7 @@ void test_t1075(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1075.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1085,7 +1077,7 @@ void test_t1076(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1076.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1098,7 +1090,7 @@ void test_t1077(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1077.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1111,7 +1103,7 @@ void test_t1078(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1078.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1124,7 +1116,7 @@ void test_t1079(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1079.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1137,7 +1129,7 @@ void test_t1080(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1080.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1150,7 +1142,7 @@ void test_t1081(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1081.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1163,7 +1155,7 @@ void test_t1082(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1082.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1176,7 +1168,7 @@ void test_t1083(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1083.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1189,7 +1181,7 @@ void test_t1084(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1084.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1202,7 +1194,7 @@ void test_t1085(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1085.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1215,7 +1207,7 @@ void test_t1086(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1086.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1228,7 +1220,7 @@ void test_t1087(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1087.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1241,7 +1233,7 @@ void test_t1088(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1088.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1254,7 +1246,7 @@ void test_t1089(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1089.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1267,7 +1259,7 @@ void test_t1090(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1090.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1280,7 +1272,7 @@ void test_t1091(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1091.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1293,7 +1285,7 @@ void test_t1092(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1092.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1306,7 +1298,7 @@ void test_t1093(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1093.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1319,7 +1311,7 @@ void test_t1094(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1094.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1332,7 +1324,7 @@ void test_t1095(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1095.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1345,7 +1337,7 @@ void test_t1096(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1096.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1358,7 +1350,7 @@ void test_t1097(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1097.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1371,7 +1363,7 @@ void test_t1098(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1098.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1384,7 +1376,7 @@ void test_t1099(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1099.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1397,7 +1389,7 @@ void test_t1100(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1100.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1410,7 +1402,7 @@ void test_t1101(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1101.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1423,7 +1415,7 @@ void test_t1102(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1102.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1436,7 +1428,7 @@ void test_t1103(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1103.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1449,7 +1441,7 @@ void test_t1104(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1104.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1462,7 +1454,7 @@ void test_t1105(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1105.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1475,7 +1467,7 @@ void test_t1106(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1106.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1488,7 +1480,7 @@ void test_t1107(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1107.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1501,7 +1493,7 @@ void test_t1108(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1108.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1514,7 +1506,7 @@ void test_t1109(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1109.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1527,7 +1519,7 @@ void test_t1110(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1110.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1540,7 +1532,7 @@ void test_t1111(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1111.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1553,7 +1545,7 @@ void test_t1112(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1112.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1566,7 +1558,7 @@ void test_t1113(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1113.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1579,7 +1571,7 @@ void test_t1114(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1114.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1592,7 +1584,7 @@ void test_t1115(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1115.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1605,7 +1597,7 @@ void test_t1116(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1116.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1618,7 +1610,7 @@ void test_t1117(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1117.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1631,7 +1623,7 @@ void test_t1118(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1118.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1644,7 +1636,7 @@ void test_t1119(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1119.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1657,7 +1649,7 @@ void test_t1120(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1120.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1670,7 +1662,7 @@ void test_t1121(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1121.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1683,7 +1675,7 @@ void test_t1122(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1122.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1696,7 +1688,7 @@ void test_t1123(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1123.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1709,7 +1701,7 @@ void test_t1124(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1124.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1722,7 +1714,7 @@ void test_t1125(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1125.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1735,7 +1727,7 @@ void test_t1126(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1126.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1748,7 +1740,7 @@ void test_t1127(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1127.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1761,7 +1753,7 @@ void test_t1128(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1128.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1774,7 +1766,7 @@ void test_t1129(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1129.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1787,7 +1779,7 @@ void test_t1130(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1130.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1800,7 +1792,7 @@ void test_t1131(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1131.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1813,7 +1805,7 @@ void test_t1132(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1132.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1826,7 +1818,7 @@ void test_t1133(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1133.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1839,7 +1831,7 @@ void test_t1134(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1134.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1852,7 +1844,7 @@ void test_t1135(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1135.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1865,7 +1857,7 @@ void test_t1136(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1136.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1878,7 +1870,7 @@ void test_t1137(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1137.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1891,7 +1883,7 @@ void test_t1138(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1138.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1904,7 +1896,7 @@ void test_t1139(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1139.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1917,7 +1909,7 @@ void test_t1140(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1140.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1930,7 +1922,7 @@ void test_t1141(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1141.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1943,7 +1935,7 @@ void test_t1142(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1142.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1956,7 +1948,7 @@ void test_t1143(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1143.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1969,7 +1961,7 @@ void test_t1144(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1144.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1982,7 +1974,7 @@ void test_t1145(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1145.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -1995,7 +1987,7 @@ void test_t1146(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1146.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2008,7 +2000,7 @@ void test_t1147(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1147.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2021,7 +2013,7 @@ void test_t1148(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1148.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2034,7 +2026,7 @@ void test_t1149(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1149.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2047,7 +2039,7 @@ void test_t1150(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1150.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2060,7 +2052,7 @@ void test_t1151(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1151.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2073,7 +2065,7 @@ void test_t1152(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1152.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2086,7 +2078,7 @@ void test_t1153(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1153.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2099,7 +2091,7 @@ void test_t1154(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1154.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2112,7 +2104,7 @@ void test_t1155(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1155.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2125,7 +2117,7 @@ void test_t1156(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1156.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2138,7 +2130,7 @@ void test_t1157(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1157.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2151,7 +2143,7 @@ void test_t1158(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1158.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2164,7 +2156,7 @@ void test_t1159(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1159.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2177,7 +2169,7 @@ void test_t1160(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1160.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2190,7 +2182,7 @@ void test_t1161(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1161.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2203,7 +2195,7 @@ void test_t1162(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1162.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2216,7 +2208,7 @@ void test_t1163(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1163.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2229,7 +2221,7 @@ void test_t1164(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1164.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2242,7 +2234,7 @@ void test_t1165(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1165.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2255,7 +2247,7 @@ void test_t1166(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1166.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2268,7 +2260,7 @@ void test_t1167(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1167.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2281,7 +2273,7 @@ void test_t1168(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1168.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2294,7 +2286,7 @@ void test_t1169(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1169.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2307,7 +2299,7 @@ void test_t1170(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1170.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2320,7 +2312,7 @@ void test_t1171(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1171.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2333,7 +2325,7 @@ void test_t1172(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1172.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2346,7 +2338,7 @@ void test_t1173(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1173.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2359,7 +2351,7 @@ void test_t1174(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1174.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2372,7 +2364,7 @@ void test_t1175(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1175.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2385,7 +2377,7 @@ void test_t1176(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1176.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2398,7 +2390,7 @@ void test_t1177(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1177.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2411,7 +2403,7 @@ void test_t1178(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1178.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2424,7 +2416,7 @@ void test_t1179(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1179.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2437,7 +2429,7 @@ void test_t1180(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1180.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2450,7 +2442,7 @@ void test_t1181(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1181.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2463,7 +2455,7 @@ void test_t1182(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1182.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2476,7 +2468,7 @@ void test_t1183(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1183.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2489,7 +2481,7 @@ void test_t1184(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1184.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2502,7 +2494,7 @@ void test_t1185(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1185.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2515,7 +2507,7 @@ void test_t1186(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1186.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2528,7 +2520,7 @@ void test_t1187(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1187.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2541,7 +2533,7 @@ void test_t1188(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1188.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2554,7 +2546,7 @@ void test_t1189(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1189.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2567,7 +2559,7 @@ void test_t1190(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1190.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2580,7 +2572,7 @@ void test_t1191(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1191.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2593,7 +2585,7 @@ void test_t1192(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1192.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2606,7 +2598,7 @@ void test_t1193(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1193.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2619,7 +2611,7 @@ void test_t1194(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1194.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2632,7 +2624,7 @@ void test_t1195(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1195.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2645,7 +2637,7 @@ void test_t1196(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1196.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2658,7 +2650,7 @@ void test_t1197(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1197.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2671,7 +2663,7 @@ void test_t1198(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1198.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2684,7 +2676,7 @@ void test_t1199(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1199.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2697,7 +2689,7 @@ void test_t1200(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1200.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2710,7 +2702,7 @@ void test_t1201(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1201.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2723,7 +2715,7 @@ void test_t1202(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1202.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2736,7 +2728,7 @@ void test_t1203(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1203.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2749,7 +2741,7 @@ void test_t1204(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1204.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2762,7 +2754,7 @@ void test_t1205(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1205.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2775,7 +2767,7 @@ void test_t1206(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1206.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2788,7 +2780,7 @@ void test_t1207(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1207.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2801,7 +2793,7 @@ void test_t1208(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1208.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2814,7 +2806,7 @@ void test_t1209(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1209.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2827,7 +2819,7 @@ void test_t1210(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1210.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2840,7 +2832,7 @@ void test_t1211(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1211.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2853,7 +2845,7 @@ void test_t1212(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1212.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2866,7 +2858,7 @@ void test_t1213(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1213.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2879,7 +2871,7 @@ void test_t1214(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1214.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2892,7 +2884,7 @@ void test_t1215(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1215.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2905,7 +2897,7 @@ void test_t1216(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1216.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2918,7 +2910,7 @@ void test_t1217(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1217.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2931,7 +2923,7 @@ void test_t1218(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1218.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2944,7 +2936,7 @@ void test_t1219(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1219.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2957,7 +2949,7 @@ void test_t1220(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1220.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2970,7 +2962,7 @@ void test_t1221(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1221.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2983,7 +2975,7 @@ void test_t1222(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1222.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -2996,7 +2988,7 @@ void test_t1223(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1223.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3009,7 +3001,7 @@ void test_t1224(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1224.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3022,7 +3014,7 @@ void test_t1225(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1225.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3035,7 +3027,7 @@ void test_t1226(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1226.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3048,7 +3040,7 @@ void test_t1227(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1227.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3061,7 +3053,7 @@ void test_t1228(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1228.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3074,7 +3066,7 @@ void test_t1229(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1229.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3087,7 +3079,7 @@ void test_t1230(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1230.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3100,7 +3092,7 @@ void test_t1231(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1231.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3113,7 +3105,7 @@ void test_t1232(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1232.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3126,7 +3118,7 @@ void test_t1233(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1233.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3139,7 +3131,7 @@ void test_t1234(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1234.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3152,7 +3144,7 @@ void test_t1235(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1235.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3165,7 +3157,7 @@ void test_t1236(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1236.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3178,7 +3170,7 @@ void test_t1237(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1237.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3191,7 +3183,7 @@ void test_t1238(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1238.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3204,7 +3196,7 @@ void test_t1239(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1239.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3217,7 +3209,7 @@ void test_t1240(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1240.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3230,7 +3222,7 @@ void test_t1241(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1241.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3243,7 +3235,7 @@ void test_t1242(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1242.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3256,7 +3248,7 @@ void test_t1243(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1243.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3269,7 +3261,7 @@ void test_t1244(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1244.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3282,7 +3274,7 @@ void test_t1245(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1245.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3295,7 +3287,7 @@ void test_t1246(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1246.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3308,7 +3300,7 @@ void test_t1247(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1247.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3321,7 +3313,7 @@ void test_t1248(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1248.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3334,7 +3326,7 @@ void test_t1249(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1249.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3347,7 +3339,7 @@ void test_t1250(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1250.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3360,7 +3352,7 @@ void test_t1251(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1251.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3373,7 +3365,7 @@ void test_t1252(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1252.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3386,7 +3378,7 @@ void test_t1253(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1253.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3399,7 +3391,7 @@ void test_t1254(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1254.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3412,7 +3404,7 @@ void test_t1255(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1255.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3425,7 +3417,7 @@ void test_t1256(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1256.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3438,7 +3430,7 @@ void test_t1257(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1257.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3451,7 +3443,7 @@ void test_t1258(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1258.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3464,7 +3456,7 @@ void test_t1259(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1259.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3477,7 +3469,7 @@ void test_t1260(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1260.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3490,7 +3482,7 @@ void test_t1261(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1261.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3503,7 +3495,7 @@ void test_t1262(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1262.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3516,7 +3508,7 @@ void test_t1263(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1263.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3529,7 +3521,7 @@ void test_t1264(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1264.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3542,7 +3534,7 @@ void test_t1265(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1265.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3555,7 +3547,7 @@ void test_t1266(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1266.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3568,7 +3560,7 @@ void test_t1267(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1267.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3581,7 +3573,7 @@ void test_t1268(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1268.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3594,7 +3586,7 @@ void test_t1269(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1269.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3607,7 +3599,7 @@ void test_t1270(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1270.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3620,7 +3612,7 @@ void test_t1271(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1271.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3633,7 +3625,7 @@ void test_t1272(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1272.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3646,7 +3638,7 @@ void test_t1273(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1273.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3659,7 +3651,7 @@ void test_t1274(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1274.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3672,7 +3664,7 @@ void test_t1275(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1275.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3685,7 +3677,7 @@ void test_t1276(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1276.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3698,7 +3690,7 @@ void test_t1277(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1277.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3711,7 +3703,7 @@ void test_t1278(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1278.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3724,7 +3716,7 @@ void test_t1279(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1279.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3737,7 +3729,7 @@ void test_t1280(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1280.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3750,7 +3742,7 @@ void test_t1281(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1281.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3763,7 +3755,7 @@ void test_t1282(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1282.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3776,7 +3768,7 @@ void test_t1283(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1283.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3789,7 +3781,7 @@ void test_t1284(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1284.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3802,7 +3794,7 @@ void test_t1285(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1285.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3815,7 +3807,7 @@ void test_t1286(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1286.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3828,7 +3820,7 @@ void test_t1287(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1287.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3841,7 +3833,7 @@ void test_t1288(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1288.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3854,7 +3846,7 @@ void test_t1289(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1289.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3867,7 +3859,7 @@ void test_t1290(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1290.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3880,7 +3872,7 @@ void test_t1291(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1291.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3893,7 +3885,7 @@ void test_t1292(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1292.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3906,7 +3898,7 @@ void test_t1293(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1293.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3919,7 +3911,7 @@ void test_t1294(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1294.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3932,7 +3924,7 @@ void test_t1295(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1295.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3945,7 +3937,7 @@ void test_t1296(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1296.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3958,7 +3950,7 @@ void test_t1297(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1297.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3971,7 +3963,7 @@ void test_t1298(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1298.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3984,7 +3976,7 @@ void test_t1299(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1299.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -3997,7 +3989,7 @@ void test_t1300(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1300.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4010,7 +4002,7 @@ void test_t1301(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1301.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4023,7 +4015,7 @@ void test_t1302(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1302.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4036,7 +4028,7 @@ void test_t1303(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1303.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4049,7 +4041,7 @@ void test_t1304(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1304.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4062,7 +4054,7 @@ void test_t1305(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1305.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4075,7 +4067,7 @@ void test_t1306(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1306.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4088,7 +4080,7 @@ void test_t1307(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1307.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4101,7 +4093,7 @@ void test_t1308(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1308.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4114,7 +4106,7 @@ void test_t1309(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1309.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4127,7 +4119,7 @@ void test_t1310(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1310.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4140,7 +4132,7 @@ void test_t1311(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1311.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4153,7 +4145,7 @@ void test_t1312(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1312.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4166,7 +4158,7 @@ void test_t1313(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1313.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4179,7 +4171,7 @@ void test_t1314(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1314.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4192,7 +4184,7 @@ void test_t1315(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1315.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4205,7 +4197,7 @@ void test_t1316(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1316.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4218,7 +4210,7 @@ void test_t1317(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1317.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4231,7 +4223,7 @@ void test_t1318(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1318.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4244,7 +4236,7 @@ void test_t1319(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1319.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4257,7 +4249,7 @@ void test_t1320(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1320.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4270,7 +4262,7 @@ void test_t1321(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1321.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4283,7 +4275,7 @@ void test_t1322(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1322.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4296,7 +4288,7 @@ void test_t1323(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1323.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4309,7 +4301,7 @@ void test_t1324(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1324.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4322,7 +4314,7 @@ void test_t1325(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1325.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4335,7 +4327,7 @@ void test_t1326(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1326.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4348,7 +4340,7 @@ void test_t1327(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1327.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4361,7 +4353,7 @@ void test_t1328(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1328.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4374,7 +4366,7 @@ void test_t1329(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1329.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4387,7 +4379,7 @@ void test_t1330(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1330.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4400,7 +4392,7 @@ void test_t1331(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1331.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4413,7 +4405,7 @@ void test_t1332(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1332.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4426,7 +4418,7 @@ void test_t1333(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1333.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4439,7 +4431,7 @@ void test_t1334(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1334.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4452,7 +4444,7 @@ void test_t1335(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1335.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4465,7 +4457,7 @@ void test_t1336(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1336.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4478,7 +4470,7 @@ void test_t1337(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1337.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4491,7 +4483,7 @@ void test_t1338(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1338.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4504,7 +4496,7 @@ void test_t1339(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1339.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4517,7 +4509,7 @@ void test_t1340(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1340.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4530,7 +4522,7 @@ void test_t1341(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1341.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4543,7 +4535,7 @@ void test_t1342(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1342.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4556,7 +4548,7 @@ void test_t1343(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1343.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4569,7 +4561,7 @@ void test_t1344(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1344.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4582,7 +4574,7 @@ void test_t1345(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1345.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4595,7 +4587,7 @@ void test_t1346(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1346.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4608,7 +4600,7 @@ void test_t1347(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1347.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4621,7 +4613,7 @@ void test_t1348(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1348.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4634,7 +4626,7 @@ void test_t1349(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1349.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4647,7 +4639,7 @@ void test_t1350(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1350.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4660,7 +4652,7 @@ void test_t1351(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1351.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4673,7 +4665,7 @@ void test_t1352(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1352.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4686,7 +4678,7 @@ void test_t1353(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1353.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4699,7 +4691,7 @@ void test_t1354(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1354.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4712,7 +4704,7 @@ void test_t1355(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1355.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4725,7 +4717,7 @@ void test_t1356(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1356.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4738,7 +4730,7 @@ void test_t1357(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1357.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4751,7 +4743,7 @@ void test_t1358(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1358.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4764,7 +4756,7 @@ void test_t1359(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1359.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4777,7 +4769,7 @@ void test_t1360(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1360.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4790,7 +4782,7 @@ void test_t1361(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1361.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4803,7 +4795,7 @@ void test_t1362(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1362.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4816,7 +4808,7 @@ void test_t1363(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1363.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4829,7 +4821,7 @@ void test_t1364(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1364.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4842,7 +4834,7 @@ void test_t1365(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1365.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4855,7 +4847,7 @@ void test_t1366(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1366.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4868,7 +4860,7 @@ void test_t1367(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1367.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4881,7 +4873,7 @@ void test_t1368(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1368.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4894,7 +4886,7 @@ void test_t1369(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1369.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4907,7 +4899,7 @@ void test_t1370(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1370.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4920,7 +4912,7 @@ void test_t1371(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1371.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4933,7 +4925,7 @@ void test_t1372(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1372.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4946,7 +4938,7 @@ void test_t1373(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1373.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4959,7 +4951,7 @@ void test_t1374(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1374.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4972,7 +4964,7 @@ void test_t1375(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1375.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4985,7 +4977,7 @@ void test_t1376(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1376.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -4998,7 +4990,7 @@ void test_t1377(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1377.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5011,7 +5003,7 @@ void test_t1378(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1378.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5024,7 +5016,7 @@ void test_t1379(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1379.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5037,7 +5029,7 @@ void test_t1380(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1380.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5050,7 +5042,7 @@ void test_t1381(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1381.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5063,7 +5055,7 @@ void test_t1382(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1382.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5076,7 +5068,7 @@ void test_t1383(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1383.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5089,7 +5081,7 @@ void test_t1384(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1384.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5102,7 +5094,7 @@ void test_t1385(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1385.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5115,7 +5107,7 @@ void test_t1386(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1386.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5128,7 +5120,7 @@ void test_t1387(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1387.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5141,7 +5133,7 @@ void test_t1388(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1388.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5154,7 +5146,7 @@ void test_t1389(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1389.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5167,7 +5159,7 @@ void test_t1390(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1390.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5180,7 +5172,7 @@ void test_t1391(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1391.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5193,7 +5185,7 @@ void test_t1392(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1392.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5206,7 +5198,7 @@ void test_t1393(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1393.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5219,7 +5211,7 @@ void test_t1394(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1394.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5232,7 +5224,7 @@ void test_t1395(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1395.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5245,7 +5237,7 @@ void test_t1396(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1396.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5258,7 +5250,7 @@ void test_t1397(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1397.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5271,7 +5263,7 @@ void test_t1398(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1398.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5284,7 +5276,7 @@ void test_t1399(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1399.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5297,7 +5289,7 @@ void test_t1400(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1400.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5310,7 +5302,7 @@ void test_t1401(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1401.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5323,7 +5315,7 @@ void test_t1402(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1402.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5336,7 +5328,7 @@ void test_t1403(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1403.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5349,7 +5341,7 @@ void test_t1404(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1404.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5362,7 +5354,7 @@ void test_t1405(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1405.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5375,7 +5367,7 @@ void test_t1406(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1406.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5388,7 +5380,7 @@ void test_t1407(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1407.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5401,7 +5393,7 @@ void test_t1408(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1408.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5414,7 +5406,7 @@ void test_t1409(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1409.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5427,7 +5419,7 @@ void test_t1410(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1410.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5440,7 +5432,7 @@ void test_t1411(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1411.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5453,7 +5445,7 @@ void test_t1412(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1412.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5466,7 +5458,7 @@ void test_t1413(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1413.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5479,7 +5471,7 @@ void test_t1414(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1414.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5492,7 +5484,7 @@ void test_t1415(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1415.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5505,7 +5497,7 @@ void test_t1416(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1416.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5518,7 +5510,7 @@ void test_t1417(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1417.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5531,7 +5523,7 @@ void test_t1418(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1418.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5544,7 +5536,7 @@ void test_t1419(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1419.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5557,7 +5549,7 @@ void test_t1420(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1420.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5570,7 +5562,7 @@ void test_t1421(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1421.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5583,7 +5575,7 @@ void test_t1422(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1422.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5596,7 +5588,7 @@ void test_t1423(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1423.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5609,7 +5601,7 @@ void test_t1424(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1424.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5622,7 +5614,7 @@ void test_t1425(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1425.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5635,7 +5627,7 @@ void test_t1426(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1426.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5648,7 +5640,7 @@ void test_t1427(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1427.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5661,7 +5653,7 @@ void test_t1428(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1428.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5674,7 +5666,7 @@ void test_t1429(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1429.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5687,7 +5679,7 @@ void test_t1430(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1430.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5700,7 +5692,7 @@ void test_t1431(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1431.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5713,7 +5705,7 @@ void test_t1432(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1432.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5726,7 +5718,7 @@ void test_t1433(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1433.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5739,7 +5731,7 @@ void test_t1434(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1434.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5752,7 +5744,7 @@ void test_t1435(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1435.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5765,7 +5757,7 @@ void test_t1436(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1436.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5778,7 +5770,7 @@ void test_t1437(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1437.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5791,7 +5783,7 @@ void test_t1438(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1438.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5804,7 +5796,7 @@ void test_t1439(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1439.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5817,7 +5809,7 @@ void test_t1440(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1440.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5830,7 +5822,7 @@ void test_t1441(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1441.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5843,7 +5835,7 @@ void test_t1442(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1442.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5856,7 +5848,7 @@ void test_t1443(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1443.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5869,7 +5861,7 @@ void test_t1444(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1444.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5882,7 +5874,7 @@ void test_t1445(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1445.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5895,7 +5887,7 @@ void test_t1446(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1446.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5908,7 +5900,7 @@ void test_t1447(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1447.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5921,7 +5913,7 @@ void test_t1448(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1448.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5934,7 +5926,7 @@ void test_t1449(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1449.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5947,7 +5939,7 @@ void test_t1450(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1450.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5960,7 +5952,7 @@ void test_t1451(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1451.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5973,7 +5965,7 @@ void test_t1452(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1452.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5986,7 +5978,7 @@ void test_t1453(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1453.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -5999,7 +5991,7 @@ void test_t1454(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1454.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6012,7 +6004,7 @@ void test_t1455(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1455.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6025,7 +6017,7 @@ void test_t1456(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1456.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6038,7 +6030,7 @@ void test_t1457(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1457.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6051,7 +6043,7 @@ void test_t1458(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1458.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6064,7 +6056,7 @@ void test_t1459(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1459.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6077,7 +6069,7 @@ void test_t1460(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1460.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6090,7 +6082,7 @@ void test_t1461(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1461.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6103,7 +6095,7 @@ void test_t1462(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1462.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6116,7 +6108,7 @@ void test_t1463(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1463.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6129,7 +6121,7 @@ void test_t1464(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1464.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6142,7 +6134,7 @@ void test_t1465(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1465.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6155,7 +6147,7 @@ void test_t1466(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1466.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6168,7 +6160,7 @@ void test_t1467(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1467.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6181,7 +6173,7 @@ void test_t1468(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1468.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6194,7 +6186,7 @@ void test_t1469(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1469.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6207,7 +6199,7 @@ void test_t1470(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1470.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6220,7 +6212,7 @@ void test_t1471(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1471.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6233,7 +6225,7 @@ void test_t1472(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1472.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6246,7 +6238,7 @@ void test_t1473(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1473.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6259,7 +6251,7 @@ void test_t1474(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1474.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6272,7 +6264,7 @@ void test_t1475(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1475.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6285,7 +6277,7 @@ void test_t1476(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1476.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6298,7 +6290,7 @@ void test_t1477(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1477.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6311,7 +6303,7 @@ void test_t1478(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1478.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6324,7 +6316,7 @@ void test_t1479(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1479.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6337,7 +6329,7 @@ void test_t1480(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1480.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6350,7 +6342,7 @@ void test_t1481(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1481.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6363,7 +6355,7 @@ void test_t1482(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1482.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6376,7 +6368,7 @@ void test_t1483(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1483.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6389,7 +6381,7 @@ void test_t1484(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1484.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6402,7 +6394,7 @@ void test_t1485(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1485.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6415,7 +6407,7 @@ void test_t1486(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1486.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6428,7 +6420,7 @@ void test_t1487(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1487.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6441,7 +6433,7 @@ void test_t1488(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1488.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6454,7 +6446,7 @@ void test_t1489(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1489.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6467,7 +6459,7 @@ void test_t1490(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1490.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6480,7 +6472,7 @@ void test_t1491(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1491.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6493,7 +6485,7 @@ void test_t1492(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1492.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6506,7 +6498,7 @@ void test_t1493(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1493.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6519,7 +6511,7 @@ void test_t1494(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1494.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6532,7 +6524,7 @@ void test_t1495(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1495.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6545,7 +6537,7 @@ void test_t1496(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1496.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6558,7 +6550,7 @@ void test_t1497(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1497.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6571,7 +6563,7 @@ void test_t1498(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1498.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6584,7 +6576,7 @@ void test_t1499(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1499.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6597,7 +6589,7 @@ void test_t1500(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1500.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6610,7 +6602,7 @@ void test_t1501(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1501.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6623,7 +6615,7 @@ void test_t1502(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1502.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6636,7 +6628,7 @@ void test_t1503(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1503.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6649,7 +6641,7 @@ void test_t1504(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1504.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6662,7 +6654,7 @@ void test_t1505(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1505.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6675,7 +6667,7 @@ void test_t1506(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1506.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6688,7 +6680,7 @@ void test_t1507(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1507.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6701,7 +6693,7 @@ void test_t1508(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1508.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6714,7 +6706,7 @@ void test_t1509(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1509.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6727,7 +6719,7 @@ void test_t1510(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1510.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6740,7 +6732,7 @@ void test_t1511(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1511.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6753,7 +6745,7 @@ void test_t1512(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1512.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6766,7 +6758,7 @@ void test_t1513(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1513.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6779,7 +6771,7 @@ void test_t1514(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1514.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6792,7 +6784,7 @@ void test_t1515(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1515.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6805,7 +6797,7 @@ void test_t1516(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1516.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6818,7 +6810,7 @@ void test_t1517(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1517.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6831,7 +6823,7 @@ void test_t1518(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1518.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6844,7 +6836,7 @@ void test_t1519(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1519.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6857,7 +6849,7 @@ void test_t1520(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1520.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6870,7 +6862,7 @@ void test_t1521(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1521.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6883,7 +6875,7 @@ void test_t1522(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1522.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6896,7 +6888,7 @@ void test_t1523(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1523.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6909,7 +6901,7 @@ void test_t1524(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1524.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6922,7 +6914,7 @@ void test_t1525(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1525.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6935,7 +6927,7 @@ void test_t1526(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1526.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6948,7 +6940,7 @@ void test_t1527(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1527.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6961,7 +6953,7 @@ void test_t1528(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1528.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6974,7 +6966,7 @@ void test_t1529(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1529.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -6987,7 +6979,7 @@ void test_t1530(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1530.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7000,7 +6992,7 @@ void test_t1531(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1531.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7013,7 +7005,7 @@ void test_t1532(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1532.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7026,7 +7018,7 @@ void test_t1533(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1533.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7039,7 +7031,7 @@ void test_t1534(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1534.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7052,7 +7044,7 @@ void test_t1535(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1535.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7065,7 +7057,7 @@ void test_t1536(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1536.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7078,7 +7070,7 @@ void test_t1537(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1537.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7091,7 +7083,7 @@ void test_t1538(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1538.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7104,7 +7096,7 @@ void test_t1539(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1539.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7117,7 +7109,7 @@ void test_t1540(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1540.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7130,7 +7122,7 @@ void test_t1541(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1541.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7143,7 +7135,7 @@ void test_t1542(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1542.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7156,7 +7148,7 @@ void test_t1543(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1543.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7169,7 +7161,7 @@ void test_t1544(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1544.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7182,7 +7174,7 @@ void test_t1545(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1545.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7195,7 +7187,7 @@ void test_t1546(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1546.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7208,7 +7200,7 @@ void test_t1547(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1547.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7221,7 +7213,7 @@ void test_t1548(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1548.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7234,7 +7226,7 @@ void test_t1549(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1549.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7247,7 +7239,7 @@ void test_t1550(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1550.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7260,7 +7252,7 @@ void test_t1551(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1551.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7273,7 +7265,7 @@ void test_t1552(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1552.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7286,7 +7278,7 @@ void test_t1553(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1553.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7299,7 +7291,7 @@ void test_t1554(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1554.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7312,7 +7304,7 @@ void test_t1555(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1555.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7325,7 +7317,7 @@ void test_t1556(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1556.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7338,7 +7330,7 @@ void test_t1557(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1557.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7351,7 +7343,7 @@ void test_t1558(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1558.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7364,7 +7356,7 @@ void test_t1559(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1559.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7377,7 +7369,7 @@ void test_t1560(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1560.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7390,7 +7382,7 @@ void test_t1561(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1561.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7403,7 +7395,7 @@ void test_t1562(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1562.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7416,7 +7408,7 @@ void test_t1563(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1563.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7429,7 +7421,7 @@ void test_t1564(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1564.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7442,7 +7434,7 @@ void test_t1565(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1565.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7455,7 +7447,7 @@ void test_t1566(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1566.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7468,7 +7460,7 @@ void test_t1567(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1567.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7481,7 +7473,7 @@ void test_t1568(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1568.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7494,7 +7486,7 @@ void test_t1569(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1569.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7507,7 +7499,7 @@ void test_t1570(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1570.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7520,7 +7512,7 @@ void test_t1571(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1571.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7533,7 +7525,7 @@ void test_t1572(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1572.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7546,7 +7538,7 @@ void test_t1573(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1573.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7559,7 +7551,7 @@ void test_t1574(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1574.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7572,7 +7564,7 @@ void test_t1575(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1575.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7585,7 +7577,7 @@ void test_t1576(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1576.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7598,7 +7590,7 @@ void test_t1577(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1577.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7611,7 +7603,7 @@ void test_t1578(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1578.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7624,7 +7616,7 @@ void test_t1579(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1579.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7637,7 +7629,7 @@ void test_t1580(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1580.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7650,7 +7642,7 @@ void test_t1581(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1581.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7663,7 +7655,7 @@ void test_t1582(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1582.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7676,7 +7668,7 @@ void test_t1583(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1583.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7689,7 +7681,7 @@ void test_t1584(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1584.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7702,7 +7694,7 @@ void test_t1585(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1585.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7715,7 +7707,7 @@ void test_t1586(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1586.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7728,7 +7720,7 @@ void test_t1587(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1587.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7741,7 +7733,7 @@ void test_t1588(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1588.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7754,7 +7746,7 @@ void test_t1589(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1589.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7767,7 +7759,7 @@ void test_t1590(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1590.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7780,7 +7772,7 @@ void test_t1591(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1591.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7793,7 +7785,7 @@ void test_t1592(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1592.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7806,7 +7798,7 @@ void test_t1593(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1593.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7819,7 +7811,7 @@ void test_t1594(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1594.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7832,7 +7824,7 @@ void test_t1595(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1595.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7845,7 +7837,7 @@ void test_t1596(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1596.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7858,7 +7850,7 @@ void test_t1597(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1597.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7871,7 +7863,7 @@ void test_t1598(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1598.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7884,7 +7876,7 @@ void test_t1599(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1599.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7897,7 +7889,7 @@ void test_t1600(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1600.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7910,7 +7902,7 @@ void test_t1601(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1601.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7923,7 +7915,7 @@ void test_t1602(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1602.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7936,7 +7928,7 @@ void test_t1603(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1603.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7949,7 +7941,7 @@ void test_t1604(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1604.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7962,7 +7954,7 @@ void test_t1605(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1605.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7975,7 +7967,7 @@ void test_t1606(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1606.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -7988,7 +7980,7 @@ void test_t1607(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1607.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8001,7 +7993,7 @@ void test_t1608(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1608.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8014,7 +8006,7 @@ void test_t1609(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1609.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8027,7 +8019,7 @@ void test_t1610(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1610.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8040,7 +8032,7 @@ void test_t1611(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1611.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8053,7 +8045,7 @@ void test_t1612(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1612.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8066,7 +8058,7 @@ void test_t1613(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1613.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8079,7 +8071,7 @@ void test_t1614(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1614.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8092,7 +8084,7 @@ void test_t1615(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1615.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8105,7 +8097,7 @@ void test_t1616(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1616.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8118,7 +8110,7 @@ void test_t1617(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1617.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8131,7 +8123,7 @@ void test_t1618(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1618.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8144,7 +8136,7 @@ void test_t1619(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1619.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8157,7 +8149,7 @@ void test_t1620(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1620.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8170,7 +8162,7 @@ void test_t1621(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1621.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8183,7 +8175,7 @@ void test_t1622(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1622.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8196,7 +8188,7 @@ void test_t1623(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1623.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8209,7 +8201,7 @@ void test_t1624(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1624.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8222,7 +8214,7 @@ void test_t1625(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1625.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8235,7 +8227,7 @@ void test_t1626(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1626.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8248,7 +8240,7 @@ void test_t1627(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1627.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8261,7 +8253,7 @@ void test_t1628(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1628.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8274,7 +8266,7 @@ void test_t1629(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1629.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8287,7 +8279,7 @@ void test_t1630(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1630.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8300,7 +8292,7 @@ void test_t1631(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1631.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8313,7 +8305,7 @@ void test_t1632(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1632.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8326,7 +8318,7 @@ void test_t1633(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1633.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8339,7 +8331,7 @@ void test_t1634(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1634.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8352,7 +8344,7 @@ void test_t1635(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1635.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8365,7 +8357,7 @@ void test_t1636(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1636.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8378,7 +8370,7 @@ void test_t1637(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1637.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8391,7 +8383,7 @@ void test_t1638(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1638.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8404,7 +8396,7 @@ void test_t1639(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1639.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8417,7 +8409,7 @@ void test_t1640(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1640.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8430,7 +8422,7 @@ void test_t1641(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1641.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8443,7 +8435,7 @@ void test_t1642(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1642.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8456,7 +8448,7 @@ void test_t1643(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1643.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8469,7 +8461,7 @@ void test_t1644(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1644.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8482,7 +8474,7 @@ void test_t1645(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1645.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8495,7 +8487,7 @@ void test_t1646(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1646.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8508,7 +8500,7 @@ void test_t1647(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1647.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8521,7 +8513,7 @@ void test_t1648(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1648.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8534,7 +8526,7 @@ void test_t1649(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1649.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8547,7 +8539,7 @@ void test_t1650(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1650.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8560,7 +8552,7 @@ void test_t1651(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1651.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8573,7 +8565,7 @@ void test_t1652(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1652.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8586,7 +8578,7 @@ void test_t1653(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1653.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8599,7 +8591,7 @@ void test_t1654(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1654.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8612,7 +8604,7 @@ void test_t1655(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1655.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8625,7 +8617,7 @@ void test_t1656(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1656.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8638,7 +8630,7 @@ void test_t1657(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1657.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8651,7 +8643,7 @@ void test_t1658(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1658.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8664,7 +8656,7 @@ void test_t1659(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1659.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8677,7 +8669,7 @@ void test_t1660(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1660.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8690,7 +8682,7 @@ void test_t1661(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1661.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8703,7 +8695,7 @@ void test_t1662(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1662.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8716,7 +8708,7 @@ void test_t1663(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1663.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8729,7 +8721,7 @@ void test_t1664(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1664.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8742,7 +8734,7 @@ void test_t1665(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1665.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8755,7 +8747,7 @@ void test_t1666(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1666.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8768,7 +8760,7 @@ void test_t1667(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1667.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8781,7 +8773,7 @@ void test_t1668(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1668.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8794,7 +8786,7 @@ void test_t1669(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1669.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8807,7 +8799,7 @@ void test_t1670(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1670.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8820,7 +8812,7 @@ void test_t1671(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1671.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8833,7 +8825,7 @@ void test_t1672(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1672.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8846,7 +8838,7 @@ void test_t1673(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1673.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8859,7 +8851,7 @@ void test_t1674(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1674.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8872,7 +8864,7 @@ void test_t1675(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1675.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8885,7 +8877,7 @@ void test_t1676(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1676.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8898,7 +8890,7 @@ void test_t1677(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1677.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8911,7 +8903,7 @@ void test_t1678(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1678.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8924,7 +8916,7 @@ void test_t1679(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1679.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8937,7 +8929,7 @@ void test_t1680(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1680.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8950,7 +8942,7 @@ void test_t1681(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1681.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8963,7 +8955,7 @@ void test_t1682(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1682.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8976,7 +8968,7 @@ void test_t1683(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1683.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -8989,7 +8981,7 @@ void test_t1684(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1684.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9002,7 +8994,7 @@ void test_t1685(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1685.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9015,7 +9007,7 @@ void test_t1686(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1686.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9028,7 +9020,7 @@ void test_t1687(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1687.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9041,7 +9033,7 @@ void test_t1688(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1688.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9054,7 +9046,7 @@ void test_t1689(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1689.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9067,7 +9059,7 @@ void test_t1690(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1690.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9080,7 +9072,7 @@ void test_t1691(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1691.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9093,7 +9085,7 @@ void test_t1692(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1692.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9106,7 +9098,7 @@ void test_t1693(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1693.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9119,7 +9111,7 @@ void test_t1694(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1694.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9132,7 +9124,7 @@ void test_t1695(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1695.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9145,7 +9137,7 @@ void test_t1696(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1696.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9158,7 +9150,7 @@ void test_t1697(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1697.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9171,7 +9163,7 @@ void test_t1698(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1698.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9184,7 +9176,7 @@ void test_t1699(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1699.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9197,7 +9189,7 @@ void test_t1700(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1700.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9210,7 +9202,7 @@ void test_t1701(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1701.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9223,7 +9215,7 @@ void test_t1702(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1702.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9236,7 +9228,7 @@ void test_t1703(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1703.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9249,7 +9241,7 @@ void test_t1704(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1704.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9262,7 +9254,7 @@ void test_t1705(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1705.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9275,7 +9267,7 @@ void test_t1706(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1706.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9288,7 +9280,7 @@ void test_t1707(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1707.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9301,7 +9293,7 @@ void test_t1708(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1708.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9314,7 +9306,7 @@ void test_t1709(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1709.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9327,7 +9319,7 @@ void test_t1710(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1710.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9340,7 +9332,7 @@ void test_t1711(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1711.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9353,7 +9345,7 @@ void test_t1712(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1712.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9366,7 +9358,7 @@ void test_t1713(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1713.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9379,7 +9371,7 @@ void test_t1714(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1714.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9392,7 +9384,7 @@ void test_t1715(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1715.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9405,7 +9397,7 @@ void test_t1716(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1716.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9418,7 +9410,7 @@ void test_t1717(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1717.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9431,7 +9423,7 @@ void test_t1718(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1718.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9444,7 +9436,7 @@ void test_t1719(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1719.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9457,7 +9449,7 @@ void test_t1720(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1720.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9470,7 +9462,7 @@ void test_t1721(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1721.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9483,7 +9475,7 @@ void test_t1722(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1722.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9496,7 +9488,7 @@ void test_t1723(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1723.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9509,7 +9501,7 @@ void test_t1724(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1724.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9522,7 +9514,7 @@ void test_t1725(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1725.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9535,7 +9527,7 @@ void test_t1726(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1726.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9548,7 +9540,7 @@ void test_t1727(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1727.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9561,7 +9553,7 @@ void test_t1728(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1728.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9574,7 +9566,7 @@ void test_t1729(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1729.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9587,7 +9579,7 @@ void test_t1730(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1730.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9600,7 +9592,7 @@ void test_t1731(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1731.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9613,7 +9605,7 @@ void test_t1732(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1732.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9626,7 +9618,7 @@ void test_t1733(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1733.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9639,7 +9631,7 @@ void test_t1734(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1734.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9652,7 +9644,7 @@ void test_t1735(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1735.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9665,7 +9657,7 @@ void test_t1736(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1736.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9678,7 +9670,7 @@ void test_t1737(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1737.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9691,7 +9683,7 @@ void test_t1738(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1738.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9704,7 +9696,7 @@ void test_t1739(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1739.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9717,7 +9709,7 @@ void test_t1740(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1740.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9730,7 +9722,7 @@ void test_t1741(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1741.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9743,7 +9735,7 @@ void test_t1742(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1742.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9756,7 +9748,7 @@ void test_t1743(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1743.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9769,7 +9761,7 @@ void test_t1744(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1744.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9782,7 +9774,7 @@ void test_t1745(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1745.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9795,7 +9787,7 @@ void test_t1746(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1746.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9808,7 +9800,7 @@ void test_t1747(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1747.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9821,7 +9813,7 @@ void test_t1748(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1748.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9834,7 +9826,7 @@ void test_t1749(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1749.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9847,7 +9839,7 @@ void test_t1750(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1750.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9860,7 +9852,7 @@ void test_t1751(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1751.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9873,7 +9865,7 @@ void test_t1752(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1752.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9886,7 +9878,7 @@ void test_t1753(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1753.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9899,7 +9891,7 @@ void test_t1754(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1754.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9912,7 +9904,7 @@ void test_t1755(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1755.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9925,7 +9917,7 @@ void test_t1756(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1756.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9938,7 +9930,7 @@ void test_t1757(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1757.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9951,7 +9943,7 @@ void test_t1758(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1758.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9964,7 +9956,7 @@ void test_t1759(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1759.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9977,7 +9969,7 @@ void test_t1760(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1760.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -9990,7 +9982,7 @@ void test_t1761(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1761.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10003,7 +9995,7 @@ void test_t1762(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1762.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10016,7 +10008,7 @@ void test_t1763(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1763.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10029,7 +10021,7 @@ void test_t1764(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1764.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10042,7 +10034,7 @@ void test_t1765(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1765.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10055,7 +10047,7 @@ void test_t1766(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1766.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10068,7 +10060,7 @@ void test_t1767(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1767.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10081,7 +10073,7 @@ void test_t1768(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1768.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10094,7 +10086,7 @@ void test_t1769(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1769.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10107,7 +10099,7 @@ void test_t1770(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1770.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10120,7 +10112,7 @@ void test_t1771(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1771.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10133,7 +10125,7 @@ void test_t1772(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1772.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10146,7 +10138,7 @@ void test_t1773(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1773.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10159,7 +10151,7 @@ void test_t1774(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1774.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10172,7 +10164,7 @@ void test_t1775(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1775.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10185,7 +10177,7 @@ void test_t1776(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1776.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10198,7 +10190,7 @@ void test_t1777(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1777.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10211,7 +10203,7 @@ void test_t1778(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1778.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10224,7 +10216,7 @@ void test_t1779(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1779.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10237,7 +10229,7 @@ void test_t1780(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1780.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10250,7 +10242,7 @@ void test_t1781(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1781.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10263,7 +10255,7 @@ void test_t1782(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1782.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10276,7 +10268,7 @@ void test_t1783(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1783.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10289,7 +10281,7 @@ void test_t1784(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1784.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10302,7 +10294,7 @@ void test_t1785(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1785.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10315,7 +10307,7 @@ void test_t1786(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1786.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10328,7 +10320,7 @@ void test_t1787(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1787.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10341,7 +10333,7 @@ void test_t1788(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1788.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10354,7 +10346,7 @@ void test_t1789(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1789.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10367,7 +10359,7 @@ void test_t1790(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1790.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10380,7 +10372,7 @@ void test_t1791(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1791.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10393,7 +10385,7 @@ void test_t1792(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1792.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10406,7 +10398,7 @@ void test_t1793(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1793.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10419,7 +10411,7 @@ void test_t1794(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1794.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10432,7 +10424,7 @@ void test_t1795(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1795.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10445,7 +10437,7 @@ void test_t1796(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1796.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10458,7 +10450,7 @@ void test_t1797(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1797.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10471,7 +10463,7 @@ void test_t1798(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1798.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10484,7 +10476,7 @@ void test_t1799(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1799.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10497,7 +10489,7 @@ void test_t1800(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1800.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10510,7 +10502,7 @@ void test_t1801(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1801.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10523,7 +10515,7 @@ void test_t1802(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1802.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10536,7 +10528,7 @@ void test_t1803(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1803.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10549,7 +10541,7 @@ void test_t1804(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1804.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10562,7 +10554,7 @@ void test_t1805(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1805.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10575,7 +10567,7 @@ void test_t1806(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1806.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10588,7 +10580,7 @@ void test_t1807(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1807.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10601,7 +10593,7 @@ void test_t1808(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1808.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10614,7 +10606,7 @@ void test_t1809(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1809.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10627,7 +10619,7 @@ void test_t1810(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1810.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10640,7 +10632,7 @@ void test_t1811(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1811.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10653,7 +10645,7 @@ void test_t1812(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1812.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10666,7 +10658,7 @@ void test_t1813(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1813.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10679,7 +10671,7 @@ void test_t1814(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1814.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10692,7 +10684,7 @@ void test_t1815(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1815.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10705,7 +10697,7 @@ void test_t1816(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1816.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10718,7 +10710,7 @@ void test_t1817(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1817.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10731,7 +10723,7 @@ void test_t1818(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1818.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10744,7 +10736,7 @@ void test_t1819(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1819.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10757,7 +10749,7 @@ void test_t1820(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1820.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10770,7 +10762,7 @@ void test_t1821(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1821.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10783,7 +10775,7 @@ void test_t1822(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1822.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10796,7 +10788,7 @@ void test_t1823(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1823.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10809,7 +10801,7 @@ void test_t1824(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1824.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10822,7 +10814,7 @@ void test_t1825(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1825.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10835,7 +10827,7 @@ void test_t1826(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1826.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10848,7 +10840,7 @@ void test_t1827(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1827.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10861,7 +10853,7 @@ void test_t1828(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1828.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10874,7 +10866,7 @@ void test_t1829(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1829.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10887,7 +10879,7 @@ void test_t1830(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1830.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10900,7 +10892,7 @@ void test_t1831(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1831.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10913,7 +10905,7 @@ void test_t1832(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1832.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10926,7 +10918,7 @@ void test_t1833(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1833.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10939,7 +10931,7 @@ void test_t1834(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1834.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10952,7 +10944,7 @@ void test_t1835(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1835.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10965,7 +10957,7 @@ void test_t1836(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1836.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10978,7 +10970,7 @@ void test_t1837(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1837.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -10991,7 +10983,7 @@ void test_t1838(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1838.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11004,7 +10996,7 @@ void test_t1839(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1839.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11017,7 +11009,7 @@ void test_t1840(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1840.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11030,7 +11022,7 @@ void test_t1841(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1841.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11043,7 +11035,7 @@ void test_t1842(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1842.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11056,7 +11048,7 @@ void test_t1843(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1843.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11069,7 +11061,7 @@ void test_t1844(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1844.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11082,7 +11074,7 @@ void test_t1845(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1845.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11095,7 +11087,7 @@ void test_t1846(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1846.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11108,7 +11100,7 @@ void test_t1847(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1847.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11121,7 +11113,7 @@ void test_t1848(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1848.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11134,7 +11126,7 @@ void test_t1849(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1849.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11147,7 +11139,7 @@ void test_t1850(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1850.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11160,7 +11152,7 @@ void test_t1851(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1851.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11173,7 +11165,7 @@ void test_t1852(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1852.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11186,7 +11178,7 @@ void test_t1853(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1853.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11199,7 +11191,7 @@ void test_t1854(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1854.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11212,7 +11204,7 @@ void test_t1855(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1855.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11225,7 +11217,7 @@ void test_t1856(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1856.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11238,7 +11230,7 @@ void test_t1857(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1857.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11251,7 +11243,7 @@ void test_t1858(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1858.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11264,7 +11256,7 @@ void test_t1859(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1859.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11277,7 +11269,7 @@ void test_t1860(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1860.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11290,7 +11282,7 @@ void test_t1861(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1861.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11303,7 +11295,7 @@ void test_t1862(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1862.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11316,7 +11308,7 @@ void test_t1863(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1863.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11329,7 +11321,7 @@ void test_t1864(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1864.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11342,7 +11334,7 @@ void test_t1865(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1865.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11355,7 +11347,7 @@ void test_t1866(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1866.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11368,7 +11360,7 @@ void test_t1867(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1867.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11381,7 +11373,7 @@ void test_t1868(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1868.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11394,7 +11386,7 @@ void test_t1869(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1869.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11407,7 +11399,7 @@ void test_t1870(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1870.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11420,7 +11412,7 @@ void test_t1871(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1871.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11433,7 +11425,7 @@ void test_t1872(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1872.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11446,7 +11438,7 @@ void test_t1873(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1873.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11459,7 +11451,7 @@ void test_t1874(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1874.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11472,7 +11464,7 @@ void test_t1875(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1875.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11485,7 +11477,7 @@ void test_t1876(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1876.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11498,7 +11490,7 @@ void test_t1877(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1877.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11511,7 +11503,7 @@ void test_t1878(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1878.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11524,7 +11516,7 @@ void test_t1879(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1879.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11537,7 +11529,7 @@ void test_t1880(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1880.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11550,7 +11542,7 @@ void test_t1881(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1881.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11563,7 +11555,7 @@ void test_t1882(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1882.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11576,7 +11568,7 @@ void test_t1883(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1883.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11589,7 +11581,7 @@ void test_t1884(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1884.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11602,7 +11594,7 @@ void test_t1885(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1885.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11615,7 +11607,7 @@ void test_t1886(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1886.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11628,7 +11620,7 @@ void test_t1887(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1887.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11641,7 +11633,7 @@ void test_t1888(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1888.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11654,7 +11646,7 @@ void test_t1889(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1889.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11667,7 +11659,7 @@ void test_t1890(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1890.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11680,7 +11672,7 @@ void test_t1891(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1891.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11693,7 +11685,7 @@ void test_t1892(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1892.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11706,7 +11698,7 @@ void test_t1893(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1893.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11719,7 +11711,7 @@ void test_t1894(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1894.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11732,7 +11724,7 @@ void test_t1895(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1895.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11745,7 +11737,7 @@ void test_t1896(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1896.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11758,7 +11750,7 @@ void test_t1897(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1897.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11771,7 +11763,7 @@ void test_t1898(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1898.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11784,7 +11776,7 @@ void test_t1899(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1899.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11797,7 +11789,7 @@ void test_t1900(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1900.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11810,7 +11802,7 @@ void test_t1901(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1901.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11823,7 +11815,7 @@ void test_t1902(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1902.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11836,7 +11828,7 @@ void test_t1903(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1903.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11849,7 +11841,7 @@ void test_t1904(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1904.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11862,7 +11854,7 @@ void test_t1905(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1905.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11875,7 +11867,7 @@ void test_t1906(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1906.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11888,7 +11880,7 @@ void test_t1907(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1907.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11901,7 +11893,7 @@ void test_t1908(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1908.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11914,7 +11906,7 @@ void test_t1909(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1909.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11927,7 +11919,7 @@ void test_t1910(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1910.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11940,7 +11932,7 @@ void test_t1911(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1911.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11953,7 +11945,7 @@ void test_t1912(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1912.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11966,7 +11958,7 @@ void test_t1913(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1913.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11979,7 +11971,7 @@ void test_t1914(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1914.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -11992,7 +11984,7 @@ void test_t1915(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1915.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12005,7 +11997,7 @@ void test_t1916(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1916.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12018,7 +12010,7 @@ void test_t1917(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1917.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12031,7 +12023,7 @@ void test_t1918(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1918.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12044,7 +12036,7 @@ void test_t1919(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1919.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12057,7 +12049,7 @@ void test_t1920(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1920.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12070,7 +12062,7 @@ void test_t1921(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1921.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12083,7 +12075,7 @@ void test_t1922(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1922.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12096,7 +12088,7 @@ void test_t1923(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1923.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12109,7 +12101,7 @@ void test_t1924(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1924.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12122,7 +12114,7 @@ void test_t1925(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1925.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12135,7 +12127,7 @@ void test_t1926(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1926.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12148,7 +12140,7 @@ void test_t1927(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1927.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12161,7 +12153,7 @@ void test_t1928(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1928.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12174,7 +12166,7 @@ void test_t1929(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1929.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12187,7 +12179,7 @@ void test_t1930(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1930.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12200,7 +12192,7 @@ void test_t1931(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1931.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12213,7 +12205,7 @@ void test_t1932(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1932.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12226,7 +12218,7 @@ void test_t1933(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1933.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12239,7 +12231,7 @@ void test_t1934(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1934.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12252,7 +12244,7 @@ void test_t1935(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1935.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12265,7 +12257,7 @@ void test_t1936(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1936.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12278,7 +12270,7 @@ void test_t1937(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1937.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12291,7 +12283,7 @@ void test_t1938(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1938.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12304,7 +12296,7 @@ void test_t1939(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1939.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12317,7 +12309,7 @@ void test_t1940(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1940.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12330,7 +12322,7 @@ void test_t1941(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1941.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12343,7 +12335,7 @@ void test_t1942(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1942.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12356,7 +12348,7 @@ void test_t1943(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1943.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12369,7 +12361,7 @@ void test_t1944(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1944.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12382,7 +12374,7 @@ void test_t1945(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1945.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12395,7 +12387,7 @@ void test_t1946(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1946.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12408,7 +12400,7 @@ void test_t1947(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1947.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12421,7 +12413,7 @@ void test_t1948(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1948.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12434,7 +12426,7 @@ void test_t1949(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1949.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12447,7 +12439,7 @@ void test_t1950(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1950.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12460,7 +12452,7 @@ void test_t1951(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1951.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12473,7 +12465,7 @@ void test_t1952(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1952.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12486,7 +12478,7 @@ void test_t1953(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1953.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12499,7 +12491,7 @@ void test_t1954(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1954.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12512,7 +12504,7 @@ void test_t1955(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1955.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12525,7 +12517,7 @@ void test_t1956(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1956.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12538,7 +12530,7 @@ void test_t1957(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1957.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12551,7 +12543,7 @@ void test_t1958(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1958.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12564,7 +12556,7 @@ void test_t1959(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1959.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12577,7 +12569,7 @@ void test_t1960(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1960.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12590,7 +12582,7 @@ void test_t1961(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1961.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12603,7 +12595,7 @@ void test_t1962(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1962.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12616,7 +12608,7 @@ void test_t1963(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1963.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12629,7 +12621,7 @@ void test_t1964(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1964.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12642,7 +12634,7 @@ void test_t1965(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1965.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12655,7 +12647,7 @@ void test_t1966(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1966.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12668,7 +12660,7 @@ void test_t1967(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1967.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12681,7 +12673,7 @@ void test_t1968(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1968.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12694,7 +12686,7 @@ void test_t1969(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1969.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12707,7 +12699,7 @@ void test_t1970(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1970.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12720,7 +12712,7 @@ void test_t1971(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1971.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12733,7 +12725,7 @@ void test_t1972(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1972.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12746,7 +12738,7 @@ void test_t1973(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1973.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12759,7 +12751,7 @@ void test_t1974(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1974.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12772,7 +12764,7 @@ void test_t1975(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1975.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12785,7 +12777,7 @@ void test_t1976(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1976.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12798,7 +12790,7 @@ void test_t1977(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1977.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12811,7 +12803,7 @@ void test_t1978(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1978.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12824,7 +12816,7 @@ void test_t1979(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1979.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12837,7 +12829,7 @@ void test_t1980(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1980.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12850,7 +12842,7 @@ void test_t1981(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1981.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12863,7 +12855,7 @@ void test_t1982(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1982.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12876,7 +12868,7 @@ void test_t1983(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1983.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12889,7 +12881,7 @@ void test_t1984(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1984.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12902,7 +12894,7 @@ void test_t1985(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1985.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12915,7 +12907,7 @@ void test_t1986(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1986.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12928,7 +12920,7 @@ void test_t1987(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1987.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12941,7 +12933,7 @@ void test_t1988(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1988.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12954,7 +12946,7 @@ void test_t1989(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1989.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12967,7 +12959,7 @@ void test_t1990(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1990.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12980,7 +12972,7 @@ void test_t1991(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1991.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -12993,7 +12985,7 @@ void test_t1992(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1992.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13006,7 +12998,7 @@ void test_t1993(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1993.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13019,7 +13011,7 @@ void test_t1994(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1994.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13032,7 +13024,7 @@ void test_t1995(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1995.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13045,7 +13037,7 @@ void test_t1996(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1996.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13058,7 +13050,7 @@ void test_t1997(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1997.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13071,7 +13063,7 @@ void test_t1998(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t1998.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13084,7 +13076,7 @@ void test_t1999(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t1999.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13097,7 +13089,7 @@ void test_t2000(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2000.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13110,7 +13102,7 @@ void test_t2001(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2001.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13123,7 +13115,7 @@ void test_t2002(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2002.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13136,7 +13128,7 @@ void test_t2003(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2003.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13149,7 +13141,7 @@ void test_t2004(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2004.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13162,7 +13154,7 @@ void test_t2005(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2005.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13175,7 +13167,7 @@ void test_t2006(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2006.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13188,7 +13180,7 @@ void test_t2007(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2007.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13201,7 +13193,7 @@ void test_t2008(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2008.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13214,7 +13206,7 @@ void test_t2009(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2009.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13227,7 +13219,7 @@ void test_t2010(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2010.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13240,7 +13232,7 @@ void test_t2011(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2011.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13253,7 +13245,7 @@ void test_t2012(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2012.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13266,7 +13258,7 @@ void test_t2013(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2013.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13279,7 +13271,7 @@ void test_t2014(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2014.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13292,7 +13284,7 @@ void test_t2015(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2015.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13305,7 +13297,7 @@ void test_t2016(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2016.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13318,7 +13310,7 @@ void test_t2017(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2017.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13331,7 +13323,7 @@ void test_t2018(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2018.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13344,7 +13336,7 @@ void test_t2019(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2019.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13357,7 +13349,7 @@ void test_t2020(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2020.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13370,7 +13362,7 @@ void test_t2021(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2021.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13383,7 +13375,7 @@ void test_t2022(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2022.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13396,7 +13388,7 @@ void test_t2023(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2023.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13409,7 +13401,7 @@ void test_t2024(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2024.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13422,7 +13414,7 @@ void test_t2025(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2025.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13435,7 +13427,7 @@ void test_t2026(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2026.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13448,7 +13440,7 @@ void test_t2027(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2027.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13461,7 +13453,7 @@ void test_t2028(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2028.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13474,7 +13466,7 @@ void test_t2029(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2029.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13487,7 +13479,7 @@ void test_t2030(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2030.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13500,7 +13492,7 @@ void test_t2031(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2031.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13513,7 +13505,7 @@ void test_t2032(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2032.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13526,7 +13518,7 @@ void test_t2033(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2033.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13539,7 +13531,7 @@ void test_t2034(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2034.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13552,7 +13544,7 @@ void test_t2035(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2035.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13565,7 +13557,7 @@ void test_t2036(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2036.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13578,7 +13570,7 @@ void test_t2037(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2037.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13591,7 +13583,7 @@ void test_t2038(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2038.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13604,7 +13596,7 @@ void test_t2039(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2039.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13617,7 +13609,7 @@ void test_t2040(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2040.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13630,7 +13622,7 @@ void test_t2041(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2041.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13643,7 +13635,7 @@ void test_t2042(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2042.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13656,7 +13648,7 @@ void test_t2043(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2043.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13669,7 +13661,7 @@ void test_t2044(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2044.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13682,7 +13674,7 @@ void test_t2045(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2045.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13695,7 +13687,7 @@ void test_t2046(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2046.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13708,7 +13700,7 @@ void test_t2047(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2047.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13721,7 +13713,7 @@ void test_t2048(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2048.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13734,7 +13726,7 @@ void test_t2049(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2049.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13747,7 +13739,7 @@ void test_t2050(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2050.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13760,7 +13752,7 @@ void test_t2051(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2051.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13773,7 +13765,7 @@ void test_t2052(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2052.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13786,7 +13778,7 @@ void test_t2053(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2053.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13799,7 +13791,7 @@ void test_t2054(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2054.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13812,7 +13804,7 @@ void test_t2055(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2055.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13825,7 +13817,7 @@ void test_t2056(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2056.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13838,7 +13830,7 @@ void test_t2057(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2057.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13851,7 +13843,7 @@ void test_t2058(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2058.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13864,7 +13856,7 @@ void test_t2059(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2059.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13877,7 +13869,7 @@ void test_t2060(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2060.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13890,7 +13882,7 @@ void test_t2061(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2061.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13903,7 +13895,7 @@ void test_t2062(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2062.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13916,7 +13908,7 @@ void test_t2063(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2063.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13929,7 +13921,7 @@ void test_t2064(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2064.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13942,7 +13934,7 @@ void test_t2065(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2065.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13955,7 +13947,7 @@ void test_t2066(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2066.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13968,7 +13960,7 @@ void test_t2067(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2067.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13981,7 +13973,7 @@ void test_t2068(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2068.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -13994,7 +13986,7 @@ void test_t2069(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2069.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14007,7 +13999,7 @@ void test_t2070(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2070.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14020,7 +14012,7 @@ void test_t2071(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2071.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14033,7 +14025,7 @@ void test_t2072(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2072.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14046,7 +14038,7 @@ void test_t2073(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2073.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14059,7 +14051,7 @@ void test_t2074(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2074.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14072,7 +14064,7 @@ void test_t2075(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2075.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14085,7 +14077,7 @@ void test_t2076(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2076.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14098,7 +14090,7 @@ void test_t2077(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2077.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14111,7 +14103,7 @@ void test_t2078(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2078.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14124,7 +14116,7 @@ void test_t2079(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2079.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14137,7 +14129,7 @@ void test_t2080(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2080.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14150,7 +14142,7 @@ void test_t2081(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2081.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14163,7 +14155,7 @@ void test_t2082(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2082.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14176,7 +14168,7 @@ void test_t2083(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2083.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14189,7 +14181,7 @@ void test_t2084(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2084.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14202,7 +14194,7 @@ void test_t2085(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2085.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14215,7 +14207,7 @@ void test_t2086(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2086.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14228,7 +14220,7 @@ void test_t2087(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2087.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14241,7 +14233,7 @@ void test_t2088(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2088.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14254,7 +14246,7 @@ void test_t2089(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2089.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14267,7 +14259,7 @@ void test_t2090(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2090.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14280,7 +14272,7 @@ void test_t2091(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2091.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14293,7 +14285,7 @@ void test_t2092(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2092.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14306,7 +14298,7 @@ void test_t2093(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2093.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14319,7 +14311,7 @@ void test_t2094(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2094.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14332,7 +14324,7 @@ void test_t2095(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2095.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14345,7 +14337,7 @@ void test_t2096(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2096.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14358,7 +14350,7 @@ void test_t2097(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2097.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14371,7 +14363,7 @@ void test_t2098(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2098.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14384,7 +14376,7 @@ void test_t2099(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2099.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14397,7 +14389,7 @@ void test_t2100(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2100.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14410,7 +14402,7 @@ void test_t2101(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2101.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14423,7 +14415,7 @@ void test_t2102(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2102.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14436,7 +14428,7 @@ void test_t2103(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2103.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14449,7 +14441,7 @@ void test_t2104(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2104.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14462,7 +14454,7 @@ void test_t2105(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2105.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14475,7 +14467,7 @@ void test_t2106(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2106.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14488,7 +14480,7 @@ void test_t2107(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2107.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14501,7 +14493,7 @@ void test_t2108(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2108.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14514,7 +14506,7 @@ void test_t2109(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2109.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14527,7 +14519,7 @@ void test_t2110(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2110.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14540,7 +14532,7 @@ void test_t2111(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2111.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14553,7 +14545,7 @@ void test_t2112(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2112.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14566,7 +14558,7 @@ void test_t2113(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2113.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14579,7 +14571,7 @@ void test_t2114(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2114.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14592,7 +14584,7 @@ void test_t2115(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2115.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14605,7 +14597,7 @@ void test_t2116(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2116.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14618,7 +14610,7 @@ void test_t2117(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2117.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14631,7 +14623,7 @@ void test_t2118(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2118.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14644,7 +14636,7 @@ void test_t2119(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2119.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14657,7 +14649,7 @@ void test_t2120(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2120.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14670,7 +14662,7 @@ void test_t2121(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2121.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14683,7 +14675,7 @@ void test_t2122(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2122.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14696,7 +14688,7 @@ void test_t2123(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2123.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14709,7 +14701,7 @@ void test_t2124(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2124.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14722,7 +14714,7 @@ void test_t2125(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2125.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14735,7 +14727,7 @@ void test_t2126(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2126.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14748,7 +14740,7 @@ void test_t2127(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2127.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14761,7 +14753,7 @@ void test_t2128(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2128.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14774,7 +14766,7 @@ void test_t2129(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2129.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14787,7 +14779,7 @@ void test_t2130(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2130.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14800,7 +14792,7 @@ void test_t2131(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2131.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14813,7 +14805,7 @@ void test_t2132(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2132.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14826,7 +14818,7 @@ void test_t2133(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2133.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14839,7 +14831,7 @@ void test_t2134(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2134.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14852,7 +14844,7 @@ void test_t2135(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2135.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14865,7 +14857,7 @@ void test_t2136(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2136.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14878,7 +14870,7 @@ void test_t2137(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2137.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14891,7 +14883,7 @@ void test_t2138(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2138.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14904,7 +14896,7 @@ void test_t2139(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2139.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14917,7 +14909,7 @@ void test_t2140(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2140.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14930,7 +14922,7 @@ void test_t2141(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2141.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14943,7 +14935,7 @@ void test_t2142(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2142.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14956,7 +14948,7 @@ void test_t2143(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2143.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14969,7 +14961,7 @@ void test_t2144(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2144.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14982,7 +14974,7 @@ void test_t2145(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2145.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -14995,7 +14987,7 @@ void test_t2146(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2146.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15008,7 +15000,7 @@ void test_t2147(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2147.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15021,7 +15013,7 @@ void test_t2148(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2148.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15034,7 +15026,7 @@ void test_t2149(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2149.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15047,7 +15039,7 @@ void test_t2150(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2150.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15060,7 +15052,7 @@ void test_t2151(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2151.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15073,7 +15065,7 @@ void test_t2152(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2152.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15086,7 +15078,7 @@ void test_t2153(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2153.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15099,7 +15091,7 @@ void test_t2154(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2154.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15112,7 +15104,7 @@ void test_t2155(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2155.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15125,7 +15117,7 @@ void test_t2156(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2156.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15138,7 +15130,7 @@ void test_t2157(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2157.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15151,7 +15143,7 @@ void test_t2158(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2158.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15164,7 +15156,7 @@ void test_t2159(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2159.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15177,7 +15169,7 @@ void test_t2160(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2160.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15190,7 +15182,7 @@ void test_t2161(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2161.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15203,7 +15195,7 @@ void test_t2162(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2162.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15216,7 +15208,7 @@ void test_t2163(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2163.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15229,7 +15221,7 @@ void test_t2164(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2164.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15242,7 +15234,7 @@ void test_t2165(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2165.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15255,7 +15247,7 @@ void test_t2166(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2166.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15268,7 +15260,7 @@ void test_t2167(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2167.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15281,7 +15273,7 @@ void test_t2168(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2168.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15294,7 +15286,7 @@ void test_t2169(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2169.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15307,7 +15299,7 @@ void test_t2170(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2170.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15320,7 +15312,7 @@ void test_t2171(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2171.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15333,7 +15325,7 @@ void test_t2172(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2172.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15346,7 +15338,7 @@ void test_t2173(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2173.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15359,7 +15351,7 @@ void test_t2174(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2174.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15372,7 +15364,7 @@ void test_t2175(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2175.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15385,7 +15377,7 @@ void test_t2176(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2176.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15398,7 +15390,7 @@ void test_t2177(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2177.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15411,7 +15403,7 @@ void test_t2178(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2178.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15424,7 +15416,7 @@ void test_t2179(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2179.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15437,7 +15429,7 @@ void test_t2180(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2180.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15450,7 +15442,7 @@ void test_t2181(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2181.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15463,7 +15455,7 @@ void test_t2182(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2182.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15476,7 +15468,7 @@ void test_t2183(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2183.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15489,7 +15481,7 @@ void test_t2184(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2184.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15502,7 +15494,7 @@ void test_t2185(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2185.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15515,7 +15507,7 @@ void test_t2186(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2186.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15528,7 +15520,7 @@ void test_t2187(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2187.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15541,7 +15533,7 @@ void test_t2188(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2188.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15554,7 +15546,7 @@ void test_t2189(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2189.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15567,7 +15559,7 @@ void test_t2190(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2190.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15580,7 +15572,7 @@ void test_t2191(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2191.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15593,7 +15585,7 @@ void test_t2192(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2192.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15606,7 +15598,7 @@ void test_t2193(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2193.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15619,7 +15611,7 @@ void test_t2194(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2194.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15632,7 +15624,7 @@ void test_t2195(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2195.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15645,7 +15637,7 @@ void test_t2196(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2196.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15658,7 +15650,7 @@ void test_t2197(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2197.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15671,7 +15663,7 @@ void test_t2198(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2198.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15684,7 +15676,7 @@ void test_t2199(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2199.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15697,7 +15689,7 @@ void test_t2200(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2200.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15710,7 +15702,7 @@ void test_t2201(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2201.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15723,7 +15715,7 @@ void test_t2202(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2202.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15736,7 +15728,7 @@ void test_t2203(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2203.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15749,7 +15741,7 @@ void test_t2204(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2204.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15762,7 +15754,7 @@ void test_t2205(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2205.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15775,7 +15767,7 @@ void test_t2206(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2206.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15788,7 +15780,7 @@ void test_t2207(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2207.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15801,7 +15793,7 @@ void test_t2208(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2208.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15814,7 +15806,7 @@ void test_t2209(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2209.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15827,7 +15819,7 @@ void test_t2210(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2210.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15840,7 +15832,7 @@ void test_t2211(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2211.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15853,7 +15845,7 @@ void test_t2212(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2212.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15866,7 +15858,7 @@ void test_t2213(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2213.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15879,7 +15871,7 @@ void test_t2214(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2214.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15892,7 +15884,7 @@ void test_t2215(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2215.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15905,7 +15897,7 @@ void test_t2216(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2216.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15918,7 +15910,7 @@ void test_t2217(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2217.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15931,7 +15923,7 @@ void test_t2218(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2218.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15944,7 +15936,7 @@ void test_t2219(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2219.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15957,7 +15949,7 @@ void test_t2220(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2220.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15970,7 +15962,7 @@ void test_t2221(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2221.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15983,7 +15975,7 @@ void test_t2222(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2222.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -15996,7 +15988,7 @@ void test_t2223(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2223.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16009,7 +16001,7 @@ void test_t2224(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2224.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16022,7 +16014,7 @@ void test_t2225(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2225.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16035,7 +16027,7 @@ void test_t2226(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2226.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16048,7 +16040,7 @@ void test_t2227(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2227.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16061,7 +16053,7 @@ void test_t2228(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2228.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16074,7 +16066,7 @@ void test_t2229(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2229.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16087,7 +16079,7 @@ void test_t2230(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2230.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16100,7 +16092,7 @@ void test_t2231(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2231.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16113,7 +16105,7 @@ void test_t2232(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2232.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16126,7 +16118,7 @@ void test_t2233(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2233.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16139,7 +16131,7 @@ void test_t2234(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2234.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16152,7 +16144,7 @@ void test_t2235(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2235.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16165,7 +16157,7 @@ void test_t2236(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2236.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16178,7 +16170,7 @@ void test_t2237(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2237.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16191,7 +16183,7 @@ void test_t2238(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2238.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16204,7 +16196,7 @@ void test_t2239(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2239.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16217,7 +16209,7 @@ void test_t2240(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2240.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16230,7 +16222,7 @@ void test_t2241(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2241.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16243,7 +16235,7 @@ void test_t2242(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2242.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16256,7 +16248,7 @@ void test_t2243(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2243.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16269,7 +16261,7 @@ void test_t2244(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2244.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16282,7 +16274,7 @@ void test_t2245(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2245.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16295,7 +16287,7 @@ void test_t2246(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2246.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16308,7 +16300,7 @@ void test_t2247(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2247.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16321,7 +16313,7 @@ void test_t2248(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2248.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16334,7 +16326,7 @@ void test_t2249(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2249.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16347,7 +16339,7 @@ void test_t2250(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2250.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16360,7 +16352,7 @@ void test_t2251(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2251.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16373,7 +16365,7 @@ void test_t2252(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2252.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16386,7 +16378,7 @@ void test_t2253(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2253.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16399,7 +16391,7 @@ void test_t2254(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2254.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16412,7 +16404,7 @@ void test_t2255(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2255.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16425,7 +16417,7 @@ void test_t2256(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2256.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16438,7 +16430,7 @@ void test_t2257(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2257.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16451,7 +16443,7 @@ void test_t2258(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2258.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16464,7 +16456,7 @@ void test_t2259(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2259.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16477,7 +16469,7 @@ void test_t2260(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2260.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16490,7 +16482,7 @@ void test_t2261(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2261.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16503,7 +16495,7 @@ void test_t2262(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2262.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16516,7 +16508,7 @@ void test_t2263(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2263.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16529,7 +16521,7 @@ void test_t2264(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2264.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16542,7 +16534,7 @@ void test_t2265(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2265.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16555,7 +16547,7 @@ void test_t2266(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2266.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16568,7 +16560,7 @@ void test_t2267(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2267.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16581,7 +16573,7 @@ void test_t2268(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2268.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16594,7 +16586,7 @@ void test_t2269(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2269.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16607,7 +16599,7 @@ void test_t2270(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2270.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16620,7 +16612,7 @@ void test_t2271(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2271.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16633,7 +16625,7 @@ void test_t2272(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2272.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16646,7 +16638,7 @@ void test_t2273(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2273.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16659,7 +16651,7 @@ void test_t2274(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2274.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16672,7 +16664,7 @@ void test_t2275(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2275.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16685,7 +16677,7 @@ void test_t2276(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2276.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16698,7 +16690,7 @@ void test_t2277(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2277.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16711,7 +16703,7 @@ void test_t2278(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2278.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16724,7 +16716,7 @@ void test_t2279(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2279.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16737,7 +16729,7 @@ void test_t2280(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2280.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16750,7 +16742,7 @@ void test_t2281(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2281.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16763,7 +16755,7 @@ void test_t2282(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2282.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16776,7 +16768,7 @@ void test_t2283(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2283.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16789,7 +16781,7 @@ void test_t2284(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2284.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16802,7 +16794,7 @@ void test_t2285(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2285.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16815,7 +16807,7 @@ void test_t2286(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2286.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16828,7 +16820,7 @@ void test_t2287(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2287.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16841,7 +16833,7 @@ void test_t2288(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2288.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16854,7 +16846,7 @@ void test_t2289(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2289.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16867,7 +16859,7 @@ void test_t2290(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2290.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16880,7 +16872,7 @@ void test_t2291(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2291.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16893,7 +16885,7 @@ void test_t2292(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2292.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16906,7 +16898,7 @@ void test_t2293(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2293.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16919,7 +16911,7 @@ void test_t2294(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2294.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16932,7 +16924,7 @@ void test_t2295(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2295.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16945,7 +16937,7 @@ void test_t2296(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2296.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16958,7 +16950,7 @@ void test_t2297(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2297.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16971,7 +16963,7 @@ void test_t2298(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2298.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16984,7 +16976,7 @@ void test_t2299(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2299.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -16997,7 +16989,7 @@ void test_t2300(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2300.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17010,7 +17002,7 @@ void test_t2301(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2301.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17023,7 +17015,7 @@ void test_t2302(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2302.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17036,7 +17028,7 @@ void test_t2303(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2303.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17049,7 +17041,7 @@ void test_t2304(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2304.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17062,7 +17054,7 @@ void test_t2305(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2305.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17075,7 +17067,7 @@ void test_t2306(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2306.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17088,7 +17080,7 @@ void test_t2307(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2307.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17101,7 +17093,7 @@ void test_t2308(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2308.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17114,7 +17106,7 @@ void test_t2309(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2309.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17127,7 +17119,7 @@ void test_t2310(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2310.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17140,7 +17132,7 @@ void test_t2311(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2311.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17153,7 +17145,7 @@ void test_t2312(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2312.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17166,7 +17158,7 @@ void test_t2313(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2313.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17179,7 +17171,7 @@ void test_t2314(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2314.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17192,7 +17184,7 @@ void test_t2315(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2315.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17205,7 +17197,7 @@ void test_t2316(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2316.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17218,7 +17210,7 @@ void test_t2317(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2317.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17231,7 +17223,7 @@ void test_t2318(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2318.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17244,7 +17236,7 @@ void test_t2319(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2319.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17257,7 +17249,7 @@ void test_t2320(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2320.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17270,7 +17262,7 @@ void test_t2321(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2321.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17283,7 +17275,7 @@ void test_t2322(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2322.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17296,7 +17288,7 @@ void test_t2323(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2323.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17309,7 +17301,7 @@ void test_t2324(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2324.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17322,7 +17314,7 @@ void test_t2325(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2325.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17335,7 +17327,7 @@ void test_t2326(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2326.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17348,7 +17340,7 @@ void test_t2327(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2327.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17361,7 +17353,7 @@ void test_t2328(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2328.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17374,7 +17366,7 @@ void test_t2329(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2329.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17387,7 +17379,7 @@ void test_t2330(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2330.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17400,7 +17392,7 @@ void test_t2331(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2331.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17413,7 +17405,7 @@ void test_t2332(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2332.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17426,7 +17418,7 @@ void test_t2333(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2333.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17439,7 +17431,7 @@ void test_t2334(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2334.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17452,7 +17444,7 @@ void test_t2335(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2335.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17465,7 +17457,7 @@ void test_t2336(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2336.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17478,7 +17470,7 @@ void test_t2337(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2337.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17491,7 +17483,7 @@ void test_t2338(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2338.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17504,7 +17496,7 @@ void test_t2339(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2339.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17517,7 +17509,7 @@ void test_t2340(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2340.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17530,7 +17522,7 @@ void test_t2341(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2341.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17543,7 +17535,7 @@ void test_t2342(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2342.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17556,7 +17548,7 @@ void test_t2343(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2343.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17569,7 +17561,7 @@ void test_t2344(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2344.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17582,7 +17574,7 @@ void test_t2345(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2345.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17595,7 +17587,7 @@ void test_t2346(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2346.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17608,7 +17600,7 @@ void test_t2347(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2347.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17621,7 +17613,7 @@ void test_t2348(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2348.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17634,7 +17626,7 @@ void test_t2349(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2349.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17647,7 +17639,7 @@ void test_t2350(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2350.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17660,7 +17652,7 @@ void test_t2351(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2351.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17673,7 +17665,7 @@ void test_t2352(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2352.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17686,7 +17678,7 @@ void test_t2353(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2353.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17699,7 +17691,7 @@ void test_t2354(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2354.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17712,7 +17704,7 @@ void test_t2355(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2355.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17725,7 +17717,7 @@ void test_t2356(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2356.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17738,7 +17730,7 @@ void test_t2357(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2357.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17751,7 +17743,7 @@ void test_t2358(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2358.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17764,7 +17756,7 @@ void test_t2359(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2359.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17777,7 +17769,7 @@ void test_t2360(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2360.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17790,7 +17782,7 @@ void test_t2361(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2361.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17803,7 +17795,7 @@ void test_t2362(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2362.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17816,7 +17808,7 @@ void test_t2363(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2363.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17829,7 +17821,7 @@ void test_t2364(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2364.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17842,7 +17834,7 @@ void test_t2365(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2365.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17855,7 +17847,7 @@ void test_t2366(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2366.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17868,7 +17860,7 @@ void test_t2367(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2367.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17881,7 +17873,7 @@ void test_t2368(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2368.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17894,7 +17886,7 @@ void test_t2369(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2369.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17907,7 +17899,7 @@ void test_t2370(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2370.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17920,7 +17912,7 @@ void test_t2371(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2371.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17933,7 +17925,7 @@ void test_t2372(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2372.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17946,7 +17938,7 @@ void test_t2373(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2373.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17959,7 +17951,7 @@ void test_t2374(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2374.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17972,7 +17964,7 @@ void test_t2375(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2375.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17985,7 +17977,7 @@ void test_t2376(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2376.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -17998,7 +17990,7 @@ void test_t2377(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2377.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18011,7 +18003,7 @@ void test_t2378(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2378.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18024,7 +18016,7 @@ void test_t2379(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2379.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18037,7 +18029,7 @@ void test_t2380(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2380.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18050,7 +18042,7 @@ void test_t2381(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2381.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18063,7 +18055,7 @@ void test_t2382(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2382.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18076,7 +18068,7 @@ void test_t2383(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2383.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18089,7 +18081,7 @@ void test_t2384(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2384.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18102,7 +18094,7 @@ void test_t2385(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2385.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18115,7 +18107,7 @@ void test_t2386(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2386.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18128,7 +18120,7 @@ void test_t2387(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2387.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18141,7 +18133,7 @@ void test_t2388(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2388.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18154,7 +18146,7 @@ void test_t2389(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2389.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18167,7 +18159,7 @@ void test_t2390(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2390.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18180,7 +18172,7 @@ void test_t2391(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2391.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18193,7 +18185,7 @@ void test_t2392(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2392.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18206,7 +18198,7 @@ void test_t2393(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2393.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18219,7 +18211,7 @@ void test_t2394(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2394.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18232,7 +18224,7 @@ void test_t2395(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2395.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18245,7 +18237,7 @@ void test_t2396(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2396.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18258,7 +18250,7 @@ void test_t2397(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2397.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18271,7 +18263,7 @@ void test_t2398(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2398.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18284,7 +18276,7 @@ void test_t2399(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2399.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18297,7 +18289,7 @@ void test_t2400(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2400.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18310,7 +18302,7 @@ void test_t2401(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2401.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18323,7 +18315,7 @@ void test_t2402(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2402.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18336,7 +18328,7 @@ void test_t2403(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2403.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18349,7 +18341,7 @@ void test_t2404(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2404.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18362,7 +18354,7 @@ void test_t2405(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2405.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18375,7 +18367,7 @@ void test_t2406(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2406.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18388,7 +18380,7 @@ void test_t2407(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2407.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18401,7 +18393,7 @@ void test_t2408(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2408.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18414,7 +18406,7 @@ void test_t2409(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2409.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18427,7 +18419,7 @@ void test_t2410(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2410.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18440,7 +18432,7 @@ void test_t2411(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2411.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18453,7 +18445,7 @@ void test_t2412(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2412.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18466,7 +18458,7 @@ void test_t2413(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2413.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18479,7 +18471,7 @@ void test_t2414(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2414.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18492,7 +18484,7 @@ void test_t2415(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2415.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18505,7 +18497,7 @@ void test_t2416(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2416.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18518,7 +18510,7 @@ void test_t2417(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2417.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18531,7 +18523,7 @@ void test_t2418(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2418.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18544,7 +18536,7 @@ void test_t2419(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2419.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18557,7 +18549,7 @@ void test_t2420(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2420.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18570,7 +18562,7 @@ void test_t2421(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2421.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18583,7 +18575,7 @@ void test_t2422(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2422.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18596,7 +18588,7 @@ void test_t2423(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2423.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18609,7 +18601,7 @@ void test_t2424(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2424.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18622,7 +18614,7 @@ void test_t2425(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2425.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18635,7 +18627,7 @@ void test_t2426(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2426.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18648,7 +18640,7 @@ void test_t2427(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2427.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18661,7 +18653,7 @@ void test_t2428(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2428.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18674,7 +18666,7 @@ void test_t2429(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2429.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18687,7 +18679,7 @@ void test_t2430(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2430.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18700,7 +18692,7 @@ void test_t2431(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2431.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18713,7 +18705,7 @@ void test_t2432(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2432.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18726,7 +18718,7 @@ void test_t2433(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2433.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18739,7 +18731,7 @@ void test_t2434(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2434.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18752,7 +18744,7 @@ void test_t2435(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2435.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18765,7 +18757,7 @@ void test_t2436(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2436.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18778,7 +18770,7 @@ void test_t2437(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2437.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18791,7 +18783,7 @@ void test_t2438(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2438.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18804,7 +18796,7 @@ void test_t2439(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2439.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18817,7 +18809,7 @@ void test_t2440(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2440.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18830,7 +18822,7 @@ void test_t2441(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2441.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18843,7 +18835,7 @@ void test_t2442(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2442.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18856,7 +18848,7 @@ void test_t2443(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2443.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18869,7 +18861,7 @@ void test_t2444(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2444.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18882,7 +18874,7 @@ void test_t2445(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2445.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18895,7 +18887,7 @@ void test_t2446(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2446.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18908,7 +18900,7 @@ void test_t2447(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2447.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18921,7 +18913,7 @@ void test_t2448(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2448.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18934,7 +18926,7 @@ void test_t2449(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2449.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18947,7 +18939,7 @@ void test_t2450(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2450.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18960,7 +18952,7 @@ void test_t2451(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2451.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18973,7 +18965,7 @@ void test_t2452(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2452.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18986,7 +18978,7 @@ void test_t2453(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2453.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -18999,7 +18991,7 @@ void test_t2454(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2454.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19012,7 +19004,7 @@ void test_t2455(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2455.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19025,7 +19017,7 @@ void test_t2456(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2456.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19038,7 +19030,7 @@ void test_t2457(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2457.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19051,7 +19043,7 @@ void test_t2458(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2458.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19064,7 +19056,7 @@ void test_t2459(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2459.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19077,7 +19069,7 @@ void test_t2460(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2460.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19090,7 +19082,7 @@ void test_t2461(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2461.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19103,7 +19095,7 @@ void test_t2462(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2462.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19116,7 +19108,7 @@ void test_t2463(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2463.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19129,7 +19121,7 @@ void test_t2464(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2464.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19142,7 +19134,7 @@ void test_t2465(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2465.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19155,7 +19147,7 @@ void test_t2466(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2466.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19168,7 +19160,7 @@ void test_t2467(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2467.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19181,7 +19173,7 @@ void test_t2468(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2468.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19194,7 +19186,7 @@ void test_t2469(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2469.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19207,7 +19199,7 @@ void test_t2470(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2470.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19220,7 +19212,7 @@ void test_t2471(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2471.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19233,7 +19225,7 @@ void test_t2472(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2472.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19246,7 +19238,7 @@ void test_t2473(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2473.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19259,7 +19251,7 @@ void test_t2474(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2474.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19272,7 +19264,7 @@ void test_t2475(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2475.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19285,7 +19277,7 @@ void test_t2476(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2476.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19298,7 +19290,7 @@ void test_t2477(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2477.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19311,7 +19303,7 @@ void test_t2478(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2478.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19324,7 +19316,7 @@ void test_t2479(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2479.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19337,7 +19329,7 @@ void test_t2480(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2480.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19350,7 +19342,7 @@ void test_t2481(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2481.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19363,7 +19355,7 @@ void test_t2482(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2482.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19376,7 +19368,7 @@ void test_t2483(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2483.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19389,7 +19381,7 @@ void test_t2484(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2484.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19402,7 +19394,7 @@ void test_t2485(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2485.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19415,7 +19407,7 @@ void test_t2486(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2486.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19428,7 +19420,7 @@ void test_t2487(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2487.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19441,7 +19433,7 @@ void test_t2488(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2488.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19454,7 +19446,7 @@ void test_t2489(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2489.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19467,7 +19459,7 @@ void test_t2490(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2490.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19480,7 +19472,7 @@ void test_t2491(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2491.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19493,7 +19485,7 @@ void test_t2492(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2492.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19506,7 +19498,7 @@ void test_t2493(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2493.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19519,7 +19511,7 @@ void test_t2494(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2494.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19532,7 +19524,7 @@ void test_t2495(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2495.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19545,7 +19537,7 @@ void test_t2496(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2496.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19558,7 +19550,7 @@ void test_t2497(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2497.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19571,7 +19563,7 @@ void test_t2498(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2498.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19584,7 +19576,7 @@ void test_t2499(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2499.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19597,7 +19589,7 @@ void test_t2500(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2500.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19610,7 +19602,7 @@ void test_t2501(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2501.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19623,7 +19615,7 @@ void test_t2502(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2502.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19636,7 +19628,7 @@ void test_t2503(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2503.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19649,7 +19641,7 @@ void test_t2504(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2504.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19662,7 +19654,7 @@ void test_t2505(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2505.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19675,7 +19667,7 @@ void test_t2506(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2506.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19688,7 +19680,7 @@ void test_t2507(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2507.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19701,7 +19693,7 @@ void test_t2508(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2508.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19714,7 +19706,7 @@ void test_t2509(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2509.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19727,7 +19719,7 @@ void test_t2510(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2510.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19740,7 +19732,7 @@ void test_t2511(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2511.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19753,7 +19745,7 @@ void test_t2512(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2512.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19766,7 +19758,7 @@ void test_t2513(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2513.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19779,7 +19771,7 @@ void test_t2514(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2514.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19792,7 +19784,7 @@ void test_t2515(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2515.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19805,7 +19797,7 @@ void test_t2516(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2516.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19818,7 +19810,7 @@ void test_t2517(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2517.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19831,7 +19823,7 @@ void test_t2518(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2518.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19844,7 +19836,7 @@ void test_t2519(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2519.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19857,7 +19849,7 @@ void test_t2520(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2520.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19870,7 +19862,7 @@ void test_t2521(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2521.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19883,7 +19875,7 @@ void test_t2522(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2522.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19896,7 +19888,7 @@ void test_t2523(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2523.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19909,7 +19901,7 @@ void test_t2524(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2524.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19922,7 +19914,7 @@ void test_t2525(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2525.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19935,7 +19927,7 @@ void test_t2526(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2526.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19948,7 +19940,7 @@ void test_t2527(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2527.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19961,7 +19953,7 @@ void test_t2528(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2528.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19974,7 +19966,7 @@ void test_t2529(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2529.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -19987,7 +19979,7 @@ void test_t2530(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2530.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20000,7 +19992,7 @@ void test_t2531(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2531.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20013,7 +20005,7 @@ void test_t2532(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2532.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20026,7 +20018,7 @@ void test_t2533(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2533.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20039,7 +20031,7 @@ void test_t2534(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2534.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20052,7 +20044,7 @@ void test_t2535(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2535.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20065,7 +20057,7 @@ void test_t2536(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2536.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20078,7 +20070,7 @@ void test_t2537(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2537.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20091,7 +20083,7 @@ void test_t2538(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2538.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20104,7 +20096,7 @@ void test_t2539(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2539.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20117,7 +20109,7 @@ void test_t2540(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2540.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20130,7 +20122,7 @@ void test_t2541(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2541.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20143,7 +20135,7 @@ void test_t2542(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2542.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20156,7 +20148,7 @@ void test_t2543(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2543.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20169,7 +20161,7 @@ void test_t2544(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2544.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20182,7 +20174,7 @@ void test_t2545(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2545.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20195,7 +20187,7 @@ void test_t2546(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2546.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20208,7 +20200,7 @@ void test_t2547(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2547.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20221,7 +20213,7 @@ void test_t2548(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2548.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20234,7 +20226,7 @@ void test_t2549(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2549.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20247,7 +20239,7 @@ void test_t2550(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2550.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20260,7 +20252,7 @@ void test_t2551(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2551.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20273,7 +20265,7 @@ void test_t2552(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2552.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20286,7 +20278,7 @@ void test_t2553(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2553.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20299,7 +20291,7 @@ void test_t2554(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2554.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20312,7 +20304,7 @@ void test_t2555(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2555.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20325,7 +20317,7 @@ void test_t2556(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2556.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20338,7 +20330,7 @@ void test_t2557(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2557.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20351,7 +20343,7 @@ void test_t2558(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2558.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20364,7 +20356,7 @@ void test_t2559(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2559.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20377,7 +20369,7 @@ void test_t2560(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2560.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20390,7 +20382,7 @@ void test_t2561(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2561.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20403,7 +20395,7 @@ void test_t2562(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2562.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20416,7 +20408,7 @@ void test_t2563(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2563.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20429,7 +20421,7 @@ void test_t2564(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2564.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20442,7 +20434,7 @@ void test_t2565(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2565.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20455,7 +20447,7 @@ void test_t2566(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2566.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20468,7 +20460,7 @@ void test_t2567(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2567.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20481,7 +20473,7 @@ void test_t2568(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2568.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20494,7 +20486,7 @@ void test_t2569(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2569.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20507,7 +20499,7 @@ void test_t2570(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2570.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20520,7 +20512,7 @@ void test_t2571(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2571.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20533,7 +20525,7 @@ void test_t2572(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2572.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20546,7 +20538,7 @@ void test_t2573(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2573.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20559,7 +20551,7 @@ void test_t2574(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2574.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20572,7 +20564,7 @@ void test_t2575(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2575.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20585,7 +20577,7 @@ void test_t2576(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2576.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20598,7 +20590,7 @@ void test_t2577(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2577.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20611,7 +20603,7 @@ void test_t2578(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2578.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20624,7 +20616,7 @@ void test_t2579(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2579.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20637,7 +20629,7 @@ void test_t2580(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2580.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20650,7 +20642,7 @@ void test_t2581(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2581.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20663,7 +20655,7 @@ void test_t2582(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2582.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20676,7 +20668,7 @@ void test_t2583(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2583.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20689,7 +20681,7 @@ void test_t2584(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2584.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20702,7 +20694,7 @@ void test_t2585(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2585.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20715,7 +20707,7 @@ void test_t2586(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2586.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20728,7 +20720,7 @@ void test_t2587(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2587.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20741,7 +20733,7 @@ void test_t2588(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2588.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20754,7 +20746,7 @@ void test_t2589(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2589.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20767,7 +20759,7 @@ void test_t2590(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2590.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20780,7 +20772,7 @@ void test_t2591(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2591.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20793,7 +20785,7 @@ void test_t2592(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2592.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20806,7 +20798,7 @@ void test_t2593(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2593.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20819,7 +20811,7 @@ void test_t2594(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2594.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20832,7 +20824,7 @@ void test_t2595(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2595.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20845,7 +20837,7 @@ void test_t2596(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2596.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20858,7 +20850,7 @@ void test_t2597(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2597.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20871,7 +20863,7 @@ void test_t2598(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2598.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20884,7 +20876,7 @@ void test_t2599(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2599.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20897,7 +20889,7 @@ void test_t2600(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2600.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20910,7 +20902,7 @@ void test_t2601(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2601.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20923,7 +20915,7 @@ void test_t2602(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2602.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20936,7 +20928,7 @@ void test_t2603(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2603.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20949,7 +20941,7 @@ void test_t2604(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2604.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20962,7 +20954,7 @@ void test_t2605(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2605.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20975,7 +20967,7 @@ void test_t2606(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2606.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -20988,7 +20980,7 @@ void test_t2607(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2607.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21001,7 +20993,7 @@ void test_t2608(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2608.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21014,7 +21006,7 @@ void test_t2609(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2609.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21027,7 +21019,7 @@ void test_t2610(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2610.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21040,7 +21032,7 @@ void test_t2611(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2611.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21053,7 +21045,7 @@ void test_t2612(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2612.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21066,7 +21058,7 @@ void test_t2613(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2613.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21079,7 +21071,7 @@ void test_t2614(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2614.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21092,7 +21084,7 @@ void test_t2615(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2615.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21105,7 +21097,7 @@ void test_t2616(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2616.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21118,7 +21110,7 @@ void test_t2617(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2617.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21131,7 +21123,7 @@ void test_t2618(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2618.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21144,7 +21136,7 @@ void test_t2619(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2619.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21157,7 +21149,7 @@ void test_t2620(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2620.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21170,7 +21162,7 @@ void test_t2621(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2621.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21183,7 +21175,7 @@ void test_t2622(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2622.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21196,7 +21188,7 @@ void test_t2623(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2623.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21209,7 +21201,7 @@ void test_t2624(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2624.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21222,7 +21214,7 @@ void test_t2625(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2625.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21235,7 +21227,7 @@ void test_t2626(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2626.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21248,7 +21240,7 @@ void test_t2627(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2627.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21261,7 +21253,7 @@ void test_t2628(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2628.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21274,7 +21266,7 @@ void test_t2629(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2629.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21287,7 +21279,7 @@ void test_t2630(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2630.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21300,7 +21292,7 @@ void test_t2631(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2631.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21313,7 +21305,7 @@ void test_t2632(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2632.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21326,7 +21318,7 @@ void test_t2633(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2633.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21339,7 +21331,7 @@ void test_t2634(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2634.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21352,7 +21344,7 @@ void test_t2635(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2635.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21365,7 +21357,7 @@ void test_t2636(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2636.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21378,7 +21370,7 @@ void test_t2637(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2637.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21391,7 +21383,7 @@ void test_t2638(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2638.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21404,7 +21396,7 @@ void test_t2639(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2639.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21417,7 +21409,7 @@ void test_t2640(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2640.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21430,7 +21422,7 @@ void test_t2641(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2641.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21443,7 +21435,7 @@ void test_t2642(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2642.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21456,7 +21448,7 @@ void test_t2643(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2643.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21469,7 +21461,7 @@ void test_t2644(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2644.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21482,7 +21474,7 @@ void test_t2645(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2645.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21495,7 +21487,7 @@ void test_t2646(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2646.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21508,7 +21500,7 @@ void test_t2647(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2647.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21521,7 +21513,7 @@ void test_t2648(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2648.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21534,7 +21526,7 @@ void test_t2649(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2649.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21547,7 +21539,7 @@ void test_t2650(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2650.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21560,7 +21552,7 @@ void test_t2651(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2651.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21573,7 +21565,7 @@ void test_t2652(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2652.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21586,7 +21578,7 @@ void test_t2653(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2653.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21599,7 +21591,7 @@ void test_t2654(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2654.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21612,7 +21604,7 @@ void test_t2655(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2655.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21625,7 +21617,7 @@ void test_t2656(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2656.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21638,7 +21630,7 @@ void test_t2657(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2657.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21651,7 +21643,7 @@ void test_t2658(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2658.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21664,7 +21656,7 @@ void test_t2659(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2659.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21677,7 +21669,7 @@ void test_t2660(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2660.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21690,7 +21682,7 @@ void test_t2661(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2661.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21703,7 +21695,7 @@ void test_t2662(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2662.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21716,7 +21708,7 @@ void test_t2663(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2663.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21729,7 +21721,7 @@ void test_t2664(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2664.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21742,7 +21734,7 @@ void test_t2665(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2665.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21755,7 +21747,7 @@ void test_t2666(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2666.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21768,7 +21760,7 @@ void test_t2667(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2667.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21781,7 +21773,7 @@ void test_t2668(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2668.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21794,7 +21786,7 @@ void test_t2669(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2669.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21807,7 +21799,7 @@ void test_t2670(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2670.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21820,7 +21812,7 @@ void test_t2671(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2671.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21833,7 +21825,7 @@ void test_t2672(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2672.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21846,7 +21838,7 @@ void test_t2673(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2673.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21859,7 +21851,7 @@ void test_t2674(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2674.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21872,7 +21864,7 @@ void test_t2675(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2675.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21885,7 +21877,7 @@ void test_t2676(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2676.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21898,7 +21890,7 @@ void test_t2677(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2677.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21911,7 +21903,7 @@ void test_t2678(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2678.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21924,7 +21916,7 @@ void test_t2679(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2679.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21937,7 +21929,7 @@ void test_t2680(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2680.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21950,7 +21942,7 @@ void test_t2681(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2681.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21963,7 +21955,7 @@ void test_t2682(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2682.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21976,7 +21968,7 @@ void test_t2683(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2683.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -21989,7 +21981,7 @@ void test_t2684(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2684.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22002,7 +21994,7 @@ void test_t2685(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2685.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22015,7 +22007,7 @@ void test_t2686(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2686.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22028,7 +22020,7 @@ void test_t2687(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2687.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22041,7 +22033,7 @@ void test_t2688(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2688.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22054,7 +22046,7 @@ void test_t2689(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2689.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22067,7 +22059,7 @@ void test_t2690(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2690.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22080,7 +22072,7 @@ void test_t2691(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2691.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22093,7 +22085,7 @@ void test_t2692(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2692.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22106,7 +22098,7 @@ void test_t2693(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2693.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22119,7 +22111,7 @@ void test_t2694(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2694.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22132,7 +22124,7 @@ void test_t2695(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2695.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22145,7 +22137,7 @@ void test_t2696(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2696.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22158,7 +22150,7 @@ void test_t2697(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2697.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22171,7 +22163,7 @@ void test_t2698(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2698.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22184,7 +22176,7 @@ void test_t2699(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2699.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22197,7 +22189,7 @@ void test_t2700(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2700.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22210,7 +22202,7 @@ void test_t2701(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2701.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22223,7 +22215,7 @@ void test_t2702(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2702.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22236,7 +22228,7 @@ void test_t2703(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2703.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22249,7 +22241,7 @@ void test_t2704(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2704.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22262,7 +22254,7 @@ void test_t2705(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2705.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22275,7 +22267,7 @@ void test_t2706(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2706.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22288,7 +22280,7 @@ void test_t2707(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2707.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22301,7 +22293,7 @@ void test_t2708(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2708.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22314,7 +22306,7 @@ void test_t2709(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2709.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22327,7 +22319,7 @@ void test_t2710(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2710.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22340,7 +22332,7 @@ void test_t2711(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2711.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22353,7 +22345,7 @@ void test_t2712(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2712.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22366,7 +22358,7 @@ void test_t2713(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2713.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22379,7 +22371,7 @@ void test_t2714(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2714.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22392,7 +22384,7 @@ void test_t2715(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2715.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22405,7 +22397,7 @@ void test_t2716(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2716.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22418,7 +22410,7 @@ void test_t2717(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2717.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22431,7 +22423,7 @@ void test_t2718(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2718.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22444,7 +22436,7 @@ void test_t2719(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2719.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22457,7 +22449,7 @@ void test_t2720(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2720.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22470,7 +22462,7 @@ void test_t2721(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2721.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22483,7 +22475,7 @@ void test_t2722(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2722.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22496,7 +22488,7 @@ void test_t2723(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2723.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22509,7 +22501,7 @@ void test_t2724(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2724.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22522,7 +22514,7 @@ void test_t2725(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2725.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22535,7 +22527,7 @@ void test_t2726(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2726.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22548,7 +22540,7 @@ void test_t2727(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2727.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22561,7 +22553,7 @@ void test_t2728(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2728.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22574,7 +22566,7 @@ void test_t2729(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2729.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22587,7 +22579,7 @@ void test_t2730(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2730.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22600,7 +22592,7 @@ void test_t2731(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2731.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22613,7 +22605,7 @@ void test_t2732(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2732.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22626,7 +22618,7 @@ void test_t2733(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2733.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22639,7 +22631,7 @@ void test_t2734(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2734.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22652,7 +22644,7 @@ void test_t2735(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2735.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22665,7 +22657,7 @@ void test_t2736(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2736.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22678,7 +22670,7 @@ void test_t2737(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2737.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22691,7 +22683,7 @@ void test_t2738(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2738.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22704,7 +22696,7 @@ void test_t2739(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2739.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22717,7 +22709,7 @@ void test_t2740(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2740.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22730,7 +22722,7 @@ void test_t2741(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2741.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22743,7 +22735,7 @@ void test_t2742(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2742.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22756,7 +22748,7 @@ void test_t2743(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2743.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22769,7 +22761,7 @@ void test_t2744(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2744.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22782,7 +22774,7 @@ void test_t2745(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2745.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22795,7 +22787,7 @@ void test_t2746(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2746.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22808,7 +22800,7 @@ void test_t2747(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2747.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22821,7 +22813,7 @@ void test_t2748(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2748.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22834,7 +22826,7 @@ void test_t2749(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2749.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22847,7 +22839,7 @@ void test_t2750(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2750.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22860,7 +22852,7 @@ void test_t2751(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2751.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22873,7 +22865,7 @@ void test_t2752(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2752.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22886,7 +22878,7 @@ void test_t2753(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2753.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22899,7 +22891,7 @@ void test_t2754(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2754.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22912,7 +22904,7 @@ void test_t2755(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2755.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22925,7 +22917,7 @@ void test_t2756(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2756.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22938,7 +22930,7 @@ void test_t2757(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2757.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22951,7 +22943,7 @@ void test_t2758(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2758.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22964,7 +22956,7 @@ void test_t2759(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2759.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22977,7 +22969,7 @@ void test_t2760(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2760.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -22990,7 +22982,7 @@ void test_t2761(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2761.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23003,7 +22995,7 @@ void test_t2762(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2762.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23016,7 +23008,7 @@ void test_t2763(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2763.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23029,7 +23021,7 @@ void test_t2764(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2764.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23042,7 +23034,7 @@ void test_t2765(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2765.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23055,7 +23047,7 @@ void test_t2766(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2766.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23068,7 +23060,7 @@ void test_t2767(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2767.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23081,7 +23073,7 @@ void test_t2768(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2768.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23094,7 +23086,7 @@ void test_t2769(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2769.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23107,7 +23099,7 @@ void test_t2770(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2770.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23120,7 +23112,7 @@ void test_t2771(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2771.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23133,7 +23125,7 @@ void test_t2772(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2772.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23146,7 +23138,7 @@ void test_t2773(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2773.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23159,7 +23151,7 @@ void test_t2774(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2774.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23172,7 +23164,7 @@ void test_t2775(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2775.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23185,7 +23177,7 @@ void test_t2776(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2776.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23198,7 +23190,7 @@ void test_t2777(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2777.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23211,7 +23203,7 @@ void test_t2778(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2778.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23224,7 +23216,7 @@ void test_t2779(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2779.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23237,7 +23229,7 @@ void test_t2780(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2780.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23250,7 +23242,7 @@ void test_t2781(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2781.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23263,7 +23255,7 @@ void test_t2782(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2782.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23276,7 +23268,7 @@ void test_t2783(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2783.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23289,7 +23281,7 @@ void test_t2784(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2784.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23302,7 +23294,7 @@ void test_t2785(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2785.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23315,7 +23307,7 @@ void test_t2786(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2786.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23328,7 +23320,7 @@ void test_t2787(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2787.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23341,7 +23333,7 @@ void test_t2788(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2788.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23354,7 +23346,7 @@ void test_t2789(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2789.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23367,7 +23359,7 @@ void test_t2790(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2790.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23380,7 +23372,7 @@ void test_t2791(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2791.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23393,7 +23385,7 @@ void test_t2792(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2792.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23406,7 +23398,7 @@ void test_t2793(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2793.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23419,7 +23411,7 @@ void test_t2794(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2794.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23432,7 +23424,7 @@ void test_t2795(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2795.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23445,7 +23437,7 @@ void test_t2796(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2796.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23458,7 +23450,7 @@ void test_t2797(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2797.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23471,7 +23463,7 @@ void test_t2798(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2798.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23484,7 +23476,7 @@ void test_t2799(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2799.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23497,7 +23489,7 @@ void test_t2800(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2800.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23510,7 +23502,7 @@ void test_t2801(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2801.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23523,7 +23515,7 @@ void test_t2802(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2802.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23536,7 +23528,7 @@ void test_t2803(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2803.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23549,7 +23541,7 @@ void test_t2804(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2804.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23562,7 +23554,7 @@ void test_t2805(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2805.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23575,7 +23567,7 @@ void test_t2806(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2806.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23588,7 +23580,7 @@ void test_t2807(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2807.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23601,7 +23593,7 @@ void test_t2808(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2808.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23614,7 +23606,7 @@ void test_t2809(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2809.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23627,7 +23619,7 @@ void test_t2810(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2810.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23640,7 +23632,7 @@ void test_t2811(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2811.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23653,7 +23645,7 @@ void test_t2812(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2812.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23666,7 +23658,7 @@ void test_t2813(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2813.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23679,7 +23671,7 @@ void test_t2814(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2814.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23692,7 +23684,7 @@ void test_t2815(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2815.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23705,7 +23697,7 @@ void test_t2816(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2816.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23718,7 +23710,7 @@ void test_t2817(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2817.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23731,7 +23723,7 @@ void test_t2818(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2818.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23744,7 +23736,7 @@ void test_t2819(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2819.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23757,7 +23749,7 @@ void test_t2820(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2820.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23770,7 +23762,7 @@ void test_t2821(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2821.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23783,7 +23775,7 @@ void test_t2822(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2822.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23796,7 +23788,7 @@ void test_t2823(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2823.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23809,7 +23801,7 @@ void test_t2824(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2824.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23822,7 +23814,7 @@ void test_t2825(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2825.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23835,7 +23827,7 @@ void test_t2826(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2826.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23848,7 +23840,7 @@ void test_t2827(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2827.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23861,7 +23853,7 @@ void test_t2828(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2828.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23874,7 +23866,7 @@ void test_t2829(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2829.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23887,7 +23879,7 @@ void test_t2830(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2830.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23900,7 +23892,7 @@ void test_t2831(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2831.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23913,7 +23905,7 @@ void test_t2832(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2832.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23926,7 +23918,7 @@ void test_t2833(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2833.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23939,7 +23931,7 @@ void test_t2834(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2834.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23952,7 +23944,7 @@ void test_t2835(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2835.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23965,7 +23957,7 @@ void test_t2836(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2836.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23978,7 +23970,7 @@ void test_t2837(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2837.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -23991,7 +23983,7 @@ void test_t2838(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2838.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24004,7 +23996,7 @@ void test_t2839(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2839.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24017,7 +24009,7 @@ void test_t2840(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2840.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24030,7 +24022,7 @@ void test_t2841(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2841.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24043,7 +24035,7 @@ void test_t2842(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2842.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24056,7 +24048,7 @@ void test_t2843(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2843.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24069,7 +24061,7 @@ void test_t2844(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2844.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24082,7 +24074,7 @@ void test_t2845(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2845.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24095,7 +24087,7 @@ void test_t2846(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2846.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24108,7 +24100,7 @@ void test_t2847(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2847.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24121,7 +24113,7 @@ void test_t2848(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2848.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24134,7 +24126,7 @@ void test_t2849(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2849.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24147,7 +24139,7 @@ void test_t2850(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2850.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24160,7 +24152,7 @@ void test_t2851(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2851.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24173,7 +24165,7 @@ void test_t2852(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2852.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24186,7 +24178,7 @@ void test_t2853(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2853.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24199,7 +24191,7 @@ void test_t2854(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2854.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24212,7 +24204,7 @@ void test_t2855(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2855.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24225,7 +24217,7 @@ void test_t2856(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2856.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24238,7 +24230,7 @@ void test_t2857(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2857.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24251,7 +24243,7 @@ void test_t2858(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2858.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24264,7 +24256,7 @@ void test_t2859(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2859.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24277,7 +24269,7 @@ void test_t2860(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2860.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24290,7 +24282,7 @@ void test_t2861(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2861.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24303,7 +24295,7 @@ void test_t2862(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2862.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24316,7 +24308,7 @@ void test_t2863(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2863.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24329,7 +24321,7 @@ void test_t2864(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2864.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24342,7 +24334,7 @@ void test_t2865(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2865.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24355,7 +24347,7 @@ void test_t2866(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2866.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24368,7 +24360,7 @@ void test_t2867(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2867.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24381,7 +24373,7 @@ void test_t2868(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2868.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24394,7 +24386,7 @@ void test_t2869(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2869.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24407,7 +24399,7 @@ void test_t2870(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2870.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24420,7 +24412,7 @@ void test_t2871(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2871.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24433,7 +24425,7 @@ void test_t2872(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2872.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24446,7 +24438,7 @@ void test_t2873(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2873.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24459,7 +24451,7 @@ void test_t2874(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2874.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24472,7 +24464,7 @@ void test_t2875(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2875.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24485,7 +24477,7 @@ void test_t2876(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2876.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24498,7 +24490,7 @@ void test_t2877(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2877.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24511,7 +24503,7 @@ void test_t2878(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2878.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24524,7 +24516,7 @@ void test_t2879(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2879.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24537,7 +24529,7 @@ void test_t2880(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2880.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24550,7 +24542,7 @@ void test_t2881(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2881.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24563,7 +24555,7 @@ void test_t2882(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2882.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24576,7 +24568,7 @@ void test_t2883(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2883.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24589,7 +24581,7 @@ void test_t2884(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2884.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24602,7 +24594,7 @@ void test_t2885(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2885.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24615,7 +24607,7 @@ void test_t2886(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2886.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24628,7 +24620,7 @@ void test_t2887(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2887.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24641,7 +24633,7 @@ void test_t2888(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2888.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24654,7 +24646,7 @@ void test_t2889(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2889.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24667,7 +24659,7 @@ void test_t2890(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2890.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24680,7 +24672,7 @@ void test_t2891(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2891.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24693,7 +24685,7 @@ void test_t2892(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2892.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24706,7 +24698,7 @@ void test_t2893(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2893.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24719,7 +24711,7 @@ void test_t2894(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2894.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24732,7 +24724,7 @@ void test_t2895(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2895.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24745,7 +24737,7 @@ void test_t2896(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2896.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24758,7 +24750,7 @@ void test_t2897(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2897.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24771,7 +24763,7 @@ void test_t2898(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2898.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24784,7 +24776,7 @@ void test_t2899(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2899.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24797,7 +24789,7 @@ void test_t2900(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2900.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24810,7 +24802,7 @@ void test_t2901(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2901.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24823,7 +24815,7 @@ void test_t2902(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2902.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24836,7 +24828,7 @@ void test_t2903(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2903.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24849,7 +24841,7 @@ void test_t2904(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2904.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24862,7 +24854,7 @@ void test_t2905(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2905.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24875,7 +24867,7 @@ void test_t2906(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2906.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24888,7 +24880,7 @@ void test_t2907(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2907.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24901,7 +24893,7 @@ void test_t2908(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2908.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24914,7 +24906,7 @@ void test_t2909(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2909.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24927,7 +24919,7 @@ void test_t2910(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2910.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24940,7 +24932,7 @@ void test_t2911(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2911.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24953,7 +24945,7 @@ void test_t2912(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2912.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24966,7 +24958,7 @@ void test_t2913(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2913.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24979,7 +24971,7 @@ void test_t2914(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2914.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -24992,7 +24984,7 @@ void test_t2915(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2915.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25005,7 +24997,7 @@ void test_t2916(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2916.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25018,7 +25010,7 @@ void test_t2917(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2917.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25031,7 +25023,7 @@ void test_t2918(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2918.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25044,7 +25036,7 @@ void test_t2919(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2919.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25057,7 +25049,7 @@ void test_t2920(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2920.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25070,7 +25062,7 @@ void test_t2921(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2921.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25083,7 +25075,7 @@ void test_t2922(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2922.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25096,7 +25088,7 @@ void test_t2923(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2923.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25109,7 +25101,7 @@ void test_t2924(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2924.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25122,7 +25114,7 @@ void test_t2925(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2925.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25135,7 +25127,7 @@ void test_t2926(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2926.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25148,7 +25140,7 @@ void test_t2927(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2927.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25161,7 +25153,7 @@ void test_t2928(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2928.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25174,7 +25166,7 @@ void test_t2929(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2929.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25187,7 +25179,7 @@ void test_t2930(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2930.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25200,7 +25192,7 @@ void test_t2931(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2931.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25213,7 +25205,7 @@ void test_t2932(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2932.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25226,7 +25218,7 @@ void test_t2933(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2933.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25239,7 +25231,7 @@ void test_t2934(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2934.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25252,7 +25244,7 @@ void test_t2935(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2935.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25265,7 +25257,7 @@ void test_t2936(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2936.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25278,7 +25270,7 @@ void test_t2937(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2937.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25291,7 +25283,7 @@ void test_t2938(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2938.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25304,7 +25296,7 @@ void test_t2939(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2939.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25317,7 +25309,7 @@ void test_t2940(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2940.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25330,7 +25322,7 @@ void test_t2941(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2941.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25343,7 +25335,7 @@ void test_t2942(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2942.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25356,7 +25348,7 @@ void test_t2943(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2943.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25369,7 +25361,7 @@ void test_t2944(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2944.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25382,7 +25374,7 @@ void test_t2945(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2945.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25395,7 +25387,7 @@ void test_t2946(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2946.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25408,7 +25400,7 @@ void test_t2947(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2947.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25421,7 +25413,7 @@ void test_t2948(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2948.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25434,7 +25426,7 @@ void test_t2949(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2949.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25447,7 +25439,7 @@ void test_t2950(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2950.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25460,7 +25452,7 @@ void test_t2951(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2951.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25473,7 +25465,7 @@ void test_t2952(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2952.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25486,7 +25478,7 @@ void test_t2953(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2953.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25499,7 +25491,7 @@ void test_t2954(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2954.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25512,7 +25504,7 @@ void test_t2955(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2955.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25525,7 +25517,7 @@ void test_t2956(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2956.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25538,7 +25530,7 @@ void test_t2957(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2957.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25551,7 +25543,7 @@ void test_t2958(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2958.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25564,7 +25556,7 @@ void test_t2959(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2959.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25577,7 +25569,7 @@ void test_t2960(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2960.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25590,7 +25582,7 @@ void test_t2961(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2961.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25603,7 +25595,7 @@ void test_t2962(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2962.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25616,7 +25608,7 @@ void test_t2963(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2963.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25629,7 +25621,7 @@ void test_t2964(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2964.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25642,7 +25634,7 @@ void test_t2965(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2965.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25655,7 +25647,7 @@ void test_t2966(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2966.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25668,7 +25660,7 @@ void test_t2967(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2967.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25681,7 +25673,7 @@ void test_t2968(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2968.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25694,7 +25686,7 @@ void test_t2969(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2969.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25707,7 +25699,7 @@ void test_t2970(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2970.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25720,7 +25712,7 @@ void test_t2971(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2971.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25733,7 +25725,7 @@ void test_t2972(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2972.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25746,7 +25738,7 @@ void test_t2973(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2973.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25759,7 +25751,7 @@ void test_t2974(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2974.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25772,7 +25764,7 @@ void test_t2975(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2975.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25785,7 +25777,7 @@ void test_t2976(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2976.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25798,7 +25790,7 @@ void test_t2977(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2977.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25811,7 +25803,7 @@ void test_t2978(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2978.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25824,7 +25816,7 @@ void test_t2979(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2979.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25837,7 +25829,7 @@ void test_t2980(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2980.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25850,7 +25842,7 @@ void test_t2981(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2981.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25863,7 +25855,7 @@ void test_t2982(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2982.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25876,7 +25868,7 @@ void test_t2983(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2983.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25889,7 +25881,7 @@ void test_t2984(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2984.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25902,7 +25894,7 @@ void test_t2985(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2985.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25915,7 +25907,7 @@ void test_t2986(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2986.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25928,7 +25920,7 @@ void test_t2987(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2987.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25941,7 +25933,7 @@ void test_t2988(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2988.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25954,7 +25946,7 @@ void test_t2989(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2989.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25967,7 +25959,7 @@ void test_t2990(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2990.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25980,7 +25972,7 @@ void test_t2991(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2991.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -25993,7 +25985,7 @@ void test_t2992(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2992.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26006,7 +25998,7 @@ void test_t2993(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2993.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26019,7 +26011,7 @@ void test_t2994(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2994.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26032,7 +26024,7 @@ void test_t2995(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2995.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26045,7 +26037,7 @@ void test_t2996(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2996.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26058,7 +26050,7 @@ void test_t2997(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2997.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26071,7 +26063,7 @@ void test_t2998(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t2998.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26084,7 +26076,7 @@ void test_t2999(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t2999.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26097,7 +26089,7 @@ void test_t3000(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3000.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26110,7 +26102,7 @@ void test_t3001(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3001.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26123,7 +26115,7 @@ void test_t3002(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3002.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26136,7 +26128,7 @@ void test_t3003(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3003.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26149,7 +26141,7 @@ void test_t3004(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3004.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26162,7 +26154,7 @@ void test_t3005(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3005.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26175,7 +26167,7 @@ void test_t3006(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3006.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26188,7 +26180,7 @@ void test_t3007(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3007.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26201,7 +26193,7 @@ void test_t3008(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3008.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26214,7 +26206,7 @@ void test_t3009(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3009.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26227,7 +26219,7 @@ void test_t3010(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3010.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26240,7 +26232,7 @@ void test_t3011(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3011.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26253,7 +26245,7 @@ void test_t3012(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3012.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26266,7 +26258,7 @@ void test_t3013(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3013.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26279,7 +26271,7 @@ void test_t3014(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3014.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26292,7 +26284,7 @@ void test_t3015(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3015.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26305,7 +26297,7 @@ void test_t3016(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3016.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26318,7 +26310,7 @@ void test_t3017(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3017.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26331,7 +26323,7 @@ void test_t3018(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3018.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26344,7 +26336,7 @@ void test_t3019(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3019.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26357,7 +26349,7 @@ void test_t3020(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3020.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26370,7 +26362,7 @@ void test_t3021(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3021.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26383,7 +26375,7 @@ void test_t3022(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3022.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26396,7 +26388,7 @@ void test_t3023(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3023.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26409,7 +26401,7 @@ void test_t3024(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3024.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26422,7 +26414,7 @@ void test_t3025(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3025.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26435,7 +26427,7 @@ void test_t3026(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3026.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26448,7 +26440,7 @@ void test_t3027(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3027.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26461,7 +26453,7 @@ void test_t3028(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3028.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26474,7 +26466,7 @@ void test_t3029(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3029.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26487,7 +26479,7 @@ void test_t3030(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3030.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26500,7 +26492,7 @@ void test_t3031(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3031.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26513,7 +26505,7 @@ void test_t3032(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3032.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26526,7 +26518,7 @@ void test_t3033(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3033.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26539,7 +26531,7 @@ void test_t3034(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3034.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26552,7 +26544,7 @@ void test_t3035(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3035.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26565,7 +26557,7 @@ void test_t3036(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3036.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26578,7 +26570,7 @@ void test_t3037(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3037.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26591,7 +26583,7 @@ void test_t3038(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3038.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26604,7 +26596,7 @@ void test_t3039(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3039.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26617,7 +26609,7 @@ void test_t3040(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3040.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26630,7 +26622,7 @@ void test_t3041(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3041.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26643,7 +26635,7 @@ void test_t3042(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3042.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26656,7 +26648,7 @@ void test_t3043(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3043.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26669,7 +26661,7 @@ void test_t3044(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3044.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26682,7 +26674,7 @@ void test_t3045(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3045.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26695,7 +26687,7 @@ void test_t3046(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3046.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26708,7 +26700,7 @@ void test_t3047(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3047.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26721,7 +26713,7 @@ void test_t3048(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3048.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26734,7 +26726,7 @@ void test_t3049(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3049.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26747,7 +26739,7 @@ void test_t3050(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3050.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26760,7 +26752,7 @@ void test_t3051(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3051.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26773,7 +26765,7 @@ void test_t3052(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3052.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26786,7 +26778,7 @@ void test_t3053(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3053.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26799,7 +26791,7 @@ void test_t3054(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3054.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26812,7 +26804,7 @@ void test_t3055(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3055.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26825,7 +26817,7 @@ void test_t3056(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3056.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26838,7 +26830,7 @@ void test_t3057(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3057.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26851,7 +26843,7 @@ void test_t3058(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3058.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26864,7 +26856,7 @@ void test_t3059(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3059.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26877,7 +26869,7 @@ void test_t3060(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3060.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26890,7 +26882,7 @@ void test_t3061(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3061.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26903,7 +26895,7 @@ void test_t3062(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3062.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26916,7 +26908,7 @@ void test_t3063(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3063.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26929,7 +26921,7 @@ void test_t3064(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3064.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26942,7 +26934,7 @@ void test_t3065(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3065.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26955,7 +26947,7 @@ void test_t3066(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3066.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26968,7 +26960,7 @@ void test_t3067(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3067.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26981,7 +26973,7 @@ void test_t3068(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3068.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -26994,7 +26986,7 @@ void test_t3069(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3069.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27007,7 +26999,7 @@ void test_t3070(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3070.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27020,7 +27012,7 @@ void test_t3071(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3071.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27033,7 +27025,7 @@ void test_t3072(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3072.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27046,7 +27038,7 @@ void test_t3073(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3073.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27059,7 +27051,7 @@ void test_t3074(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3074.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27072,7 +27064,7 @@ void test_t3075(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3075.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27085,7 +27077,7 @@ void test_t3076(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3076.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27098,7 +27090,7 @@ void test_t3077(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3077.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27111,7 +27103,7 @@ void test_t3078(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3078.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27124,7 +27116,7 @@ void test_t3079(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3079.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27137,7 +27129,7 @@ void test_t3080(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3080.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27150,7 +27142,7 @@ void test_t3081(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3081.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27163,7 +27155,7 @@ void test_t3082(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3082.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27176,7 +27168,7 @@ void test_t3083(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3083.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27189,7 +27181,7 @@ void test_t3084(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3084.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27202,7 +27194,7 @@ void test_t3085(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3085.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27215,7 +27207,7 @@ void test_t3086(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3086.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27228,7 +27220,7 @@ void test_t3087(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3087.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27241,7 +27233,7 @@ void test_t3088(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3088.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27254,7 +27246,7 @@ void test_t3089(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3089.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27267,7 +27259,7 @@ void test_t3090(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3090.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27280,7 +27272,7 @@ void test_t3091(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3091.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27293,7 +27285,7 @@ void test_t3092(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3092.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27306,7 +27298,7 @@ void test_t3093(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3093.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27319,7 +27311,7 @@ void test_t3094(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3094.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27332,7 +27324,7 @@ void test_t3095(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3095.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27345,7 +27337,7 @@ void test_t3096(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3096.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27358,7 +27350,7 @@ void test_t3097(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3097.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27371,7 +27363,7 @@ void test_t3098(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3098.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27384,7 +27376,7 @@ void test_t3099(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3099.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27397,7 +27389,7 @@ void test_t3100(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3100.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27410,7 +27402,7 @@ void test_t3101(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3101.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27423,7 +27415,7 @@ void test_t3102(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3102.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27436,7 +27428,7 @@ void test_t3103(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3103.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27449,7 +27441,7 @@ void test_t3104(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3104.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27462,7 +27454,7 @@ void test_t3105(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3105.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27475,7 +27467,7 @@ void test_t3106(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3106.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27488,7 +27480,7 @@ void test_t3107(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3107.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27501,7 +27493,7 @@ void test_t3108(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3108.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27514,7 +27506,7 @@ void test_t3109(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3109.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27527,7 +27519,7 @@ void test_t3110(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3110.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27540,7 +27532,7 @@ void test_t3111(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3111.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27553,7 +27545,7 @@ void test_t3112(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3112.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27566,7 +27558,7 @@ void test_t3113(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3113.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27579,7 +27571,7 @@ void test_t3114(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3114.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27592,7 +27584,7 @@ void test_t3115(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3115.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27605,7 +27597,7 @@ void test_t3116(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3116.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27618,7 +27610,7 @@ void test_t3117(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3117.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27631,7 +27623,7 @@ void test_t3118(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3118.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27644,7 +27636,7 @@ void test_t3119(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3119.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27657,7 +27649,7 @@ void test_t3120(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3120.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27670,7 +27662,7 @@ void test_t3121(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3121.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27683,7 +27675,7 @@ void test_t3122(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3122.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27696,7 +27688,7 @@ void test_t3123(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3123.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27709,7 +27701,7 @@ void test_t3124(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3124.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27722,7 +27714,7 @@ void test_t3125(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3125.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27735,7 +27727,7 @@ void test_t3126(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3126.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27748,7 +27740,7 @@ void test_t3127(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3127.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27761,7 +27753,7 @@ void test_t3128(void)
     const char *base = ".";
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3128.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27774,7 +27766,7 @@ void test_t3129(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3129.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27787,7 +27779,7 @@ void test_t3130(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3130.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27800,7 +27792,7 @@ void test_t3131(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3131.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27813,7 +27805,7 @@ void test_t3132(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3132.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27826,7 +27818,7 @@ void test_t3133(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3133.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27839,7 +27831,7 @@ void test_t3134(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3134.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27852,7 +27844,7 @@ void test_t3135(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3135.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27865,7 +27857,7 @@ void test_t3136(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3136.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27878,7 +27870,7 @@ void test_t3137(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3137.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27891,7 +27883,7 @@ void test_t3138(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3138.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27904,7 +27896,7 @@ void test_t3139(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3139.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27917,7 +27909,7 @@ void test_t3140(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3140.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27930,7 +27922,7 @@ void test_t3141(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3141.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27943,7 +27935,7 @@ void test_t3142(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3142.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27956,7 +27948,7 @@ void test_t3143(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3143.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27969,7 +27961,7 @@ void test_t3144(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3144.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27982,7 +27974,7 @@ void test_t3145(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3145.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -27995,7 +27987,7 @@ void test_t3146(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3146.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -28008,7 +28000,7 @@ void test_t3147(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3147.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -28021,7 +28013,7 @@ void test_t3148(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3148.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -28034,7 +28026,7 @@ void test_t3149(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3149.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -28047,7 +28039,7 @@ void test_t3150(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3150.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -28060,7 +28052,7 @@ void test_t3151(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3151.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -28073,7 +28065,7 @@ void test_t3152(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3152.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -28086,7 +28078,7 @@ void test_t3153(void)
     const char *base = NULL;
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3153.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -28099,7 +28091,7 @@ void test_t3154(void)
     const char *base = NULL;
     bool sort = false;
     const char *expected_file = "../ruby_expected/t3154.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -28112,7 +28104,7 @@ void test_t3155(void)
     const char *base = "/workspaces/dirglob/tests/fixtures/";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3155.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }
 
@@ -28125,2174 +28117,6 @@ void test_t3156(void)
     const char *base = ".";
     bool sort = true;
     const char *expected_file = "../ruby_expected/t3156.txt";
-    
+
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
-}
-
-
-/* ========== Main Function ========== */
-
-int main(void)
-{
-    UNITY_BEGIN();
-    
-    RUN_TEST(test_t1000);
-    RUN_TEST(test_t1001);
-    RUN_TEST(test_t1002);
-    RUN_TEST(test_t1003);
-    RUN_TEST(test_t1004);
-    RUN_TEST(test_t1005);
-    RUN_TEST(test_t1006);
-    RUN_TEST(test_t1007);
-    RUN_TEST(test_t1008);
-    RUN_TEST(test_t1009);
-    RUN_TEST(test_t1010);
-    RUN_TEST(test_t1011);
-    RUN_TEST(test_t1012);
-    RUN_TEST(test_t1013);
-    RUN_TEST(test_t1014);
-    RUN_TEST(test_t1015);
-    RUN_TEST(test_t1016);
-    RUN_TEST(test_t1017);
-    RUN_TEST(test_t1018);
-    RUN_TEST(test_t1019);
-    RUN_TEST(test_t1020);
-    RUN_TEST(test_t1021);
-    RUN_TEST(test_t1022);
-    RUN_TEST(test_t1023);
-    RUN_TEST(test_t1024);
-    RUN_TEST(test_t1025);
-    RUN_TEST(test_t1026);
-    RUN_TEST(test_t1027);
-    RUN_TEST(test_t1028);
-    RUN_TEST(test_t1029);
-    RUN_TEST(test_t1030);
-    RUN_TEST(test_t1031);
-    RUN_TEST(test_t1032);
-    RUN_TEST(test_t1033);
-    RUN_TEST(test_t1034);
-    RUN_TEST(test_t1035);
-    RUN_TEST(test_t1036);
-    RUN_TEST(test_t1037);
-    RUN_TEST(test_t1038);
-    RUN_TEST(test_t1039);
-    RUN_TEST(test_t1040);
-    RUN_TEST(test_t1041);
-    RUN_TEST(test_t1042);
-    RUN_TEST(test_t1043);
-    RUN_TEST(test_t1044);
-    RUN_TEST(test_t1045);
-    RUN_TEST(test_t1046);
-    RUN_TEST(test_t1047);
-    RUN_TEST(test_t1048);
-    RUN_TEST(test_t1049);
-    RUN_TEST(test_t1050);
-    RUN_TEST(test_t1051);
-    RUN_TEST(test_t1052);
-    RUN_TEST(test_t1053);
-    RUN_TEST(test_t1054);
-    RUN_TEST(test_t1055);
-    RUN_TEST(test_t1056);
-    RUN_TEST(test_t1057);
-    RUN_TEST(test_t1058);
-    RUN_TEST(test_t1059);
-    RUN_TEST(test_t1060);
-    RUN_TEST(test_t1061);
-    RUN_TEST(test_t1062);
-    RUN_TEST(test_t1063);
-    RUN_TEST(test_t1064);
-    RUN_TEST(test_t1065);
-    RUN_TEST(test_t1066);
-    RUN_TEST(test_t1067);
-    RUN_TEST(test_t1068);
-    RUN_TEST(test_t1069);
-    RUN_TEST(test_t1070);
-    RUN_TEST(test_t1071);
-    RUN_TEST(test_t1072);
-    RUN_TEST(test_t1073);
-    RUN_TEST(test_t1074);
-    RUN_TEST(test_t1075);
-    RUN_TEST(test_t1076);
-    RUN_TEST(test_t1077);
-    RUN_TEST(test_t1078);
-    RUN_TEST(test_t1079);
-    RUN_TEST(test_t1080);
-    RUN_TEST(test_t1081);
-    RUN_TEST(test_t1082);
-    RUN_TEST(test_t1083);
-    RUN_TEST(test_t1084);
-    RUN_TEST(test_t1085);
-    RUN_TEST(test_t1086);
-    RUN_TEST(test_t1087);
-    RUN_TEST(test_t1088);
-    RUN_TEST(test_t1089);
-    RUN_TEST(test_t1090);
-    RUN_TEST(test_t1091);
-    RUN_TEST(test_t1092);
-    RUN_TEST(test_t1093);
-    RUN_TEST(test_t1094);
-    RUN_TEST(test_t1095);
-    RUN_TEST(test_t1096);
-    RUN_TEST(test_t1097);
-    RUN_TEST(test_t1098);
-    RUN_TEST(test_t1099);
-    RUN_TEST(test_t1100);
-    RUN_TEST(test_t1101);
-    RUN_TEST(test_t1102);
-    RUN_TEST(test_t1103);
-    RUN_TEST(test_t1104);
-    RUN_TEST(test_t1105);
-    RUN_TEST(test_t1106);
-    RUN_TEST(test_t1107);
-    RUN_TEST(test_t1108);
-    RUN_TEST(test_t1109);
-    RUN_TEST(test_t1110);
-    RUN_TEST(test_t1111);
-    RUN_TEST(test_t1112);
-    RUN_TEST(test_t1113);
-    RUN_TEST(test_t1114);
-    RUN_TEST(test_t1115);
-    RUN_TEST(test_t1116);
-    RUN_TEST(test_t1117);
-    RUN_TEST(test_t1118);
-    RUN_TEST(test_t1119);
-    RUN_TEST(test_t1120);
-    RUN_TEST(test_t1121);
-    RUN_TEST(test_t1122);
-    RUN_TEST(test_t1123);
-    RUN_TEST(test_t1124);
-    RUN_TEST(test_t1125);
-    RUN_TEST(test_t1126);
-    RUN_TEST(test_t1127);
-    RUN_TEST(test_t1128);
-    RUN_TEST(test_t1129);
-    RUN_TEST(test_t1130);
-    RUN_TEST(test_t1131);
-    RUN_TEST(test_t1132);
-    RUN_TEST(test_t1133);
-    RUN_TEST(test_t1134);
-    RUN_TEST(test_t1135);
-    RUN_TEST(test_t1136);
-    RUN_TEST(test_t1137);
-    RUN_TEST(test_t1138);
-    RUN_TEST(test_t1139);
-    RUN_TEST(test_t1140);
-    RUN_TEST(test_t1141);
-    RUN_TEST(test_t1142);
-    RUN_TEST(test_t1143);
-    RUN_TEST(test_t1144);
-    RUN_TEST(test_t1145);
-    RUN_TEST(test_t1146);
-    RUN_TEST(test_t1147);
-    RUN_TEST(test_t1148);
-    RUN_TEST(test_t1149);
-    RUN_TEST(test_t1150);
-    RUN_TEST(test_t1151);
-    RUN_TEST(test_t1152);
-    RUN_TEST(test_t1153);
-    RUN_TEST(test_t1154);
-    RUN_TEST(test_t1155);
-    RUN_TEST(test_t1156);
-    RUN_TEST(test_t1157);
-    RUN_TEST(test_t1158);
-    RUN_TEST(test_t1159);
-    RUN_TEST(test_t1160);
-    RUN_TEST(test_t1161);
-    RUN_TEST(test_t1162);
-    RUN_TEST(test_t1163);
-    RUN_TEST(test_t1164);
-    RUN_TEST(test_t1165);
-    RUN_TEST(test_t1166);
-    RUN_TEST(test_t1167);
-    RUN_TEST(test_t1168);
-    RUN_TEST(test_t1169);
-    RUN_TEST(test_t1170);
-    RUN_TEST(test_t1171);
-    RUN_TEST(test_t1172);
-    RUN_TEST(test_t1173);
-    RUN_TEST(test_t1174);
-    RUN_TEST(test_t1175);
-    RUN_TEST(test_t1176);
-    RUN_TEST(test_t1177);
-    RUN_TEST(test_t1178);
-    RUN_TEST(test_t1179);
-    RUN_TEST(test_t1180);
-    RUN_TEST(test_t1181);
-    RUN_TEST(test_t1182);
-    RUN_TEST(test_t1183);
-    RUN_TEST(test_t1184);
-    RUN_TEST(test_t1185);
-    RUN_TEST(test_t1186);
-    RUN_TEST(test_t1187);
-    RUN_TEST(test_t1188);
-    RUN_TEST(test_t1189);
-    RUN_TEST(test_t1190);
-    RUN_TEST(test_t1191);
-    RUN_TEST(test_t1192);
-    RUN_TEST(test_t1193);
-    RUN_TEST(test_t1194);
-    RUN_TEST(test_t1195);
-    RUN_TEST(test_t1196);
-    RUN_TEST(test_t1197);
-    RUN_TEST(test_t1198);
-    RUN_TEST(test_t1199);
-    RUN_TEST(test_t1200);
-    RUN_TEST(test_t1201);
-    RUN_TEST(test_t1202);
-    RUN_TEST(test_t1203);
-    RUN_TEST(test_t1204);
-    RUN_TEST(test_t1205);
-    RUN_TEST(test_t1206);
-    RUN_TEST(test_t1207);
-    RUN_TEST(test_t1208);
-    RUN_TEST(test_t1209);
-    RUN_TEST(test_t1210);
-    RUN_TEST(test_t1211);
-    RUN_TEST(test_t1212);
-    RUN_TEST(test_t1213);
-    RUN_TEST(test_t1214);
-    RUN_TEST(test_t1215);
-    RUN_TEST(test_t1216);
-    RUN_TEST(test_t1217);
-    RUN_TEST(test_t1218);
-    RUN_TEST(test_t1219);
-    RUN_TEST(test_t1220);
-    RUN_TEST(test_t1221);
-    RUN_TEST(test_t1222);
-    RUN_TEST(test_t1223);
-    RUN_TEST(test_t1224);
-    RUN_TEST(test_t1225);
-    RUN_TEST(test_t1226);
-    RUN_TEST(test_t1227);
-    RUN_TEST(test_t1228);
-    RUN_TEST(test_t1229);
-    RUN_TEST(test_t1230);
-    RUN_TEST(test_t1231);
-    RUN_TEST(test_t1232);
-    RUN_TEST(test_t1233);
-    RUN_TEST(test_t1234);
-    RUN_TEST(test_t1235);
-    RUN_TEST(test_t1236);
-    RUN_TEST(test_t1237);
-    RUN_TEST(test_t1238);
-    RUN_TEST(test_t1239);
-    RUN_TEST(test_t1240);
-    RUN_TEST(test_t1241);
-    RUN_TEST(test_t1242);
-    RUN_TEST(test_t1243);
-    RUN_TEST(test_t1244);
-    RUN_TEST(test_t1245);
-    RUN_TEST(test_t1246);
-    RUN_TEST(test_t1247);
-    RUN_TEST(test_t1248);
-    RUN_TEST(test_t1249);
-    RUN_TEST(test_t1250);
-    RUN_TEST(test_t1251);
-    RUN_TEST(test_t1252);
-    RUN_TEST(test_t1253);
-    RUN_TEST(test_t1254);
-    RUN_TEST(test_t1255);
-    RUN_TEST(test_t1256);
-    RUN_TEST(test_t1257);
-    RUN_TEST(test_t1258);
-    RUN_TEST(test_t1259);
-    RUN_TEST(test_t1260);
-    RUN_TEST(test_t1261);
-    RUN_TEST(test_t1262);
-    RUN_TEST(test_t1263);
-    RUN_TEST(test_t1264);
-    RUN_TEST(test_t1265);
-    RUN_TEST(test_t1266);
-    RUN_TEST(test_t1267);
-    RUN_TEST(test_t1268);
-    RUN_TEST(test_t1269);
-    RUN_TEST(test_t1270);
-    RUN_TEST(test_t1271);
-    RUN_TEST(test_t1272);
-    RUN_TEST(test_t1273);
-    RUN_TEST(test_t1274);
-    RUN_TEST(test_t1275);
-    RUN_TEST(test_t1276);
-    RUN_TEST(test_t1277);
-    RUN_TEST(test_t1278);
-    RUN_TEST(test_t1279);
-    RUN_TEST(test_t1280);
-    RUN_TEST(test_t1281);
-    RUN_TEST(test_t1282);
-    RUN_TEST(test_t1283);
-    RUN_TEST(test_t1284);
-    RUN_TEST(test_t1285);
-    RUN_TEST(test_t1286);
-    RUN_TEST(test_t1287);
-    RUN_TEST(test_t1288);
-    RUN_TEST(test_t1289);
-    RUN_TEST(test_t1290);
-    RUN_TEST(test_t1291);
-    RUN_TEST(test_t1292);
-    RUN_TEST(test_t1293);
-    RUN_TEST(test_t1294);
-    RUN_TEST(test_t1295);
-    RUN_TEST(test_t1296);
-    RUN_TEST(test_t1297);
-    RUN_TEST(test_t1298);
-    RUN_TEST(test_t1299);
-    RUN_TEST(test_t1300);
-    RUN_TEST(test_t1301);
-    RUN_TEST(test_t1302);
-    RUN_TEST(test_t1303);
-    RUN_TEST(test_t1304);
-    RUN_TEST(test_t1305);
-    RUN_TEST(test_t1306);
-    RUN_TEST(test_t1307);
-    RUN_TEST(test_t1308);
-    RUN_TEST(test_t1309);
-    RUN_TEST(test_t1310);
-    RUN_TEST(test_t1311);
-    RUN_TEST(test_t1312);
-    RUN_TEST(test_t1313);
-    RUN_TEST(test_t1314);
-    RUN_TEST(test_t1315);
-    RUN_TEST(test_t1316);
-    RUN_TEST(test_t1317);
-    RUN_TEST(test_t1318);
-    RUN_TEST(test_t1319);
-    RUN_TEST(test_t1320);
-    RUN_TEST(test_t1321);
-    RUN_TEST(test_t1322);
-    RUN_TEST(test_t1323);
-    RUN_TEST(test_t1324);
-    RUN_TEST(test_t1325);
-    RUN_TEST(test_t1326);
-    RUN_TEST(test_t1327);
-    RUN_TEST(test_t1328);
-    RUN_TEST(test_t1329);
-    RUN_TEST(test_t1330);
-    RUN_TEST(test_t1331);
-    RUN_TEST(test_t1332);
-    RUN_TEST(test_t1333);
-    RUN_TEST(test_t1334);
-    RUN_TEST(test_t1335);
-    RUN_TEST(test_t1336);
-    RUN_TEST(test_t1337);
-    RUN_TEST(test_t1338);
-    RUN_TEST(test_t1339);
-    RUN_TEST(test_t1340);
-    RUN_TEST(test_t1341);
-    RUN_TEST(test_t1342);
-    RUN_TEST(test_t1343);
-    RUN_TEST(test_t1344);
-    RUN_TEST(test_t1345);
-    RUN_TEST(test_t1346);
-    RUN_TEST(test_t1347);
-    RUN_TEST(test_t1348);
-    RUN_TEST(test_t1349);
-    RUN_TEST(test_t1350);
-    RUN_TEST(test_t1351);
-    RUN_TEST(test_t1352);
-    RUN_TEST(test_t1353);
-    RUN_TEST(test_t1354);
-    RUN_TEST(test_t1355);
-    RUN_TEST(test_t1356);
-    RUN_TEST(test_t1357);
-    RUN_TEST(test_t1358);
-    RUN_TEST(test_t1359);
-    RUN_TEST(test_t1360);
-    RUN_TEST(test_t1361);
-    RUN_TEST(test_t1362);
-    RUN_TEST(test_t1363);
-    RUN_TEST(test_t1364);
-    RUN_TEST(test_t1365);
-    RUN_TEST(test_t1366);
-    RUN_TEST(test_t1367);
-    RUN_TEST(test_t1368);
-    RUN_TEST(test_t1369);
-    RUN_TEST(test_t1370);
-    RUN_TEST(test_t1371);
-    RUN_TEST(test_t1372);
-    RUN_TEST(test_t1373);
-    RUN_TEST(test_t1374);
-    RUN_TEST(test_t1375);
-    RUN_TEST(test_t1376);
-    RUN_TEST(test_t1377);
-    RUN_TEST(test_t1378);
-    RUN_TEST(test_t1379);
-    RUN_TEST(test_t1380);
-    RUN_TEST(test_t1381);
-    RUN_TEST(test_t1382);
-    RUN_TEST(test_t1383);
-    RUN_TEST(test_t1384);
-    RUN_TEST(test_t1385);
-    RUN_TEST(test_t1386);
-    RUN_TEST(test_t1387);
-    RUN_TEST(test_t1388);
-    RUN_TEST(test_t1389);
-    RUN_TEST(test_t1390);
-    RUN_TEST(test_t1391);
-    RUN_TEST(test_t1392);
-    RUN_TEST(test_t1393);
-    RUN_TEST(test_t1394);
-    RUN_TEST(test_t1395);
-    RUN_TEST(test_t1396);
-    RUN_TEST(test_t1397);
-    RUN_TEST(test_t1398);
-    RUN_TEST(test_t1399);
-    RUN_TEST(test_t1400);
-    RUN_TEST(test_t1401);
-    RUN_TEST(test_t1402);
-    RUN_TEST(test_t1403);
-    RUN_TEST(test_t1404);
-    RUN_TEST(test_t1405);
-    RUN_TEST(test_t1406);
-    RUN_TEST(test_t1407);
-    RUN_TEST(test_t1408);
-    RUN_TEST(test_t1409);
-    RUN_TEST(test_t1410);
-    RUN_TEST(test_t1411);
-    RUN_TEST(test_t1412);
-    RUN_TEST(test_t1413);
-    RUN_TEST(test_t1414);
-    RUN_TEST(test_t1415);
-    RUN_TEST(test_t1416);
-    RUN_TEST(test_t1417);
-    RUN_TEST(test_t1418);
-    RUN_TEST(test_t1419);
-    RUN_TEST(test_t1420);
-    RUN_TEST(test_t1421);
-    RUN_TEST(test_t1422);
-    RUN_TEST(test_t1423);
-    RUN_TEST(test_t1424);
-    RUN_TEST(test_t1425);
-    RUN_TEST(test_t1426);
-    RUN_TEST(test_t1427);
-    RUN_TEST(test_t1428);
-    RUN_TEST(test_t1429);
-    RUN_TEST(test_t1430);
-    RUN_TEST(test_t1431);
-    RUN_TEST(test_t1432);
-    RUN_TEST(test_t1433);
-    RUN_TEST(test_t1434);
-    RUN_TEST(test_t1435);
-    RUN_TEST(test_t1436);
-    RUN_TEST(test_t1437);
-    RUN_TEST(test_t1438);
-    RUN_TEST(test_t1439);
-    RUN_TEST(test_t1440);
-    RUN_TEST(test_t1441);
-    RUN_TEST(test_t1442);
-    RUN_TEST(test_t1443);
-    RUN_TEST(test_t1444);
-    RUN_TEST(test_t1445);
-    RUN_TEST(test_t1446);
-    RUN_TEST(test_t1447);
-    RUN_TEST(test_t1448);
-    RUN_TEST(test_t1449);
-    RUN_TEST(test_t1450);
-    RUN_TEST(test_t1451);
-    RUN_TEST(test_t1452);
-    RUN_TEST(test_t1453);
-    RUN_TEST(test_t1454);
-    RUN_TEST(test_t1455);
-    RUN_TEST(test_t1456);
-    RUN_TEST(test_t1457);
-    RUN_TEST(test_t1458);
-    RUN_TEST(test_t1459);
-    RUN_TEST(test_t1460);
-    RUN_TEST(test_t1461);
-    RUN_TEST(test_t1462);
-    RUN_TEST(test_t1463);
-    RUN_TEST(test_t1464);
-    RUN_TEST(test_t1465);
-    RUN_TEST(test_t1466);
-    RUN_TEST(test_t1467);
-    RUN_TEST(test_t1468);
-    RUN_TEST(test_t1469);
-    RUN_TEST(test_t1470);
-    RUN_TEST(test_t1471);
-    RUN_TEST(test_t1472);
-    RUN_TEST(test_t1473);
-    RUN_TEST(test_t1474);
-    RUN_TEST(test_t1475);
-    RUN_TEST(test_t1476);
-    RUN_TEST(test_t1477);
-    RUN_TEST(test_t1478);
-    RUN_TEST(test_t1479);
-    RUN_TEST(test_t1480);
-    RUN_TEST(test_t1481);
-    RUN_TEST(test_t1482);
-    RUN_TEST(test_t1483);
-    RUN_TEST(test_t1484);
-    RUN_TEST(test_t1485);
-    RUN_TEST(test_t1486);
-    RUN_TEST(test_t1487);
-    RUN_TEST(test_t1488);
-    RUN_TEST(test_t1489);
-    RUN_TEST(test_t1490);
-    RUN_TEST(test_t1491);
-    RUN_TEST(test_t1492);
-    RUN_TEST(test_t1493);
-    RUN_TEST(test_t1494);
-    RUN_TEST(test_t1495);
-    RUN_TEST(test_t1496);
-    RUN_TEST(test_t1497);
-    RUN_TEST(test_t1498);
-    RUN_TEST(test_t1499);
-    RUN_TEST(test_t1500);
-    RUN_TEST(test_t1501);
-    RUN_TEST(test_t1502);
-    RUN_TEST(test_t1503);
-    RUN_TEST(test_t1504);
-    RUN_TEST(test_t1505);
-    RUN_TEST(test_t1506);
-    RUN_TEST(test_t1507);
-    RUN_TEST(test_t1508);
-    RUN_TEST(test_t1509);
-    RUN_TEST(test_t1510);
-    RUN_TEST(test_t1511);
-    RUN_TEST(test_t1512);
-    RUN_TEST(test_t1513);
-    RUN_TEST(test_t1514);
-    RUN_TEST(test_t1515);
-    RUN_TEST(test_t1516);
-    RUN_TEST(test_t1517);
-    RUN_TEST(test_t1518);
-    RUN_TEST(test_t1519);
-    RUN_TEST(test_t1520);
-    RUN_TEST(test_t1521);
-    RUN_TEST(test_t1522);
-    RUN_TEST(test_t1523);
-    RUN_TEST(test_t1524);
-    RUN_TEST(test_t1525);
-    RUN_TEST(test_t1526);
-    RUN_TEST(test_t1527);
-    RUN_TEST(test_t1528);
-    RUN_TEST(test_t1529);
-    RUN_TEST(test_t1530);
-    RUN_TEST(test_t1531);
-    RUN_TEST(test_t1532);
-    RUN_TEST(test_t1533);
-    RUN_TEST(test_t1534);
-    RUN_TEST(test_t1535);
-    RUN_TEST(test_t1536);
-    RUN_TEST(test_t1537);
-    RUN_TEST(test_t1538);
-    RUN_TEST(test_t1539);
-    RUN_TEST(test_t1540);
-    RUN_TEST(test_t1541);
-    RUN_TEST(test_t1542);
-    RUN_TEST(test_t1543);
-    RUN_TEST(test_t1544);
-    RUN_TEST(test_t1545);
-    RUN_TEST(test_t1546);
-    RUN_TEST(test_t1547);
-    RUN_TEST(test_t1548);
-    RUN_TEST(test_t1549);
-    RUN_TEST(test_t1550);
-    RUN_TEST(test_t1551);
-    RUN_TEST(test_t1552);
-    RUN_TEST(test_t1553);
-    RUN_TEST(test_t1554);
-    RUN_TEST(test_t1555);
-    RUN_TEST(test_t1556);
-    RUN_TEST(test_t1557);
-    RUN_TEST(test_t1558);
-    RUN_TEST(test_t1559);
-    RUN_TEST(test_t1560);
-    RUN_TEST(test_t1561);
-    RUN_TEST(test_t1562);
-    RUN_TEST(test_t1563);
-    RUN_TEST(test_t1564);
-    RUN_TEST(test_t1565);
-    RUN_TEST(test_t1566);
-    RUN_TEST(test_t1567);
-    RUN_TEST(test_t1568);
-    RUN_TEST(test_t1569);
-    RUN_TEST(test_t1570);
-    RUN_TEST(test_t1571);
-    RUN_TEST(test_t1572);
-    RUN_TEST(test_t1573);
-    RUN_TEST(test_t1574);
-    RUN_TEST(test_t1575);
-    RUN_TEST(test_t1576);
-    RUN_TEST(test_t1577);
-    RUN_TEST(test_t1578);
-    RUN_TEST(test_t1579);
-    RUN_TEST(test_t1580);
-    RUN_TEST(test_t1581);
-    RUN_TEST(test_t1582);
-    RUN_TEST(test_t1583);
-    RUN_TEST(test_t1584);
-    RUN_TEST(test_t1585);
-    RUN_TEST(test_t1586);
-    RUN_TEST(test_t1587);
-    RUN_TEST(test_t1588);
-    RUN_TEST(test_t1589);
-    RUN_TEST(test_t1590);
-    RUN_TEST(test_t1591);
-    RUN_TEST(test_t1592);
-    RUN_TEST(test_t1593);
-    RUN_TEST(test_t1594);
-    RUN_TEST(test_t1595);
-    RUN_TEST(test_t1596);
-    RUN_TEST(test_t1597);
-    RUN_TEST(test_t1598);
-    RUN_TEST(test_t1599);
-    RUN_TEST(test_t1600);
-    RUN_TEST(test_t1601);
-    RUN_TEST(test_t1602);
-    RUN_TEST(test_t1603);
-    RUN_TEST(test_t1604);
-    RUN_TEST(test_t1605);
-    RUN_TEST(test_t1606);
-    RUN_TEST(test_t1607);
-    RUN_TEST(test_t1608);
-    RUN_TEST(test_t1609);
-    RUN_TEST(test_t1610);
-    RUN_TEST(test_t1611);
-    RUN_TEST(test_t1612);
-    RUN_TEST(test_t1613);
-    RUN_TEST(test_t1614);
-    RUN_TEST(test_t1615);
-    RUN_TEST(test_t1616);
-    RUN_TEST(test_t1617);
-    RUN_TEST(test_t1618);
-    RUN_TEST(test_t1619);
-    RUN_TEST(test_t1620);
-    RUN_TEST(test_t1621);
-    RUN_TEST(test_t1622);
-    RUN_TEST(test_t1623);
-    RUN_TEST(test_t1624);
-    RUN_TEST(test_t1625);
-    RUN_TEST(test_t1626);
-    RUN_TEST(test_t1627);
-    RUN_TEST(test_t1628);
-    RUN_TEST(test_t1629);
-    RUN_TEST(test_t1630);
-    RUN_TEST(test_t1631);
-    RUN_TEST(test_t1632);
-    RUN_TEST(test_t1633);
-    RUN_TEST(test_t1634);
-    RUN_TEST(test_t1635);
-    RUN_TEST(test_t1636);
-    RUN_TEST(test_t1637);
-    RUN_TEST(test_t1638);
-    RUN_TEST(test_t1639);
-    RUN_TEST(test_t1640);
-    RUN_TEST(test_t1641);
-    RUN_TEST(test_t1642);
-    RUN_TEST(test_t1643);
-    RUN_TEST(test_t1644);
-    RUN_TEST(test_t1645);
-    RUN_TEST(test_t1646);
-    RUN_TEST(test_t1647);
-    RUN_TEST(test_t1648);
-    RUN_TEST(test_t1649);
-    RUN_TEST(test_t1650);
-    RUN_TEST(test_t1651);
-    RUN_TEST(test_t1652);
-    RUN_TEST(test_t1653);
-    RUN_TEST(test_t1654);
-    RUN_TEST(test_t1655);
-    RUN_TEST(test_t1656);
-    RUN_TEST(test_t1657);
-    RUN_TEST(test_t1658);
-    RUN_TEST(test_t1659);
-    RUN_TEST(test_t1660);
-    RUN_TEST(test_t1661);
-    RUN_TEST(test_t1662);
-    RUN_TEST(test_t1663);
-    RUN_TEST(test_t1664);
-    RUN_TEST(test_t1665);
-    RUN_TEST(test_t1666);
-    RUN_TEST(test_t1667);
-    RUN_TEST(test_t1668);
-    RUN_TEST(test_t1669);
-    RUN_TEST(test_t1670);
-    RUN_TEST(test_t1671);
-    RUN_TEST(test_t1672);
-    RUN_TEST(test_t1673);
-    RUN_TEST(test_t1674);
-    RUN_TEST(test_t1675);
-    RUN_TEST(test_t1676);
-    RUN_TEST(test_t1677);
-    RUN_TEST(test_t1678);
-    RUN_TEST(test_t1679);
-    RUN_TEST(test_t1680);
-    RUN_TEST(test_t1681);
-    RUN_TEST(test_t1682);
-    RUN_TEST(test_t1683);
-    RUN_TEST(test_t1684);
-    RUN_TEST(test_t1685);
-    RUN_TEST(test_t1686);
-    RUN_TEST(test_t1687);
-    RUN_TEST(test_t1688);
-    RUN_TEST(test_t1689);
-    RUN_TEST(test_t1690);
-    RUN_TEST(test_t1691);
-    RUN_TEST(test_t1692);
-    RUN_TEST(test_t1693);
-    RUN_TEST(test_t1694);
-    RUN_TEST(test_t1695);
-    RUN_TEST(test_t1696);
-    RUN_TEST(test_t1697);
-    RUN_TEST(test_t1698);
-    RUN_TEST(test_t1699);
-    RUN_TEST(test_t1700);
-    RUN_TEST(test_t1701);
-    RUN_TEST(test_t1702);
-    RUN_TEST(test_t1703);
-    RUN_TEST(test_t1704);
-    RUN_TEST(test_t1705);
-    RUN_TEST(test_t1706);
-    RUN_TEST(test_t1707);
-    RUN_TEST(test_t1708);
-    RUN_TEST(test_t1709);
-    RUN_TEST(test_t1710);
-    RUN_TEST(test_t1711);
-    RUN_TEST(test_t1712);
-    RUN_TEST(test_t1713);
-    RUN_TEST(test_t1714);
-    RUN_TEST(test_t1715);
-    RUN_TEST(test_t1716);
-    RUN_TEST(test_t1717);
-    RUN_TEST(test_t1718);
-    RUN_TEST(test_t1719);
-    RUN_TEST(test_t1720);
-    RUN_TEST(test_t1721);
-    RUN_TEST(test_t1722);
-    RUN_TEST(test_t1723);
-    RUN_TEST(test_t1724);
-    RUN_TEST(test_t1725);
-    RUN_TEST(test_t1726);
-    RUN_TEST(test_t1727);
-    RUN_TEST(test_t1728);
-    RUN_TEST(test_t1729);
-    RUN_TEST(test_t1730);
-    RUN_TEST(test_t1731);
-    RUN_TEST(test_t1732);
-    RUN_TEST(test_t1733);
-    RUN_TEST(test_t1734);
-    RUN_TEST(test_t1735);
-    RUN_TEST(test_t1736);
-    RUN_TEST(test_t1737);
-    RUN_TEST(test_t1738);
-    RUN_TEST(test_t1739);
-    RUN_TEST(test_t1740);
-    RUN_TEST(test_t1741);
-    RUN_TEST(test_t1742);
-    RUN_TEST(test_t1743);
-    RUN_TEST(test_t1744);
-    RUN_TEST(test_t1745);
-    RUN_TEST(test_t1746);
-    RUN_TEST(test_t1747);
-    RUN_TEST(test_t1748);
-    RUN_TEST(test_t1749);
-    RUN_TEST(test_t1750);
-    RUN_TEST(test_t1751);
-    RUN_TEST(test_t1752);
-    RUN_TEST(test_t1753);
-    RUN_TEST(test_t1754);
-    RUN_TEST(test_t1755);
-    RUN_TEST(test_t1756);
-    RUN_TEST(test_t1757);
-    RUN_TEST(test_t1758);
-    RUN_TEST(test_t1759);
-    RUN_TEST(test_t1760);
-    RUN_TEST(test_t1761);
-    RUN_TEST(test_t1762);
-    RUN_TEST(test_t1763);
-    RUN_TEST(test_t1764);
-    RUN_TEST(test_t1765);
-    RUN_TEST(test_t1766);
-    RUN_TEST(test_t1767);
-    RUN_TEST(test_t1768);
-    RUN_TEST(test_t1769);
-    RUN_TEST(test_t1770);
-    RUN_TEST(test_t1771);
-    RUN_TEST(test_t1772);
-    RUN_TEST(test_t1773);
-    RUN_TEST(test_t1774);
-    RUN_TEST(test_t1775);
-    RUN_TEST(test_t1776);
-    RUN_TEST(test_t1777);
-    RUN_TEST(test_t1778);
-    RUN_TEST(test_t1779);
-    RUN_TEST(test_t1780);
-    RUN_TEST(test_t1781);
-    RUN_TEST(test_t1782);
-    RUN_TEST(test_t1783);
-    RUN_TEST(test_t1784);
-    RUN_TEST(test_t1785);
-    RUN_TEST(test_t1786);
-    RUN_TEST(test_t1787);
-    RUN_TEST(test_t1788);
-    RUN_TEST(test_t1789);
-    RUN_TEST(test_t1790);
-    RUN_TEST(test_t1791);
-    RUN_TEST(test_t1792);
-    RUN_TEST(test_t1793);
-    RUN_TEST(test_t1794);
-    RUN_TEST(test_t1795);
-    RUN_TEST(test_t1796);
-    RUN_TEST(test_t1797);
-    RUN_TEST(test_t1798);
-    RUN_TEST(test_t1799);
-    RUN_TEST(test_t1800);
-    RUN_TEST(test_t1801);
-    RUN_TEST(test_t1802);
-    RUN_TEST(test_t1803);
-    RUN_TEST(test_t1804);
-    RUN_TEST(test_t1805);
-    RUN_TEST(test_t1806);
-    RUN_TEST(test_t1807);
-    RUN_TEST(test_t1808);
-    RUN_TEST(test_t1809);
-    RUN_TEST(test_t1810);
-    RUN_TEST(test_t1811);
-    RUN_TEST(test_t1812);
-    RUN_TEST(test_t1813);
-    RUN_TEST(test_t1814);
-    RUN_TEST(test_t1815);
-    RUN_TEST(test_t1816);
-    RUN_TEST(test_t1817);
-    RUN_TEST(test_t1818);
-    RUN_TEST(test_t1819);
-    RUN_TEST(test_t1820);
-    RUN_TEST(test_t1821);
-    RUN_TEST(test_t1822);
-    RUN_TEST(test_t1823);
-    RUN_TEST(test_t1824);
-    RUN_TEST(test_t1825);
-    RUN_TEST(test_t1826);
-    RUN_TEST(test_t1827);
-    RUN_TEST(test_t1828);
-    RUN_TEST(test_t1829);
-    RUN_TEST(test_t1830);
-    RUN_TEST(test_t1831);
-    RUN_TEST(test_t1832);
-    RUN_TEST(test_t1833);
-    RUN_TEST(test_t1834);
-    RUN_TEST(test_t1835);
-    RUN_TEST(test_t1836);
-    RUN_TEST(test_t1837);
-    RUN_TEST(test_t1838);
-    RUN_TEST(test_t1839);
-    RUN_TEST(test_t1840);
-    RUN_TEST(test_t1841);
-    RUN_TEST(test_t1842);
-    RUN_TEST(test_t1843);
-    RUN_TEST(test_t1844);
-    RUN_TEST(test_t1845);
-    RUN_TEST(test_t1846);
-    RUN_TEST(test_t1847);
-    RUN_TEST(test_t1848);
-    RUN_TEST(test_t1849);
-    RUN_TEST(test_t1850);
-    RUN_TEST(test_t1851);
-    RUN_TEST(test_t1852);
-    RUN_TEST(test_t1853);
-    RUN_TEST(test_t1854);
-    RUN_TEST(test_t1855);
-    RUN_TEST(test_t1856);
-    RUN_TEST(test_t1857);
-    RUN_TEST(test_t1858);
-    RUN_TEST(test_t1859);
-    RUN_TEST(test_t1860);
-    RUN_TEST(test_t1861);
-    RUN_TEST(test_t1862);
-    RUN_TEST(test_t1863);
-    RUN_TEST(test_t1864);
-    RUN_TEST(test_t1865);
-    RUN_TEST(test_t1866);
-    RUN_TEST(test_t1867);
-    RUN_TEST(test_t1868);
-    RUN_TEST(test_t1869);
-    RUN_TEST(test_t1870);
-    RUN_TEST(test_t1871);
-    RUN_TEST(test_t1872);
-    RUN_TEST(test_t1873);
-    RUN_TEST(test_t1874);
-    RUN_TEST(test_t1875);
-    RUN_TEST(test_t1876);
-    RUN_TEST(test_t1877);
-    RUN_TEST(test_t1878);
-    RUN_TEST(test_t1879);
-    RUN_TEST(test_t1880);
-    RUN_TEST(test_t1881);
-    RUN_TEST(test_t1882);
-    RUN_TEST(test_t1883);
-    RUN_TEST(test_t1884);
-    RUN_TEST(test_t1885);
-    RUN_TEST(test_t1886);
-    RUN_TEST(test_t1887);
-    RUN_TEST(test_t1888);
-    RUN_TEST(test_t1889);
-    RUN_TEST(test_t1890);
-    RUN_TEST(test_t1891);
-    RUN_TEST(test_t1892);
-    RUN_TEST(test_t1893);
-    RUN_TEST(test_t1894);
-    RUN_TEST(test_t1895);
-    RUN_TEST(test_t1896);
-    RUN_TEST(test_t1897);
-    RUN_TEST(test_t1898);
-    RUN_TEST(test_t1899);
-    RUN_TEST(test_t1900);
-    RUN_TEST(test_t1901);
-    RUN_TEST(test_t1902);
-    RUN_TEST(test_t1903);
-    RUN_TEST(test_t1904);
-    RUN_TEST(test_t1905);
-    RUN_TEST(test_t1906);
-    RUN_TEST(test_t1907);
-    RUN_TEST(test_t1908);
-    RUN_TEST(test_t1909);
-    RUN_TEST(test_t1910);
-    RUN_TEST(test_t1911);
-    RUN_TEST(test_t1912);
-    RUN_TEST(test_t1913);
-    RUN_TEST(test_t1914);
-    RUN_TEST(test_t1915);
-    RUN_TEST(test_t1916);
-    RUN_TEST(test_t1917);
-    RUN_TEST(test_t1918);
-    RUN_TEST(test_t1919);
-    RUN_TEST(test_t1920);
-    RUN_TEST(test_t1921);
-    RUN_TEST(test_t1922);
-    RUN_TEST(test_t1923);
-    RUN_TEST(test_t1924);
-    RUN_TEST(test_t1925);
-    RUN_TEST(test_t1926);
-    RUN_TEST(test_t1927);
-    RUN_TEST(test_t1928);
-    RUN_TEST(test_t1929);
-    RUN_TEST(test_t1930);
-    RUN_TEST(test_t1931);
-    RUN_TEST(test_t1932);
-    RUN_TEST(test_t1933);
-    RUN_TEST(test_t1934);
-    RUN_TEST(test_t1935);
-    RUN_TEST(test_t1936);
-    RUN_TEST(test_t1937);
-    RUN_TEST(test_t1938);
-    RUN_TEST(test_t1939);
-    RUN_TEST(test_t1940);
-    RUN_TEST(test_t1941);
-    RUN_TEST(test_t1942);
-    RUN_TEST(test_t1943);
-    RUN_TEST(test_t1944);
-    RUN_TEST(test_t1945);
-    RUN_TEST(test_t1946);
-    RUN_TEST(test_t1947);
-    RUN_TEST(test_t1948);
-    RUN_TEST(test_t1949);
-    RUN_TEST(test_t1950);
-    RUN_TEST(test_t1951);
-    RUN_TEST(test_t1952);
-    RUN_TEST(test_t1953);
-    RUN_TEST(test_t1954);
-    RUN_TEST(test_t1955);
-    RUN_TEST(test_t1956);
-    RUN_TEST(test_t1957);
-    RUN_TEST(test_t1958);
-    RUN_TEST(test_t1959);
-    RUN_TEST(test_t1960);
-    RUN_TEST(test_t1961);
-    RUN_TEST(test_t1962);
-    RUN_TEST(test_t1963);
-    RUN_TEST(test_t1964);
-    RUN_TEST(test_t1965);
-    RUN_TEST(test_t1966);
-    RUN_TEST(test_t1967);
-    RUN_TEST(test_t1968);
-    RUN_TEST(test_t1969);
-    RUN_TEST(test_t1970);
-    RUN_TEST(test_t1971);
-    RUN_TEST(test_t1972);
-    RUN_TEST(test_t1973);
-    RUN_TEST(test_t1974);
-    RUN_TEST(test_t1975);
-    RUN_TEST(test_t1976);
-    RUN_TEST(test_t1977);
-    RUN_TEST(test_t1978);
-    RUN_TEST(test_t1979);
-    RUN_TEST(test_t1980);
-    RUN_TEST(test_t1981);
-    RUN_TEST(test_t1982);
-    RUN_TEST(test_t1983);
-    RUN_TEST(test_t1984);
-    RUN_TEST(test_t1985);
-    RUN_TEST(test_t1986);
-    RUN_TEST(test_t1987);
-    RUN_TEST(test_t1988);
-    RUN_TEST(test_t1989);
-    RUN_TEST(test_t1990);
-    RUN_TEST(test_t1991);
-    RUN_TEST(test_t1992);
-    RUN_TEST(test_t1993);
-    RUN_TEST(test_t1994);
-    RUN_TEST(test_t1995);
-    RUN_TEST(test_t1996);
-    RUN_TEST(test_t1997);
-    RUN_TEST(test_t1998);
-    RUN_TEST(test_t1999);
-    RUN_TEST(test_t2000);
-    RUN_TEST(test_t2001);
-    RUN_TEST(test_t2002);
-    RUN_TEST(test_t2003);
-    RUN_TEST(test_t2004);
-    RUN_TEST(test_t2005);
-    RUN_TEST(test_t2006);
-    RUN_TEST(test_t2007);
-    RUN_TEST(test_t2008);
-    RUN_TEST(test_t2009);
-    RUN_TEST(test_t2010);
-    RUN_TEST(test_t2011);
-    RUN_TEST(test_t2012);
-    RUN_TEST(test_t2013);
-    RUN_TEST(test_t2014);
-    RUN_TEST(test_t2015);
-    RUN_TEST(test_t2016);
-    RUN_TEST(test_t2017);
-    RUN_TEST(test_t2018);
-    RUN_TEST(test_t2019);
-    RUN_TEST(test_t2020);
-    RUN_TEST(test_t2021);
-    RUN_TEST(test_t2022);
-    RUN_TEST(test_t2023);
-    RUN_TEST(test_t2024);
-    RUN_TEST(test_t2025);
-    RUN_TEST(test_t2026);
-    RUN_TEST(test_t2027);
-    RUN_TEST(test_t2028);
-    RUN_TEST(test_t2029);
-    RUN_TEST(test_t2030);
-    RUN_TEST(test_t2031);
-    RUN_TEST(test_t2032);
-    RUN_TEST(test_t2033);
-    RUN_TEST(test_t2034);
-    RUN_TEST(test_t2035);
-    RUN_TEST(test_t2036);
-    RUN_TEST(test_t2037);
-    RUN_TEST(test_t2038);
-    RUN_TEST(test_t2039);
-    RUN_TEST(test_t2040);
-    RUN_TEST(test_t2041);
-    RUN_TEST(test_t2042);
-    RUN_TEST(test_t2043);
-    RUN_TEST(test_t2044);
-    RUN_TEST(test_t2045);
-    RUN_TEST(test_t2046);
-    RUN_TEST(test_t2047);
-    RUN_TEST(test_t2048);
-    RUN_TEST(test_t2049);
-    RUN_TEST(test_t2050);
-    RUN_TEST(test_t2051);
-    RUN_TEST(test_t2052);
-    RUN_TEST(test_t2053);
-    RUN_TEST(test_t2054);
-    RUN_TEST(test_t2055);
-    RUN_TEST(test_t2056);
-    RUN_TEST(test_t2057);
-    RUN_TEST(test_t2058);
-    RUN_TEST(test_t2059);
-    RUN_TEST(test_t2060);
-    RUN_TEST(test_t2061);
-    RUN_TEST(test_t2062);
-    RUN_TEST(test_t2063);
-    RUN_TEST(test_t2064);
-    RUN_TEST(test_t2065);
-    RUN_TEST(test_t2066);
-    RUN_TEST(test_t2067);
-    RUN_TEST(test_t2068);
-    RUN_TEST(test_t2069);
-    RUN_TEST(test_t2070);
-    RUN_TEST(test_t2071);
-    RUN_TEST(test_t2072);
-    RUN_TEST(test_t2073);
-    RUN_TEST(test_t2074);
-    RUN_TEST(test_t2075);
-    RUN_TEST(test_t2076);
-    RUN_TEST(test_t2077);
-    RUN_TEST(test_t2078);
-    RUN_TEST(test_t2079);
-    RUN_TEST(test_t2080);
-    RUN_TEST(test_t2081);
-    RUN_TEST(test_t2082);
-    RUN_TEST(test_t2083);
-    RUN_TEST(test_t2084);
-    RUN_TEST(test_t2085);
-    RUN_TEST(test_t2086);
-    RUN_TEST(test_t2087);
-    RUN_TEST(test_t2088);
-    RUN_TEST(test_t2089);
-    RUN_TEST(test_t2090);
-    RUN_TEST(test_t2091);
-    RUN_TEST(test_t2092);
-    RUN_TEST(test_t2093);
-    RUN_TEST(test_t2094);
-    RUN_TEST(test_t2095);
-    RUN_TEST(test_t2096);
-    RUN_TEST(test_t2097);
-    RUN_TEST(test_t2098);
-    RUN_TEST(test_t2099);
-    RUN_TEST(test_t2100);
-    RUN_TEST(test_t2101);
-    RUN_TEST(test_t2102);
-    RUN_TEST(test_t2103);
-    RUN_TEST(test_t2104);
-    RUN_TEST(test_t2105);
-    RUN_TEST(test_t2106);
-    RUN_TEST(test_t2107);
-    RUN_TEST(test_t2108);
-    RUN_TEST(test_t2109);
-    RUN_TEST(test_t2110);
-    RUN_TEST(test_t2111);
-    RUN_TEST(test_t2112);
-    RUN_TEST(test_t2113);
-    RUN_TEST(test_t2114);
-    RUN_TEST(test_t2115);
-    RUN_TEST(test_t2116);
-    RUN_TEST(test_t2117);
-    RUN_TEST(test_t2118);
-    RUN_TEST(test_t2119);
-    RUN_TEST(test_t2120);
-    RUN_TEST(test_t2121);
-    RUN_TEST(test_t2122);
-    RUN_TEST(test_t2123);
-    RUN_TEST(test_t2124);
-    RUN_TEST(test_t2125);
-    RUN_TEST(test_t2126);
-    RUN_TEST(test_t2127);
-    RUN_TEST(test_t2128);
-    RUN_TEST(test_t2129);
-    RUN_TEST(test_t2130);
-    RUN_TEST(test_t2131);
-    RUN_TEST(test_t2132);
-    RUN_TEST(test_t2133);
-    RUN_TEST(test_t2134);
-    RUN_TEST(test_t2135);
-    RUN_TEST(test_t2136);
-    RUN_TEST(test_t2137);
-    RUN_TEST(test_t2138);
-    RUN_TEST(test_t2139);
-    RUN_TEST(test_t2140);
-    RUN_TEST(test_t2141);
-    RUN_TEST(test_t2142);
-    RUN_TEST(test_t2143);
-    RUN_TEST(test_t2144);
-    RUN_TEST(test_t2145);
-    RUN_TEST(test_t2146);
-    RUN_TEST(test_t2147);
-    RUN_TEST(test_t2148);
-    RUN_TEST(test_t2149);
-    RUN_TEST(test_t2150);
-    RUN_TEST(test_t2151);
-    RUN_TEST(test_t2152);
-    RUN_TEST(test_t2153);
-    RUN_TEST(test_t2154);
-    RUN_TEST(test_t2155);
-    RUN_TEST(test_t2156);
-    RUN_TEST(test_t2157);
-    RUN_TEST(test_t2158);
-    RUN_TEST(test_t2159);
-    RUN_TEST(test_t2160);
-    RUN_TEST(test_t2161);
-    RUN_TEST(test_t2162);
-    RUN_TEST(test_t2163);
-    RUN_TEST(test_t2164);
-    RUN_TEST(test_t2165);
-    RUN_TEST(test_t2166);
-    RUN_TEST(test_t2167);
-    RUN_TEST(test_t2168);
-    RUN_TEST(test_t2169);
-    RUN_TEST(test_t2170);
-    RUN_TEST(test_t2171);
-    RUN_TEST(test_t2172);
-    RUN_TEST(test_t2173);
-    RUN_TEST(test_t2174);
-    RUN_TEST(test_t2175);
-    RUN_TEST(test_t2176);
-    RUN_TEST(test_t2177);
-    RUN_TEST(test_t2178);
-    RUN_TEST(test_t2179);
-    RUN_TEST(test_t2180);
-    RUN_TEST(test_t2181);
-    RUN_TEST(test_t2182);
-    RUN_TEST(test_t2183);
-    RUN_TEST(test_t2184);
-    RUN_TEST(test_t2185);
-    RUN_TEST(test_t2186);
-    RUN_TEST(test_t2187);
-    RUN_TEST(test_t2188);
-    RUN_TEST(test_t2189);
-    RUN_TEST(test_t2190);
-    RUN_TEST(test_t2191);
-    RUN_TEST(test_t2192);
-    RUN_TEST(test_t2193);
-    RUN_TEST(test_t2194);
-    RUN_TEST(test_t2195);
-    RUN_TEST(test_t2196);
-    RUN_TEST(test_t2197);
-    RUN_TEST(test_t2198);
-    RUN_TEST(test_t2199);
-    RUN_TEST(test_t2200);
-    RUN_TEST(test_t2201);
-    RUN_TEST(test_t2202);
-    RUN_TEST(test_t2203);
-    RUN_TEST(test_t2204);
-    RUN_TEST(test_t2205);
-    RUN_TEST(test_t2206);
-    RUN_TEST(test_t2207);
-    RUN_TEST(test_t2208);
-    RUN_TEST(test_t2209);
-    RUN_TEST(test_t2210);
-    RUN_TEST(test_t2211);
-    RUN_TEST(test_t2212);
-    RUN_TEST(test_t2213);
-    RUN_TEST(test_t2214);
-    RUN_TEST(test_t2215);
-    RUN_TEST(test_t2216);
-    RUN_TEST(test_t2217);
-    RUN_TEST(test_t2218);
-    RUN_TEST(test_t2219);
-    RUN_TEST(test_t2220);
-    RUN_TEST(test_t2221);
-    RUN_TEST(test_t2222);
-    RUN_TEST(test_t2223);
-    RUN_TEST(test_t2224);
-    RUN_TEST(test_t2225);
-    RUN_TEST(test_t2226);
-    RUN_TEST(test_t2227);
-    RUN_TEST(test_t2228);
-    RUN_TEST(test_t2229);
-    RUN_TEST(test_t2230);
-    RUN_TEST(test_t2231);
-    RUN_TEST(test_t2232);
-    RUN_TEST(test_t2233);
-    RUN_TEST(test_t2234);
-    RUN_TEST(test_t2235);
-    RUN_TEST(test_t2236);
-    RUN_TEST(test_t2237);
-    RUN_TEST(test_t2238);
-    RUN_TEST(test_t2239);
-    RUN_TEST(test_t2240);
-    RUN_TEST(test_t2241);
-    RUN_TEST(test_t2242);
-    RUN_TEST(test_t2243);
-    RUN_TEST(test_t2244);
-    RUN_TEST(test_t2245);
-    RUN_TEST(test_t2246);
-    RUN_TEST(test_t2247);
-    RUN_TEST(test_t2248);
-    RUN_TEST(test_t2249);
-    RUN_TEST(test_t2250);
-    RUN_TEST(test_t2251);
-    RUN_TEST(test_t2252);
-    RUN_TEST(test_t2253);
-    RUN_TEST(test_t2254);
-    RUN_TEST(test_t2255);
-    RUN_TEST(test_t2256);
-    RUN_TEST(test_t2257);
-    RUN_TEST(test_t2258);
-    RUN_TEST(test_t2259);
-    RUN_TEST(test_t2260);
-    RUN_TEST(test_t2261);
-    RUN_TEST(test_t2262);
-    RUN_TEST(test_t2263);
-    RUN_TEST(test_t2264);
-    RUN_TEST(test_t2265);
-    RUN_TEST(test_t2266);
-    RUN_TEST(test_t2267);
-    RUN_TEST(test_t2268);
-    RUN_TEST(test_t2269);
-    RUN_TEST(test_t2270);
-    RUN_TEST(test_t2271);
-    RUN_TEST(test_t2272);
-    RUN_TEST(test_t2273);
-    RUN_TEST(test_t2274);
-    RUN_TEST(test_t2275);
-    RUN_TEST(test_t2276);
-    RUN_TEST(test_t2277);
-    RUN_TEST(test_t2278);
-    RUN_TEST(test_t2279);
-    RUN_TEST(test_t2280);
-    RUN_TEST(test_t2281);
-    RUN_TEST(test_t2282);
-    RUN_TEST(test_t2283);
-    RUN_TEST(test_t2284);
-    RUN_TEST(test_t2285);
-    RUN_TEST(test_t2286);
-    RUN_TEST(test_t2287);
-    RUN_TEST(test_t2288);
-    RUN_TEST(test_t2289);
-    RUN_TEST(test_t2290);
-    RUN_TEST(test_t2291);
-    RUN_TEST(test_t2292);
-    RUN_TEST(test_t2293);
-    RUN_TEST(test_t2294);
-    RUN_TEST(test_t2295);
-    RUN_TEST(test_t2296);
-    RUN_TEST(test_t2297);
-    RUN_TEST(test_t2298);
-    RUN_TEST(test_t2299);
-    RUN_TEST(test_t2300);
-    RUN_TEST(test_t2301);
-    RUN_TEST(test_t2302);
-    RUN_TEST(test_t2303);
-    RUN_TEST(test_t2304);
-    RUN_TEST(test_t2305);
-    RUN_TEST(test_t2306);
-    RUN_TEST(test_t2307);
-    RUN_TEST(test_t2308);
-    RUN_TEST(test_t2309);
-    RUN_TEST(test_t2310);
-    RUN_TEST(test_t2311);
-    RUN_TEST(test_t2312);
-    RUN_TEST(test_t2313);
-    RUN_TEST(test_t2314);
-    RUN_TEST(test_t2315);
-    RUN_TEST(test_t2316);
-    RUN_TEST(test_t2317);
-    RUN_TEST(test_t2318);
-    RUN_TEST(test_t2319);
-    RUN_TEST(test_t2320);
-    RUN_TEST(test_t2321);
-    RUN_TEST(test_t2322);
-    RUN_TEST(test_t2323);
-    RUN_TEST(test_t2324);
-    RUN_TEST(test_t2325);
-    RUN_TEST(test_t2326);
-    RUN_TEST(test_t2327);
-    RUN_TEST(test_t2328);
-    RUN_TEST(test_t2329);
-    RUN_TEST(test_t2330);
-    RUN_TEST(test_t2331);
-    RUN_TEST(test_t2332);
-    RUN_TEST(test_t2333);
-    RUN_TEST(test_t2334);
-    RUN_TEST(test_t2335);
-    RUN_TEST(test_t2336);
-    RUN_TEST(test_t2337);
-    RUN_TEST(test_t2338);
-    RUN_TEST(test_t2339);
-    RUN_TEST(test_t2340);
-    RUN_TEST(test_t2341);
-    RUN_TEST(test_t2342);
-    RUN_TEST(test_t2343);
-    RUN_TEST(test_t2344);
-    RUN_TEST(test_t2345);
-    RUN_TEST(test_t2346);
-    RUN_TEST(test_t2347);
-    RUN_TEST(test_t2348);
-    RUN_TEST(test_t2349);
-    RUN_TEST(test_t2350);
-    RUN_TEST(test_t2351);
-    RUN_TEST(test_t2352);
-    RUN_TEST(test_t2353);
-    RUN_TEST(test_t2354);
-    RUN_TEST(test_t2355);
-    RUN_TEST(test_t2356);
-    RUN_TEST(test_t2357);
-    RUN_TEST(test_t2358);
-    RUN_TEST(test_t2359);
-    RUN_TEST(test_t2360);
-    RUN_TEST(test_t2361);
-    RUN_TEST(test_t2362);
-    RUN_TEST(test_t2363);
-    RUN_TEST(test_t2364);
-    RUN_TEST(test_t2365);
-    RUN_TEST(test_t2366);
-    RUN_TEST(test_t2367);
-    RUN_TEST(test_t2368);
-    RUN_TEST(test_t2369);
-    RUN_TEST(test_t2370);
-    RUN_TEST(test_t2371);
-    RUN_TEST(test_t2372);
-    RUN_TEST(test_t2373);
-    RUN_TEST(test_t2374);
-    RUN_TEST(test_t2375);
-    RUN_TEST(test_t2376);
-    RUN_TEST(test_t2377);
-    RUN_TEST(test_t2378);
-    RUN_TEST(test_t2379);
-    RUN_TEST(test_t2380);
-    RUN_TEST(test_t2381);
-    RUN_TEST(test_t2382);
-    RUN_TEST(test_t2383);
-    RUN_TEST(test_t2384);
-    RUN_TEST(test_t2385);
-    RUN_TEST(test_t2386);
-    RUN_TEST(test_t2387);
-    RUN_TEST(test_t2388);
-    RUN_TEST(test_t2389);
-    RUN_TEST(test_t2390);
-    RUN_TEST(test_t2391);
-    RUN_TEST(test_t2392);
-    RUN_TEST(test_t2393);
-    RUN_TEST(test_t2394);
-    RUN_TEST(test_t2395);
-    RUN_TEST(test_t2396);
-    RUN_TEST(test_t2397);
-    RUN_TEST(test_t2398);
-    RUN_TEST(test_t2399);
-    RUN_TEST(test_t2400);
-    RUN_TEST(test_t2401);
-    RUN_TEST(test_t2402);
-    RUN_TEST(test_t2403);
-    RUN_TEST(test_t2404);
-    RUN_TEST(test_t2405);
-    RUN_TEST(test_t2406);
-    RUN_TEST(test_t2407);
-    RUN_TEST(test_t2408);
-    RUN_TEST(test_t2409);
-    RUN_TEST(test_t2410);
-    RUN_TEST(test_t2411);
-    RUN_TEST(test_t2412);
-    RUN_TEST(test_t2413);
-    RUN_TEST(test_t2414);
-    RUN_TEST(test_t2415);
-    RUN_TEST(test_t2416);
-    RUN_TEST(test_t2417);
-    RUN_TEST(test_t2418);
-    RUN_TEST(test_t2419);
-    RUN_TEST(test_t2420);
-    RUN_TEST(test_t2421);
-    RUN_TEST(test_t2422);
-    RUN_TEST(test_t2423);
-    RUN_TEST(test_t2424);
-    RUN_TEST(test_t2425);
-    RUN_TEST(test_t2426);
-    RUN_TEST(test_t2427);
-    RUN_TEST(test_t2428);
-    RUN_TEST(test_t2429);
-    RUN_TEST(test_t2430);
-    RUN_TEST(test_t2431);
-    RUN_TEST(test_t2432);
-    RUN_TEST(test_t2433);
-    RUN_TEST(test_t2434);
-    RUN_TEST(test_t2435);
-    RUN_TEST(test_t2436);
-    RUN_TEST(test_t2437);
-    RUN_TEST(test_t2438);
-    RUN_TEST(test_t2439);
-    RUN_TEST(test_t2440);
-    RUN_TEST(test_t2441);
-    RUN_TEST(test_t2442);
-    RUN_TEST(test_t2443);
-    RUN_TEST(test_t2444);
-    RUN_TEST(test_t2445);
-    RUN_TEST(test_t2446);
-    RUN_TEST(test_t2447);
-    RUN_TEST(test_t2448);
-    RUN_TEST(test_t2449);
-    RUN_TEST(test_t2450);
-    RUN_TEST(test_t2451);
-    RUN_TEST(test_t2452);
-    RUN_TEST(test_t2453);
-    RUN_TEST(test_t2454);
-    RUN_TEST(test_t2455);
-    RUN_TEST(test_t2456);
-    RUN_TEST(test_t2457);
-    RUN_TEST(test_t2458);
-    RUN_TEST(test_t2459);
-    RUN_TEST(test_t2460);
-    RUN_TEST(test_t2461);
-    RUN_TEST(test_t2462);
-    RUN_TEST(test_t2463);
-    RUN_TEST(test_t2464);
-    RUN_TEST(test_t2465);
-    RUN_TEST(test_t2466);
-    RUN_TEST(test_t2467);
-    RUN_TEST(test_t2468);
-    RUN_TEST(test_t2469);
-    RUN_TEST(test_t2470);
-    RUN_TEST(test_t2471);
-    RUN_TEST(test_t2472);
-    RUN_TEST(test_t2473);
-    RUN_TEST(test_t2474);
-    RUN_TEST(test_t2475);
-    RUN_TEST(test_t2476);
-    RUN_TEST(test_t2477);
-    RUN_TEST(test_t2478);
-    RUN_TEST(test_t2479);
-    RUN_TEST(test_t2480);
-    RUN_TEST(test_t2481);
-    RUN_TEST(test_t2482);
-    RUN_TEST(test_t2483);
-    RUN_TEST(test_t2484);
-    RUN_TEST(test_t2485);
-    RUN_TEST(test_t2486);
-    RUN_TEST(test_t2487);
-    RUN_TEST(test_t2488);
-    RUN_TEST(test_t2489);
-    RUN_TEST(test_t2490);
-    RUN_TEST(test_t2491);
-    RUN_TEST(test_t2492);
-    RUN_TEST(test_t2493);
-    RUN_TEST(test_t2494);
-    RUN_TEST(test_t2495);
-    RUN_TEST(test_t2496);
-    RUN_TEST(test_t2497);
-    RUN_TEST(test_t2498);
-    RUN_TEST(test_t2499);
-    RUN_TEST(test_t2500);
-    RUN_TEST(test_t2501);
-    RUN_TEST(test_t2502);
-    RUN_TEST(test_t2503);
-    RUN_TEST(test_t2504);
-    RUN_TEST(test_t2505);
-    RUN_TEST(test_t2506);
-    RUN_TEST(test_t2507);
-    RUN_TEST(test_t2508);
-    RUN_TEST(test_t2509);
-    RUN_TEST(test_t2510);
-    RUN_TEST(test_t2511);
-    RUN_TEST(test_t2512);
-    RUN_TEST(test_t2513);
-    RUN_TEST(test_t2514);
-    RUN_TEST(test_t2515);
-    RUN_TEST(test_t2516);
-    RUN_TEST(test_t2517);
-    RUN_TEST(test_t2518);
-    RUN_TEST(test_t2519);
-    RUN_TEST(test_t2520);
-    RUN_TEST(test_t2521);
-    RUN_TEST(test_t2522);
-    RUN_TEST(test_t2523);
-    RUN_TEST(test_t2524);
-    RUN_TEST(test_t2525);
-    RUN_TEST(test_t2526);
-    RUN_TEST(test_t2527);
-    RUN_TEST(test_t2528);
-    RUN_TEST(test_t2529);
-    RUN_TEST(test_t2530);
-    RUN_TEST(test_t2531);
-    RUN_TEST(test_t2532);
-    RUN_TEST(test_t2533);
-    RUN_TEST(test_t2534);
-    RUN_TEST(test_t2535);
-    RUN_TEST(test_t2536);
-    RUN_TEST(test_t2537);
-    RUN_TEST(test_t2538);
-    RUN_TEST(test_t2539);
-    RUN_TEST(test_t2540);
-    RUN_TEST(test_t2541);
-    RUN_TEST(test_t2542);
-    RUN_TEST(test_t2543);
-    RUN_TEST(test_t2544);
-    RUN_TEST(test_t2545);
-    RUN_TEST(test_t2546);
-    RUN_TEST(test_t2547);
-    RUN_TEST(test_t2548);
-    RUN_TEST(test_t2549);
-    RUN_TEST(test_t2550);
-    RUN_TEST(test_t2551);
-    RUN_TEST(test_t2552);
-    RUN_TEST(test_t2553);
-    RUN_TEST(test_t2554);
-    RUN_TEST(test_t2555);
-    RUN_TEST(test_t2556);
-    RUN_TEST(test_t2557);
-    RUN_TEST(test_t2558);
-    RUN_TEST(test_t2559);
-    RUN_TEST(test_t2560);
-    RUN_TEST(test_t2561);
-    RUN_TEST(test_t2562);
-    RUN_TEST(test_t2563);
-    RUN_TEST(test_t2564);
-    RUN_TEST(test_t2565);
-    RUN_TEST(test_t2566);
-    RUN_TEST(test_t2567);
-    RUN_TEST(test_t2568);
-    RUN_TEST(test_t2569);
-    RUN_TEST(test_t2570);
-    RUN_TEST(test_t2571);
-    RUN_TEST(test_t2572);
-    RUN_TEST(test_t2573);
-    RUN_TEST(test_t2574);
-    RUN_TEST(test_t2575);
-    RUN_TEST(test_t2576);
-    RUN_TEST(test_t2577);
-    RUN_TEST(test_t2578);
-    RUN_TEST(test_t2579);
-    RUN_TEST(test_t2580);
-    RUN_TEST(test_t2581);
-    RUN_TEST(test_t2582);
-    RUN_TEST(test_t2583);
-    RUN_TEST(test_t2584);
-    RUN_TEST(test_t2585);
-    RUN_TEST(test_t2586);
-    RUN_TEST(test_t2587);
-    RUN_TEST(test_t2588);
-    RUN_TEST(test_t2589);
-    RUN_TEST(test_t2590);
-    RUN_TEST(test_t2591);
-    RUN_TEST(test_t2592);
-    RUN_TEST(test_t2593);
-    RUN_TEST(test_t2594);
-    RUN_TEST(test_t2595);
-    RUN_TEST(test_t2596);
-    RUN_TEST(test_t2597);
-    RUN_TEST(test_t2598);
-    RUN_TEST(test_t2599);
-    RUN_TEST(test_t2600);
-    RUN_TEST(test_t2601);
-    RUN_TEST(test_t2602);
-    RUN_TEST(test_t2603);
-    RUN_TEST(test_t2604);
-    RUN_TEST(test_t2605);
-    RUN_TEST(test_t2606);
-    RUN_TEST(test_t2607);
-    RUN_TEST(test_t2608);
-    RUN_TEST(test_t2609);
-    RUN_TEST(test_t2610);
-    RUN_TEST(test_t2611);
-    RUN_TEST(test_t2612);
-    RUN_TEST(test_t2613);
-    RUN_TEST(test_t2614);
-    RUN_TEST(test_t2615);
-    RUN_TEST(test_t2616);
-    RUN_TEST(test_t2617);
-    RUN_TEST(test_t2618);
-    RUN_TEST(test_t2619);
-    RUN_TEST(test_t2620);
-    RUN_TEST(test_t2621);
-    RUN_TEST(test_t2622);
-    RUN_TEST(test_t2623);
-    RUN_TEST(test_t2624);
-    RUN_TEST(test_t2625);
-    RUN_TEST(test_t2626);
-    RUN_TEST(test_t2627);
-    RUN_TEST(test_t2628);
-    RUN_TEST(test_t2629);
-    RUN_TEST(test_t2630);
-    RUN_TEST(test_t2631);
-    RUN_TEST(test_t2632);
-    RUN_TEST(test_t2633);
-    RUN_TEST(test_t2634);
-    RUN_TEST(test_t2635);
-    RUN_TEST(test_t2636);
-    RUN_TEST(test_t2637);
-    RUN_TEST(test_t2638);
-    RUN_TEST(test_t2639);
-    RUN_TEST(test_t2640);
-    RUN_TEST(test_t2641);
-    RUN_TEST(test_t2642);
-    RUN_TEST(test_t2643);
-    RUN_TEST(test_t2644);
-    RUN_TEST(test_t2645);
-    RUN_TEST(test_t2646);
-    RUN_TEST(test_t2647);
-    RUN_TEST(test_t2648);
-    RUN_TEST(test_t2649);
-    RUN_TEST(test_t2650);
-    RUN_TEST(test_t2651);
-    RUN_TEST(test_t2652);
-    RUN_TEST(test_t2653);
-    RUN_TEST(test_t2654);
-    RUN_TEST(test_t2655);
-    RUN_TEST(test_t2656);
-    RUN_TEST(test_t2657);
-    RUN_TEST(test_t2658);
-    RUN_TEST(test_t2659);
-    RUN_TEST(test_t2660);
-    RUN_TEST(test_t2661);
-    RUN_TEST(test_t2662);
-    RUN_TEST(test_t2663);
-    RUN_TEST(test_t2664);
-    RUN_TEST(test_t2665);
-    RUN_TEST(test_t2666);
-    RUN_TEST(test_t2667);
-    RUN_TEST(test_t2668);
-    RUN_TEST(test_t2669);
-    RUN_TEST(test_t2670);
-    RUN_TEST(test_t2671);
-    RUN_TEST(test_t2672);
-    RUN_TEST(test_t2673);
-    RUN_TEST(test_t2674);
-    RUN_TEST(test_t2675);
-    RUN_TEST(test_t2676);
-    RUN_TEST(test_t2677);
-    RUN_TEST(test_t2678);
-    RUN_TEST(test_t2679);
-    RUN_TEST(test_t2680);
-    RUN_TEST(test_t2681);
-    RUN_TEST(test_t2682);
-    RUN_TEST(test_t2683);
-    RUN_TEST(test_t2684);
-    RUN_TEST(test_t2685);
-    RUN_TEST(test_t2686);
-    RUN_TEST(test_t2687);
-    RUN_TEST(test_t2688);
-    RUN_TEST(test_t2689);
-    RUN_TEST(test_t2690);
-    RUN_TEST(test_t2691);
-    RUN_TEST(test_t2692);
-    RUN_TEST(test_t2693);
-    RUN_TEST(test_t2694);
-    RUN_TEST(test_t2695);
-    RUN_TEST(test_t2696);
-    RUN_TEST(test_t2697);
-    RUN_TEST(test_t2698);
-    RUN_TEST(test_t2699);
-    RUN_TEST(test_t2700);
-    RUN_TEST(test_t2701);
-    RUN_TEST(test_t2702);
-    RUN_TEST(test_t2703);
-    RUN_TEST(test_t2704);
-    RUN_TEST(test_t2705);
-    RUN_TEST(test_t2706);
-    RUN_TEST(test_t2707);
-    RUN_TEST(test_t2708);
-    RUN_TEST(test_t2709);
-    RUN_TEST(test_t2710);
-    RUN_TEST(test_t2711);
-    RUN_TEST(test_t2712);
-    RUN_TEST(test_t2713);
-    RUN_TEST(test_t2714);
-    RUN_TEST(test_t2715);
-    RUN_TEST(test_t2716);
-    RUN_TEST(test_t2717);
-    RUN_TEST(test_t2718);
-    RUN_TEST(test_t2719);
-    RUN_TEST(test_t2720);
-    RUN_TEST(test_t2721);
-    RUN_TEST(test_t2722);
-    RUN_TEST(test_t2723);
-    RUN_TEST(test_t2724);
-    RUN_TEST(test_t2725);
-    RUN_TEST(test_t2726);
-    RUN_TEST(test_t2727);
-    RUN_TEST(test_t2728);
-    RUN_TEST(test_t2729);
-    RUN_TEST(test_t2730);
-    RUN_TEST(test_t2731);
-    RUN_TEST(test_t2732);
-    RUN_TEST(test_t2733);
-    RUN_TEST(test_t2734);
-    RUN_TEST(test_t2735);
-    RUN_TEST(test_t2736);
-    RUN_TEST(test_t2737);
-    RUN_TEST(test_t2738);
-    RUN_TEST(test_t2739);
-    RUN_TEST(test_t2740);
-    RUN_TEST(test_t2741);
-    RUN_TEST(test_t2742);
-    RUN_TEST(test_t2743);
-    RUN_TEST(test_t2744);
-    RUN_TEST(test_t2745);
-    RUN_TEST(test_t2746);
-    RUN_TEST(test_t2747);
-    RUN_TEST(test_t2748);
-    RUN_TEST(test_t2749);
-    RUN_TEST(test_t2750);
-    RUN_TEST(test_t2751);
-    RUN_TEST(test_t2752);
-    RUN_TEST(test_t2753);
-    RUN_TEST(test_t2754);
-    RUN_TEST(test_t2755);
-    RUN_TEST(test_t2756);
-    RUN_TEST(test_t2757);
-    RUN_TEST(test_t2758);
-    RUN_TEST(test_t2759);
-    RUN_TEST(test_t2760);
-    RUN_TEST(test_t2761);
-    RUN_TEST(test_t2762);
-    RUN_TEST(test_t2763);
-    RUN_TEST(test_t2764);
-    RUN_TEST(test_t2765);
-    RUN_TEST(test_t2766);
-    RUN_TEST(test_t2767);
-    RUN_TEST(test_t2768);
-    RUN_TEST(test_t2769);
-    RUN_TEST(test_t2770);
-    RUN_TEST(test_t2771);
-    RUN_TEST(test_t2772);
-    RUN_TEST(test_t2773);
-    RUN_TEST(test_t2774);
-    RUN_TEST(test_t2775);
-    RUN_TEST(test_t2776);
-    RUN_TEST(test_t2777);
-    RUN_TEST(test_t2778);
-    RUN_TEST(test_t2779);
-    RUN_TEST(test_t2780);
-    RUN_TEST(test_t2781);
-    RUN_TEST(test_t2782);
-    RUN_TEST(test_t2783);
-    RUN_TEST(test_t2784);
-    RUN_TEST(test_t2785);
-    RUN_TEST(test_t2786);
-    RUN_TEST(test_t2787);
-    RUN_TEST(test_t2788);
-    RUN_TEST(test_t2789);
-    RUN_TEST(test_t2790);
-    RUN_TEST(test_t2791);
-    RUN_TEST(test_t2792);
-    RUN_TEST(test_t2793);
-    RUN_TEST(test_t2794);
-    RUN_TEST(test_t2795);
-    RUN_TEST(test_t2796);
-    RUN_TEST(test_t2797);
-    RUN_TEST(test_t2798);
-    RUN_TEST(test_t2799);
-    RUN_TEST(test_t2800);
-    RUN_TEST(test_t2801);
-    RUN_TEST(test_t2802);
-    RUN_TEST(test_t2803);
-    RUN_TEST(test_t2804);
-    RUN_TEST(test_t2805);
-    RUN_TEST(test_t2806);
-    RUN_TEST(test_t2807);
-    RUN_TEST(test_t2808);
-    RUN_TEST(test_t2809);
-    RUN_TEST(test_t2810);
-    RUN_TEST(test_t2811);
-    RUN_TEST(test_t2812);
-    RUN_TEST(test_t2813);
-    RUN_TEST(test_t2814);
-    RUN_TEST(test_t2815);
-    RUN_TEST(test_t2816);
-    RUN_TEST(test_t2817);
-    RUN_TEST(test_t2818);
-    RUN_TEST(test_t2819);
-    RUN_TEST(test_t2820);
-    RUN_TEST(test_t2821);
-    RUN_TEST(test_t2822);
-    RUN_TEST(test_t2823);
-    RUN_TEST(test_t2824);
-    RUN_TEST(test_t2825);
-    RUN_TEST(test_t2826);
-    RUN_TEST(test_t2827);
-    RUN_TEST(test_t2828);
-    RUN_TEST(test_t2829);
-    RUN_TEST(test_t2830);
-    RUN_TEST(test_t2831);
-    RUN_TEST(test_t2832);
-    RUN_TEST(test_t2833);
-    RUN_TEST(test_t2834);
-    RUN_TEST(test_t2835);
-    RUN_TEST(test_t2836);
-    RUN_TEST(test_t2837);
-    RUN_TEST(test_t2838);
-    RUN_TEST(test_t2839);
-    RUN_TEST(test_t2840);
-    RUN_TEST(test_t2841);
-    RUN_TEST(test_t2842);
-    RUN_TEST(test_t2843);
-    RUN_TEST(test_t2844);
-    RUN_TEST(test_t2845);
-    RUN_TEST(test_t2846);
-    RUN_TEST(test_t2847);
-    RUN_TEST(test_t2848);
-    RUN_TEST(test_t2849);
-    RUN_TEST(test_t2850);
-    RUN_TEST(test_t2851);
-    RUN_TEST(test_t2852);
-    RUN_TEST(test_t2853);
-    RUN_TEST(test_t2854);
-    RUN_TEST(test_t2855);
-    RUN_TEST(test_t2856);
-    RUN_TEST(test_t2857);
-    RUN_TEST(test_t2858);
-    RUN_TEST(test_t2859);
-    RUN_TEST(test_t2860);
-    RUN_TEST(test_t2861);
-    RUN_TEST(test_t2862);
-    RUN_TEST(test_t2863);
-    RUN_TEST(test_t2864);
-    RUN_TEST(test_t2865);
-    RUN_TEST(test_t2866);
-    RUN_TEST(test_t2867);
-    RUN_TEST(test_t2868);
-    RUN_TEST(test_t2869);
-    RUN_TEST(test_t2870);
-    RUN_TEST(test_t2871);
-    RUN_TEST(test_t2872);
-    RUN_TEST(test_t2873);
-    RUN_TEST(test_t2874);
-    RUN_TEST(test_t2875);
-    RUN_TEST(test_t2876);
-    RUN_TEST(test_t2877);
-    RUN_TEST(test_t2878);
-    RUN_TEST(test_t2879);
-    RUN_TEST(test_t2880);
-    RUN_TEST(test_t2881);
-    RUN_TEST(test_t2882);
-    RUN_TEST(test_t2883);
-    RUN_TEST(test_t2884);
-    RUN_TEST(test_t2885);
-    RUN_TEST(test_t2886);
-    RUN_TEST(test_t2887);
-    RUN_TEST(test_t2888);
-    RUN_TEST(test_t2889);
-    RUN_TEST(test_t2890);
-    RUN_TEST(test_t2891);
-    RUN_TEST(test_t2892);
-    RUN_TEST(test_t2893);
-    RUN_TEST(test_t2894);
-    RUN_TEST(test_t2895);
-    RUN_TEST(test_t2896);
-    RUN_TEST(test_t2897);
-    RUN_TEST(test_t2898);
-    RUN_TEST(test_t2899);
-    RUN_TEST(test_t2900);
-    RUN_TEST(test_t2901);
-    RUN_TEST(test_t2902);
-    RUN_TEST(test_t2903);
-    RUN_TEST(test_t2904);
-    RUN_TEST(test_t2905);
-    RUN_TEST(test_t2906);
-    RUN_TEST(test_t2907);
-    RUN_TEST(test_t2908);
-    RUN_TEST(test_t2909);
-    RUN_TEST(test_t2910);
-    RUN_TEST(test_t2911);
-    RUN_TEST(test_t2912);
-    RUN_TEST(test_t2913);
-    RUN_TEST(test_t2914);
-    RUN_TEST(test_t2915);
-    RUN_TEST(test_t2916);
-    RUN_TEST(test_t2917);
-    RUN_TEST(test_t2918);
-    RUN_TEST(test_t2919);
-    RUN_TEST(test_t2920);
-    RUN_TEST(test_t2921);
-    RUN_TEST(test_t2922);
-    RUN_TEST(test_t2923);
-    RUN_TEST(test_t2924);
-    RUN_TEST(test_t2925);
-    RUN_TEST(test_t2926);
-    RUN_TEST(test_t2927);
-    RUN_TEST(test_t2928);
-    RUN_TEST(test_t2929);
-    RUN_TEST(test_t2930);
-    RUN_TEST(test_t2931);
-    RUN_TEST(test_t2932);
-    RUN_TEST(test_t2933);
-    RUN_TEST(test_t2934);
-    RUN_TEST(test_t2935);
-    RUN_TEST(test_t2936);
-    RUN_TEST(test_t2937);
-    RUN_TEST(test_t2938);
-    RUN_TEST(test_t2939);
-    RUN_TEST(test_t2940);
-    RUN_TEST(test_t2941);
-    RUN_TEST(test_t2942);
-    RUN_TEST(test_t2943);
-    RUN_TEST(test_t2944);
-    RUN_TEST(test_t2945);
-    RUN_TEST(test_t2946);
-    RUN_TEST(test_t2947);
-    RUN_TEST(test_t2948);
-    RUN_TEST(test_t2949);
-    RUN_TEST(test_t2950);
-    RUN_TEST(test_t2951);
-    RUN_TEST(test_t2952);
-    RUN_TEST(test_t2953);
-    RUN_TEST(test_t2954);
-    RUN_TEST(test_t2955);
-    RUN_TEST(test_t2956);
-    RUN_TEST(test_t2957);
-    RUN_TEST(test_t2958);
-    RUN_TEST(test_t2959);
-    RUN_TEST(test_t2960);
-    RUN_TEST(test_t2961);
-    RUN_TEST(test_t2962);
-    RUN_TEST(test_t2963);
-    RUN_TEST(test_t2964);
-    RUN_TEST(test_t2965);
-    RUN_TEST(test_t2966);
-    RUN_TEST(test_t2967);
-    RUN_TEST(test_t2968);
-    RUN_TEST(test_t2969);
-    RUN_TEST(test_t2970);
-    RUN_TEST(test_t2971);
-    RUN_TEST(test_t2972);
-    RUN_TEST(test_t2973);
-    RUN_TEST(test_t2974);
-    RUN_TEST(test_t2975);
-    RUN_TEST(test_t2976);
-    RUN_TEST(test_t2977);
-    RUN_TEST(test_t2978);
-    RUN_TEST(test_t2979);
-    RUN_TEST(test_t2980);
-    RUN_TEST(test_t2981);
-    RUN_TEST(test_t2982);
-    RUN_TEST(test_t2983);
-    RUN_TEST(test_t2984);
-    RUN_TEST(test_t2985);
-    RUN_TEST(test_t2986);
-    RUN_TEST(test_t2987);
-    RUN_TEST(test_t2988);
-    RUN_TEST(test_t2989);
-    RUN_TEST(test_t2990);
-    RUN_TEST(test_t2991);
-    RUN_TEST(test_t2992);
-    RUN_TEST(test_t2993);
-    RUN_TEST(test_t2994);
-    RUN_TEST(test_t2995);
-    RUN_TEST(test_t2996);
-    RUN_TEST(test_t2997);
-    RUN_TEST(test_t2998);
-    RUN_TEST(test_t2999);
-    RUN_TEST(test_t3000);
-    RUN_TEST(test_t3001);
-    RUN_TEST(test_t3002);
-    RUN_TEST(test_t3003);
-    RUN_TEST(test_t3004);
-    RUN_TEST(test_t3005);
-    RUN_TEST(test_t3006);
-    RUN_TEST(test_t3007);
-    RUN_TEST(test_t3008);
-    RUN_TEST(test_t3009);
-    RUN_TEST(test_t3010);
-    RUN_TEST(test_t3011);
-    RUN_TEST(test_t3012);
-    RUN_TEST(test_t3013);
-    RUN_TEST(test_t3014);
-    RUN_TEST(test_t3015);
-    RUN_TEST(test_t3016);
-    RUN_TEST(test_t3017);
-    RUN_TEST(test_t3018);
-    RUN_TEST(test_t3019);
-    RUN_TEST(test_t3020);
-    RUN_TEST(test_t3021);
-    RUN_TEST(test_t3022);
-    RUN_TEST(test_t3023);
-    RUN_TEST(test_t3024);
-    RUN_TEST(test_t3025);
-    RUN_TEST(test_t3026);
-    RUN_TEST(test_t3027);
-    RUN_TEST(test_t3028);
-    RUN_TEST(test_t3029);
-    RUN_TEST(test_t3030);
-    RUN_TEST(test_t3031);
-    RUN_TEST(test_t3032);
-    RUN_TEST(test_t3033);
-    RUN_TEST(test_t3034);
-    RUN_TEST(test_t3035);
-    RUN_TEST(test_t3036);
-    RUN_TEST(test_t3037);
-    RUN_TEST(test_t3038);
-    RUN_TEST(test_t3039);
-    RUN_TEST(test_t3040);
-    RUN_TEST(test_t3041);
-    RUN_TEST(test_t3042);
-    RUN_TEST(test_t3043);
-    RUN_TEST(test_t3044);
-    RUN_TEST(test_t3045);
-    RUN_TEST(test_t3046);
-    RUN_TEST(test_t3047);
-    RUN_TEST(test_t3048);
-    RUN_TEST(test_t3049);
-    RUN_TEST(test_t3050);
-    RUN_TEST(test_t3051);
-    RUN_TEST(test_t3052);
-    RUN_TEST(test_t3053);
-    RUN_TEST(test_t3054);
-    RUN_TEST(test_t3055);
-    RUN_TEST(test_t3056);
-    RUN_TEST(test_t3057);
-    RUN_TEST(test_t3058);
-    RUN_TEST(test_t3059);
-    RUN_TEST(test_t3060);
-    RUN_TEST(test_t3061);
-    RUN_TEST(test_t3062);
-    RUN_TEST(test_t3063);
-    RUN_TEST(test_t3064);
-    RUN_TEST(test_t3065);
-    RUN_TEST(test_t3066);
-    RUN_TEST(test_t3067);
-    RUN_TEST(test_t3068);
-    RUN_TEST(test_t3069);
-    RUN_TEST(test_t3070);
-    RUN_TEST(test_t3071);
-    RUN_TEST(test_t3072);
-    RUN_TEST(test_t3073);
-    RUN_TEST(test_t3074);
-    RUN_TEST(test_t3075);
-    RUN_TEST(test_t3076);
-    RUN_TEST(test_t3077);
-    RUN_TEST(test_t3078);
-    RUN_TEST(test_t3079);
-    RUN_TEST(test_t3080);
-    RUN_TEST(test_t3081);
-    RUN_TEST(test_t3082);
-    RUN_TEST(test_t3083);
-    RUN_TEST(test_t3084);
-    RUN_TEST(test_t3085);
-    RUN_TEST(test_t3086);
-    RUN_TEST(test_t3087);
-    RUN_TEST(test_t3088);
-    RUN_TEST(test_t3089);
-    RUN_TEST(test_t3090);
-    RUN_TEST(test_t3091);
-    RUN_TEST(test_t3092);
-    RUN_TEST(test_t3093);
-    RUN_TEST(test_t3094);
-    RUN_TEST(test_t3095);
-    RUN_TEST(test_t3096);
-    RUN_TEST(test_t3097);
-    RUN_TEST(test_t3098);
-    RUN_TEST(test_t3099);
-    RUN_TEST(test_t3100);
-    RUN_TEST(test_t3101);
-    RUN_TEST(test_t3102);
-    RUN_TEST(test_t3103);
-    RUN_TEST(test_t3104);
-    RUN_TEST(test_t3105);
-    RUN_TEST(test_t3106);
-    RUN_TEST(test_t3107);
-    RUN_TEST(test_t3108);
-    RUN_TEST(test_t3109);
-    RUN_TEST(test_t3110);
-    RUN_TEST(test_t3111);
-    RUN_TEST(test_t3112);
-    RUN_TEST(test_t3113);
-    RUN_TEST(test_t3114);
-    RUN_TEST(test_t3115);
-    RUN_TEST(test_t3116);
-    RUN_TEST(test_t3117);
-    RUN_TEST(test_t3118);
-    RUN_TEST(test_t3119);
-    RUN_TEST(test_t3120);
-    RUN_TEST(test_t3121);
-    RUN_TEST(test_t3122);
-    RUN_TEST(test_t3123);
-    RUN_TEST(test_t3124);
-    RUN_TEST(test_t3125);
-    RUN_TEST(test_t3126);
-    RUN_TEST(test_t3127);
-    RUN_TEST(test_t3128);
-    RUN_TEST(test_t3129);
-    RUN_TEST(test_t3130);
-    RUN_TEST(test_t3131);
-    RUN_TEST(test_t3132);
-    RUN_TEST(test_t3133);
-    RUN_TEST(test_t3134);
-    RUN_TEST(test_t3135);
-    RUN_TEST(test_t3136);
-    RUN_TEST(test_t3137);
-    RUN_TEST(test_t3138);
-    RUN_TEST(test_t3139);
-    RUN_TEST(test_t3140);
-    RUN_TEST(test_t3141);
-    RUN_TEST(test_t3142);
-    RUN_TEST(test_t3143);
-    RUN_TEST(test_t3144);
-    RUN_TEST(test_t3145);
-    RUN_TEST(test_t3146);
-    RUN_TEST(test_t3147);
-    RUN_TEST(test_t3148);
-    RUN_TEST(test_t3149);
-    RUN_TEST(test_t3150);
-    RUN_TEST(test_t3151);
-    RUN_TEST(test_t3152);
-    RUN_TEST(test_t3153);
-    RUN_TEST(test_t3154);
-    RUN_TEST(test_t3155);
-    RUN_TEST(test_t3156);
-    
-    return UNITY_END();
 }

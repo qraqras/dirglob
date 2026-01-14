@@ -400,7 +400,36 @@ static bool segment_match(const rbc_segment_t *seg, const char *name, const exec
     switch (seg->type)
     {
     case RBC_SEGMENT_LITERAL:
-        return strcmp(seg->data.literal, name) == 0;
+    {
+        // Handle escaped characters in literal segments
+        const char *p = seg->data.literal;
+        const char *n = name;
+
+        while (*p && *n)
+        {
+            if (*p == '\\' && p[1])
+            {
+                // Skip backslash and compare next character
+                p++;
+                if (*p != *n)
+                    return false;
+            }
+            else
+            {
+                if (*p != *n)
+                    return false;
+            }
+            p++;
+            n++;
+        }
+
+        // Both must end at the same time
+        // Handle trailing backslash (if any)
+        while (*p == '\\' && !p[1])
+            p++;
+
+        return (*p == '\0') && (*n == '\0');
+    }
 
     case RBC_SEGMENT_WILDCARD:
         if (name[0] == '.')
@@ -1046,16 +1075,34 @@ void rbc_segment_exec(
 static bool rbc_walker_dispatch_literal(const char *p, rbc_walker_ctx_t *ctx)
 {
     char full_path[PATH_MAX];
+    char unescaped[PATH_MAX];
     int needed;
     const char *base = ctx->base;
 
+    // Unescape the pattern first
+    const char *src = p;
+    char *dst = unescaped;
+    while (*src && (dst - unescaped) < (PATH_MAX - 1))
+    {
+        if (*src == '\\' && src[1])
+        {
+            src++;           // Skip backslash
+            *dst++ = *src++; // Copy escaped character
+        }
+        else
+        {
+            *dst++ = *src++;
+        }
+    }
+    *dst = '\0';
+
     if (base && strcmp(base, ".") != 0)
     {
-        needed = snprintf(full_path, sizeof(full_path), "%s/%s", base, p);
+        needed = snprintf(full_path, sizeof(full_path), "%s/%s", base, unescaped);
     }
     else
     {
-        needed = snprintf(full_path, sizeof(full_path), "%s", p);
+        needed = snprintf(full_path, sizeof(full_path), "%s", unescaped);
     }
 
     if (needed < 0 || (size_t)needed >= sizeof(full_path))
@@ -1066,13 +1113,13 @@ static bool rbc_walker_dispatch_literal(const char *p, rbc_walker_ctx_t *ctx)
     struct stat st;
     if (stat(full_path, &st) == 0)
     {
-        size_t plen = strlen(p);
-        if (plen > 0 && p[plen - 1] == '/')
+        size_t plen = strlen(unescaped);
+        if (plen > 0 && unescaped[plen - 1] == '/')
         {
             if (!S_ISDIR(st.st_mode))
                 return true;
         }
-        if (!rbc_glob_results_add(ctx->results, p))
+        if (!rbc_glob_results_add(ctx->results, unescaped))
             return false;
     }
     return true;
@@ -1105,14 +1152,14 @@ bool rbc_walker_run(const char *pattern, rbc_walker_ctx_t *ctx)
         return false;
     }
 
-    // Fast-path 1: Pure literal
-    if (strpbrk(pattern, "*?[]\\{}") == NULL)
+    // Fast-path 1: Pure literal (no wildcards)
+    if (!rbc_has_wildcard(pattern) && !rbc_has_brace(pattern))
     {
         return rbc_walker_dispatch_literal(pattern, ctx);
     }
 
     // Fast-path 2: Pure braces (no wildcards)
-    if (strchr(pattern, '{') != NULL && strpbrk(pattern, "*?[]\\") == NULL)
+    if (rbc_has_brace(pattern) && !rbc_has_wildcard(pattern))
     {
         return rbc_brace_visit(pattern, &ctx->ctx->arena, rbc_walker_dispatch_visitor, ctx);
     }

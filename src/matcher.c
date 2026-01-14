@@ -1,5 +1,6 @@
 #include <string.h>
 #include <ctype.h>
+#include <stdio.h>
 #include <rbc/rbc.h>
 #include "internal.h"
 #include "utils.h"
@@ -99,9 +100,33 @@ bool rbc_matcher_build(rbc_arena_t *arena, rbc_matcher_t *m, const char *pattern
     // Extract suffix (literal characters after last wildcard)
     p = pattern + pattern_len - 1;
     const char *suffix_end = p + 1;
-    while (p >= pattern && *p != '*' && *p != '?' && *p != '[')
+    while (p >= pattern && *p != '*' && *p != '?')
     {
-        if (!noescape && p > pattern && p[-1] == '\\')
+        // Check for closing bracket ]
+        if (*p == ']')
+        {
+            // Scan backward to find matching [
+            const char *scan = p - 1;
+            while (scan >= pattern && *scan != '[')
+            {
+                if (!noescape && scan > pattern && scan[-1] == '\\')
+                    scan -= 2;
+                else
+                    scan--;
+            }
+            if (scan >= pattern && *scan == '[')
+            {
+                // Found matching [, this is a character class
+                p = scan - 1;
+                break; // Character class is a wildcard, stop here
+            }
+            else
+            {
+                // No matching [, treat ] as literal
+                p--;
+            }
+        }
+        else if (!noescape && p > pattern && p[-1] == '\\')
         {
             p -= 2;
         }
@@ -193,9 +218,16 @@ bool rbc_matcher_build(rbc_arena_t *arena, rbc_matcher_t *m, const char *pattern
     if (has_qmark || has_bracket || has_paren || has_pipe)
     {
         m->strategy = RBC_STRATEGY_RECURSIVE;
+        // Disable prefilter only if pattern contains character classes
+        // (? is fine for prefilter, but [...] extraction is complex)
+        if (has_bracket)
+        {
+            m->prefilter.enabled = false;
+        }
     }
     else if (star_count == 0)
     {
+        fprintf(stderr, "[MATCHER_BUILD] Pattern '%s' has no stars, setting EXACT\n", pattern);
         m->strategy = RBC_STRATEGY_EXACT;
         m->pk.str.ptr = rbc_arena_strdup(arena, pattern);
         if (!m->pk.str.ptr)

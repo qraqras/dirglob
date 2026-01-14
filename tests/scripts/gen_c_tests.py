@@ -154,14 +154,6 @@ static void test_glob_against_ruby(const char *pattern, int flags,
     free(expected_lines);
     rbc_glob_free(results, count, lengths);
 }}
-
-void setUp(void) {{
-    /* Set up code (if needed) */
-}}
-
-void tearDown(void) {{
-    /* Tear down code (if needed) */
-}}
 '''
 
     # テスト関数生成
@@ -169,27 +161,11 @@ void tearDown(void) {{
     for i, test_case in enumerate(test_cases, 1):
         test_functions.append(generate_test_function(test_case, i))
 
-    # main関数
-    test_calls = "\n    ".join(f"RUN_TEST(test_{tc.id});" for tc in test_cases)
-
-    main_func = f'''
-int main(void)
-{{
-    UNITY_BEGIN();
-
-    {test_calls}
-
-    return UNITY_END();
-}}
-'''
-
-    # ファイル書き込み
+    # ファイル書き込み（setUp/tearDown/mainは含めない）
     with open(output_file, 'w') as f:
         f.write(header)
         f.write("\n\n/* ========== Test Functions ========== */\n")
         f.write("\n".join(test_functions))
-        f.write("\n\n/* ========== Main Function ========== */\n")
-        f.write(main_func)
 
 
 def main():
