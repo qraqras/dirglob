@@ -1,3 +1,0 @@
-03_questionmark/file.h
-03_questionmark/file.c
-03_questionmark/file.d

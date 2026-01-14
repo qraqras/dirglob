@@ -1,2 +1,0 @@
-02_asterisk/file.h
-02_asterisk/file.c

@@ -1,3 +1,0 @@
-05_braceexpansion/a
-05_braceexpansion/b
-05_braceexpansion/c

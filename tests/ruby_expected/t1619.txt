@@ -1,3 +1,0 @@
-04_characterclass/a
-04_characterclass/c
-04_characterclass/b

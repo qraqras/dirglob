@@ -1,3 +1,0 @@
-02_asterisk/file0.txt
-02_asterisk/file1.txt
-02_asterisk/file2.txt
