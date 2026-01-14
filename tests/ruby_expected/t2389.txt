@@ -1,0 +1,12 @@
+09_combined/dir1/fila.c
+09_combined/dir1/file.c
+09_combined/dir1/filb.h
+09_combined/dir1/file.h
+09_combined/dir2/fila.c
+09_combined/dir2/file.c
+09_combined/dir2/filb.h
+09_combined/dir2/file.h
+09_combined/dir3/fila.c
+09_combined/dir3/file.c
+09_combined/dir3/filb.h
+09_combined/dir3/file.h

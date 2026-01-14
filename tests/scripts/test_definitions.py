@@ -134,57 +134,70 @@ PATTERNS = [
 ]
 
 # フラグ組み合わせ（重要なもの）
-FLAG_COMBINATIONS = [
-    FNMFlags.NONE,                                    # No flags
-    FNMFlags.DOTMATCH,                                # Show hidden files
-    FNMFlags.PATHNAME,                                # Slash handling
-    FNMFlags.CASEFOLD,                                # Case insensitive
+FLAG_OPTIONS = [
+    FNMFlags.NONE,                                   # No flags
+    FNMFlags.DOTMATCH,                               # Show hidden files
+    FNMFlags.PATHNAME,                               # Slash handling
+    FNMFlags.CASEFOLD,                               # Case insensitive
     FNMFlags.DOTMATCH | FNMFlags.PATHNAME,           # Common combo
     FNMFlags.PATHNAME | FNMFlags.CASEFOLD,           # Common combo
     FNMFlags.DOTMATCH | FNMFlags.CASEFOLD,           # Common combo
 ]
 
+# Base path variations
+BASE_OPTIONS = [None, f"{FIXTURES_DIR}/", "."]
+
+# Sort variations
+SORT_OPTIONS = [True, False]
+
 
 # === Programmatic Generation ===
 
 def generate_matrix_cases():
-    """パターン×フラグのマトリクスを生成"""
+    """パターン*フラグ*base*sortのマトリクスを生成"""
     cases = []
     test_id = 1000  # t1000から開始
 
     for pattern in PATTERNS:
-        for flags in FLAG_COMBINATIONS:
-            # Skip some redundant combinations
-            if flags == FNMFlags.NONE and pattern in [".*", ".*.c"]:
-                # Hidden patterns without DOTMATCH are less interesting
-                continue
+        for flags in FLAG_OPTIONS:
+            for base in BASE_OPTIONS:
+                for sort in SORT_OPTIONS:
+                    # Skip some redundant combinations
+                    if flags == FNMFlags.NONE and pattern in [".*", ".*.c"]:
+                        continue
 
-            cases.append(TestCase(
-                id=f"t{test_id:04d}",
-                pattern=pattern,
-                flags=flags,
-                desc=f"Matrix: {pattern} with {flags.name if flags != FNMFlags.NONE else 'no flags'}"
-            ))
-            test_id += 1
+                    # Limit base+unsorted combinations to key patterns only
+                    if base is not None and sort is False:
+                        # Only test unsorted with base for important patterns
+                        if not any(p in pattern for p in ["*", "**", "?"]):
+                            continue
+
+                    # Limit base to certain patterns (avoid explosion)
+                    if base is not None and base != ".":
+                        # Only use non-current base with wildcard patterns
+                        if not any(p in pattern for p in ["*", "**", ".c", ".txt"]):
+                            continue
+
+                    # Build description
+                    desc_parts = [f"Matrix: {pattern}"]
+                    if flags != FNMFlags.NONE:
+                        desc_parts.append(f"flags={flags.name}")
+                    if base is not None:
+                        desc_parts.append(f"base={base}")
+                    if sort is False:
+                        desc_parts.append("unsorted")
+
+                    cases.append(TestCase(
+                        id=f"t{test_id:04d}",
+                        pattern=pattern,
+                        flags=flags,
+                        base=base,
+                        sort=sort,
+                        desc=", ".join(desc_parts)
+                    ))
+                    test_id += 1
 
     return cases
-
-
-# === Base Path Variations ===
-
-BASE_PATH_CASES = [
-    TestCase("t2000", "*.c", base="src", desc="Base: src"),
-    TestCase("t2001", "**/*.c", base="tests", desc="Base: tests"),
-    TestCase("t2002", "*", flags=FNMFlags.DOTMATCH, base=".", desc="Base: current"),
-]
-
-
-# === Unsorted Tests ===
-
-UNSORTED_CASES = [
-    TestCase("t3000", "*", sort=False, desc="Unsorted: all files"),
-    TestCase("t3001", "**/*.c", sort=False, desc="Unsorted: recursive"),
-]
 
 
 # === All Test Cases ===
@@ -194,15 +207,21 @@ def get_all_test_cases():
     cases = []
     cases.extend(MANUAL_CASES)
     cases.extend(generate_matrix_cases())
-    cases.extend(BASE_PATH_CASES)
-    cases.extend(UNSORTED_CASES)
     return cases
 
 
 if __name__ == "__main__":
     cases = get_all_test_cases()
+    matrix_cases = generate_matrix_cases()
+
+    # Count by type
+    base_cases = [c for c in matrix_cases if c.base is not None]
+    unsorted_cases = [c for c in matrix_cases if c.sort is False]
+    base_and_unsorted = [c for c in matrix_cases if c.base is not None and c.sort is False]
+
     print(f"Total test cases: {len(cases)}")
     print(f"  Manual cases: {len(MANUAL_CASES)}")
-    print(f"  Matrix cases: {len(generate_matrix_cases())}")
-    print(f"  Base path cases: {len(BASE_PATH_CASES)}")
-    print(f"  Unsorted cases: {len(UNSORTED_CASES)}")
+    print(f"  Matrix cases: {len(matrix_cases)}")
+    print(f"    - with base: {len(base_cases)}")
+    print(f"    - unsorted: {len(unsorted_cases)}")
+    print(f"    - base+unsorted: {len(base_and_unsorted)}")

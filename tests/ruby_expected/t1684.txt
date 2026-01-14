@@ -1,0 +1,7 @@
+04_characterclass/.
+04_characterclass/d
+04_characterclass/e
+04_characterclass/f
+04_characterclass/x
+04_characterclass/y
+04_characterclass/z

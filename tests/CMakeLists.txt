@@ -74,3 +74,14 @@ target_link_libraries(test_dirglob PRIVATE rbc ${UNITY_TARGET})
 
 enable_testing()
 add_test(NAME dirglob_test COMMAND test_dirglob WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/tests/fixtures)
+
+# Generated compatibility test (test_glob_generated.c)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_glob_generated.c)
+  add_executable(test_glob_generated test_glob_generated.c)
+  target_include_directories(test_glob_generated PRIVATE
+    "${PROJECT_SOURCE_DIR}/include"
+    "${PROJECT_SOURCE_DIR}/src"
+  )
+  target_link_libraries(test_glob_generated PRIVATE rbc ${UNITY_TARGET})
+  add_test(NAME glob_ruby_compat COMMAND test_glob_generated WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/tests/fixtures)
+endif()

@@ -1,0 +1,5 @@
+.hidden/./config
+.hidden/./dotfile
+.hidden/./normal.c
+.hidden/./subdir
+.hidden/./visible.txt

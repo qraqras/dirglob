@@ -1,75 +1,34 @@
 #!/usr/bin/env python3
 """
-Unityテストソース生成スクリプト
+Unityテストコード生成スクリプト v2
 
-test_matrix.jsonに基づいてC言語のUnityテストコードを生成する。
+test_definitions.pyから直接テストケースを読み込み、
+Unity形式のCテストコードを生成する。
 """
 
-import json
 import sys
 from pathlib import Path
+from test_definitions import get_all_test_cases, FIXTURES_DIR, FNMFlags
 
 
-def convert_flags_to_c(flags_str):
-    """フラグ文字列をC言語の定数に変換"""
-    if flags_str == '0':
-        return '0'
+def flags_to_c(flags: FNMFlags) -> str:
+    """FNMFlagsをC言語の定数表現に変換"""
+    if flags == FNMFlags.NONE:
+        return "0"
 
-    # Ensure RBC_ prefix
-    flags = flags_str.split('|')
-    c_flags = []
-    for f in flags:
-        f = f.strip()
-        if f.startswith('FNM_'):
-            c_flags.append('RBC_' + f)
-        elif not f.startswith('RBC_'):
-            c_flags.append('RBC_FNM_' + f)
-        else:
-            c_flags.append(f)
+    flag_parts = []
+    if flags & FNMFlags.NOESCAPE:
+        flag_parts.append("RBC_FNM_NOESCAPE")
+    if flags & FNMFlags.PATHNAME:
+        flag_parts.append("RBC_FNM_PATHNAME")
+    if flags & FNMFlags.DOTMATCH:
+        flag_parts.append("RBC_FNM_DOTMATCH")
+    if flags & FNMFlags.CASEFOLD:
+        flag_parts.append("RBC_FNM_CASEFOLD")
+    if flags & FNMFlags.EXTGLOB:
+        flag_parts.append("RBC_FNM_EXTGLOB")
 
-    return ' | '.join(c_flags)
-
-
-def convert_base_to_c(base_str):
-    """
-    baseパラメータをC言語表現に変換
-
-    注意: テストはfixtures/ディレクトリから実行されるため、
-    Rubyスクリプトと同様にbase値を変換する必要がある。
-    - 'tests/fixtures' -> '.' (既にfixturesディレクトリにいるため)
-    - 'NULL' -> NULL
-    - その他 -> そのまま
-    """
-    if base_str == 'NULL':
-        return 'NULL'
-    elif base_str == 'tests/fixtures':
-        # Rubyスクリプトと同じ変換: fixtures/から実行するため'.'に変換
-        return '"."'
-    else:
-        return f'"{base_str}"'
-
-
-def split_patterns(pattern_str):
-    """カンマ区切りのパターンを分割（ブレース内は無視）"""
-    patterns = []
-    current = []
-    depth = 0
-
-    for c in pattern_str:
-        if c == '{':
-            depth += 1
-        elif c == '}':
-            depth -= 1
-        elif c == ',' and depth == 0:
-            patterns.append(''.join(current).strip())
-            current = []
-            continue
-        current.append(c)
-
-    if current:
-        patterns.append(''.join(current).strip())
-
-    return patterns
+    return " | ".join(flag_parts) if flag_parts else "0"
 
 
 def escape_c_string(s):
@@ -77,117 +36,190 @@ def escape_c_string(s):
     return s.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
 
 
-def generate_test_function(test_case, platform):
-    """テストケースからC言語テスト関数を生成"""
-    case_id = test_case['case_id']
-    pattern = test_case['pattern']
-    flags = convert_flags_to_c(test_case['flags'])
-    base = convert_base_to_c(test_case['base'])
-    sort = test_case['sort']
+def generate_test_function(test_case, test_num):
+    """テストケースからUnityテスト関数を生成"""
+    case_id = test_case.id
+    pattern = escape_c_string(test_case.pattern)
+    flags = flags_to_c(test_case.flags)
+    base = test_case.base
+    sort = "true" if test_case.sort else "false"
 
-    # パターン分割
-    patterns = split_patterns(pattern)
-    npatterns = len(patterns)
-
-    # パターン配列生成
-    if npatterns == 1:
-        pattern_array = f'(const char*[]){{\"{escape_c_string(patterns[0])}\"}}'
+    # baseパラメータ
+    if base is None:
+        base_arg = "NULL"
     else:
-        pattern_list = ', '.join(f'"{escape_c_string(p)}"' for p in patterns)
-        pattern_array = f'(const char*[]){{{pattern_list}}}'
+        base_arg = f'"{escape_c_string(base)}"'
 
-    # 期待出力ファイルパス (テスト実行時のワーキングディレクトリから見た相対パス)
-    expected_file = f'../../tests/ruby_expected/{platform}/{case_id}.txt'
+    # コメント用の説明（*/を含まないようにサニタイズ）
+    desc = test_case.desc if test_case.desc else f"Pattern: {pattern}"
+    desc = desc.replace('*/', '* /')  # コメント終了を回避
 
-    # テスト関数生成 (厳密な順序チェック)
-    # 既存のテスト関数名 test_parity_pXXXX を維持
-    code_strict = f'''
-void test_parity_{case_id}(void) {{
-    char **result = NULL;
-    size_t count = 0;
-    size_t *lengths = NULL;
+    code = f'''
+void test_{case_id}(void)
+{{
+    /* {desc} */
+    const char *pattern = "{pattern}";
+    int flags = {flags};
+    const char *base = {base_arg};
+    bool sort = {sort};
+    const char *expected_file = "../ruby_expected/{case_id}.txt";
 
-    // rbc_glob実行
-    bool ok = rbc_glob({pattern_array}, {npatterns}, {flags}, {base}, {sort}, &result, &count, &lengths);
-
-    // 期待出力と比較 (完全一致)
-    assert_matches_expected(result, count, "{escape_c_string(expected_file)}");
-
-    // メモリ解放
-    rbc_glob_free(result, count, lengths);
+    test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }}
 '''
 
-    return code_strict
+    return code
 
-def generate_test_file(test_cases, platform, output_file):
-    """テストファイル全体を生成"""
+
+def generate_test_file(test_cases, output_file):
+    """全テストケースからCファイルを生成"""
+
     # ヘッダー
-    header = '''/*
- * Auto-generated parity tests
- * DO NOT EDIT MANUALLY
+    header = f'''/*
+ * Auto-generated test file
+ * Generated by gen_c_tests.py from test_definitions.py
+ * Total test cases: {len(test_cases)}
  */
 
 #include <unity.h>
 #include <rbc/rbc.h>
-#include "test_helpers.h"
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
+/* Helper function to compare glob results with Ruby expected output */
+static void test_glob_against_ruby(const char *pattern, int flags,
+                                   const char *base, bool sort,
+                                   const char *expected_file)
+{{
+    char **results = NULL;
+    size_t count = 0;
+    size_t *lengths = NULL;
+
+    /* Execute rbc_glob */
+    const char *patterns[] = {{pattern}};
+    bool ret = rbc_glob(patterns, 1, flags, base, sort, &results, &count, &lengths);
+    TEST_ASSERT_TRUE_MESSAGE(ret, "rbc_glob failed");
+
+    /* Load expected results from Ruby */
+    FILE *fp = fopen(expected_file, "r");
+    TEST_ASSERT_NOT_NULL_MESSAGE(fp, "Failed to open expected file");
+
+    char **expected_lines = NULL;
+    size_t expected_count = 0;
+    size_t capacity = 16;
+    expected_lines = malloc(capacity * sizeof(char*));
+    TEST_ASSERT_NOT_NULL(expected_lines);
+
+    char line[4096];
+    while (fgets(line, sizeof(line), fp)) {{
+        /* Remove trailing newline */
+        size_t len = strlen(line);
+        if (len > 0 && line[len-1] == '\\n') {{
+            line[len-1] = '\\0';
+        }}
+
+        if (expected_count >= capacity) {{
+            capacity *= 2;
+            expected_lines = realloc(expected_lines, capacity * sizeof(char*));
+            TEST_ASSERT_NOT_NULL(expected_lines);
+        }}
+
+        expected_lines[expected_count++] = strdup(line);
+    }}
+    fclose(fp);
+
+    /* Compare counts */
+    char count_msg[256];
+    snprintf(count_msg, sizeof(count_msg),
+             "Pattern: %s, Expected: %zu, Got: %zu",
+             pattern, expected_count, count);
+    TEST_ASSERT_EQUAL_size_t_MESSAGE(expected_count, count, count_msg);
+
+    /* Compare each result */
+    for (size_t i = 0; i < expected_count; i++) {{
+        char msg[512];
+        snprintf(msg, sizeof(msg),
+                 "Pattern: %s, Index: %zu, Expected: %s, Got: %s",
+                 pattern, i, expected_lines[i],
+                 i < count ? results[i] : "NULL");
+        TEST_ASSERT_EQUAL_STRING_MESSAGE(expected_lines[i], results[i], msg);
+    }}
+
+    /* Cleanup */
+    for (size_t i = 0; i < expected_count; i++) {{
+        free(expected_lines[i]);
+    }}
+    free(expected_lines);
+    rbc_glob_free(results, count, lengths);
+}}
+
+void setUp(void) {{
+    /* Set up code (if needed) */
+}}
+
+void tearDown(void) {{
+    /* Tear down code (if needed) */
+}}
 '''
 
     # テスト関数生成
     test_functions = []
-    for tc in test_cases:
-        test_functions.append(generate_test_function(tc, platform))
+    for i, test_case in enumerate(test_cases, 1):
+        test_functions.append(generate_test_function(test_case, i))
+
+    # main関数
+    test_calls = "\n    ".join(f"RUN_TEST(test_{tc.id});" for tc in test_cases)
+
+    main_func = f'''
+int main(void)
+{{
+    UNITY_BEGIN();
+
+    {test_calls}
+
+    return UNITY_END();
+}}
+'''
 
     # ファイル書き込み
-    with open(output_file, 'w', encoding='utf-8') as f:
+    with open(output_file, 'w') as f:
         f.write(header)
-        f.write('\n'.join(test_functions))
-
-    print(f'  Generated: {output_file} ({len(test_cases)} tests)')
+        f.write("\n\n/* ========== Test Functions ========== */\n")
+        f.write("\n".join(test_functions))
+        f.write("\n\n/* ========== Main Function ========== */\n")
+        f.write(main_func)
 
 
 def main():
-    """メインエントリポイント"""
-    # パス設定
-    script_dir = Path(__file__).parent
-    test_dir = script_dir.parent
-    build_dir = test_dir.parent / 'build'
+    """メイン処理"""
+    print("=" * 60)
+    print("🔨 Generating Unity Test Code")
+    print("=" * 60)
 
-    # test_matrix.json読み込み
-    matrix_file = build_dir / 'test_matrix.json'
-    if not matrix_file.exists():
-        print(f'Error: {matrix_file} not found. Run gen_matrix.py first.', file=sys.stderr)
-        return 1
+    # 出力ファイル
+    output_file = Path(__file__).parent.parent / "test_glob_generated.c"
 
-    with open(matrix_file, 'r', encoding='utf-8') as f:
-        test_cases = json.load(f)
+    print(f"📂 Output file: {output_file}")
 
-    # プラットフォーム別にグループ化
-    by_platform = {}
-    for tc in test_cases:
-        platform = tc['platform']
-        if platform not in by_platform:
-            by_platform[platform] = []
-        by_platform[platform].append(tc)
+    # テストケース取得
+    test_cases = get_all_test_cases()
+    print(f"📋 Total test cases: {len(test_cases)}")
 
-    # 出力ディレクトリ
-    generated_dir = build_dir / 'tests' / 'generated'
-    generated_dir.mkdir(parents=True, exist_ok=True)
+    # C言語テストファイル生成
+    print("  Generating C test code...")
+    generate_test_file(test_cases, output_file)
 
-    # プラットフォームごとにテストファイル生成
-    print('Generating C test files...')
-    for platform, cases in by_platform.items():
-        output_file = generated_dir / f'test_parity_{platform}.c'
-        generate_test_file(cases, platform, output_file)
-
-    print(f'\n=== C Test Files Generated ===')
-    print(f'Total platforms: {len(by_platform)}')
-    print(f'Total test cases: {len(test_cases)}')
-    print(f'Output directory: {generated_dir}')
+    print("\n" + "=" * 60)
+    print("✅ Test code generated successfully")
+    print("=" * 60)
+    print(f"  📁 Output: {output_file}")
+    print(f"  📝 Functions: {len(test_cases)}")
+    print("=" * 60)
 
     return 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

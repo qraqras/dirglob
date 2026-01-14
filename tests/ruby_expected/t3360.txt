@@ -1,0 +1,12 @@
+/workspaces/dirglob/tests/fixtures/./
+/workspaces/dirglob/tests/fixtures/.hidden/
+/workspaces/dirglob/tests/fixtures/03_questionmark/
+/workspaces/dirglob/tests/fixtures/07_recursive/
+/workspaces/dirglob/tests/fixtures/04_characterclass/
+/workspaces/dirglob/tests/fixtures/02_asterisk/
+/workspaces/dirglob/tests/fixtures/multi/
+/workspaces/dirglob/tests/fixtures/06_casefold/
+/workspaces/dirglob/tests/fixtures/01_basic/
+/workspaces/dirglob/tests/fixtures/09_combined/
+/workspaces/dirglob/tests/fixtures/05_braceexpansion/
+/workspaces/dirglob/tests/fixtures/08_escapechars/

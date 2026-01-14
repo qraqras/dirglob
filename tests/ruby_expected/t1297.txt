@@ -1,0 +1,3 @@
+02_asterisk/file1.txt
+02_asterisk/file2.txt
+02_asterisk/test.txt

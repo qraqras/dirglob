@@ -1,0 +1,12 @@
+./
+.hidden/
+03_questionmark/
+07_recursive/
+04_characterclass/
+02_asterisk/
+multi/
+06_casefold/
+01_basic/
+09_combined/
+05_braceexpansion/
+08_escapechars/

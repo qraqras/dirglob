@@ -1,0 +1,6 @@
+02_asterisk/./dir0/
+02_asterisk/./dir1/
+02_asterisk/./dir2/
+02_asterisk/dir0/subdir0/
+02_asterisk/dir1/subdir1/
+02_asterisk/dir2/subdir2/

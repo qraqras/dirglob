@@ -1,0 +1,5 @@
+.
+.hidden
+.hiddenfile1
+.hiddenfile2
+.hiddenfile3

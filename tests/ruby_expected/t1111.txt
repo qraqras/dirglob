@@ -1,0 +1,9 @@
+02_asterisk/dir0
+02_asterisk/dir1
+02_asterisk/dir2
+02_asterisk/file.c
+02_asterisk/file.cpp
+02_asterisk/file.h
+02_asterisk/file1.txt
+02_asterisk/file2.txt
+02_asterisk/test.txt

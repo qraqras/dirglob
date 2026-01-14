@@ -1,0 +1,4 @@
+02_asterisk/./
+02_asterisk/dir0/
+02_asterisk/dir1/
+02_asterisk/dir2/
