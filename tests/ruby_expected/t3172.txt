@@ -1,5 +1,1 @@
-.hidden/./normal.c
-.hidden/./visible.txt
-.hidden/./config
-.hidden/./dotfile
-.hidden/./subdir
+日本語.txt

@@ -1,1 +1,5 @@
-日本語.txt
+02_asterisk/dir0//subdir0///nested.txt
+02_asterisk/dir1//subdir1///nested.txt
+02_asterisk/dir2//subdir2///nested.txt
+07_recursive/level2//level3///file3.c
+07_recursive/level2//level3///file3.txt
