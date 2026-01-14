@@ -1,4 +1,0 @@
-a/a.txt
-a/c
-a/b
-b/b.txt

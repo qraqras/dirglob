@@ -1,5 +1,0 @@
-a/a.txt
-a/b
-a/c
-b/b.txt
-x/y
