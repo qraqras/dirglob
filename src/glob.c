@@ -394,6 +394,14 @@ rbc_segment_t *rbc_glob_segment_compile(rbc_arena_t *arena, const char *pattern,
                 if (curr && curr->type == RBC_SEGMENT_RECURSIVE)
                 {
                     // Skip creating a new segment - previous ** handles everything
+                    // BUT i fwe are at the end, checks for empty trailing literal (trailing slash)
+                    if (!*rest)
+                    {
+                        rbc_segment_t *trail = rbc_glob_segment_new(arena, RBC_SEGMENT_LITERAL);
+                        trail->data.literal = "";
+                        curr->next = trail;
+                        curr = trail;
+                    }
                     continue;
                 }
 

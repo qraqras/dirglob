@@ -298,6 +298,7 @@ typedef struct
     size_t sorted_idx;
 
     rbc_segment_t *alt;
+    bool skipdot; // MRI: Skip "." in subdirectories (set after first iteration)
 } frame_t;
 
 typedef struct
@@ -338,6 +339,11 @@ static void stack_push(exec_stack_t *st, rbc_segment_t *seg, segment_stack_t *st
     f->from_wildcard = from_wildcard;
     f->post_recursive = post_recursive;
     f->state = ST_INIT;
+    
+    // MRI: skipdot is false for root (first iteration), true for subdirectories
+    // In MRI, this is done via FNM_GLOB_SKIPDOT flag
+    // Here, we use post_recursive as a proxy: recursive calls have skipdot=true
+    f->skipdot = post_recursive;
 
     if (path)
     {
@@ -545,6 +551,9 @@ void rbc_segment_exec(
         rbc_segment_t *seg = f->seg;
         segment_stack_t *stack_ptr = f->stack_ptr;
         bool from_wildcard = f->from_wildcard;
+        // If current segment is Recursive (**), it acts as a wildcard predecessor for matches within this loop
+        if (seg && seg->type == RBC_SEGMENT_RECURSIVE)
+            from_wildcard = true;
         bool post_recursive = f->post_recursive;
 
         switch (f->state)
@@ -631,27 +640,12 @@ void rbc_segment_exec(
                 // e.g. NULL (Match All) or LITERAL "" (Trailing Slash).
                 // e.g. LITERAL "a" does NOT match Empty String.
 
-                bool match_self = false;
-                if (!seg->next)
-                    match_self = true;
-                else if (seg->next->type == RBC_SEGMENT_LITERAL && seg->next->data.literal[0] == '\0')
-                    match_self = true;
-
                 // IMPORTANT: Advance state to prevent infinite loop of ST_INIT
                 f->state = ST_DIR_OPEN;
 
-                if (match_self)
-                {
-                    // push_next operates on current path.
-                    // IMPORTANT: We use stack_push directly to avoid re-wrapping or wrong next pointer logic
-                    // push_next(st, ..., seg->next) pushes seg->next->next! We want seg->next.
-                    // But push_next implementation: if (seg->next) push(seg->next).
-                    // So passing 'seg' would push 'seg->next'.
-                    // passing 'seg' (Recursion) -> pushes 'seg->next'?
-                    // Yes, push_next takes 'current_seg' and pushes 'current_seg->next'.
-                    // So calling push_next(..., seg, ...) is correct to push 'seg->next'.
-                    push_next(&st, path_buf, path_len, seg, stack_ptr, &ctx, from_wildcard, true);
-                }
+                // Note: We do NOT output "." here for match_self cases
+                // "." will be processed naturally in ST_DIR_LOOP if it matches the pattern
+                // This avoids duplication and ensures correct skipdot behavior
 
                 // We MUST skip re-using 'f' here, as push_next might realloc.
                 // Instead of continue block logic, we can just break/continue with the knowledge that state is updated.
@@ -799,22 +793,34 @@ void rbc_segment_exec(
 
             bool is_dot = (name[0] == '.' && (name[1] == '\0'));
             bool is_dotdot = (name[0] == '.' && name[1] == '.' && name[2] == '\0');
+            int dotfile = 0;
+            if (name[0] == '.') {
+                dotfile++;
+                if (is_dot) {
+                    dotfile++;
+                }
+            }
 
-            // MRI: Wildcards and recursion never match ".."
+            // MRI: Always skip ".." to prevent infinite recursion
             if (is_dotdot)
                 continue;
 
-            // MRI: If we arrived here via a recursive "nothing" match, we skip "."
-            // from matching against wildcard/explicit dot, UNLESS DOTMATCH is active.
-            if (post_recursive && is_dot && !(ctx.flags & RBC_FNM_DOTMATCH))
-                continue;
+            // MRI: Handle "." (current directory)
+            if (is_dot) {
+                // Skip if recursive && !DOTMATCH (prevent infinite recursion)
+                if (seg->type == RBC_SEGMENT_RECURSIVE && !(ctx.flags & RBC_FNM_DOTMATCH))
+                    continue;
+                // Skip if skipdot is set (subdirectory iteration)
+                if (f->skipdot)
+                    continue;
+                dotfile = 2; // Mark as "." for later checks
+            }
+
+            // MRI: If we arrived here via a recursive "nothing" match, skip "."
 
             if (seg->type == RBC_SEGMENT_RECURSIVE)
             {
-                if (is_dot)
-                    continue; // ** never matches .
-                if (name[0] == '.' && !(ctx.flags & RBC_FNM_DOTMATCH))
-                    continue; // ** skips hidden files/dirs unless DOTMATCH
+               // Allow fallthrough to buf_append to check for explicit match in next segment
             }
             else // WILDCARD
             {
@@ -832,8 +838,12 @@ void rbc_segment_exec(
                     {
                         // MRI: . is matched by a wildcard only if (dotglob OR dotmatch)
                         // AND there were no preceding wildcards (from_wildcard is false)
+                        // to avoid infinite loops (e.g. */* Matching ./* -> ././a)
+                        // UNLESS DOTMATCH is explicitly set to allow dot matching.
                         if (from_wildcard)
+                        {
                             continue;
+                        }
                     }
                 }
             }
@@ -874,7 +884,8 @@ void rbc_segment_exec(
                         // MRI Rule: '.*' matches '.', but '*' matches '.' only if DOTMATCH.
                         // AND: A wildcard matches '.' only if no preceding wildcard matches '.' in the immediate chain
                         // to avoid infinite loops (e.g. */* Matching ./* -> ././a)
-                        if (from_wildcard)
+                        // UNLESS DOTMATCH is explicitly set to allow dot matching.
+                        if (from_wildcard && !(ctx.flags & RBC_FNM_DOTMATCH))
                         {
                             path_len = saved_len;
                             path_buf[path_len] = '\0';
@@ -890,14 +901,32 @@ void rbc_segment_exec(
                 }
                 else if (seg->type == RBC_SEGMENT_RECURSIVE)
                 {
+                    bool recurse_allowed = true;
+                    if (name[0] == '.' && !(ctx.flags & RBC_FNM_DOTMATCH))
+                        recurse_allowed = false;
+
                     // Logic: Match Zero (Current Entry) AND Recurse (Current Entry)
                     // Push Recurse (Bottom), then MatchZero (Top) to ensure MatchZero runs first (Parent First).
 
                     // 1. RECURSE (Enter directory)
                     // We must push the CURRENT segment ('**') to continue recursing inside the subdirectory.
-                    if (is_dir && !is_symlink)
+                    // MRI: Check dotfile condition before recursing
+                    if (recurse_allowed && is_dir && !is_symlink && !is_dot)
                     {
-                        stack_push(&st, seg, stack_ptr, from_wildcard, true, path_buf, path_len, &ctx);
+                        // MRI: For recursive patterns, check dotfile condition
+                        // dotfile < 2: not \".\", dotfile < 1: not any dotfile
+                        // DOTMATCH: allow dotfiles but not \".\", !DOTMATCH: no dotfiles
+                        bool allow_recursion = false;
+                        if (ctx.flags & RBC_FNM_DOTMATCH) {
+                            allow_recursion = (dotfile < 2); // Allow dotfiles but not \".\"
+                        } else {
+                            allow_recursion = (dotfile < 1); // No dotfiles at all
+                        }
+                        
+                        if (allow_recursion) {
+                            // We are recursing from a wildcard (**), so from_wildcard must be true
+                            stack_push(&st, seg, stack_ptr, true, true, path_buf, path_len, &ctx);
+                        }
                     }
 
                     // 2. MATCH ZERO (Check if entry matches REST of pattern)
@@ -924,10 +953,42 @@ void rbc_segment_exec(
                         // If it's a specific requirement (Trailing Slash), it implies Directory.
                         next_matches_empty = true;
                     }
+                    else if (seg->next->type == RBC_SEGMENT_BRANCH)
+                    {
+                        // Handle Branching in MatchZero
+                        if (!(is_dot && path_len > 0)) {
+                            rbc_segment_t *alt = seg->next->data.branch.head;
+                            while (alt)
+                            {
+                                if (segment_match(alt, name, &ctx))
+                                {
+                                    segment_stack_t *cont = NULL;
+                                    if (seg->next->next || stack_ptr)
+                                    {
+                                        cont = rbc_arena_alloc(ctx.arena, sizeof(segment_stack_t));
+                                        cont->seg = seg->next->next;
+                                        cont->next = stack_ptr;
+                                    }
+                                    push_next(&st, path_buf, path_len, alt, cont, &ctx, from_wildcard, false);
+                                }
+                                alt = alt->next_alt;
+                            }
+                        }
+                    }
                     else if (segment_match(seg->next, name, &ctx))
                     {
                         // Normal match (Literal 'name' or Wildcard matching 'name').
                         matched = true;
+
+                        if (is_dot)
+                        {
+                            // MRI: Skip . in subdirectories to avoid redundancy/duplicates  
+                            // For patterns like **/.*  the . should match at root only
+                            // For patterns like **/?  the . should match at root only
+                            // Use skipdot flag to determine if we're in a recursive call
+                            if (f->skipdot)
+                                matched = false;
+                        }
                     }
 
                     // Duplication Prevention:
@@ -942,11 +1003,14 @@ void rbc_segment_exec(
 
                     if (matched)
                     {
-                        if (is_dir && next_matches_empty)
-                        {
-                            // Skip to avoid duplication with Recurse->ST_INIT->MatchSelf
+                        // MRI: Avoid duplicates when is_dir && next_matches_empty
+                        // The recursive step will handle directory matches
+                        bool skip_for_recursion = false;
+                        if (is_dir && next_matches_empty) {
+                            skip_for_recursion = true;
                         }
-                        else
+                        
+                        if (!skip_for_recursion)
                         {
                             if (push_current_next)
                             {

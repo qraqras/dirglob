@@ -146,6 +146,7 @@ void assert_matches_expected(char **c_result, size_t c_count, const char *expect
 {
     size_t expected_count = 0;
     char **expected = load_expected_output(expected_file, &expected_count);
+    fprintf(stderr, "DEBUG: Loading expected file: %s, count: %zu\n", expected_file, expected_count);
 
     if (expected == NULL && expected_count == 0)
     {
