@@ -1,2 +1,0 @@
-sub/file.txt
-dir/file.txt

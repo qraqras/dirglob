@@ -1,3 +1,0 @@
-dir/sub/deep
-dir/sub/file.txt
-dir/sub/test.c

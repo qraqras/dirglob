@@ -1,4 +1,0 @@
-./a.c
-./file.c
-./test.c
-dir/test.c

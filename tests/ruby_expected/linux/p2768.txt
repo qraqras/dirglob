@@ -1,5 +1,0 @@
-a.c
-dir/sub/test.c
-dir/test.c
-file.c
-test.c

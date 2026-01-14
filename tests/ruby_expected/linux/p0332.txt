@@ -1,8 +1,0 @@
-dir/.
-dir/.file.txt
-dir/.hidden
-dir/a
-dir/b
-dir/file.txt
-dir/sub
-dir/test.c

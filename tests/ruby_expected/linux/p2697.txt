@@ -1,7 +1,0 @@
-file.txt
-a/c/file.txt
-a/b/file.txt
-sub/file.txt
-dir/file.txt
-dir/sub/file.txt
-x/y/file.txt

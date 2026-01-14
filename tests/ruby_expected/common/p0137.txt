@@ -1,4 +1,0 @@
-z.txt
-c.txt
-b.txt
-a.txt

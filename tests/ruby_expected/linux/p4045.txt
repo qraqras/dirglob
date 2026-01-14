@@ -1,3 +1,0 @@
-./.dir
-./.file.txt
-./.hidden

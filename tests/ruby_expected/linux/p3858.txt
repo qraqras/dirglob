@@ -1,2 +1,0 @@
-dir/.hidden
-dir/.file.txt

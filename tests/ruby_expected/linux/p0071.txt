@@ -1,5 +1,0 @@
-./file.txt
-./file.md
-.dir/file.txt
-dir/file.txt
-sub/file.txt

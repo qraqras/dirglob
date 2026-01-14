@@ -1,5 +1,0 @@
-dir/a
-dir/b
-dir/file.txt
-dir/sub
-dir/test.c

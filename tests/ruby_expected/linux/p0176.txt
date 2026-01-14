@@ -1,2 +1,0 @@
-dir/sub/./
-dir/sub/deep/
