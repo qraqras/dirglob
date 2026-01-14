@@ -7,17 +7,174 @@
 bool rbc_matcher_build(rbc_arena_t *arena, rbc_matcher_t *m, const char *pattern, unsigned int flags)
 {
     m->flags = flags;
+
+    // Initialize prefilter as disabled by default
+    m->prefilter.enabled = false;
+    m->prefilter.min_length = 0;
+    m->prefilter.prefix = NULL;
+    m->prefilter.prefix_len = 0;
+    m->prefilter.suffix = NULL;
+    m->prefilter.suffix_len = 0;
+
     bool noescape = (flags & RBC_FNM_NOESCAPE);
+
+    // Check if pattern has braces - if so, expand first
+    bool has_brace = (strchr(pattern, '{') != NULL);
+
+    if (has_brace)
+    {
+        // Expand braces and collect all alternatives
+        rbc_str_list_t expanded = rbc_brace_collect(pattern, arena);
+
+        if (expanded.count == 0)
+        {
+            // Failed to expand
+            return false;
+        }
+        else if (expanded.count == 1)
+        {
+            // Single expansion - just use that pattern
+            pattern = expanded.items[0];
+            has_brace = false; // No longer has braces after expansion
+        }
+        else
+        {
+            // Multiple expansions - create ALTERNATIVES strategy
+            m->strategy = RBC_STRATEGY_ALTERNATIVES;
+            m->pk.alternatives.count = expanded.count;
+            m->pk.alternatives.matchers = (rbc_matcher_t *)rbc_arena_alloc(
+                arena, sizeof(rbc_matcher_t) * expanded.count);
+
+            if (!m->pk.alternatives.matchers)
+            {
+                rbc_str_list_free(&expanded);
+                return false;
+            }
+
+            // Build a matcher for each expanded pattern
+            for (size_t i = 0; i < expanded.count; i++)
+            {
+                if (!rbc_matcher_build(arena, &m->pk.alternatives.matchers[i],
+                                       expanded.items[i], flags))
+                {
+                    rbc_str_list_free(&expanded);
+                    return false;
+                }
+            }
+
+            rbc_str_list_free(&expanded);
+            return true;
+        }
+    }
+
+    // === Extract prefilter information from pattern (strategy-independent) ===
+    size_t pattern_len = strlen(pattern);
+    const char *prefix_start = NULL;
+    size_t prefix_len = 0;
+    const char *suffix_start = NULL;
+    size_t suffix_len = 0;
+    size_t qmark_count = 0;
+
+    // Extract prefix (literal characters before first wildcard)
+    const char *p = pattern;
+    while (*p && *p != '*' && *p != '?' && *p != '[')
+    {
+        if (!noescape && *p == '\\')
+        {
+            p++;
+            if (*p)
+                p++;
+        }
+        else
+        {
+            p++;
+        }
+    }
+    if (p > pattern)
+    {
+        prefix_start = pattern;
+        prefix_len = p - pattern;
+    }
+
+    // Extract suffix (literal characters after last wildcard)
+    p = pattern + pattern_len - 1;
+    const char *suffix_end = p + 1;
+    while (p >= pattern && *p != '*' && *p != '?' && *p != '[')
+    {
+        if (!noescape && p > pattern && p[-1] == '\\')
+        {
+            p -= 2;
+        }
+        else
+        {
+            p--;
+        }
+    }
+    if (p + 1 < pattern + pattern_len)
+    {
+        suffix_start = p + 1;
+        suffix_len = suffix_end - suffix_start;
+    }
+
+    // Count question marks for minimum length calculation
+    p = pattern;
+    while (*p)
+    {
+        if (!noescape && *p == '\\')
+        {
+            p++;
+            if (*p)
+                p++;
+            continue;
+        }
+        if (*p == '?')
+            qmark_count++;
+        p++;
+    }
+
+    // Calculate minimum length: fixed prefix + qmarks + fixed suffix
+    size_t min_len = prefix_len + qmark_count + suffix_len;
+
+    // Setup prefilter if we have useful constraints
+    if (min_len > 0 || prefix_len > 0 || suffix_len > 0)
+    {
+        m->prefilter.enabled = true;
+        m->prefilter.min_length = min_len;
+
+        if (prefix_len > 0)
+        {
+            m->prefilter.prefix = rbc_arena_alloc(arena, prefix_len + 1);
+            if (m->prefilter.prefix)
+            {
+                memcpy((char *)m->prefilter.prefix, prefix_start, prefix_len);
+                ((char *)m->prefilter.prefix)[prefix_len] = '\0';
+                m->prefilter.prefix_len = prefix_len;
+            }
+        }
+
+        if (suffix_len > 0)
+        {
+            m->prefilter.suffix = rbc_arena_alloc(arena, suffix_len + 1);
+            if (m->prefilter.suffix)
+            {
+                memcpy((char *)m->prefilter.suffix, suffix_start, suffix_len);
+                ((char *)m->prefilter.suffix)[suffix_len] = '\0';
+                m->prefilter.suffix_len = suffix_len;
+            }
+        }
+    }
+
+    // === Now select strategy based on pattern complexity ===
+
     // Check for complexity features
     bool has_qmark = (strchr(pattern, '?') != NULL);
     bool has_bracket = (strchr(pattern, '[') != NULL);
-    bool has_brace = (strchr(pattern, '{') != NULL);
     bool has_paren = (strchr(pattern, '(') != NULL);
     bool has_pipe = (strchr(pattern, '|') != NULL);
 
     // Count stars
     int star_count = 0;
-    const char *p = pattern;
+    p = pattern;
     while (*p)
     {
         if (!noescape && *p == '\\')
@@ -32,8 +189,8 @@ bool rbc_matcher_build(rbc_arena_t *arena, rbc_matcher_t *m, const char *pattern
         p++;
     }
 
-    // Force VM if complex characters exist
-    if (has_qmark || has_bracket || has_brace || has_paren || has_pipe)
+    // Force VM if complex characters exist (but not braces - already handled)
+    if (has_qmark || has_bracket || has_paren || has_pipe)
     {
         m->strategy = RBC_STRATEGY_RECURSIVE;
     }
@@ -44,6 +201,7 @@ bool rbc_matcher_build(rbc_arena_t *arena, rbc_matcher_t *m, const char *pattern
         if (!m->pk.str.ptr)
             return false;
         m->pk.str.len = strlen(pattern);
+        m->prefilter.prefix_len = m->pk.str.len;
     }
     else if (star_count == 1)
     {
@@ -61,6 +219,7 @@ bool rbc_matcher_build(rbc_arena_t *arena, rbc_matcher_t *m, const char *pattern
                 m->strategy = RBC_STRATEGY_PREFIX;
                 m->pk.str.ptr = "";
                 m->pk.str.len = 0;
+                // No prefilter for "*" (matches everything)
             }
             else
             {
@@ -87,6 +246,9 @@ bool rbc_matcher_build(rbc_arena_t *arena, rbc_matcher_t *m, const char *pattern
             m->pk.chain.parts = (char **)rbc_arena_alloc(arena, sizeof(char *) * 2);
             if (!m->pk.chain.parts)
                 return false;
+            m->pk.chain.lengths = (size_t *)rbc_arena_alloc(arena, sizeof(size_t) * 2);
+            if (!m->pk.chain.lengths)
+                return false;
 
             char *star_pos = strchr(pattern, '*');
             size_t pre_len = (size_t)(star_pos - pattern);
@@ -96,10 +258,12 @@ bool rbc_matcher_build(rbc_arena_t *arena, rbc_matcher_t *m, const char *pattern
             memcpy(pre, pattern, pre_len);
             pre[pre_len] = '\0';
             m->pk.chain.parts[0] = pre;
+            m->pk.chain.lengths[0] = pre_len;
 
             m->pk.chain.parts[1] = rbc_arena_strdup(arena, star_pos + 1);
             if (!m->pk.chain.parts[1])
                 return false;
+            m->pk.chain.lengths[1] = strlen(m->pk.chain.parts[1]);
 
             m->pk.chain.match_start = true;
             m->pk.chain.match_end = true;
@@ -165,6 +329,9 @@ bool rbc_matcher_build(rbc_arena_t *arena, rbc_matcher_t *m, const char *pattern
             char **parts = (char **)rbc_arena_alloc(arena, sizeof(char *) * max_parts);
             if (!parts)
                 return false;
+            size_t *lengths = (size_t *)rbc_arena_alloc(arena, sizeof(size_t) * max_parts);
+            if (!lengths)
+                return false;
             size_t count = 0;
 
             const char *curr = pattern;
@@ -189,7 +356,9 @@ bool rbc_matcher_build(rbc_arena_t *arena, rbc_matcher_t *m, const char *pattern
                             return false;
                         memcpy(part, curr, plen);
                         part[plen] = '\0';
-                        parts[count++] = part;
+                        parts[count] = part;
+                        lengths[count] = plen;
+                        count++;
                     }
                     curr = scan + 1;
                     scan = curr;
@@ -205,10 +374,13 @@ bool rbc_matcher_build(rbc_arena_t *arena, rbc_matcher_t *m, const char *pattern
                     return false;
                 memcpy(part, curr, plen);
                 part[plen] = '\0';
-                parts[count++] = part;
+                parts[count] = part;
+                lengths[count] = plen;
+                count++;
             }
 
             m->pk.chain.parts = parts;
+            m->pk.chain.lengths = lengths;
             m->pk.chain.count = count;
         }
     }
@@ -426,6 +598,48 @@ bool rbc_matcher_exec(const rbc_matcher_t *m, const char *name)
     bool pathname = (flags & RBC_FNM_PATHNAME);
     bool casefold = (flags & RBC_FNM_CASEFOLD);
 
+    // === Phase 1: Pre-filter (fast early rejection) ===
+    if (m->prefilter.enabled)
+    {
+        // Length check (fastest)
+        if (name_len < m->prefilter.min_length)
+            return false;
+
+        // Prefix check
+        if (m->prefilter.prefix)
+        {
+            if (casefold)
+            {
+                if (!rbc_match_fixed(name, m->prefilter.prefix, m->prefilter.prefix_len, true))
+                    return false;
+            }
+            else
+            {
+                if (name_len < m->prefilter.prefix_len ||
+                    strncmp(name, m->prefilter.prefix, m->prefilter.prefix_len) != 0)
+                    return false;
+            }
+        }
+
+        // Suffix check
+        if (m->prefilter.suffix)
+        {
+            if (casefold)
+            {
+                if (!rbc_match_fixed(name + name_len - m->prefilter.suffix_len,
+                                     m->prefilter.suffix, m->prefilter.suffix_len, true))
+                    return false;
+            }
+            else
+            {
+                if (name_len < m->prefilter.suffix_len ||
+                    strcmp(name + name_len - m->prefilter.suffix_len, m->prefilter.suffix) != 0)
+                    return false;
+            }
+        }
+    }
+
+    // === Phase 2: Strategy execution ===
     switch (m->strategy)
     {
     case RBC_STRATEGY_EXACT:
@@ -504,10 +718,33 @@ bool rbc_matcher_exec(const rbc_matcher_t *m, const char *name)
         const char *end_limit = name + name_len;
         matched = true;
         size_t count = m->pk.chain.count;
+
+        // Special fast path for prefix+suffix pattern (e.g., a*c, test_*.c)
+        // Prefilter has already verified prefix/suffix, just check pathname
+        if (count == 2 && m->pk.chain.match_start && m->pk.chain.match_end)
+        {
+            size_t prefix_len = m->pk.chain.lengths[0];
+            size_t suffix_len = m->pk.chain.lengths[1];
+
+            // Prefilter already verified length, prefix, and suffix
+            // Only need to check pathname constraint
+            if (pathname && memchr(name + prefix_len, '/', name_len - prefix_len - suffix_len))
+            {
+                matched = false;
+            }
+            else
+            {
+                matched = true;
+            }
+            break;
+        }
+
+        // Prefilter already checked minimum length and prefix/suffix
+        // General PATTERN_CHAIN logic for multiple parts
         if (m->pk.chain.match_end && count > 0)
         {
             char *last = m->pk.chain.parts[count - 1];
-            size_t last_len = strlen(last);
+            size_t last_len = m->pk.chain.lengths[count - 1];
             if (name_len < last_len)
                 matched = false;
             else if (!rbc_match_fixed(name + name_len - last_len, last, last_len, casefold))
@@ -523,7 +760,7 @@ bool rbc_matcher_exec(const rbc_matcher_t *m, const char *name)
             for (size_t i = 0; i < count; i++)
             {
                 char *part = m->pk.chain.parts[i];
-                size_t part_len = strlen(part);
+                size_t part_len = m->pk.chain.lengths[i];
                 if (i == 0 && m->pk.chain.match_start)
                 {
                     if ((size_t)(end_limit - p) < part_len)
@@ -569,6 +806,19 @@ bool rbc_matcher_exec(const rbc_matcher_t *m, const char *name)
             {
                 if (memchr(p, '/', end_limit - p))
                     matched = false;
+            }
+        }
+    }
+    break;
+    case RBC_STRATEGY_ALTERNATIVES:
+    {
+        // Try each alternative matcher - if any matches, return true
+        for (size_t i = 0; i < m->pk.alternatives.count; i++)
+        {
+            if (rbc_matcher_exec(&m->pk.alternatives.matchers[i], name))
+            {
+                matched = true;
+                break;
             }
         }
     }

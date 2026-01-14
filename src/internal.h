@@ -29,8 +29,12 @@ typedef enum rbc_match_strategy_e
     RBC_STRATEGY_SUFFIX,        // Literal suffix match (`*abc`)
     RBC_STRATEGY_INFIX,         // Literal infix match (`*abc*`)
     RBC_STRATEGY_PATTERN_CHAIN, // Sequence of fixed-length patterns separated by '*' (`a?b*c`)
+    RBC_STRATEGY_ALTERNATIVES,  // Multiple matchers (OR condition) from brace expansion
     RBC_STRATEGY_RECURSIVE,     // Complex match with recursion (`[a-c]*`)
 } rbc_match_strategy_t;
+
+/// @brief Forward declaration of matcher structure
+typedef struct rbc_matcher_s rbc_matcher_t;
 
 /// @brief Context Structure
 typedef struct rbc_ctx_s
@@ -50,11 +54,23 @@ typedef struct rbc_results_s
     rbc_ctx_t *ctx; // Link back to context for arena access
 } rbc_results_t;
 
+/// @brief Pre-filter for fast early rejection
+typedef struct rbc_prefilter_s
+{
+    bool enabled;
+    size_t min_length; // Minimum required length
+    char *prefix;      // Required prefix (NULL if none)
+    size_t prefix_len;
+    char *suffix; // Required suffix (NULL if none)
+    size_t suffix_len;
+} rbc_prefilter_t;
+
 /// @brief Matcher Structure
-typedef struct rbc_matcher_s
+struct rbc_matcher_s
 {
     rbc_match_strategy_t strategy;
-    unsigned int flags; // Flags used for compilation and matching
+    unsigned int flags;        // Flags used for compilation and matching
+    rbc_prefilter_t prefilter; // Fast pre-filter for early rejection
     union
     {
         // STRATEGY_EXACT | STRATEGY_PREFIX | STRATEGY_SUFFIX | STRATEGY_INFIX
@@ -67,17 +83,24 @@ typedef struct rbc_matcher_s
         struct
         {
             char **parts;     // Array of parts (may contain '?')
+            size_t *lengths;  // Cached lengths of each part
             size_t count;     // Number of parts
             bool match_start; // If true, first part must match at start
             bool match_end;   // If true, last part must match at end
         } chain;
+        // STRATEGY_ALTERNATIVES (from brace expansion)
+        struct
+        {
+            rbc_matcher_t *matchers; // Array of matchers
+            size_t count;            // Number of alternatives
+        } alternatives;
         // STRATEGY_RECURSIVE
         struct
         {
             char *pattern;
         } recursive;
     } pk;
-} rbc_matcher_t;
+};
 
 /// @defgroup Segment Structure
 /// @{
