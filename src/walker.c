@@ -339,7 +339,7 @@ static void stack_push(exec_stack_t *st, rbc_segment_t *seg, segment_stack_t *st
     f->from_wildcard = from_wildcard;
     f->post_recursive = post_recursive;
     f->state = ST_INIT;
-    
+
     // MRI: skipdot is false for root (first iteration), true for subdirectories
     // In MRI, this is done via FNM_GLOB_SKIPDOT flag
     // Here, we use post_recursive as a proxy: recursive calls have skipdot=true
@@ -794,9 +794,11 @@ void rbc_segment_exec(
             bool is_dot = (name[0] == '.' && (name[1] == '\0'));
             bool is_dotdot = (name[0] == '.' && name[1] == '.' && name[2] == '\0');
             int dotfile = 0;
-            if (name[0] == '.') {
+            if (name[0] == '.')
+            {
                 dotfile++;
-                if (is_dot) {
+                if (is_dot)
+                {
                     dotfile++;
                 }
             }
@@ -806,7 +808,8 @@ void rbc_segment_exec(
                 continue;
 
             // MRI: Handle "." (current directory)
-            if (is_dot) {
+            if (is_dot)
+            {
                 // Skip if recursive && !DOTMATCH (prevent infinite recursion)
                 if (seg->type == RBC_SEGMENT_RECURSIVE && !(ctx.flags & RBC_FNM_DOTMATCH))
                     continue;
@@ -820,7 +823,7 @@ void rbc_segment_exec(
 
             if (seg->type == RBC_SEGMENT_RECURSIVE)
             {
-               // Allow fallthrough to buf_append to check for explicit match in next segment
+                // Allow fallthrough to buf_append to check for explicit match in next segment
             }
             else // WILDCARD
             {
@@ -917,13 +920,17 @@ void rbc_segment_exec(
                         // dotfile < 2: not \".\", dotfile < 1: not any dotfile
                         // DOTMATCH: allow dotfiles but not \".\", !DOTMATCH: no dotfiles
                         bool allow_recursion = false;
-                        if (ctx.flags & RBC_FNM_DOTMATCH) {
+                        if (ctx.flags & RBC_FNM_DOTMATCH)
+                        {
                             allow_recursion = (dotfile < 2); // Allow dotfiles but not \".\"
-                        } else {
+                        }
+                        else
+                        {
                             allow_recursion = (dotfile < 1); // No dotfiles at all
                         }
-                        
-                        if (allow_recursion) {
+
+                        if (allow_recursion)
+                        {
                             // We are recursing from a wildcard (**), so from_wildcard must be true
                             stack_push(&st, seg, stack_ptr, true, true, path_buf, path_len, &ctx);
                         }
@@ -956,7 +963,8 @@ void rbc_segment_exec(
                     else if (seg->next->type == RBC_SEGMENT_BRANCH)
                     {
                         // Handle Branching in MatchZero
-                        if (!(is_dot && path_len > 0)) {
+                        if (!(is_dot && path_len > 0))
+                        {
                             rbc_segment_t *alt = seg->next->data.branch.head;
                             while (alt)
                             {
@@ -982,7 +990,7 @@ void rbc_segment_exec(
 
                         if (is_dot)
                         {
-                            // MRI: Skip . in subdirectories to avoid redundancy/duplicates  
+                            // MRI: Skip . in subdirectories to avoid redundancy/duplicates
                             // For patterns like **/.*  the . should match at root only
                             // For patterns like **/?  the . should match at root only
                             // Use skipdot flag to determine if we're in a recursive call
@@ -1006,10 +1014,11 @@ void rbc_segment_exec(
                         // MRI: Avoid duplicates when is_dir && next_matches_empty
                         // The recursive step will handle directory matches
                         bool skip_for_recursion = false;
-                        if (is_dir && next_matches_empty) {
+                        if (is_dir && next_matches_empty)
+                        {
                             skip_for_recursion = true;
                         }
-                        
+
                         if (!skip_for_recursion)
                         {
                             if (push_current_next)
