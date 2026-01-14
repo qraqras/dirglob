@@ -604,53 +604,8 @@ void rbc_segment_exec(
             else if (seg->type == RBC_SEGMENT_RECURSIVE)
             {
                 // RBC_SEGMENT_RECURSIVE (**):
-                // Logic:
-                // 1. Check if current path effectively matches the recursive part (empty match).
-                //    This covers "**/foo" matching "foo" (via empty ** + match foo).
-                //    We do this via Match Zero logic on Current Path.
-
-                // Match Zero (Current Path):
-                // If we match here, we must output/push immediately to preserve Pre-Order (Parent First).
-                // We use push_next (Top) to execute Match Zero logic.
-                // BUT we also need to Recurse (Iterate) afterwards.
-
-                // If we push MatchZero (Top), it runs and pops.
-                // Then we assume we are still in "Recurse" mode?
-                // But Recurse frame needs to change state to ST_DIR_OPEN.
-
-                // Problem: If we change state to ST_DIR_OPEN, we lose the chance to do MatchZero?
-                // Solution: Do MatchZero logic manually here, or spawn a frame.
-
-                // If we spawn MatchZero frame:
-                // push_next(MatchZero).
-                // It sits on Top.
-                // The current frame (Recurse) stays at ST_INIT?
-                // If ST_INIT, it will loop forever spawning MatchZero.
-
-                // We need to advance state.
-
-                // Note: We used to push MatchZero here via push_next(seg->next).
-                // But this causes DUPLICATION because ST_DIR_LOOP also checks for matches.
-                // We rely on ST_DIR_LOOP to check matches on CHILDREN (interleaved).
-                // However, we MUST check match on SELF (Empty Recursion) here?
-                // Example: `**/` matches `root` (Self).
-                // ST_DIR_LOOP only iterates children, so it misses Self.
-
-                // So we push MatchZero ONLY if `seg->next` matches "Empty String" (Self).
-                // e.g. NULL (Match All) or LITERAL "" (Trailing Slash).
-                // e.g. LITERAL "a" does NOT match Empty String.
-
-                // IMPORTANT: Advance state to prevent infinite loop of ST_INIT
+                // Advance state to ST_DIR_OPEN to iterate subdirectories
                 f->state = ST_DIR_OPEN;
-
-                // Note: We do NOT output "." here for match_self cases
-                // "." will be processed naturally in ST_DIR_LOOP if it matches the pattern
-                // This avoids duplication and ensures correct skipdot behavior
-
-                // We MUST skip re-using 'f' here, as push_next might realloc.
-                // Instead of continue block logic, we can just break/continue with the knowledge that state is updated.
-                // But we must NOT use 'f' after this.
-                // And we must ensure loop continues to pick up new Top (MatchZero).
                 continue;
             }
 
@@ -950,15 +905,20 @@ void rbc_segment_exec(
                     else if (seg->next->type == RBC_SEGMENT_LITERAL && seg->next->data.literal[0] == '\0')
                     {
                         // ** followed by empty literal (trailing slash).
-                        // Matches directories.
-                        if (is_dir)
+                        // Trailing slash means "directories only" - it's a filter, not "matches empty"
+                        if (is_dir && !is_dot && !is_dotdot)
                         {
-                            matched = true;
-                            push_current_next = true;
+                            // MRI Rule: skip hidden files unless DOTMATCH flag is set
+                            bool is_hidden = (name[0] == '.');
+                            bool allow_hidden = (ctx.flags & RBC_FNM_DOTMATCH);
+
+                            if (!is_hidden || allow_hidden)
+                            {
+                                matched = true;
+                                push_current_next = true;
+                            }
                         }
-                        // Even if not dir, we treat it as "matches empty" pattern for duplication check logic?
-                        // If it's a specific requirement (Trailing Slash), it implies Directory.
-                        next_matches_empty = true;
+                        // Don't set next_matches_empty - trailing slash is just a directory filter
                     }
                     else if (seg->next->type == RBC_SEGMENT_BRANCH)
                     {
@@ -994,6 +954,7 @@ void rbc_segment_exec(
                             // For patterns like **/.*  the . should match at root only
                             // For patterns like **/?  the . should match at root only
                             // Use skipdot flag to determine if we're in a recursive call
+                            // (This does NOT apply to **/ which is handled above)
                             if (f->skipdot)
                                 matched = false;
                         }
