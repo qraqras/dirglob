@@ -604,6 +604,38 @@ void rbc_segment_exec(
             else if (seg->type == RBC_SEGMENT_RECURSIVE)
             {
                 // RBC_SEGMENT_RECURSIVE (**):
+                // For patterns like **/ when we have a path or base_path,
+                // we need to match the current directory itself first
+
+                // MRI Rule: When base is specified, **/ matches "/" (the base directory itself)
+                if (path_len == 0 && base_path && base_path[0] != '\0' &&
+                    seg->next && seg->next->type == RBC_SEGMENT_LITERAL && seg->next->data.literal[0] == '\0')
+                {
+                    // Match the base directory as "/"
+                    char *rp = get_real_path(real_path_buf, base_path, "");
+                    struct stat st_check;
+                    if (stat(rp, &st_check) == 0 && S_ISDIR(st_check.st_mode))
+                    {
+                        // Push "/" as a match
+                        stack_push(&st, seg->next->next, stack_ptr, from_wildcard, post_recursive, "/", 1, &ctx);
+                    }
+                }
+                else if (path_len > 0 && seg->next && seg->next->type == RBC_SEGMENT_LITERAL && seg->next->data.literal[0] == '\0')
+                {
+                    // Check if current path is actually a directory
+                    char *rp = get_real_path(real_path_buf, base_path, path_buf);
+                    struct stat st_check;
+                    if (stat(rp, &st_check) == 0 && S_ISDIR(st_check.st_mode))
+                    {
+                        // Push a match for the current directory with trailing slash
+                        size_t orig_len = path_len;
+                        buf_append(path_buf, &path_len, seg->next->data.literal);
+                        stack_push(&st, seg->next->next, stack_ptr, from_wildcard, post_recursive, path_buf, path_len, &ctx);
+                        path_len = orig_len;
+                        path_buf[path_len] = '\0';
+                    }
+                }
+
                 // Advance state to ST_DIR_OPEN to iterate subdirectories
                 f->state = ST_DIR_OPEN;
                 continue;
@@ -918,7 +950,8 @@ void rbc_segment_exec(
                                 push_current_next = true;
                             }
                         }
-                        // Don't set next_matches_empty - trailing slash is just a directory filter
+                        // Treat **/ as "matches empty" for duplication prevention
+                        next_matches_empty = true;
                     }
                     else if (seg->next->type == RBC_SEGMENT_BRANCH)
                     {
