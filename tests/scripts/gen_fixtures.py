@@ -345,11 +345,6 @@ def create_fixtures(fixtures_dir):
     # 空ファイル
     (fixtures_dir / "empty.txt").write_text("")
 
-    # 複数スラッシュテスト用
-    multi = fixtures_dir / "multi"
-    multi.mkdir()
-    (multi / "file.txt").write_text("multi\n")
-
     # 長いパス名用 (a*100)
     long_dir = fixtures_dir / ("a" * 100)
     try:
