@@ -482,7 +482,9 @@ static bool rbc_match_core(const char *pattern, const char *text, unsigned flags
         switch (hints->strategy)
         {
         case RBC_MATCH_STRATEGY_LITERAL:
+        {
             return rbc_match_strcmp(pattern, text, flags);
+        }
         case RBC_MATCH_STRATEGY_STAR:
         {
             return true;
@@ -587,7 +589,7 @@ static bool rbc_match_core(const char *pattern, const char *text, unsigned flags
             if (*state.p != '?' && *state.p != '[' && *state.p != '*' && *state.p != '\\')
             {
                 char literal = (flags & RBC_FNM_CASEFOLD) ? tolower((unsigned char)*state.p) : *state.p;
-                const char *found;
+
                 if (flags & RBC_FNM_CASEFOLD)
                 {
                     while (*state.t != '\0')
@@ -598,28 +600,40 @@ static bool rbc_match_core(const char *pattern, const char *text, unsigned flags
                         }
                         state.t++;
                     }
-                    if (*state.t == '\0')
+                }
+                else if (flags & RBC_FNM_PATHNAME)
+                {
+                    while (*state.t != '\0' && *state.t != '/')
                     {
-                        goto backtrack;
+                        if (*state.t == literal)
+                        {
+                            break;
+                        }
+                        state.t++;
                     }
-                    found = state.t;
                 }
                 else
                 {
-                    size_t remaining = state.text_end - state.t;
-                    found = memchr(state.t, literal, remaining);
-                    if (!found)
+                    while (*state.t != '\0')
                     {
-                        goto backtrack;
+                        if (*state.t == literal)
+                        {
+                            break;
+                        }
+                        state.t++;
                     }
                 }
 
-                // pathname check
-                if ((flags & RBC_FNM_PATHNAME) && rbc_match_has_pathname_violation(state.t, found))
+                if (*state.t == '\0')
                 {
                     goto backtrack;
                 }
-                state.t = found;
+
+                // Check for pathname violation after finding literal
+                if ((flags & RBC_FNM_PATHNAME) && *state.t == '/')
+                {
+                    goto backtrack;
+                }
             }
             break;
         }
@@ -736,10 +750,9 @@ static bool rbc_match_core(const char *pattern, const char *text, unsigned flags
         if (*state.star_p != '?' && *state.star_p != '[' && *state.star_p != '*' && *state.star_p != '\\')
         {
             char literal = (flags & RBC_FNM_CASEFOLD) ? tolower((unsigned char)*state.star_p) : *state.star_p;
-            const char *found;
+
             if (flags & RBC_FNM_CASEFOLD)
             {
-                // CASEFOLD: manual scan required (need tolower())
                 while (*state.star_t != '\0')
                 {
                     if (tolower((unsigned char)*state.star_t) == literal)
@@ -748,30 +761,40 @@ static bool rbc_match_core(const char *pattern, const char *text, unsigned flags
                     }
                     state.star_t++;
                 }
-                if (*state.star_t == '\0')
+            }
+            else if (flags & RBC_FNM_PATHNAME)
+            {
+                while (*state.star_t != '\0' && *state.star_t != '/')
                 {
-                    return false;
+                    if (*state.star_t == literal)
+                    {
+                        break;
+                    }
+                    state.star_t++;
                 }
-                found = state.star_t;
             }
             else
             {
-                // Fast path: use memchr() for maximum speed
-                size_t remaining = state.text_end - state.star_t;
-                found = memchr(state.star_t, literal, remaining);
-                if (!found)
+                while (*state.star_t != '\0')
                 {
-                    return false;
+                    if (*state.star_t == literal)
+                    {
+                        break;
+                    }
+                    state.star_t++;
                 }
             }
 
-            // PATHNAME: check for '/' in the skipped region
-            if ((flags & RBC_FNM_PATHNAME) && rbc_match_has_pathname_violation(state.star_t, found))
+            if (*state.star_t == '\0')
             {
                 return false;
             }
 
-            state.star_t = found;
+            // Check for pathname violation after finding literal
+            if ((flags & RBC_FNM_PATHNAME) && *state.star_t == '/')
+            {
+                return false;
+            }
         }
 
         state.p = state.star_p;

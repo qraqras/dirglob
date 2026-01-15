@@ -34,17 +34,18 @@ typedef enum rbc_segment_type_e
     RBC_SEGMENT_BRANCH,    // Branch segment (`/{a, *, c}/`)
 } rbc_segment_type_t;
 
-// /// @brief Match Strategy Types (for glob matching)
-// typedef enum rbc_match_strategy_e
-// {
-//     RBC_STRATEGY_EXACT,         // Exact literal match
-//     RBC_STRATEGY_PREFIX,        // Prefix match (`pre*`)
-//     RBC_STRATEGY_SUFFIX,        // Suffix match (`*suf`)
-//     RBC_STRATEGY_INFIX,         // Infix match (`*mid*`)
-//     RBC_STRATEGY_PATTERN_CHAIN, // Complex pattern (`a*b*c`)
-//     RBC_STRATEGY_ALTERNATIVES,  // Brace alternatives (`{a,b,c}`)
-//     RBC_STRATEGY_RECURSIVE,     // Recursive wildcard (`**`)
-// } rbc_match_strategy_t;
+/// @brief Match Strategy Types (for glob matching)
+typedef enum rbc_match_strategy_e_new
+{
+    // Glob matching strategies (used by matcher.c)
+    RBC_STRATEGY_EXACT,         // Exact literal match
+    RBC_STRATEGY_PREFIX,        // Prefix match (`pre*`)
+    RBC_STRATEGY_SUFFIX,        // Suffix match (`*suf`)
+    RBC_STRATEGY_INFIX,         // Infix match (`*mid*`)
+    RBC_STRATEGY_PATTERN_CHAIN, // Complex pattern (`a*b*c`)
+    RBC_STRATEGY_ALTERNATIVES,  // Brace alternatives (`{a,b,c}`)
+    RBC_STRATEGY_RECURSIVE,     // Recursive wildcard (`**`)
+} rbc_match_strategy_t_new;
 
 /// @brief Forward declaration of matcher structure
 typedef struct rbc_matcher_s rbc_matcher_t;
@@ -81,7 +82,7 @@ typedef struct rbc_prefilter_s
 /// @brief Matcher Structure
 struct rbc_matcher_s
 {
-    rbc_match_strategy_t strategy;
+    rbc_match_strategy_t_new strategy;
     unsigned int flags;        // Flags used for compilation and matching
     rbc_prefilter_t prefilter; // Fast pre-filter for early rejection
     union
