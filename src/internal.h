@@ -12,6 +12,19 @@
 #define PATH_MAX 4096
 #endif
 
+// ============================================================================
+// Fnmatch Streaming API (separate from arena-based fnmatch)
+// ============================================================================
+
+// Forward declaration
+typedef struct rbc_fnmatch_pattern_streaming_s rbc_fnmatch_pattern_streaming_t;
+
+// Streaming API functions
+bool rbc_fnmatch_streaming(const char *pattern, const char *text, unsigned flags);
+rbc_fnmatch_pattern_streaming_t *rbc_fnmatch_compile_streaming(const char *pattern, unsigned flags);
+bool rbc_xfnmatch_streaming(const rbc_fnmatch_pattern_streaming_t *p, const char *text);
+void rbc_fnmatch_pattern_free_streaming(rbc_fnmatch_pattern_streaming_t *p);
+
 /// @brief Segment Types
 typedef enum rbc_segment_type_e
 {

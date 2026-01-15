@@ -6,11 +6,10 @@
 #include "internal.h"
 
 /// @brief Precompiled fnmatch pattern structure
+/// This is now a thin wrapper around the streaming implementation
 struct rbc_fnmatch_pattern_s
 {
-    rbc_arena_t arena;
-    rbc_matcher_t matcher;
-    unsigned int flags;
+    rbc_fnmatch_pattern_streaming_t *streaming;
 };
 
 /// @brief Precompile fnmatch pattern
@@ -30,19 +29,13 @@ rbc_fnmatch_pattern_t *rbc_fnmatch_compile(const char *pattern, unsigned int fla
         return NULL;
     }
 
-    if (!rbc_arena_init(&p->arena, 0))
+    // Use streaming implementation for zero-allocation matching
+    p->streaming = rbc_fnmatch_compile_streaming(pattern, flags);
+    if (!p->streaming)
     {
         free(p);
         return NULL;
     }
-
-    if (!rbc_matcher_build(&p->arena, &p->matcher, pattern, flags))
-    {
-        rbc_arena_destroy(&p->arena);
-        free(p);
-        return NULL;
-    }
-    p->flags = flags;
 
     return p;
 }
@@ -55,7 +48,7 @@ void rbc_fnmatch_pattern_free(rbc_fnmatch_pattern_t *p)
     {
         return;
     }
-    rbc_arena_destroy(&p->arena);
+    rbc_fnmatch_pattern_free_streaming(p->streaming);
     free(p);
 }
 
@@ -64,6 +57,7 @@ void rbc_fnmatch_pattern_free(rbc_fnmatch_pattern_t *p)
 /// @param string String to match against
 /// @param flags Matching flags
 /// @return true if the string matches the pattern, false otherwise
+/// @note Now uses zero-allocation streaming implementation
 bool rbc_fnmatch(const char *pattern, const char *string, unsigned flags)
 {
     if (!pattern || !string)
@@ -71,21 +65,8 @@ bool rbc_fnmatch(const char *pattern, const char *string, unsigned flags)
         return false;
     }
 
-    char stack_buf[PATH_MAX];
-    rbc_arena_t arena;
-    rbc_arena_init_static(&arena, stack_buf, sizeof(stack_buf));
-
-    rbc_matcher_t matcher;
-    if (!rbc_matcher_build(&arena, &matcher, pattern, flags))
-    {
-        rbc_arena_destroy(&arena);
-        return false;
-    }
-
-    bool result = rbc_matcher_exec(&matcher, string);
-
-    rbc_arena_destroy(&arena);
-    return result;
+    // Use streaming implementation - zero heap allocation
+    return rbc_fnmatch_streaming(pattern, string, flags);
 }
 
 /// @brief File::fnmatch implementation with precompiled pattern
@@ -98,5 +79,6 @@ bool rbc_xfnmatch(const rbc_fnmatch_pattern_t *p, const char *string)
     {
         return false;
     }
-    return rbc_matcher_exec(&p->matcher, string);
+    // Use streaming implementation with precompiled hints
+    return rbc_xfnmatch_streaming(p->streaming, string);
 }
