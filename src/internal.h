@@ -17,7 +17,7 @@
 // ============================================================================
 
 // Forward declaration
-typedef struct rbc_fnmatch_pattern_streaming_s rbc_fnmatch_pattern_streaming_t;
+typedef struct rbc_match_pattern_s rbc_fnmatch_pattern_streaming_t;
 
 // Streaming API functions
 bool rbc_fnmatch_streaming(const char *pattern, const char *text, unsigned flags);
@@ -34,17 +34,17 @@ typedef enum rbc_segment_type_e
     RBC_SEGMENT_BRANCH,    // Branch segment (`/{a, *, c}/`)
 } rbc_segment_type_t;
 
-/// @brief Match Strategy Types
-typedef enum rbc_match_strategy_e
-{
-    RBC_STRATEGY_EXACT,         // Literal exact match (`abc`)
-    RBC_STRATEGY_PREFIX,        // Literal prefix match (`abc*`)
-    RBC_STRATEGY_SUFFIX,        // Literal suffix match (`*abc`)
-    RBC_STRATEGY_INFIX,         // Literal infix match (`*abc*`)
-    RBC_STRATEGY_PATTERN_CHAIN, // Sequence of fixed-length patterns separated by '*' (`a?b*c`)
-    RBC_STRATEGY_ALTERNATIVES,  // Multiple matchers (OR condition) from brace expansion
-    RBC_STRATEGY_RECURSIVE,     // Complex match with recursion (`[a-c]*`)
-} rbc_match_strategy_t;
+// /// @brief Match Strategy Types (for glob matching)
+// typedef enum rbc_match_strategy_e
+// {
+//     RBC_STRATEGY_EXACT,         // Exact literal match
+//     RBC_STRATEGY_PREFIX,        // Prefix match (`pre*`)
+//     RBC_STRATEGY_SUFFIX,        // Suffix match (`*suf`)
+//     RBC_STRATEGY_INFIX,         // Infix match (`*mid*`)
+//     RBC_STRATEGY_PATTERN_CHAIN, // Complex pattern (`a*b*c`)
+//     RBC_STRATEGY_ALTERNATIVES,  // Brace alternatives (`{a,b,c}`)
+//     RBC_STRATEGY_RECURSIVE,     // Recursive wildcard (`**`)
+// } rbc_match_strategy_t;
 
 /// @brief Forward declaration of matcher structure
 typedef struct rbc_matcher_s rbc_matcher_t;

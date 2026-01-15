@@ -1,99 +1,95 @@
-/**
- * @file fnmatch_streaming.c
- * @brief Zero-Allocation Streaming fnmatch implementation
- *
- * Architecture:
- * - Unified matching engine for both rbc_fnmatch() and rbc_xfnmatch()
- * - Zero heap allocation (stack-only)
- * - Precompiled hints for optimization (optional)
- * - Wildmatch-style backtracking
- */
-
-#include "internal.h"
 #include <stdbool.h>
 #include <string.h>
 #include <limits.h>
 #include <ctype.h>
 #include <stdlib.h>
+#include "internal.h"
 
-// ============================================================================
-// Data Structures
-// ============================================================================
-
-/**
- * @brief Precompiled optimization hints
- *
- * These hints are generated once during pattern compilation and used to
- * optimize pattern matching without changing the core matching logic.
- */
-/**
- * @brief Fast path type enumeration
- */
-typedef enum fast_path_type_e
+/// @brief Match strategy enumeration
+typedef enum rbc_match_strategy_e
 {
-    FAST_PATH_LITERAL = 0,   // `literal`
-    FAST_PATH_STAR,          // `*`
-    FAST_PATH_QUESTION,      // `??`
-    FAST_PATH_PREFIX,        // `prefix*`
-    FAST_PATH_SUFFIX,        // `*suffix`
-    FAST_PATH_PREFIX_SUFFIX, // `prefix*suffix`
-} fast_path_type_t;
+    RBC_MATCH_STRATEGY_LITERAL,       // `literal`
+    RBC_MATCH_STRATEGY_STAR,          // `*`
+    RBC_MATCH_STRATEGY_QUESTION,      // `??`
+    RBC_MATCH_STRATEGY_PREFIX,        // `prefix*`
+    RBC_MATCH_STRATEGY_SUFFIX,        // `*suffix`
+    RBC_MATCH_STRATEGY_PREFIX_SUFFIX, // `prefix*suffix`
+} rbc_match_strategy_t;
 
-/**
- * @brief Minimal precompiled optimization hints
- *
- * Only contains data actually used by fast paths to minimize overhead.
- * Total size: 7 bytes (8 bytes with padding)
- */
-typedef struct precompiled_hints_s
+/// @brief Match hints structure
+typedef struct rbc_match_hints_s
 {
-    fast_path_type_t fast_path_type; // Fast path type (1 byte)
-    uint16_t pattern_len;            // Pattern length (avoids strlen)
-    uint16_t literal_prefix_len;     // Literal prefix length
-    uint16_t literal_suffix_len;     // Literal suffix length
-} precompiled_hints_t;
+    rbc_match_strategy_t strategy; // Fast path type (1 byte)
+    uint16_t pattern_len;          // Pattern length (avoids strlen)
+    uint16_t prefix_len;           // Literal prefix length
+    uint16_t suffix_len;           // Literal suffix length
+} rbc_match_hints_t;
 
-/**
- * @brief Precompiled fnmatch pattern structure for streaming API
- *
- * This is a lightweight structure used only by the streaming API.
- * It conflicts with the arena-based structure in fnmatch.c, so we
- * define it here for the streaming implementation.
- */
-struct rbc_fnmatch_pattern_streaming_s
+/// @brief Precompiled match pattern structure
+struct rbc_match_pattern_s
 {
-    const char *pattern;
-    unsigned flags;
-    precompiled_hints_t hints;
+    const char *pattern;     // Original pattern string
+    unsigned flags;          // FNM_* flags
+    rbc_match_hints_t hints; // Optimization hints
 };
 
-/**
- * @brief Runtime matching state (fully stack-based)
- *
- * This structure holds the current matching state for the streaming
- * match engine. All fields are stored on the stack.
- */
-typedef struct
+/// @brief Streaming match state structure
+typedef struct rbc_match_state_s
 {
-    const char *p;                    // Current pattern position
-    const char *t;                    // Current text position
-    const char *star_p;               // Backtrack pattern position
-    const char *star_t;               // Backtrack text position
-    const char *text_start;           // Original text start (for context checks)
-    const char *text_end;             // Text end position (cached)
-    unsigned int flags;               // FNM_* flags
-    const precompiled_hints_t *hints; // NULL for rbc_fnmatch
-} stream_state_t;
+    const char *p;                  // Current pattern position
+    const char *t;                  // Current text position
+    const char *star_p;             // Backtrack pattern position
+    const char *star_t;             // Backtrack text position
+    const char *text_start;         // Original text start (for context checks)
+    const char *text_end;           // Text end position (cached)
+    unsigned int flags;             // FNM_* flags
+    const rbc_match_hints_t *hints; // NULL for rbc_fnmatch
+} rbc_match_state_t;
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/// @brief Compare strings with optional case folding
+static inline bool rbc_match_strcmp(const char *s1, const char *s2, unsigned flags)
+{
+    return (flags & RBC_FNM_CASEFOLD) ? strcasecmp(s1, s2) == 0 : strcmp(s1, s2) == 0;
+}
+
+/// @brief Compare strings with length limit and optional case folding
+static inline bool rbc_match_strncmp(const char *s1, const char *s2, size_t n, unsigned flags)
+{
+    return (flags & RBC_FNM_CASEFOLD) ? strncasecmp(s1, s2, n) == 0 : strncmp(s1, s2, n) == 0;
+}
+
+/// @brief Check if current position has a leading dot
+/// @note `.hidden` or `**/.hidden` in PATHNAME mode
+static inline bool rbc_match_has_leading_dot(const rbc_match_state_t *state)
+{
+    if (*state->t != '.')
+    {
+        return false;
+    }
+    // Leading dot at text start or after '/' in PATHNAME mode
+    return (state->t == state->text_start || (state->flags & RBC_FNM_PATHNAME && state->t > state->text_start && *(state->t - 1) == '/'));
+}
+
+/// @brief Check if range contains '/' (PATHNAME violation)
+/// @param start Start of range
+/// @param end End of range (exclusive)
+/// @return true if '/' found in range
+static inline bool rbc_match_has_pathname_violation(const char *start, const char *end)
+{
+    return memchr(start, '/', end - start) != NULL;
+}
 
 // ============================================================================
 // Forward Declarations
 // ============================================================================
 
-static bool match_engine(const char *pattern, const char *text,
-                         unsigned flags, const precompiled_hints_t *hints);
-static bool generate_hints(const char *pattern, unsigned flags,
-                           precompiled_hints_t *hints);
-static bool match_bracket(const char **pattern_ptr, char c, unsigned flags);
+static bool rbc_match_core(const char *pattern, const char *text, unsigned flags, const rbc_match_hints_t *hints);
+static bool rbc_match_hints_generate(const char *pattern, unsigned flags, rbc_match_hints_t *hints);
+static bool rbc_match_bracket(const char **pattern_ptr, char c, unsigned flags);
 
 // ============================================================================
 // Public API: Single-shot matching (no precompilation)
@@ -112,7 +108,7 @@ static bool match_bracket(const char **pattern_ptr, char c, unsigned flags);
  */
 bool rbc_fnmatch_streaming(const char *pattern, const char *text, unsigned flags)
 {
-    return match_engine(pattern, text, flags, NULL);
+    return rbc_match_core(pattern, text, flags, NULL);
 }
 
 // ============================================================================
@@ -133,8 +129,8 @@ bool rbc_fnmatch_streaming(const char *pattern, const char *text, unsigned flags
 rbc_fnmatch_pattern_streaming_t *rbc_fnmatch_compile_streaming(const char *pattern, unsigned flags)
 {
     // First, analyze the pattern to detect fast paths
-    precompiled_hints_t hints;
-    if (!generate_hints(pattern, flags, &hints))
+    rbc_match_hints_t hints;
+    if (!rbc_match_hints_generate(pattern, flags, &hints))
     {
         return NULL; // No optimization available, caller should use rbc_fnmatch()
     }
@@ -167,7 +163,7 @@ rbc_fnmatch_pattern_streaming_t *rbc_fnmatch_compile_streaming(const char *patte
  */
 bool rbc_xfnmatch_streaming(const rbc_fnmatch_pattern_streaming_t *p, const char *text)
 {
-    return match_engine(p->pattern, text, p->flags, &p->hints);
+    return rbc_match_core(p->pattern, text, p->flags, &p->hints);
 }
 
 /**
@@ -199,8 +195,8 @@ void rbc_fnmatch_pattern_free_streaming(rbc_fnmatch_pattern_streaming_t *p)
  * @param hints Output hints structure
  * @return true if fast path detected, false otherwise
  */
-static bool generate_hints(const char *pattern, unsigned flags,
-                           precompiled_hints_t *hints)
+static bool rbc_match_hints_generate(const char *pattern, unsigned flags,
+                                     rbc_match_hints_t *hints)
 {
     memset(hints, 0, sizeof(*hints));
     hints->pattern_len = strlen(pattern);
@@ -266,7 +262,7 @@ static bool generate_hints(const char *pattern, unsigned flags,
     while (*p && *p != '*' && *p != '?' && *p != '[' &&
            !(*p == '\\' && !(flags & RBC_FNM_NOESCAPE)))
     {
-        hints->literal_prefix_len++;
+        hints->prefix_len++;
         p++;
     }
 
@@ -284,7 +280,7 @@ static bool generate_hints(const char *pattern, unsigned flags,
                 if (p < pattern)
                     break;
             }
-            hints->literal_suffix_len++;
+            hints->suffix_len++;
             p--;
         }
     }
@@ -292,43 +288,43 @@ static bool generate_hints(const char *pattern, unsigned flags,
     // Detect fast path type (priority order matters!)
     if (!has_star && !has_question && !has_bracket && !has_escape)
     {
-        hints->fast_path_type = FAST_PATH_LITERAL;
+        hints->strategy = RBC_MATCH_STRATEGY_LITERAL;
         return true;
     }
     else if (hints->pattern_len == 1 && pattern[0] == '*')
     {
-        hints->fast_path_type = FAST_PATH_STAR;
+        hints->strategy = RBC_MATCH_STRATEGY_STAR;
         return true;
     }
     else if (has_question && !has_star && !has_bracket && !has_escape)
     {
         // All characters are '?' - fixed length match
-        hints->fast_path_type = FAST_PATH_QUESTION;
+        hints->strategy = RBC_MATCH_STRATEGY_QUESTION;
         return true;
     }
-    else if (pattern[0] == '*' && hints->literal_suffix_len > 0 &&
-             hints->literal_suffix_len == hints->pattern_len - 1 &&
-             hints->literal_suffix_len > 1 && // Exclude ".*" (suffix must be at least 2 chars for real benefit)
+    else if (pattern[0] == '*' && hints->suffix_len > 0 &&
+             hints->suffix_len == hints->pattern_len - 1 &&
+             hints->suffix_len > 1 && // Exclude ".*" (suffix must be at least 2 chars for real benefit)
              !has_question && !has_bracket && !has_escape)
     {
-        hints->fast_path_type = FAST_PATH_SUFFIX;
+        hints->strategy = RBC_MATCH_STRATEGY_SUFFIX;
         return true;
     }
     else if (pattern[hints->pattern_len - 1] == '*' &&
-             hints->literal_prefix_len > 0 &&
-             hints->literal_prefix_len == hints->pattern_len - 1 &&
-             hints->literal_prefix_len > 1 && // Exclude ".*" (prefix must be at least 2 chars for real benefit)
+             hints->prefix_len > 0 &&
+             hints->prefix_len == hints->pattern_len - 1 &&
+             hints->prefix_len > 1 && // Exclude ".*" (prefix must be at least 2 chars for real benefit)
              !has_question && !has_bracket)
     {
-        hints->fast_path_type = FAST_PATH_PREFIX;
+        hints->strategy = RBC_MATCH_STRATEGY_PREFIX;
         return true;
     }
-    else if (hints->literal_prefix_len > 0 &&
-             hints->literal_suffix_len > 0 &&
-             hints->literal_prefix_len + hints->literal_suffix_len + 1 == hints->pattern_len &&
+    else if (hints->prefix_len > 0 &&
+             hints->suffix_len > 0 &&
+             hints->prefix_len + hints->suffix_len + 1 == hints->pattern_len &&
              !has_question && !has_bracket)
     {
-        hints->fast_path_type = FAST_PATH_PREFIX_SUFFIX;
+        hints->strategy = RBC_MATCH_STRATEGY_PREFIX_SUFFIX;
         return true;
     }
 
@@ -349,7 +345,7 @@ static bool generate_hints(const char *pattern, unsigned flags,
  * @param flags FNM_* flags
  * @return true if character matches
  */
-static bool match_bracket(const char **pattern_ptr, char c, unsigned flags)
+static bool rbc_match_bracket(const char **pattern_ptr, char c, unsigned flags)
 {
     const char *p = *pattern_ptr;
     bool negate = false;
@@ -460,24 +456,16 @@ static bool match_bracket(const char **pattern_ptr, char c, unsigned flags)
 // Unified Matching Engine
 // ============================================================================
 
-/**
- * @brief Unified pattern matching engine
- *
- * This is the core matching function used by both rbc_fnmatch and rbc_xfnmatch.
- * It uses wildmatch-style backtracking for '*' handling.
- *
- * @param pattern Pattern to match
- * @param text Text to match
- * @param flags FNM_* flags
- * @param hints Optimization hints (NULL for rbc_fnmatch)
- * @return true if match, false otherwise
- */
-static bool match_engine(const char *pattern, const char *text,
-                         unsigned flags, const precompiled_hints_t *hints)
+/// @brief Core matching function
+/// @param pattern Pattern to match
+/// @param text Text to match
+/// @param flags Matching flags
+/// @param hints Optimization hints
+/// @return true if match, false otherwise
+static bool rbc_match_core(const char *pattern, const char *text, unsigned flags, const rbc_match_hints_t *hints)
 {
-    // Calculate text_len once (used for fast paths and text_end)
     size_t text_len = strlen(text);
-    stream_state_t state = {
+    rbc_match_state_t state = {
         .p = pattern,
         .t = text,
         .star_p = NULL,
@@ -485,76 +473,81 @@ static bool match_engine(const char *pattern, const char *text,
         .text_start = text,
         .text_end = text + text_len,
         .flags = flags,
-        .hints = hints};
+        .hints = hints,
+    };
 
-    // === Fast Path: Single switch for hint-based optimizations ===
+    // **** FAST PATHS ****
     if (hints)
     {
-        switch (hints->fast_path_type)
+        switch (hints->strategy)
         {
-        case FAST_PATH_LITERAL:
-            return (flags & RBC_FNM_CASEFOLD)
-                       ? strcasecmp(pattern, text) == 0
-                       : strcmp(pattern, text) == 0;
-
-        case FAST_PATH_STAR:
+        case RBC_MATCH_STRATEGY_LITERAL:
+            return rbc_match_strcmp(pattern, text, flags);
+        case RBC_MATCH_STRATEGY_STAR:
+        {
             return true;
-
-        case FAST_PATH_QUESTION:
-            return text_len == hints->pattern_len;
-
-        case FAST_PATH_SUFFIX:
-            if (text_len < hints->literal_suffix_len)
-                return false;
-            if (!(flags & RBC_FNM_DOTMATCH) && text[0] == '.')
-                return false;
-            return (flags & RBC_FNM_CASEFOLD)
-                       ? strcasecmp(text + text_len - hints->literal_suffix_len, pattern + 1) == 0
-                       : strcmp(text + text_len - hints->literal_suffix_len, pattern + 1) == 0;
-
-        case FAST_PATH_PREFIX:
-            if (text_len < hints->literal_prefix_len)
-                return false;
-            if (!(flags & RBC_FNM_DOTMATCH) && text[0] == '.' && pattern[0] != '.')
-                return false;
-            return (flags & RBC_FNM_CASEFOLD)
-                       ? strncasecmp(text, pattern, hints->literal_prefix_len) == 0
-                       : strncmp(text, pattern, hints->literal_prefix_len) == 0;
-
-        case FAST_PATH_PREFIX_SUFFIX:
+        }
+        case RBC_MATCH_STRATEGY_QUESTION:
         {
-            if (text_len < hints->literal_prefix_len + hints->literal_suffix_len)
+            return text_len == hints->pattern_len;
+        }
+        case RBC_MATCH_STRATEGY_SUFFIX:
+        {
+            if (text_len < hints->suffix_len)
+            {
                 return false;
+            }
+            if (!(flags & RBC_FNM_DOTMATCH) && text[0] == '.')
+            {
+                return false;
+            }
+            const char *text_suffix = text + text_len - hints->suffix_len;
+            const char *pattern_suffix = pattern + 1;
+            return rbc_match_strcmp(text_suffix, pattern_suffix, flags);
+        }
+        case RBC_MATCH_STRATEGY_PREFIX:
+        {
+            if (text_len < hints->prefix_len)
+            {
+                return false;
+            }
             if (!(flags & RBC_FNM_DOTMATCH) && text[0] == '.' && pattern[0] != '.')
+            {
                 return false;
-
-            // Check prefix
-            bool prefix_match = (flags & RBC_FNM_CASEFOLD)
-                                    ? strncasecmp(text, pattern, hints->literal_prefix_len) == 0
-                                    : strncmp(text, pattern, hints->literal_prefix_len) == 0;
-            if (!prefix_match)
-                return false;
-
-            // Check suffix
-            const char *pattern_suffix = pattern + hints->literal_prefix_len + 1;
-            const char *text_suffix = text + text_len - hints->literal_suffix_len;
-            return (flags & RBC_FNM_CASEFOLD)
-                       ? strcasecmp(text_suffix, pattern_suffix) == 0
-                       : strcmp(text_suffix, pattern_suffix) == 0;
+            }
+            return rbc_match_strncmp(text, pattern, hints->prefix_len, flags);
         }
 
+        case RBC_MATCH_STRATEGY_PREFIX_SUFFIX:
+        {
+            if (text_len < hints->prefix_len + hints->suffix_len)
+            {
+                return false;
+            }
+            if (!(flags & RBC_FNM_DOTMATCH) && text[0] == '.' && pattern[0] != '.')
+            {
+                return false;
+            }
+            // prefix
+            bool prefix_match = rbc_match_strncmp(text, pattern, hints->prefix_len, flags);
+            if (!prefix_match)
+                return false;
+            // suffix
+            const char *pattern_suffix = pattern + hints->prefix_len + 1;
+            const char *text_suffix = text + text_len - hints->suffix_len;
+            return rbc_match_strcmp(text_suffix, pattern_suffix, flags);
+        }
         default:
+        {
             break;
+        }
         }
     }
 
-    // No early rejection checks for non-fast-path patterns
-    // Let the main loop handle everything to avoid overhead
-
-    // === Main Loop: Wildmatch-style backtracking ===
-    while (1)
+    // **** GENERAL MATCHING LOOP ****
+    for (;;)
     {
-        // Check pattern end
+        // check end of pattern
         if (*state.p == '\0')
         {
             return (*state.t == '\0');
@@ -563,57 +556,45 @@ static bool match_engine(const char *pattern, const char *text,
         switch (*state.p)
         {
         case '*':
-            // Skip consecutive '*'
+        {
+            // consume consecutive `*`
             while (*state.p == '*')
+            {
                 state.p++;
+            }
 
+            // trailing `*` matches all remaining text
             if (*state.p == '\0')
             {
-                // Trailing '*' - need to check remaining text for special characters
-                const char *check = state.t;
-                while (*check)
+                // dotmatch check
+                if (!(flags & RBC_FNM_DOTMATCH) && rbc_match_has_leading_dot(&state))
                 {
-                    // Cannot match '/' with FNM_PATHNAME
-                    if (*check == '/' && (flags & RBC_FNM_PATHNAME))
-                    {
-                        return false;
-                    }
-                    // Cannot match leading '.' without DOTMATCH
-                    if (*check == '.' && !(flags & RBC_FNM_DOTMATCH) &&
-                        (check == state.text_start || (flags & RBC_FNM_PATHNAME && *(check - 1) == '/')))
-                    {
-                        return false;
-                    }
-                    check++;
+                    return false;
+                }
+                // pathname check
+                if ((flags & RBC_FNM_PATHNAME) && strchr(state.t, '/') != NULL)
+                {
+                    return false;
                 }
                 return true;
             }
 
-            // Record backtrack point
+            // backtrack point
             state.star_p = state.p;
             state.star_t = state.t;
 
-            // Optimization: If next pattern char is a literal, fast-forward to it
-            // This avoids trying every position one-by-one
+            // Optimization: If next pattern char is a literal, fast-forward to next occurrence
             if (*state.p != '?' && *state.p != '[' && *state.p != '*' && *state.p != '\\')
             {
-                // Next char is a literal - fast forward in text to find it
-                char literal = *state.p;
-
+                char literal = (flags & RBC_FNM_CASEFOLD) ? tolower((unsigned char)*state.p) : *state.p;
+                const char *found;
                 if (flags & RBC_FNM_CASEFOLD)
                 {
-                    // Case-insensitive: need to scan manually
-                    literal = tolower((unsigned char)literal);
                     while (*state.t != '\0')
                     {
-                        char t_ch = tolower((unsigned char)*state.t);
-                        if (t_ch == literal)
+                        if (tolower((unsigned char)*state.t) == literal)
                         {
-                            break; // Found
-                        }
-                        if (t_ch == '/' && (flags & RBC_FNM_PATHNAME))
-                        {
-                            goto backtrack; // Cannot cross directory boundary
+                            break;
                         }
                         state.t++;
                     }
@@ -621,85 +602,82 @@ static bool match_engine(const char *pattern, const char *text,
                     {
                         goto backtrack;
                     }
-                }
-                else if (flags & RBC_FNM_PATHNAME)
-                {
-                    // Case-sensitive with PATHNAME: need to check for '/'
-                    while (*state.t != '\0')
-                    {
-                        if (*state.t == literal)
-                        {
-                            break; // Found
-                        }
-                        if (*state.t == '/')
-                        {
-                            goto backtrack; // Cannot cross directory boundary
-                        }
-                        state.t++;
-                    }
-                    if (*state.t == '\0')
-                    {
-                        goto backtrack;
-                    }
+                    found = state.t;
                 }
                 else
                 {
-                    // Case-sensitive without PATHNAME: use memchr() for maximum speed
                     size_t remaining = state.text_end - state.t;
-                    const char *found = memchr(state.t, literal, remaining);
+                    found = memchr(state.t, literal, remaining);
                     if (!found)
                     {
-                        goto backtrack; // Literal not found
+                        goto backtrack;
                     }
-                    state.t = found;
                 }
+
+                // pathname check
+                if ((flags & RBC_FNM_PATHNAME) && rbc_match_has_pathname_violation(state.t, found))
+                {
+                    goto backtrack;
+                }
+                state.t = found;
             }
             break;
-
+        }
         case '?':
+        {
             if (*state.t == '\0')
+            {
                 goto backtrack;
-            if (*state.t == '/' && (flags & RBC_FNM_PATHNAME))
+            }
+            if ((flags & RBC_FNM_PATHNAME) && *state.t == '/')
+            {
                 goto backtrack;
-            if (*state.t == '.' && !(flags & RBC_FNM_DOTMATCH) &&
-                (state.t == state.text_start || (flags & RBC_FNM_PATHNAME && *(state.t - 1) == '/')))
+            }
+            if (!(flags & RBC_FNM_DOTMATCH) && rbc_match_has_leading_dot(&state))
             {
                 goto backtrack;
             }
             state.p++;
             state.t++;
             break;
-
+        }
         case '[':
+        {
             if (*state.t == '\0')
-                goto backtrack;
-            if (*state.t == '/' && (flags & RBC_FNM_PATHNAME))
-                goto backtrack;
-            if (*state.t == '.' && !(flags & RBC_FNM_DOTMATCH) &&
-                (state.t == state.text_start || (flags & RBC_FNM_PATHNAME && *(state.t - 1) == '/')))
             {
                 goto backtrack;
             }
-
+            if ((flags & RBC_FNM_PATHNAME) && *state.t == '/')
+            {
+                goto backtrack;
+            }
+            if (!(flags & RBC_FNM_DOTMATCH) && rbc_match_has_leading_dot(&state))
+            {
+                goto backtrack;
+            }
             const char *bracket_start = state.p;
-            if (!match_bracket(&state.p, *state.t, flags))
+            if (!rbc_match_bracket(&state.p, *state.t, flags))
             {
                 state.p = bracket_start;
                 goto backtrack;
             }
             state.t++;
             break;
-
+        }
         case '\\':
+        {
             if (!(flags & RBC_FNM_NOESCAPE))
             {
                 state.p++;
                 if (*state.p == '\0')
+                {
                     goto backtrack;
+                }
             }
             // fall through
-
+        }
         default:
+        {
             // Literal character matching
             if (*state.p != *state.t)
             {
@@ -716,6 +694,7 @@ static bool match_engine(const char *pattern, const char *text,
             state.p++;
             state.t++;
             break;
+        }
         }
         continue;
 
@@ -738,10 +717,16 @@ static bool match_engine(const char *pattern, const char *text,
             return false;
         }
         // Cannot match leading '.' without DOTMATCH
-        if (*state.star_t == '.' && !(flags & RBC_FNM_DOTMATCH) &&
-            (state.star_t == state.text_start || (flags & RBC_FNM_PATHNAME && state.star_t > state.text_start && *(state.star_t - 1) == '/')))
+        if (!(flags & RBC_FNM_DOTMATCH))
         {
-            return false;
+            const char *saved_t = state.t;
+            state.t = state.star_t;
+            bool is_leading_dot = rbc_match_has_leading_dot(&state);
+            state.t = saved_t;
+            if (is_leading_dot)
+            {
+                return false;
+            }
         }
 
         // Advance text position for backtracking
@@ -750,22 +735,16 @@ static bool match_engine(const char *pattern, const char *text,
         // Optimization: If next pattern char is a literal, fast-forward to next occurrence
         if (*state.star_p != '?' && *state.star_p != '[' && *state.star_p != '*' && *state.star_p != '\\')
         {
-            char literal = *state.star_p;
-
+            char literal = (flags & RBC_FNM_CASEFOLD) ? tolower((unsigned char)*state.star_p) : *state.star_p;
+            const char *found;
             if (flags & RBC_FNM_CASEFOLD)
             {
-                // Case-insensitive: scan manually
-                literal = tolower((unsigned char)literal);
+                // CASEFOLD: manual scan required (need tolower())
                 while (*state.star_t != '\0')
                 {
-                    char t_ch = tolower((unsigned char)*state.star_t);
-                    if (t_ch == literal)
+                    if (tolower((unsigned char)*state.star_t) == literal)
                     {
                         break;
-                    }
-                    if (t_ch == '/' && (flags & RBC_FNM_PATHNAME))
-                    {
-                        return false;
                     }
                     state.star_t++;
                 }
@@ -773,38 +752,26 @@ static bool match_engine(const char *pattern, const char *text,
                 {
                     return false;
                 }
-            }
-            else if (flags & RBC_FNM_PATHNAME)
-            {
-                // Case-sensitive with PATHNAME: check for '/'
-                while (*state.star_t != '\0')
-                {
-                    if (*state.star_t == literal)
-                    {
-                        break;
-                    }
-                    if (*state.star_t == '/')
-                    {
-                        return false;
-                    }
-                    state.star_t++;
-                }
-                if (*state.star_t == '\0')
-                {
-                    return false;
-                }
+                found = state.star_t;
             }
             else
             {
-                // Case-sensitive without PATHNAME: use memchr() for maximum speed
+                // Fast path: use memchr() for maximum speed
                 size_t remaining = state.text_end - state.star_t;
-                const char *found = memchr(state.star_t, literal, remaining);
+                found = memchr(state.star_t, literal, remaining);
                 if (!found)
                 {
                     return false;
                 }
-                state.star_t = found;
             }
+
+            // PATHNAME: check for '/' in the skipped region
+            if ((flags & RBC_FNM_PATHNAME) && rbc_match_has_pathname_violation(state.star_t, found))
+            {
+                return false;
+            }
+
+            state.star_t = found;
         }
 
         state.p = state.star_p;
