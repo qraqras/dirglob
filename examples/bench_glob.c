@@ -220,7 +220,7 @@ void bench_rbc_xfnmatch(const char *pattern, int iterations)
         size_t matches = 0;
         for (size_t j = 0; j < file_count; j++)
         {
-            if (rbc_xfnmatch(fp, files[j]))
+            if (rbc_xfnmatch(fp, files[j], 0))
             {
                 matches++;
             }
