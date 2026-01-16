@@ -20,6 +20,9 @@ for name in sorted(os.listdir(tests_dir)):
         continue
     if name == os.path.basename(out_file):
         continue
+    # Skip test_glob_generated.c (it has its own test executable)
+    if name == 'test_glob_generated.c':
+        continue
     c_files.append(os.path.join(tests_dir, name))
 
 # Also scan generated test files if they exist

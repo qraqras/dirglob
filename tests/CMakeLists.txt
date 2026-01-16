@@ -31,6 +31,7 @@ endif()
 # Gather test source files (manual test files only, not generated)
 file(GLOB TEST_IMPLS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CONFIGURE_DEPENDS test_*.c)
 list(FILTER TEST_IMPLS EXCLUDE REGEX "^test_parity_.*\\.c$")
+list(FILTER TEST_IMPLS EXCLUDE REGEX "^test_glob_generated\\.c$")
 
 # Add test helpers
 list(APPEND TEST_IMPLS test_helpers.c)

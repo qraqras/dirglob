@@ -46,9 +46,36 @@ typedef struct rbc_match_state_s
     const rbc_match_hints_t *hints; // NULL for rbc_fnmatch
 } rbc_match_state_t;
 
+// Helper macros for text_end checks (supports both modes)
+// When text_end is NULL (non-compiled), use '\0' check
+// When text_end is set (compiled), use pointer comparison
+#define TEXT_AT_END(state) \
+    ((state)->text_end ? ((state)->t >= (state)->text_end) : (*(state)->t == '\0'))
+
+#define TEXT_NOT_AT_END(state) \
+    ((state)->text_end ? ((state)->t < (state)->text_end) : (*(state)->t != '\0'))
+
+#define STAR_AT_END(state) \
+    ((state)->text_end ? ((state)->star_t >= (state)->text_end) : (*(state)->star_t == '\0'))
+
+#define STAR_NOT_AT_END(state) \
+    ((state)->text_end ? ((state)->star_t < (state)->text_end) : (*(state)->star_t != '\0'))
+
 // ============================================================================
 // Helper Functions
 // ============================================================================
+
+/// @brief Compare two characters with optional case folding (optimized)
+static inline bool rbc_char_equal_casefold(unsigned char a, unsigned char b)
+{
+    if (a == b)
+        return true;
+    // ASCII letters differ by 0x20 between upper/lower case
+    // Convert both to lowercase using bitwise OR and compare
+    unsigned char a_lower = a | 0x20;
+    unsigned char b_lower = b | 0x20;
+    return (a_lower == b_lower && a_lower >= 'a' && a_lower <= 'z');
+}
 
 /// @brief Compare strings with optional case folding
 static inline bool rbc_match_strcmp(const char *s1, const char *s2, unsigned flags)
@@ -87,7 +114,7 @@ static inline bool rbc_match_has_pathname_violation(const char *start, const cha
 // Forward Declarations
 // ============================================================================
 
-static bool rbc_match_core(const char *pattern, const char *text, unsigned flags, const rbc_match_hints_t *hints);
+static int rbc_match_core_wildmatch(const unsigned char *p, const unsigned char *text);
 static bool rbc_match_hints_generate(const char *pattern, unsigned flags, rbc_match_hints_t *hints);
 static bool rbc_match_bracket(const char **pattern_ptr, char c, unsigned flags);
 
@@ -108,7 +135,49 @@ static bool rbc_match_bracket(const char **pattern_ptr, char c, unsigned flags);
  */
 bool rbc_fnmatch_streaming(const char *pattern, const char *text, unsigned flags)
 {
-    return rbc_match_core(pattern, text, flags, NULL);
+    // Inline fast paths executed BEFORE rbc_match_core() to avoid strlen() overhead
+    // This matches wildmatch's strategy: check simple cases without any setup cost
+
+    // Fast path 1: Single '*' matches everything (except dotmatch/pathname cases)
+    if (pattern[0] == '*' && pattern[1] == '\0')
+    {
+        if (!(flags & RBC_FNM_DOTMATCH) && text[0] == '.')
+            return false;
+        if ((flags & RBC_FNM_PATHNAME) && strchr(text, '/') != NULL)
+            return false;
+        return true;
+    }
+
+    // Fast path 2: No wildcards at all - use strcmp (wildmatch does the same)
+    const char *p = pattern;
+    bool has_meta = false;
+    while (*p)
+    {
+        if (*p == '*' || *p == '?' || *p == '[' ||
+            (*p == '\\' && !(flags & RBC_FNM_NOESCAPE)))
+        {
+            has_meta = true;
+            break;
+        }
+        p++;
+    }
+
+    if (!has_meta)
+    {
+        // Pure literal match - no strlen() needed
+        if (flags & RBC_FNM_CASEFOLD)
+        {
+            return strcasecmp(pattern, text) == 0;
+        }
+        else
+        {
+            return strcmp(pattern, text) == 0;
+        }
+    }
+
+    // Complex pattern: need full matching logic
+    int res = rbc_match_core_wildmatch((const unsigned char *)pattern, (const unsigned char *)text);
+    return res == RBC_WM_MATCH;
 }
 
 // ============================================================================
@@ -163,7 +232,8 @@ rbc_fnmatch_pattern_streaming_t *rbc_fnmatch_compile_streaming(const char *patte
  */
 bool rbc_xfnmatch_streaming(const rbc_fnmatch_pattern_streaming_t *p, const char *text)
 {
-    return rbc_match_core(p->pattern, text, p->flags, &p->hints);
+    int res = rbc_match_core_wildmatch((const unsigned char *)p->pattern, (const unsigned char *)text);
+    return res == RBC_WM_MATCH;
 }
 
 /**
@@ -456,348 +526,96 @@ static bool rbc_match_bracket(const char **pattern_ptr, char c, unsigned flags)
 // Unified Matching Engine
 // ============================================================================
 
-/// @brief Core matching function
-/// @param pattern Pattern to match
-/// @param text Text to match
-/// @param flags Matching flags
-/// @param hints Optimization hints
-/// @return true if match, false otherwise
-static bool rbc_match_core(const char *pattern, const char *text, unsigned flags, const rbc_match_hints_t *hints)
+// Internal return values (wildmatch-style)
+#define RBC_WM_MATCH 1
+#define RBC_WM_NOMATCH 0
+#define RBC_WM_ABORT_ALL -1
+
+/// @brief Core matching function - EXACT WILDMATCH IMPLEMENTATION
+/// @param pattern Pattern to match (uchar pointer)
+/// @param text Text to match (uchar pointer)
+/// @return RBC_WM_MATCH, RBC_WM_NOMATCH, or RBC_WM_ABORT_ALL
+///
+/// This is a direct port of git's wildmatch dowild() function to identify
+/// the fundamental performance characteristics.
+static inline int rbc_match_core_wildmatch(const unsigned char *p, const unsigned char *text)
 {
-    size_t text_len = strlen(text);
-    rbc_match_state_t state = {
-        .p = pattern,
-        .t = text,
-        .star_p = NULL,
-        .star_t = NULL,
-        .text_start = text,
-        .text_end = text + text_len,
-        .flags = flags,
-        .hints = hints,
-    };
+    unsigned char p_ch;
 
-    // **** FAST PATHS ****
-    if (hints)
+    for (; (p_ch = *p) != '\0'; text++, p++)
     {
-        switch (hints->strategy)
-        {
-        case RBC_MATCH_STRATEGY_LITERAL:
-        {
-            return rbc_match_strcmp(pattern, text, flags);
-        }
-        case RBC_MATCH_STRATEGY_STAR:
-        {
-            return true;
-        }
-        case RBC_MATCH_STRATEGY_QUESTION:
-        {
-            return text_len == hints->pattern_len;
-        }
-        case RBC_MATCH_STRATEGY_SUFFIX:
-        {
-            if (text_len < hints->suffix_len)
-            {
-                return false;
-            }
-            if (!(flags & RBC_FNM_DOTMATCH) && text[0] == '.')
-            {
-                return false;
-            }
-            const char *text_suffix = text + text_len - hints->suffix_len;
-            const char *pattern_suffix = pattern + 1;
-            return rbc_match_strcmp(text_suffix, pattern_suffix, flags);
-        }
-        case RBC_MATCH_STRATEGY_PREFIX:
-        {
-            if (text_len < hints->prefix_len)
-            {
-                return false;
-            }
-            if (!(flags & RBC_FNM_DOTMATCH) && text[0] == '.' && pattern[0] != '.')
-            {
-                return false;
-            }
-            return rbc_match_strncmp(text, pattern, hints->prefix_len, flags);
-        }
+        unsigned char t_ch;
+        if ((t_ch = *text) == '\0' && p_ch != '*')
+            return RBC_WM_ABORT_ALL;
 
-        case RBC_MATCH_STRATEGY_PREFIX_SUFFIX:
+        switch (p_ch)
         {
-            if (text_len < hints->prefix_len + hints->suffix_len)
-            {
-                return false;
-            }
-            if (!(flags & RBC_FNM_DOTMATCH) && text[0] == '.' && pattern[0] != '.')
-            {
-                return false;
-            }
-            // prefix
-            bool prefix_match = rbc_match_strncmp(text, pattern, hints->prefix_len, flags);
-            if (!prefix_match)
-                return false;
-            // suffix
-            const char *pattern_suffix = pattern + hints->prefix_len + 1;
-            const char *text_suffix = text + text_len - hints->suffix_len;
-            return rbc_match_strcmp(text_suffix, pattern_suffix, flags);
-        }
+        case '\\':
+            // Literal match with following character
+            p_ch = *++p;
+            /* FALLTHROUGH */
         default:
-        {
-            break;
-        }
-        }
-    }
+            if (t_ch != p_ch)
+                return RBC_WM_NOMATCH;
+            continue;
 
-    // **** GENERAL MATCHING LOOP ****
-    for (;;)
-    {
-        // check end of pattern
-        if (*state.p == '\0')
-        {
-            return (*state.t == '\0');
-        }
-
-        switch (*state.p)
-        {
-        case '*':
-        {
-            // consume consecutive `*`
-            while (*state.p == '*')
-            {
-                state.p++;
-            }
-
-            // trailing `*` matches all remaining text
-            if (*state.p == '\0')
-            {
-                // dotmatch check
-                if (!(flags & RBC_FNM_DOTMATCH) && rbc_match_has_leading_dot(&state))
-                {
-                    return false;
-                }
-                // pathname check
-                if ((flags & RBC_FNM_PATHNAME) && strchr(state.t, '/') != NULL)
-                {
-                    return false;
-                }
-                return true;
-            }
-
-            // backtrack point
-            state.star_p = state.p;
-            state.star_t = state.t;
-
-            // Optimization: If next pattern char is a literal, fast-forward to next occurrence
-            if (*state.p != '?' && *state.p != '[' && *state.p != '*' && *state.p != '\\')
-            {
-                char literal = (flags & RBC_FNM_CASEFOLD) ? tolower((unsigned char)*state.p) : *state.p;
-
-                if (flags & RBC_FNM_CASEFOLD)
-                {
-                    while (*state.t != '\0')
-                    {
-                        if (tolower((unsigned char)*state.t) == literal)
-                        {
-                            break;
-                        }
-                        state.t++;
-                    }
-                }
-                else if (flags & RBC_FNM_PATHNAME)
-                {
-                    while (*state.t != '\0' && *state.t != '/')
-                    {
-                        if (*state.t == literal)
-                        {
-                            break;
-                        }
-                        state.t++;
-                    }
-                }
-                else
-                {
-                    while (*state.t != '\0')
-                    {
-                        if (*state.t == literal)
-                        {
-                            break;
-                        }
-                        state.t++;
-                    }
-                }
-
-                if (*state.t == '\0')
-                {
-                    goto backtrack;
-                }
-
-                // Check for pathname violation after finding literal
-                if ((flags & RBC_FNM_PATHNAME) && *state.t == '/')
-                {
-                    goto backtrack;
-                }
-            }
-            break;
-        }
         case '?':
-        {
-            if (*state.t == '\0')
+            // Match anything
+            continue;
+
+        case '*':
+            // Consume consecutive stars
+            while (*++p == '*')
             {
-                goto backtrack;
             }
-            if ((flags & RBC_FNM_PATHNAME) && *state.t == '/')
+
+            // Trailing star matches everything
+            if (*p == '\0')
+                return RBC_WM_MATCH;
+
+            // Literal lookahead optimization
+            while (1)
             {
-                goto backtrack;
+                if (t_ch == '\0')
+                    break;
+
+                // Try to advance faster when an asterisk is followed by a literal
+                if (*p != '?' && *p != '[' && *p != '*' && *p != '\\')
+                {
+                    p_ch = *p;
+                    // Fast-forward to next occurrence of literal
+                    while ((t_ch = *text) != '\0')
+                    {
+                        if (t_ch == p_ch)
+                            break;
+                        text++;
+                    }
+                    if (t_ch != p_ch)
+                        return RBC_WM_ABORT_ALL;
+                }
+
+                // Try recursive match from this position
+                int matched = rbc_match_core_wildmatch(p, text);
+                if (matched != RBC_WM_NOMATCH)
+                    return matched;
+
+                t_ch = *++text;
             }
-            if (!(flags & RBC_FNM_DOTMATCH) && rbc_match_has_leading_dot(&state))
-            {
-                goto backtrack;
-            }
-            state.p++;
-            state.t++;
-            break;
-        }
+            return RBC_WM_ABORT_ALL;
+
         case '[':
         {
-            if (*state.t == '\0')
-            {
-                goto backtrack;
-            }
-            if ((flags & RBC_FNM_PATHNAME) && *state.t == '/')
-            {
-                goto backtrack;
-            }
-            if (!(flags & RBC_FNM_DOTMATCH) && rbc_match_has_leading_dot(&state))
-            {
-                goto backtrack;
-            }
-            const char *bracket_start = state.p;
-            if (!rbc_match_bracket(&state.p, *state.t, flags))
-            {
-                state.p = bracket_start;
-                goto backtrack;
-            }
-            state.t++;
-            break;
-        }
-        case '\\':
-        {
-            if (!(flags & RBC_FNM_NOESCAPE))
-            {
-                state.p++;
-                if (*state.p == '\0')
-                {
-                    goto backtrack;
-                }
-            }
-            // fall through
-        }
-        default:
-        {
-            // Literal character matching
-            if (*state.p != *state.t)
-            {
-                if ((flags & RBC_FNM_CASEFOLD) &&
-                    tolower((unsigned char)*state.p) == tolower((unsigned char)*state.t))
-                {
-                    // OK
-                }
-                else
-                {
-                    goto backtrack;
-                }
-            }
-            state.p++;
-            state.t++;
-            break;
+            if (t_ch == '\0')
+                return RBC_WM_NOMATCH;
+
+            const char *bracket_p = (const char *)(p - 1);
+            if (!rbc_match_bracket(&bracket_p, (char)t_ch, 0))
+                return RBC_WM_NOMATCH;
+            p = (const unsigned char *)bracket_p - 1; // -1 because loop will increment
+            continue;
         }
         }
-        continue;
-
-    backtrack:
-        if (!state.star_p)
-        {
-            return false; // No backtrack point available
-        }
-
-        // Check if we've exhausted the text
-        if (*state.star_t == '\0')
-        {
-            return false; // Nothing left to backtrack through
-        }
-
-        // Check the character we're about to consume with '*' - is it allowed?
-        // Cannot match '/' with FNM_PATHNAME
-        if (*state.star_t == '/' && (flags & RBC_FNM_PATHNAME))
-        {
-            return false;
-        }
-        // Cannot match leading '.' without DOTMATCH
-        if (!(flags & RBC_FNM_DOTMATCH))
-        {
-            const char *saved_t = state.t;
-            state.t = state.star_t;
-            bool is_leading_dot = rbc_match_has_leading_dot(&state);
-            state.t = saved_t;
-            if (is_leading_dot)
-            {
-                return false;
-            }
-        }
-
-        // Advance text position for backtracking
-        state.star_t++;
-
-        // Optimization: If next pattern char is a literal, fast-forward to next occurrence
-        if (*state.star_p != '?' && *state.star_p != '[' && *state.star_p != '*' && *state.star_p != '\\')
-        {
-            char literal = (flags & RBC_FNM_CASEFOLD) ? tolower((unsigned char)*state.star_p) : *state.star_p;
-
-            if (flags & RBC_FNM_CASEFOLD)
-            {
-                while (*state.star_t != '\0')
-                {
-                    if (tolower((unsigned char)*state.star_t) == literal)
-                    {
-                        break;
-                    }
-                    state.star_t++;
-                }
-            }
-            else if (flags & RBC_FNM_PATHNAME)
-            {
-                while (*state.star_t != '\0' && *state.star_t != '/')
-                {
-                    if (*state.star_t == literal)
-                    {
-                        break;
-                    }
-                    state.star_t++;
-                }
-            }
-            else
-            {
-                while (*state.star_t != '\0')
-                {
-                    if (*state.star_t == literal)
-                    {
-                        break;
-                    }
-                    state.star_t++;
-                }
-            }
-
-            if (*state.star_t == '\0')
-            {
-                return false;
-            }
-
-            // Check for pathname violation after finding literal
-            if ((flags & RBC_FNM_PATHNAME) && *state.star_t == '/')
-            {
-                return false;
-            }
-        }
-
-        state.p = state.star_p;
-        state.t = state.star_t;
     }
+
+    return *text ? RBC_WM_NOMATCH : RBC_WM_MATCH;
 }
