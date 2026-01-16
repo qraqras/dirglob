@@ -86,292 +86,282 @@ static bool rbc_match_hints_generate(const char *pattern, unsigned flags, rbc_ma
 // Wildmatch Core Implementation (same file for optimization)
 // ============================================================================
 
-/// @brief Core matching function - EXACT WILDMATCH IMPLEMENTATION
+// Stack entry for iterative matching
+typedef struct
+{
+    const uchar *pattern;
+    const uchar *text;
+} rbc_match_frame_t;
+
+#define RBC_STACK_SIZE 256
+
+/// @brief Core matching function - STACK-BASED IMPLEMENTATION
 /// @param pattern Pattern to match (uchar pointer)
 /// @param text Text to match (uchar pointer)
 /// @return WM_MATCH, WM_NOMATCH, or WM_ABORT_ALL
-///
-/// This is a direct port of git's wildmatch dowild() function.
-/// Kept in the same file as callers for optimal compiler optimization.
-static int dowild(const uchar *p, const uchar *text, unsigned int flags)
+static int dowild(const uchar *pattern, const uchar *text, unsigned int flags)
 {
-    uchar p_ch;
-    const uchar *pattern = p;
+    rbc_match_frame_t stack[RBC_STACK_SIZE];
+    int stack_top = 0;
+    const uchar *p = pattern;
+    const uchar *original_pattern = pattern;
+    int final_result = RBC_NOMATCH;
 
-    for (; (p_ch = *p) != '\0'; text++, p++)
+    // Push initial frame
+    stack[stack_top].pattern = pattern;
+    stack[stack_top].text = text;
+    stack_top++;
+
+    while (stack_top > 0)
     {
-        int matched, match_slash, negated;
-        uchar t_ch, prev_ch;
-        if ((t_ch = *text) == '\0' && p_ch != '*')
-            return RBC_ABORT_ALL;
-        if ((flags & RBC_FNM_CASEFOLD) && ISUPPER(t_ch))
-            t_ch = tolower(t_ch);
-        if ((flags & RBC_FNM_CASEFOLD) && ISUPPER(p_ch))
-            p_ch = tolower(p_ch);
-        switch (p_ch)
+        // Pop frame
+        stack_top--;
+        p = stack[stack_top].pattern;
+        text = stack[stack_top].text;
+        original_pattern = p;
+
+        uchar p_ch;
+        for (; (p_ch = *p) != '\0'; text++, p++)
         {
-        case '\\':
-            /* Literal match with following character.  Note that the test
-             * in "default" handles the p[1] == '\0' failure case. */
-            p_ch = *++p;
-            /* FALLTHROUGH */
-        default:
-            if (t_ch != p_ch)
-                return RBC_NOMATCH;
-            continue;
-        case '?':
-            /* Match anything but '/'. */
-            if ((flags & RBC_FNM_PATHNAME) && t_ch == '/')
-                return RBC_NOMATCH;
-            continue;
-        case '*':
-            if (*++p == '*')
+            int matched, match_slash, negated;
+            uchar t_ch, prev_ch;
+            if ((t_ch = *text) == '\0' && p_ch != '*')
             {
-                const uchar *prev_p = p;
-                while (*++p == '*')
-                {
-                }
-                if (!(flags & RBC_FNM_PATHNAME))
-                    /* without RBC_FNM_PATHNAME, '*' == '**' */
-                    match_slash = 1;
-                else if ((prev_p - pattern < 2 || *(prev_p - 2) == '/') &&
-                         (*p == '\0' || *p == '/' ||
-                          (p[0] == '\\' && p[1] == '/')))
-                {
-                    /*
-                     * Assuming we already match 'foo/' and are at
-                     * <star star slash>, just assume it matches
-                     * nothing and go ahead match the rest of the
-                     * pattern with the remaining string. This
-                     * helps make foo/<*><*>/bar (<> because
-                     * otherwise it breaks C comment syntax) match
-                     * both foo/bar and foo/a/bar.
-                     */
-                    if (p[0] == '/' &&
-                        dowild(p + 1, text, flags) == RBC_MATCH)
-                        return RBC_MATCH;
-                    match_slash = 1;
-                }
-                else /* RBC_FNM_PATHNAME is set */
-                    match_slash = 0;
+                return RBC_ABORT_ALL;
             }
-            else
-                /* without RBC_FNM_PATHNAME, '*' == '**' */
-                match_slash = flags & RBC_FNM_PATHNAME ? 0 : 1;
-            if (*p == '\0')
+            if ((flags & RBC_FNM_CASEFOLD) && ISUPPER(t_ch))
             {
-                /* Trailing "**" matches everything.  Trailing "*" matches
-                 * only if there are no more slash characters. */
-                if (!match_slash)
-                {
-                    if (strchr((char *)text, '/'))
-                        return RBC_ABORT_TO_STARSTAR;
-                }
-                return RBC_MATCH;
+                t_ch = tolower(t_ch);
             }
-            else if (!match_slash && *p == '/')
+            if ((flags & RBC_FNM_CASEFOLD) && ISUPPER(p_ch))
             {
-                /*
-                 * _one_ asterisk followed by a slash
-                 * with RBC_FNM_PATHNAME matches the next
-                 * directory
-                 */
-                const char *slash = strchr((char *)text, '/');
-                if (!slash)
-                    return RBC_ABORT_ALL;
-                text = (const uchar *)slash;
-                /* the slash is consumed by the top-level for loop */
-                break;
+                p_ch = tolower(p_ch);
             }
-            while (1)
+            switch (p_ch)
             {
-                if (t_ch == '\0')
-                    break;
-                /*
-                 * Try to advance faster when an asterisk is
-                 * followed by a literal. We know in this case
-                 * that the string before the literal
-                 * must belong to "*".
-                 * If match_slash is false, do not look past
-                 * the first slash as it cannot belong to '*'.
-                 */
-                if (!is_glob_special(*p))
-                {
-                    p_ch = *p;
-                    if ((flags & RBC_FNM_CASEFOLD) && ISUPPER(p_ch))
-                        p_ch = tolower(p_ch);
-                    while ((t_ch = *text) != '\0' &&
-                           (match_slash || t_ch != '/'))
-                    {
-                        if ((flags & RBC_FNM_CASEFOLD) && ISUPPER(t_ch))
-                            t_ch = tolower(t_ch);
-                        if (t_ch == p_ch)
-                            break;
-                        text++;
-                    }
-                    if (t_ch != p_ch)
-                    {
-                        if (match_slash)
-                            return RBC_ABORT_ALL;
-                        else
-                            return RBC_ABORT_TO_STARSTAR;
-                    }
-                }
-                if ((matched = dowild(p, text, flags)) != RBC_NOMATCH)
-                {
-                    if (!match_slash || matched != RBC_ABORT_TO_STARSTAR)
-                        return matched;
-                }
-                else if (!match_slash && t_ch == '/')
-                    return RBC_ABORT_TO_STARSTAR;
-                t_ch = *++text;
-            }
-            return RBC_ABORT_ALL;
-        case '[':
-            p_ch = *++p;
-#ifdef RBC_NEGATE_CLASS2
-            if (p_ch == RBC_NEGATE_CLASS2)
-                p_ch = RBC_NEGATE_CLASS;
-#endif
-            /* Assign literal 1/0 because of "matched" comparison. */
-            negated = p_ch == RBC_NEGATE_CLASS ? 1 : 0;
-            if (negated)
-            {
-                /* Inverted character class. */
-                p_ch = *++p;
-            }
-            prev_ch = 0;
-            matched = 0;
-            do
-            {
-                if (!p_ch)
-                    return RBC_ABORT_ALL;
-                if (p_ch == '\\')
+            case '\\':
+                if (!(flags & RBC_FNM_NOESCAPE))
                 {
                     p_ch = *++p;
-                    if (!p_ch)
+                }
+                // **** FALLTHROUGH ****
+            default:
+                if (t_ch != p_ch)
+                {
+                    final_result = RBC_NOMATCH;
+                    goto next_frame;
+                }
+                continue;
+            case '?':
+                if ((flags & RBC_FNM_PATHNAME) && t_ch == '/')
+                {
+                    final_result = RBC_NOMATCH;
+                    goto next_frame;
+                }
+                continue;
+            case '*':
+                if (*++p == '*')
+                {
+                    const uchar *prev_p = p;
+                    while (*++p == '*')
+                    {
+                    }
+                    if (!(flags & RBC_FNM_PATHNAME))
+                    {
+                        // without RBC_FNM_PATHNAME, '*' == '**'
+                        match_slash = 1;
+                    }
+                    else if ((prev_p - original_pattern < 2 || *(prev_p - 2) == '/') && (*p == '\0' || *p == '/' || (!(flags & RBC_FNM_NOESCAPE) && p[0] == '\\' && p[1] == '/')))
+                    {
+                        if (p[0] == '/')
+                        {
+                            // Push recursive call to stack
+                            if (stack_top < RBC_STACK_SIZE)
+                            {
+                                stack[stack_top].pattern = p + 1;
+                                stack[stack_top].text = text;
+                                stack_top++;
+                            }
+                        }
+                        match_slash = 1;
+                    }
+                    else
+                    {
+                        // RBC_FNM_PATHNAME is set
+                        match_slash = 0;
+                    }
+                }
+                else
+                {
+                    // without RBC_FNM_PATHNAME, '*' == '**'
+                    match_slash = flags & RBC_FNM_PATHNAME ? 0 : 1;
+                }
+                if (*p == '\0')
+                {
+                    // trailing "**" matches everything.
+                    // trailing "*" matches everything but '/'.
+                    if (!match_slash)
+                    {
+                        if (strchr((char *)text, '/'))
+                        {
+                            final_result = RBC_ABORT_TO_STARSTAR;
+                            goto next_frame;
+                        }
+                    }
+                    return RBC_MATCH;
+                }
+                else if (!match_slash && *p == '/')
+                {
+                    // jump to next slash in text
+                    const char *slash = strchr((char *)text, '/');
+                    if (!slash)
+                    {
                         return RBC_ABORT_ALL;
-                    if (t_ch == p_ch)
-                        matched = 1;
+                    }
+                    text = (const uchar *)slash;
+                    break;
                 }
-                else if (p_ch == '-' && prev_ch && p[1] && p[1] != ']')
+                // Star matching loop - push frames for backtracking
+                while (1)
                 {
+                    if (t_ch == '\0')
+                    {
+                        break;
+                    }
+                    /*
+                     * Try to advance faster when an asterisk is
+                     * followed by a literal. We know in this case
+                     * that the string before the literal
+                     * must belong to "*".
+                     * If match_slash is false, do not look past
+                     * the first slash as it cannot belong to '*'.
+                     */
+                    if (!is_glob_special(*p))
+                    {
+                        p_ch = *p;
+                        if ((flags & RBC_FNM_CASEFOLD) && ISUPPER(p_ch))
+                        {
+                            p_ch = tolower(p_ch);
+                        }
+                        while ((t_ch = *text) != '\0' && (match_slash || t_ch != '/'))
+                        {
+                            if ((flags & RBC_FNM_CASEFOLD) && ISUPPER(t_ch))
+                            {
+                                t_ch = tolower(t_ch);
+                            }
+                            if (t_ch == p_ch)
+                            {
+                                break;
+                            }
+                            text++;
+                        }
+                        if (t_ch != p_ch)
+                        {
+                            if (match_slash)
+                            {
+                                return RBC_ABORT_ALL;
+                            }
+                            final_result = RBC_ABORT_TO_STARSTAR;
+                            goto next_frame;
+                        }
+                    }
+                    // Push frame for dowild(p, text, flags)
+                    if (stack_top < RBC_STACK_SIZE)
+                    {
+                        stack[stack_top].pattern = p;
+                        stack[stack_top].text = text;
+                        stack_top++;
+                    }
+                    if (!match_slash && t_ch == '/')
+                    {
+                        final_result = RBC_ABORT_TO_STARSTAR;
+                        goto next_frame;
+                    }
+                    t_ch = *++text;
+                }
+                return RBC_ABORT_ALL;
+            case '[':
+                p_ch = *++p;
+                negated = p_ch == '!' || p_ch == '^' ? 1 : 0;
+                if (negated)
+                {
+                    // Inverted character class.
                     p_ch = *++p;
-                    if (p_ch == '\\')
+                }
+                prev_ch = 0;
+                matched = 0;
+                do
+                {
+                    if (!p_ch)
+                    {
+                        return RBC_ABORT_ALL;
+                    }
+                    if (!(flags & RBC_FNM_NOESCAPE) && p_ch == '\\')
                     {
                         p_ch = *++p;
                         if (!p_ch)
+                        {
                             return RBC_ABORT_ALL;
-                    }
-                    if (t_ch <= p_ch && t_ch >= prev_ch)
-                        matched = 1;
-                    else if ((flags & RBC_FNM_CASEFOLD) && ISLOWER(t_ch))
-                    {
-                        uchar t_ch_upper = toupper(t_ch);
-                        if (t_ch_upper <= p_ch && t_ch_upper >= prev_ch)
-                            matched = 1;
-                    }
-                    p_ch = 0; /* This makes "prev_ch" get set to 0. */
-                }
-                else if (p_ch == '[' && p[1] == ':')
-                {
-                    const uchar *s;
-                    int i;
-                    for (s = p += 2; (p_ch = *p) && p_ch != ']'; p++)
-                    {
-                    } /*SHARED ITERATOR*/
-                    if (!p_ch)
-                        return RBC_ABORT_ALL;
-                    i = p - s - 1;
-                    if (i < 0 || p[-1] != ':')
-                    {
-                        /* Didn't find ":]", so treat like a normal set. */
-                        p = s - 2;
-                        p_ch = '[';
+                        }
                         if (t_ch == p_ch)
+                        {
                             matched = 1;
-                        goto next;
+                        }
                     }
-                    if (CC_EQ(s, i, "alnum"))
+                    else if (p_ch == '-' && prev_ch && p[1] && p[1] != ']')
                     {
-                        if (ISALNUM(t_ch))
+                        p_ch = *++p;
+                        if (!(flags & RBC_FNM_NOESCAPE) && p_ch == '\\')
+                        {
+                            p_ch = *++p;
+                            if (!p_ch)
+                            {
+                                return RBC_ABORT_ALL;
+                            }
+                        }
+                        if (t_ch <= p_ch && t_ch >= prev_ch)
+                        {
                             matched = 1;
-                    }
-                    else if (CC_EQ(s, i, "alpha"))
-                    {
-                        if (ISALPHA(t_ch))
-                            matched = 1;
-                    }
-                    else if (CC_EQ(s, i, "blank"))
-                    {
-                        if (ISBLANK(t_ch))
-                            matched = 1;
-                    }
-                    else if (CC_EQ(s, i, "cntrl"))
-                    {
-                        if (ISCNTRL(t_ch))
-                            matched = 1;
-                    }
-                    else if (CC_EQ(s, i, "digit"))
-                    {
-                        if (ISDIGIT(t_ch))
-                            matched = 1;
-                    }
-                    else if (CC_EQ(s, i, "graph"))
-                    {
-                        if (ISGRAPH(t_ch))
-                            matched = 1;
-                    }
-                    else if (CC_EQ(s, i, "lower"))
-                    {
-                        if (ISLOWER(t_ch))
-                            matched = 1;
-                    }
-                    else if (CC_EQ(s, i, "print"))
-                    {
-                        if (ISPRINT(t_ch))
-                            matched = 1;
-                    }
-                    else if (CC_EQ(s, i, "punct"))
-                    {
-                        if (ISPUNCT(t_ch))
-                            matched = 1;
-                    }
-                    else if (CC_EQ(s, i, "space"))
-                    {
-                        if (ISSPACE(t_ch))
-                            matched = 1;
-                    }
-                    else if (CC_EQ(s, i, "upper"))
-                    {
-                        if (ISUPPER(t_ch))
-                            matched = 1;
+                        }
                         else if ((flags & RBC_FNM_CASEFOLD) && ISLOWER(t_ch))
-                            matched = 1;
+                        {
+                            uchar t_ch_upper = toupper(t_ch);
+                            if (t_ch_upper <= p_ch && t_ch_upper >= prev_ch)
+                            {
+                                matched = 1;
+                            }
+                        }
+                        p_ch = 0;
                     }
-                    else if (CC_EQ(s, i, "xdigit"))
+                    else if (t_ch == p_ch)
                     {
-                        if (ISXDIGIT(t_ch))
-                            matched = 1;
+                        matched = 1;
                     }
-                    else /* malformed [:class:] string */
-                        return RBC_ABORT_ALL;
-                    p_ch = 0; /* This makes "prev_ch" get set to 0. */
+                } while (p_ch != ']');
+                if (matched == negated || ((flags & RBC_FNM_PATHNAME) && t_ch == '/'))
+                {
+                    final_result = RBC_NOMATCH;
+                    goto next_frame;
                 }
-                else if (t_ch == p_ch)
-                    matched = 1;
-            next:
-                prev_ch = p_ch;
-                p_ch = *++p;
-            } while (p_ch != ']');
-            if (matched == negated ||
-                ((flags & RBC_FNM_PATHNAME) && t_ch == '/'))
-                return RBC_NOMATCH;
-            continue;
+                continue;
+            }
         }
+
+        // Pattern consumed successfully
+        if (*text == '\0')
+        {
+            return RBC_MATCH;
+        }
+        else
+        {
+            final_result = RBC_NOMATCH;
+        }
+
+    next_frame:
+        continue;
     }
 
-    return *text ? RBC_NOMATCH : RBC_MATCH;
+    return final_result;
 }
 
 // ============================================================================
