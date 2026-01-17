@@ -12,19 +12,6 @@
 #define PATH_MAX 4096
 #endif
 
-// ============================================================================
-// Fnmatch Streaming API (separate from arena-based fnmatch)
-// ============================================================================
-
-// Forward declaration
-typedef struct rbc_match_pattern_s rbc_fnmatch_pattern_streaming_t;
-
-// Streaming API functions
-bool rbc_fnmatch_streaming(const char *pattern, const char *text, unsigned flags);
-rbc_fnmatch_pattern_streaming_t *rbc_fnmatch_compile_streaming(const char *pattern, unsigned flags);
-bool rbc_xfnmatch_streaming(const rbc_fnmatch_pattern_streaming_t *p, const char *text);
-void rbc_fnmatch_pattern_free_streaming(rbc_fnmatch_pattern_streaming_t *p);
-
 /// @brief Segment Types
 typedef enum rbc_segment_type_e
 {
@@ -34,21 +21,28 @@ typedef enum rbc_segment_type_e
     RBC_SEGMENT_BRANCH,    // Branch segment (`/{a, *, c}/`)
 } rbc_segment_type_t;
 
-/// @brief Match Strategy Types (for glob matching)
-typedef enum rbc_match_strategy_e_new
+/// @brief Match Strategy Types
+typedef enum rbc_match_strategy_e
 {
-    // Glob matching strategies (used by matcher.c)
-    RBC_STRATEGY_EXACT,         // Exact literal match
-    RBC_STRATEGY_PREFIX,        // Prefix match (`pre*`)
-    RBC_STRATEGY_SUFFIX,        // Suffix match (`*suf`)
-    RBC_STRATEGY_INFIX,         // Infix match (`*mid*`)
-    RBC_STRATEGY_PATTERN_CHAIN, // Complex pattern (`a*b*c`)
-    RBC_STRATEGY_ALTERNATIVES,  // Brace alternatives (`{a,b,c}`)
-    RBC_STRATEGY_RECURSIVE,     // Recursive wildcard (`**`)
-} rbc_match_strategy_t_new;
+    RBC_STRATEGY_EXACT,         // Literal exact match (`abc`)
+    RBC_STRATEGY_PREFIX,        // Literal prefix match (`abc*`)
+    RBC_STRATEGY_SUFFIX,        // Literal suffix match (`*abc`)
+    RBC_STRATEGY_INFIX,         // Literal infix match (`*abc*`)
+    RBC_STRATEGY_PATTERN_CHAIN, // Sequence of fixed-length patterns separated by '*' (`a?b*c`)
+    RBC_STRATEGY_ALTERNATIVES,  // Multiple matchers (OR condition) from brace expansion
+    RBC_STRATEGY_RECURSIVE,     // Complex match with recursion (`[a-c]*`)
+} rbc_match_strategy_t;
 
 /// @brief Forward declaration of matcher structure
 typedef struct rbc_matcher_s rbc_matcher_t;
+
+/// @brief fnmatch pattern structure (opaque in public API)
+/// Zero-Allocation Streaming用のプリコンパイル済みパターン
+struct rbc_fnmatch_pattern_s {
+    const char *pattern;
+    unsigned flags;
+    void *hints;  /* precompiled_hints_t* (fnmatch_streaming.c内部型) */
+};
 
 /// @brief Context Structure
 typedef struct rbc_ctx_s
@@ -82,7 +76,7 @@ typedef struct rbc_prefilter_s
 /// @brief Matcher Structure
 struct rbc_matcher_s
 {
-    rbc_match_strategy_t_new strategy;
+    rbc_match_strategy_t strategy;
     unsigned int flags;        // Flags used for compilation and matching
     rbc_prefilter_t prefilter; // Fast pre-filter for early rejection
     union

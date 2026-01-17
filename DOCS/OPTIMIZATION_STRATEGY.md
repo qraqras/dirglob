@@ -35,9 +35,148 @@
 
 ## 最適化戦略の階層
 
-### アプローチ: 根本的な再設計
+### アプローチ1: インクリメンタル改善（既存アーキテクチャ）
 
-####.1 Zero-Allocation Streaming Architecture
+#### 1.1 ハイブリッド3層方式
+
+```c
+bool rbc_fnmatch(const char *pattern, const char *string, unsigned flags)
+{
+    // Layer 1: Ultra-fast direct execution (超単純パターン)
+    if (is_trivial_pattern(pattern)) {
+        return direct_match(pattern, string, flags);
+    }
+    
+    // Layer 2: Lightweight compilation (中程度)
+    if (is_simple_pattern(pattern)) {
+        // 小さいスタックバッファ（256B程度）
+        char stack_buf[256];
+        rbc_arena_t arena;
+        rbc_arena_init_static(&arena, stack_buf, sizeof(stack_buf));
+        
+        rbc_matcher_t matcher;
+        rbc_matcher_build(&arena, &matcher, pattern, flags);
+        bool result = rbc_matcher_exec(&matcher, string);
+        
+        rbc_arena_destroy(&arena);
+        return result;
+    }
+    
+    // Layer 3: Full compilation (複雑パターン)
+    char stack_buf[PATH_MAX];
+    rbc_arena_t arena;
+    rbc_arena_init_static(&arena, stack_buf, sizeof(stack_buf));
+    
+    rbc_matcher_t matcher;
+    rbc_matcher_build(&arena, &matcher, pattern, flags);
+    bool result = rbc_matcher_exec(&matcher, string);
+    
+    rbc_arena_destroy(&arena);
+    return result;
+}
+```
+
+**Layer 1: 直接実行（プリコンパイルなし）**
+- 適用: `*`, `?`, `abc`, `*.ext`
+- 実装: スタックのみ、インライン展開
+- 期待効果: `*.c`が15〜20倍、`a*c`が3〜4倍改善
+
+**Layer 2: 軽量コンパイル（256Bアリーナ）**
+- 適用: `a*c`, `*test*`, `test_*`
+- 実装: 小さいバッファで戦略最適化
+- 期待効果: 2〜3倍改善
+
+**Layer 3: フルコンパイル（4KBアリーナ）**
+- 適用: ブレース展開、文字クラス、複雑パターン
+- 実装: 既存のmatcher_build
+- 効果: 現状維持
+
+#### 1.2 wildmatch最適化（実装済み）
+
+```c
+// バックトラックをスタック方式で実装
+static bool match_wildmatch(const char *p, const char *s, 
+                            const char *initial_str, unsigned int flags)
+{
+    const char *star_p = NULL;
+    const char *star_s = NULL;
+
+    while (true) {
+        if (*p == '*') {
+            // Collapse consecutive stars
+            while (p[1] == '*') p++;
+            p++;
+            
+            if (unlikely(*p == '\0')) {
+                if (IS_PATHNAME)
+                    return strchr(s, '/') == NULL;
+                return true;
+            }
+            
+            star_p = p;
+            star_s = s;
+            continue;
+        }
+        
+        // ... 文字マッチング処理
+        
+        // Backtrack if needed
+        if (star_p) {
+            s = ++star_s;
+            p = star_p;
+            continue;
+        }
+        
+        return false;
+    }
+}
+```
+
+**効果:**
+- 再帰なし → スタックオーバーフロー回避
+- メモリアロケーション不要
+- キャッシュ局所性向上
+
+#### 1.3 SIMD最適化
+
+```c
+#ifdef __SSE4_2__
+#include <nmmintrin.h>
+
+const char* simd_strstr(const char *haystack, const char *needle, 
+                        size_t needle_len) {
+    if (needle_len >= 16) {
+        __m128i first = _mm_set1_epi8(needle[0]);
+        
+        const char *h = haystack;
+        while (*h) {
+            __m128i chunk = _mm_loadu_si128((__m128i*)h);
+            __m128i cmp = _mm_cmpeq_epi8(chunk, first);
+            int mask = _mm_movemask_epi8(cmp);
+            
+            while (mask) {
+                int pos = __builtin_ctz(mask);
+                if (memcmp(h + pos, needle, needle_len) == 0)
+                    return h + pos;
+                mask &= mask - 1;
+            }
+            h += 16;
+        }
+    }
+    return strstr(haystack, needle);
+}
+#endif
+```
+
+**期待効果:**
+- 16文字同時比較 → 最大16倍高速化
+- `*test*`などのINFIXパターンで有効
+
+---
+
+### アプローチ2: 根本的な再設計
+
+#### 2.1 Zero-Allocation Streaming Architecture
 
 **コンセプト:** Git wildmatch、ripgrepのアプローチ
 
@@ -62,7 +201,7 @@ bool rbc_fnmatch_v2(const char *pattern, const char *text, unsigned flags) {
         .star_text = NULL,
         .flags = flags
     };
-
+    
     // ループベースのマッチング（再帰なし、アロケーションなし）
     while (true) {
         if (*state.pattern_pos == '*') {
@@ -89,7 +228,7 @@ bool rbc_fnmatch_v2(const char *pattern, const char *text, unsigned flags) {
 - `???.*`: 1.9倍遅い → **1.0倍** (2倍改善)
 - メモリフットプリント: **4KB → 100B**
 
-#### 1.2 Bytecode JIT Compilation
+#### 2.2 Bytecode JIT Compilation
 
 **コンセプト:** V8/LuaJIT的アプローチ
 
@@ -117,7 +256,7 @@ typedef struct {
 bytecode_insn_t* compile_pattern(const char *pattern) {
     bytecode_insn_t *code = stack_alloc(256);
     int pc = 0;
-
+    
     while (*pattern) {
         if (*pattern == '*') {
             code[pc++] = (bytecode_insn_t){.op = OP_STAR};
@@ -146,7 +285,7 @@ bytecode_insn_t* compile_pattern(const char *pattern) {
 bool execute_bytecode(bytecode_insn_t *code, const char *text) {
     int pc = 0;
     const char *tp = text;
-
+    
     while (true) {
         switch (code[pc].op) {
         case OP_LITERAL:
@@ -178,7 +317,7 @@ bool execute_bytecode(bytecode_insn_t *code, const char *text) {
 - 実行速度: **現在の2〜3倍**
 - 文字クラス: **劇的改善**
 
-#### 1.3 Unified Hybrid Architecture（推奨）
+#### 2.3 Unified Hybrid Architecture（推奨）
 
 ```c
 typedef enum {
@@ -193,32 +332,32 @@ typedef enum {
 match_path_t select_path(const char *pattern) {
     if (!strchr(pattern, '*') && !strchr(pattern, '?') && !strchr(pattern, '['))
         return FAST_PATH_LITERAL;
-
+    
     if (pattern[0] == '*' && pattern[1] == '.' && is_simple_suffix(pattern + 2))
         return FAST_PATH_SUFFIX;
-
+    
     if (count_wildcards(pattern) <= 2 && !strchr(pattern, '['))
         return BYTECODE_PATH;
-
+    
     return COMPLEX_PATH;
 }
 
 bool rbc_fnmatch_ultimate(const char *pattern, const char *text, unsigned flags) {
     match_path_t path = select_path(pattern);
-
+    
     switch (path) {
     case FAST_PATH_LITERAL:
         return strcmp(pattern, text) == 0;
-
+    
     case FAST_PATH_SUFFIX:
         return fast_suffix_match(text, pattern + 1);
-
+    
     case BYTECODE_PATH: {
         bytecode_insn_t code[256];
         compile_pattern_fast(pattern, code);
         return execute_bytecode(code, text);
     }
-
+    
     case COMPLEX_PATH:
         return wildmatch(pattern, text, flags);
     }
@@ -235,19 +374,19 @@ bool rbc_fnmatch_ultimate(const char *pattern, const char *text, unsigned flags)
 Level 0: リテラル（ワイルドカードなし）
   例: src/main.c
   戦略: stat()のみ（ディレクトリ走査不要）
-
+  
 Level 1: 単一セグメント・単純ワイルドカード
   例: *.c, test_*.c, *test*
   戦略: 単一ディレクトリのreaddir() + 高速フィルタ
-
+  
 Level 2: 複数セグメント・再帰なし
   例: src/*.c, tests/*/*.c
   戦略: 階層的readdir() + パスごとのマッチ
-
+  
 Level 3: 再帰パターン
   例: **/*.c, src/**/test.c
   戦略: 深さ優先探索 + 枝刈り最適化
-
+  
 Level 4: ブレース展開 + 複雑パターン
   例: {src,tests}/**/*.{c,h}
   戦略: パターン分解 + 重複除去
@@ -259,14 +398,14 @@ Level 4: ブレース展開 + 複雑パターン
 typedef struct {
     // メモ化: 同じディレクトリを2回走査しない
     hash_set_t *visited_dirs;
-
+    
     // 深さ制限（無限ループ防止）
     int max_depth;
     int current_depth;
-
+    
     // 枝刈り: .git, node_modules などをスキップ
     const char **ignore_patterns;
-
+    
     // 並列化: 独立したサブツリーを並列処理
     bool parallel_enabled;
 } recursive_optimizer_t;
@@ -277,19 +416,19 @@ void traverse_recursive(const char *base, recursive_optimizer_t *opt) {
         return;
     }
     hash_set_add(opt->visited_dirs, get_inode(base));
-
+    
     // 2. 深さ制限チェック
     if (opt->current_depth >= opt->max_depth) {
         return;
     }
-
+    
     // 3. 無視パターンチェック
     for (int i = 0; opt->ignore_patterns[i]; i++) {
         if (fnmatch(opt->ignore_patterns[i], basename(base), 0) == 0) {
             return;  // .git, node_modules などをスキップ
         }
     }
-
+    
     // 4. ディレクトリ走査
     DIR *dir = opendir(base);
     struct dirent *entry;
@@ -371,7 +510,7 @@ for (dir in ["src", "tests", "examples"]) {
 1. **直接実行パス追加**（優先度: 高）
    - `*.ext`, `*`, `?`, リテラルの高速パス
    - 期待効果: 5〜10倍改善
-
+   
 2. **アリーナサイズ最適化**（優先度: 中）
    - 簡単なパターンで256Bバッファ使用
    - 期待効果: 2〜3倍改善
@@ -445,7 +584,7 @@ for (dir in ["src", "tests", "examples"]) {
        size_t literal_prefix;  // 先頭のリテラル文字数
        // etc...
    } precompiled_state_t;
-
+   
    // エンジンはこの情報でパターン解析をスキップ可能
    ```
 
@@ -503,7 +642,7 @@ rbc_fnmatch_pattern_t *p = rbc_fnmatch_compile("*.c", 0);
 ```c
 // これらは削除
 typedef enum {
-    EXACT, PREFIX, SUFFIX, INFIX,
+    EXACT, PREFIX, SUFFIX, INFIX, 
     PATTERN_CHAIN, ALTERNATIVES, RECURSIVE
 } rbc_matcher_strategy_t;  // 不要になる
 
@@ -528,7 +667,7 @@ typedef struct {
     bool has_question;       // '?' を含むか
     bool has_escape;         // '\\' を含むか（FNM_NOESCAPE時は常にfalse）
     bool has_brace;          // '{' を含むか（FNM_EXTGLOB時）
-
+    
     // === リテラル部分の検出 ===
     size_t literal_prefix_len;  // 先頭のリテラル文字数
                                  // "test*.c" → 4 ("test")
@@ -536,7 +675,7 @@ typedef struct {
     size_t literal_suffix_len;  // 末尾のリテラル文字数
                                  // "*.c" → 1 ("c")
                                  // "*test" → 4 ("test")
-
+    
     // === パターン長情報 ===
     size_t pattern_len;      // パターン全体の長さ（strlen）
     size_t min_match_len;    // マッチ可能な最小テキスト長
@@ -548,13 +687,13 @@ typedef struct {
     bool is_fixed_len;       // 固定長パターン（*がない）
                              // "a?c", "abc", "???" → true
                              // "a*c", "???.*" → false
-
+    
     // === 特殊パターンの事前判定（汎用的なもののみ）===
     bool is_literal;         // 完全リテラル（メタ文字なし）"abc.txt"
     bool is_star_only;       // "*" だけ（最も単純なケース）
     bool is_question_only;   // "???" のような?だけのパターン（汎用的）
                              // question_count個の任意文字とマッチ
-
+    
     // === ドットファイル関連（頻出パターン）===
     bool is_dotstar;         // ".*" - 隠しファイル全体（FNM_PERIOD考慮）
     bool starts_with_dot;    // ".abc", ".*", ".?"等（FNM_PERIODで重要）
@@ -619,7 +758,7 @@ if (hints->literal_suffix_len > 0 && !hints->has_star) {
 }
 
 // "*.ext" のような頻出パターンは上記の組み合わせで判定
-// is_literal==false && literal_prefix_len==0 && has_star &&
+// is_literal==false && literal_prefix_len==0 && has_star && 
 // !has_question && !has_bracket && star_count==1 && literal_suffix_len>0
 // → これは"*.ext"パターン（でも明示的なフラグは不要）
 ```
@@ -634,11 +773,11 @@ typedef struct {
     bool has_simple_charset;    // 単純な[abc]のみ（範囲なし）
     uint64_t charset_bitmap[4]; // [a-z]用ビットマップ（256bit = 4*64bit）
                                 // 範囲がASCIIの場合のみ
-
+    
     // === Boyer-Moore最適化 ===
     bool use_boyer_moore;       // リテラル部分が長い場合
     uint8_t bad_char_table[256]; // Bad Character Rule用テーブル
-
+    
     // === パターン構造の解析 ===
     uint8_t star_count;         // '*'の個数（バックトラック深さ予測）
     uint8_t bracket_count;      // '[]'の個数
@@ -680,7 +819,7 @@ typedef struct {
    - `min_match_len` / `max_match_len` - 長さチェック（早期リターン）
    - `is_fixed_len` - 固定長判定（*なしパ/ コンパイル済みバイトコード
     size_t bytecode_len;        // バイトコード長
-
+    
     // === JIT情報 ===
     void *jit_func;             // JITコンパイル済み関数ポインタ
                                 // NULLなら未コンパイル
@@ -727,7 +866,7 @@ typedef struct {
 | `test_*.c` | `literal_prefix_len=5, literal_suffix_len=2` | 先頭・末尾チェック |
 | `a?c` | `is_fixed_len=true, max_match_len=3` | 長さチェック + リテラル比較 |
 
-**重要**:
+**重要**: 
 - 特殊ケースフラグ（`is_star_ext`等）は不要。基本ヒントの組み合わせで判定できる。
 - `is_question_only`は汎用的（"???"だけでなく"?????"等にも適用）
 - `is_fixed_len`で固定長パターン全般を高速化（`*`なしパターン）en=2` | 先頭・末尾チェック |
@@ -738,7 +877,7 @@ typedef struct {
 // 統一アーキテクチャ: 共通のマッチングエンジン
 
 // コアエンジン（Zero-Allocation Streaming）
-static bool match_engine(const char *pattern, const char *text,
+static bool match_engine(const char *pattern, const char *text, 
                          unsigned flags, const void *compiled_state) {
     // compiled_state == NULL: パターン文字列から直接実行
     // compiled_state != NULL: プリコンパイル済み状態から実行
@@ -794,15 +933,15 @@ typedef struct {
     // 入力ポインタ（読み取り専用）
     const char *pattern_start;
     const char *text_start;
-
+    
     // 現在位置（可変）
     const char *p;  // パターン位置
     const char *t;  // テキスト位置
-
+    
     // バックトラック状態
     const char *star_p;  // 最後の*の次の位置
     const char *star_t;  // *がマッチした開始位置
-
+    
     // フラグ（ビットフィールドで圧縮）
     unsigned int flags : 8;
     unsigned int in_bracket : 1;
@@ -812,8 +951,8 @@ typedef struct {
 } stream_state_t;
 
 // 初期化（インライン展開される）
-static inline void init_state(stream_state_t *state,
-                               const char *pattern,
+static inline void init_state(stream_state_t *state, 
+                               const char *pattern, 
                                const char *text,
                                unsigned int flags) {
     state->pattern_start = pattern;
@@ -829,22 +968,22 @@ static inline void init_state(stream_state_t *state,
 }
 
 // メインマッチング関数
-bool rbc_fnmatch_streaming(const char *pattern,
-                           const char *text,
+bool rbc_fnmatch_streaming(const char *pattern, 
+                           const char *text, 
                            unsigned int flags) {
     stream_state_t state;
     init_state(&state, pattern, text, flags);
-
+    
     // メインループ: パターンと文字列を同時走査
     while (true) {
         char p_char = *state.p;
         char t_char = *state.t;
-
+        
         // === Fast path: リテラルマッチ ===
-        if (likely(p_char != '\0' && p_char != '*' &&
+        if (likely(p_char != '\0' && p_char != '*' && 
                    p_char != '?' && p_char != '[' && p_char != '\\')) {
             if (unlikely(t_char == '\0')) goto fail_or_backtrack;
-
+            
             // Case folding
             if (flags & RBC_FNM_CASEFOLD) {
                 if (tolower_fast(p_char) != tolower_fast(t_char))
@@ -853,81 +992,81 @@ bool rbc_fnmatch_streaming(const char *pattern,
                 if (p_char != t_char)
                     goto fail_or_backtrack;
             }
-
+            
             state.p++;
             state.t++;
             continue;
         }
-
+        
         // === Special characters ===
         switch (p_char) {
         case '\0':
             // パターン終了 → テキストも終了していればマッチ
             return (t_char == '\0');
-
+            
         case '*':
             state.has_star = 1;
             // 連続する*を読み飛ばし
             do { state.p++; } while (*state.p == '*');
-
+            
             // 末尾の*は残り全てにマッチ
             if (unlikely(*state.p == '\0')) {
                 if (flags & RBC_FNM_PATHNAME)
                     return strchr(state.t, '/') == NULL;
                 return true;
             }
-
+            
             // バックトラックポイントを設定
             state.star_p = state.p;
             state.star_t = state.t;
             continue;
-
+            
         case '?':
             if (unlikely(t_char == '\0')) goto fail_or_backtrack;
-
+            
             // PATHNAMEフラグで/にマッチしない
             if (unlikely((flags & RBC_FNM_PATHNAME) && t_char == '/'))
                 goto fail_or_backtrack;
-
+            
             // DOTMATCHフラグなしで先頭の.にマッチしない
             if (unlikely(!(flags & RBC_FNM_DOTMATCH) && t_char == '.' &&
-                        (state.t == state.text_start ||
+                        (state.t == state.text_start || 
                          ((flags & RBC_FNM_PATHNAME) && state.t[-1] == '/'))))
                 goto fail_or_backtrack;
-
+            
             state.p++;
             state.t++;
             continue;
-
+            
         case '[':
             if (unlikely(t_char == '\0')) goto fail_or_backtrack;
-
+            
             // 文字クラスマッチング（専用関数）
             const char *bracket_end = match_bracket_class(
                 state.p + 1, t_char, flags);
-
+            
             if (unlikely(bracket_end == NULL))
                 goto fail_or_backtrack;
-
+            
             state.p = bracket_end;
             state.t++;
             continue;
-
+            
         case '\\':
             if (!(flags & RBC_FNM_NOESCAPE) && state.p[1] != '\0') {
                 state.p++;  // エスケープ文字をスキップ
                 p_char = *state.p;
-
+                
                 if (p_char != t_char)
                     goto fail_or_backtrack;
-
+                
                 state.p++;
                 state.t++;
                 continue;
             }
             // NOESCAPEの場合はリテラルとして処理
             goto literal_match;
-
+            
         default:
         literal_match:
             if (t_char != p_char)
@@ -936,26 +1075,26 @@ bool rbc_fnmatch_streaming(const char *pattern,
             state.t++;
             continue;
         }
-
+        
 fail_or_backtrack:
         // バックトラック可能か確認
         if (likely(state.star_p != NULL)) {
             // テキスト位置を進める
             state.t = ++state.star_t;
-
+            
             // テキスト終了ならマッチ失敗
             if (unlikely(*state.t == '\0'))
                 return false;
-
+            
             // PATHNAMEで/を越えない
             if (unlikely((flags & RBC_FNM_PATHNAME) && *state.t == '/'))
                 return false;
-
+            
             // パターン位置をリセット
             state.p = state.star_p;
             continue;
         }
-
+        
         return false;
     }
 }
@@ -999,27 +1138,27 @@ static const char* match_bracket_class(const char *pattern,
                                        unsigned int flags) {
     // ビットマップ: 256ビット = 32バイト
     uint64_t bitmap[4] = {0, 0, 0, 0};
-
+    
     const char *p = pattern;
     bool negated = false;
-
+    
     // 否定チェック
     if (*p == '!' || *p == '^') {
         negated = true;
         p++;
     }
-
+    
     // ビットマップ構築
     while (*p && *p != ']') {
         unsigned char lower = (unsigned char)*p;
         unsigned char upper = lower;
-
+        
         // 範囲指定 [a-z]
         if (p[1] == '-' && p[2] && p[2] != ']') {
             upper = (unsigned char)p[2];
             p += 2;
         }
-
+        
         // ビットマップにセット
         for (unsigned char c = lower; c <= upper && c >= lower; c++) {
             // Case folding
@@ -1032,17 +1171,17 @@ static const char* match_bracket_class(const char *pattern,
         }
         p++;
     }
-
+    
     if (*p != ']')
         return NULL;  // 不正な文字クラス
-
+    
     // ビットマップでテスト（1命令）
     bool matched = (bitmap[test_char >> 6] & (1ULL << (test_char & 63))) != 0;
-
+    
     // 否定の場合は反転
     if (negated)
         matched = !matched;
-
+    
     return matched ? (p + 1) : NULL;
 }
 ```
@@ -1054,17 +1193,17 @@ static const char* match_bracket_class(const char *pattern,
 static inline bool match_suffix_fast(const char *text, const char *suffix) {
     size_t text_len = strlen(text);
     size_t suffix_len = strlen(suffix);
-
+    
     if (text_len < suffix_len)
         return false;
-
+    
     // 末尾から比較（SIMD使用可能）
     return memcmp(text + text_len - suffix_len, suffix, suffix_len) == 0;
 }
 
 // test_* の超高速パス
-static inline bool match_prefix_fast(const char *text,
-                                     const char *prefix,
+static inline bool match_prefix_fast(const char *text, 
+                                     const char *prefix, 
                                      size_t prefix_len) {
     return memcmp(text, prefix, prefix_len) == 0;
 }
@@ -1072,31 +1211,31 @@ static inline bool match_prefix_fast(const char *text,
 // パターン振り分けエントリーポイント
 bool rbc_fnmatch_v2(const char *pattern, const char *text, unsigned int flags) {
     // === Ultra fast paths ===
-
+    
     // 完全一致
     if (!strchr(pattern, '*') && !strchr(pattern, '?') && !strchr(pattern, '[')) {
         return strcmp(pattern, text) == 0;
     }
-
+    
     // *.ext パターン
-    if (pattern[0] == '*' && pattern[1] == '.' &&
-        !strchr(pattern + 2, '*') && !strchr(pattern + 2, '?') &&
+    if (pattern[0] == '*' && pattern[1] == '.' && 
+        !strchr(pattern + 2, '*') && !strchr(pattern + 2, '?') && 
         !strchr(pattern + 2, '[')) {
         return match_suffix_fast(text, pattern + 1);
     }
-
+    
     // * のみ
     if (pattern[0] == '*' && pattern[1] == '\0') {
         if (flags & RBC_FNM_PATHNAME)
             return strchr(text, '/') == NULL;
         return true;
     }
-
+    
     // ? のみ
     if (pattern[0] == '?' && pattern[1] == '\0') {
         return text[0] != '\0' && text[1] == '\0';
     }
-
+    
     // 一般的なケース
     return rbc_fnmatch_streaming(pattern, text, flags);
 }
@@ -1117,7 +1256,7 @@ bool rbc_fnmatch_v2(const char *pattern, const char *text, unsigned int flags) {
 #endif
 ```
 
-##### 1. ループアンローリング
+##### 2. ループアンローリング
 
 ```c
 // リテラル文字列の高速比較
@@ -1130,7 +1269,7 @@ static inline bool match_literal_unrolled(const char *p, const char *t, size_t l
         t += 4;
         len -= 4;
     }
-
+    
     // 残り処理
     while (len > 0) {
         if (*p != *t)
@@ -1139,7 +1278,7 @@ static inline bool match_literal_unrolled(const char *p, const char *t, size_t l
         t++;
         len--;
     }
-
+    
     return true;
 }
 ```
@@ -1222,16 +1361,16 @@ typedef enum {
     OP_LITERAL_N    = 0x01,  // Nバイトリテラルマッチ（連続最適化）
     OP_ANY          = 0x02,  // ? (任意の1文字)
     OP_STAR         = 0x03,  // * (0個以上)
-
+    
     // 文字クラス
     OP_CHARSET      = 0x10,  // [a-z] (ビットマップ使用)
     OP_CHARSET_NEG  = 0x11,  // [^a-z] (否定)
-
+    
     // 制御フロー
     OP_JUMP         = 0x20,  // 無条件ジャンプ
     OP_SPLIT        = 0x21,  // 分岐（NFAシミュレーション）
     OP_SAVE         = 0x22,  // バックトラック位置保存
-
+    
     // 終了
     OP_MATCH        = 0xF0,  // マッチ成功
     OP_FAIL         = 0xFF,  // マッチ失敗
@@ -1261,12 +1400,12 @@ typedef struct {
 ```c
 // src/fnmatch_compiler.c
 
-bool compile_pattern(const char *pattern,
+bool compile_pattern(const char *pattern, 
                      unsigned int flags,
                      bytecode_program_t *program) {
     uint16_t pc = 0;
     const char *p = pattern;
-
+    
     while (*p && pc < 255) {
         if (*p == '*') {
             // STAR命令
@@ -1276,10 +1415,10 @@ bool compile_pattern(const char *pattern,
                 .arg2 = 0
             };
             p++;
-
+            
             // 連続する*をスキップ
             while (*p == '*') p++;
-
+            
         } else if (*p == '?') {
             // ANY命令
             program->code[pc++] = (bytecode_insn_t){
@@ -1288,53 +1427,53 @@ bool compile_pattern(const char *pattern,
                 .arg2 = 0
             };
             p++;
-
+            
         } else if (*p == '[') {
             // CHARSET命令
             p++;  // '['をスキップ
-
+            
             uint64_t bitmap[4] = {0};
             bool negated = false;
-
+            
             if (*p == '!' || *p == '^') {
                 negated = true;
                 p++;
             }
-
+            
             // ビットマップ構築
             while (*p && *p != ']') {
                 unsigned char lower = *p;
                 unsigned char upper = lower;
-
+                
                 if (p[1] == '-' && p[2] && p[2] != ']') {
                     upper = p[2];
                     p += 2;
                 }
-
+                
                 for (unsigned char c = lower; c <= upper && c >= lower; c++) {
                     bitmap[c >> 6] |= (1ULL << (c & 63));
                 }
                 p++;
             }
-
+            
             if (*p != ']')
                 return false;  // エラー
             p++;
-
+            
             program->code[pc++] = (bytecode_insn_t){
                 .opcode = negated ? OP_CHARSET_NEG : OP_CHARSET,
                 .arg1 = 0,
                 .arg2 = 0,
                 .data.charset = {bitmap[0], bitmap[1], bitmap[2], bitmap[3]}
             };
-
+            
         } else {
             // リテラル文字
             // 連続するリテラルを最適化
             const char *literal_start = p;
             size_t literal_len = 0;
-
-            while (*p && *p != '*' && *p != '?' && *p != '[' &&
+            
+            while (*p && *p != '*' && *p != '?' && *p != '[' && 
                    literal_len < 4) {
                 if (!(flags & RBC_FNM_NOESCAPE) && *p == '\\' && p[1]) {
                     p++;
@@ -1342,7 +1481,7 @@ bool compile_pattern(const char *pattern,
                 literal_len++;
                 p++;
             }
-
+            
             if (literal_len == 1) {
                 program->code[pc++] = (bytecode_insn_t){
                     .opcode = OP_LITERAL,
@@ -1360,14 +1499,14 @@ bool compile_pattern(const char *pattern,
             }
         }
     }
-
+    
     // MATCH命令
     program->code[pc++] = (bytecode_insn_t){
         .opcode = OP_MATCH,
         .arg1 = 0,
         .arg2 = 0
     };
-
+    
     program->length = pc;
     program->flags = flags;
     return true;
@@ -1382,14 +1521,14 @@ bool compile_pattern(const char *pattern,
 bool execute_bytecode(const bytecode_program_t *program, const char *text) {
     uint16_t pc = 0;
     const char *tp = text;
-
+    
     // バックトラックスタック
     struct {
         uint16_t pc;
         const char *tp;
     } backtrack_stack[64];
     int backtrack_sp = -1;
-
+    
     // ジャンプテーブル（GCC computed goto）
     #ifdef __GNUC__
     static void* dispatch_table[] = {
@@ -1402,9 +1541,9 @@ bool execute_bytecode(const bytecode_program_t *program, const char *text) {
     #define DISPATCH() goto switch_dispatch
     #define NEXT_INSN() pc++; goto switch_dispatch
     #endif
-
+    
     DISPATCH();
-
+    
     #ifdef __GNUC__
     op_literal:
     #else
@@ -1418,7 +1557,7 @@ bool execute_bytecode(const bytecode_program_t *program, const char *text) {
         tp++;
         NEXT_INSN();
     }
-
+    
     #ifdef __GNUC__
     op_literal_n:
     #else
@@ -1431,7 +1570,7 @@ bool execute_bytecode(const bytecode_program_t *program, const char *text) {
         tp += len;
         NEXT_INSN();
     }
-
+    
     #ifdef __GNUC__
     op_any:
     #else
@@ -1443,7 +1582,7 @@ bool execute_bytecode(const bytecode_program_t *program, const char *text) {
         tp++;
         NEXT_INSN();
     }
-
+    
     #ifdef __GNUC__
     op_star:
     #else
@@ -1457,7 +1596,7 @@ bool execute_bytecode(const bytecode_program_t *program, const char *text) {
         };
         NEXT_INSN();
     }
-
+    
     #ifdef __GNUC__
     op_charset:
     #else
@@ -1466,14 +1605,14 @@ bool execute_bytecode(const bytecode_program_t *program, const char *text) {
     {
         unsigned char c = *tp;
         uint64_t *bitmap = program->code[pc].data.charset;
-
+        
         if ((bitmap[c >> 6] & (1ULL << (c & 63))) == 0)
             goto backtrack;
-
+        
         tp++;
         NEXT_INSN();
     }
-
+    
     #ifdef __GNUC__
     op_match:
     #else
@@ -1482,22 +1621,22 @@ bool execute_bytecode(const bytecode_program_t *program, const char *text) {
     {
         return (*tp == '\0');
     }
-
+    
 backtrack:
     if (backtrack_sp >= 0) {
         pc = backtrack_stack[backtrack_sp].pc;
         tp = ++backtrack_stack[backtrack_sp].tp;
-
+        
         if (*tp == '\0') {
             backtrack_sp--;
             goto backtrack;
         }
-
+        
         DISPATCH();
     }
-
+    
     return false;
-
+    
     #ifndef __GNUC__
     }
     #endif
@@ -1509,15 +1648,15 @@ backtrack:
 ```c
 // src/fnmatch_bytecode.c
 
-bool rbc_fnmatch_bytecode(const char *pattern,
-                          const char *text,
+bool rbc_fnmatch_bytecode(const char *pattern, 
+                          const char *text, 
                           unsigned int flags) {
     bytecode_program_t program;
-
+    
     // コンパイル（スタック上）
     if (!compile_pattern(pattern, flags, &program))
         return false;
-
+    
     // 実行
     return execute_bytecode(&program, text);
 }
@@ -1569,7 +1708,7 @@ bool rbc_fnmatch_bytecode(const char *pattern,
 #endif
 
 // 使用例
-TRACE("Pattern: %s, Text: %s, Position: p=%ld t=%ld",
+TRACE("Pattern: %s, Text: %s, Position: p=%ld t=%ld", 
       state.pattern_start, state.text_start,
       state.p - state.pattern_start, state.t - state.text_start);
 ```

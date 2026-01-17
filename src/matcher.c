@@ -5,6 +5,15 @@
 #include "internal.h"
 #include "utils.h"
 
+// Branch prediction hints
+#ifdef __GNUC__
+#define likely(x)   __builtin_expect(!!(x), 1)
+#define unlikely(x) __builtin_expect(!!(x), 0)
+#else
+#define likely(x)   (x)
+#define unlikely(x) (x)
+#endif
+
 bool rbc_matcher_build(rbc_arena_t *arena, rbc_matcher_t *m, const char *pattern, unsigned int flags)
 {
     m->flags = flags;
@@ -190,6 +199,67 @@ bool rbc_matcher_build(rbc_arena_t *arena, rbc_matcher_t *m, const char *pattern
     }
 
     // === Now select strategy based on pattern complexity ===
+
+    // Fast path for ultra-common patterns (before any complex analysis)
+    size_t len = strlen(pattern);
+    
+    // Single character patterns
+    if (unlikely(len == 1))
+    {
+        if (pattern[0] == '*')
+        {
+            m->strategy = RBC_STRATEGY_PREFIX;
+            m->pk.str.ptr = "";
+            m->pk.str.len = 0;
+            m->prefilter.enabled = false;
+            return true;
+        }
+        if (pattern[0] == '?')
+        {
+            m->strategy = RBC_STRATEGY_RECURSIVE;
+            m->pk.recursive.pattern = rbc_arena_strdup(arena, pattern);
+            return m->pk.recursive.pattern != NULL;
+        }
+        // Single literal character
+        m->strategy = RBC_STRATEGY_EXACT;
+        m->pk.str.ptr = rbc_arena_strdup(arena, pattern);
+        if (!m->pk.str.ptr)
+            return false;
+        m->pk.str.len = 1;
+        m->prefilter.prefix_len = 1;
+        return true;
+    }
+    
+    // "*.ext" pattern (extremely common)
+    if (likely(pattern[0] == '*' && pattern[1] == '.'))
+    {
+        bool is_simple_ext = true;
+        for (size_t i = 2; i < len; i++)
+        {
+            char c = pattern[i];
+            if (c == '*' || c == '?' || c == '[' || c == '{')
+            {
+                is_simple_ext = false;
+                break;
+            }
+            if (!noescape && c == '\\')
+            {
+                is_simple_ext = false;
+                break;
+            }
+        }
+        
+        if (is_simple_ext)
+        {
+            // Use SUFFIX strategy for *.ext
+            m->strategy = RBC_STRATEGY_SUFFIX;
+            m->pk.str.ptr = rbc_arena_strdup(arena, pattern + 1);
+            if (!m->pk.str.ptr)
+                return false;
+            m->pk.str.len = len - 1;
+            return true;
+        }
+    }
 
     // Check for complexity features
     bool has_qmark = (strchr(pattern, '?') != NULL);
@@ -506,120 +576,147 @@ static const char *bracket_match(const char *p, unsigned char c, unsigned int fl
     return (matched ^ neg) ? p + 1 : NULL;
 }
 
-static bool match_recursive(const char *p, const char *s, const char *initial_str, unsigned int flags)
-{
-    while (*p)
-    {
-        char c = *p;
+// Wildmatch-style implementation with backtrack optimization (no recursion)
+// Based on wildmatch algorithm used in Git/rsync
 
-        switch (c)
+static bool match_wildmatch(const char *p, const char *s, const char *initial_str, unsigned int flags)
+{
+    const char *star_p = NULL;
+    const char *star_s = NULL;
+
+    while (true)
+    {
+        // Match current character
+        if (*p == '*')
         {
-        case '*':
-        {
-            // Consecutive stars are same as one star
+            // Collapse consecutive stars
             while (p[1] == '*')
                 p++;
+            p++;
 
-            // Optimization: if it is the end of the pattern, it matches everything remaining,
-            // UNLESS pathname is set and remaining string contains '/'.
-            if (p[1] == '\0')
+            // Optimization: trailing star matches everything (unless pathname constraint)
+            if (unlikely(*p == '\0'))
             {
                 if (IS_PATHNAME)
                     return strchr(s, '/') == NULL;
                 return true;
             }
 
-            // Backtracking search
-            while (true)
-            {
-                if (match_recursive(p + 1, s, initial_str, flags))
-                    return true;
-                if (*s == '\0')
-                    break;
-                if (IS_PATHNAME && *s == '/')
-                    break;
-
-                // Handle dotmatch
-                if (!IS_DOTMATCH && *s == '.' &&
-                    (s == initial_str || (IS_PATHNAME && s[-1] == '/')))
-                    break;
-
-                s++;
-            }
-            return false;
-        }
-
-        case '?':
-        {
-            if (*s == '\0')
-                return false;
-            if (IS_PATHNAME && *s == '/')
-                return false;
-            if (!IS_DOTMATCH && *s == '.' &&
-                (s == initial_str || (IS_PATHNAME && s[-1] == '/')))
-                return false;
-            p++;
-            s++;
+            // Save backtrack point
+            star_p = p;
+            star_s = s;
             continue;
         }
 
-        case '[':
+        // Current positions don't match
+        bool char_matched = false;
+
+        if (*s == '\0')
         {
-            if (*s == '\0')
-                return false;
-            if (IS_PATHNAME && *s == '/')
-                return false;
-            if (!IS_DOTMATCH && *s == '.' &&
-                (s == initial_str || (IS_PATHNAME && s[-1] == '/')))
-                return false;
-
-            const char *nxt = bracket_match(p + 1, (unsigned char)*s, flags);
-            if (nxt)
-            {
-                p = nxt;
-                s++;
-                continue;
-            }
-            return false;
-        }
-
-        case '\\':
-            if (!(flags & RBC_FNM_NOESCAPE) && p[1])
+            // End of string - only matches if pattern is also done (or only stars remain)
+            while (*p == '*')
                 p++;
-            // Fallthrough
-
-        default:
+            char_matched = (*p == '\0');
+        }
+        else if (*p == '?')
         {
-            if (*s == '\0')
-                return false;
+            // Question mark matches any single character (with constraints)
+            if (unlikely(IS_PATHNAME && *s == '/'))
+                char_matched = false;
+            else if (unlikely(!IS_DOTMATCH && *s == '.' &&
+                             (s == initial_str || (IS_PATHNAME && s[-1] == '/'))))
+                char_matched = false;
+            else
+            {
+                p++;
+                s++;
+                char_matched = true;
+            }
+        }
+        else if (*p == '[')
+        {
+            // Character class
+            if (unlikely(IS_PATHNAME && *s == '/'))
+                char_matched = false;
+            else if (unlikely(!IS_DOTMATCH && *s == '.' &&
+                             (s == initial_str || (IS_PATHNAME && s[-1] == '/'))))
+                char_matched = false;
+            else
+            {
+                const char *nxt = bracket_match(p + 1, (unsigned char)*s, flags);
+                if (nxt)
+                {
+                    p = nxt;
+                    s++;
+                    char_matched = true;
+                }
+            }
+        }
+        else
+        {
+            // Literal character match (handle escape)
+            char c1 = *p;
+            if (unlikely(c1 == '\\' && !IS_NOESCAPE && p[1]))
+            {
+                p++;
+                c1 = *p;
+            }
 
-            char c1 = c;  // from pattern
-            char c2 = *s; // from string
-
+            char c2 = *s;
             if (IS_CASEFOLD)
             {
                 c1 = (char)tolower((unsigned char)c1);
                 c2 = (char)tolower((unsigned char)c2);
             }
 
-            if (c1 != c2)
-                return false;
+            if (c1 == c2)
+            {
+                p++;
+                s++;
+                char_matched = true;
+            }
+        }
 
-            p++;
-            s++;
+        // If current match succeeded, continue
+        if (likely(char_matched))
+            continue;
+
+        // Match failed - try backtracking
+        if (star_p)
+        {
+            // Backtrack: advance string position and retry from saved pattern
+            s = ++star_s;
+
+            // Check constraints before backtracking
+            if (unlikely(*s == '\0'))
+            {
+                return false;  // Can't backtrack past end
+            }
+            if (unlikely(IS_PATHNAME && *s == '/'))
+            {
+                return false;  // Star can't cross '/' boundary
+            }
+            if (unlikely(!IS_DOTMATCH && *s == '.' &&
+                        (s == initial_str || (IS_PATHNAME && s[-1] == '/'))))
+            {
+                return false;  // Star can't match leading dot
+            }
+
+            p = star_p;
             continue;
         }
-        }
-    }
 
-    return (*s == '\0');
+        // No backtrack point available - match failed
+        return false;
+    }
 }
 
 static bool rbc_match_recursive_entry(const char *text, const char *pattern, unsigned int flags)
 {
-    if (!text || !pattern)
+    if (unlikely(!text || !pattern))
         return false;
-    return match_recursive(pattern, text, text, flags);
+    // Use wildmatch implementation for better performance
+    return match_wildmatch(pattern, text, text, flags);
 }
 
 bool rbc_matcher_exec(const rbc_matcher_t *m, const char *name)
@@ -629,12 +726,20 @@ bool rbc_matcher_exec(const rbc_matcher_t *m, const char *name)
     unsigned int flags = m->flags;
     bool pathname = (flags & RBC_FNM_PATHNAME);
     bool casefold = (flags & RBC_FNM_CASEFOLD);
+    
+    // Ultra-fast path for common empty/trivial cases
+    if (unlikely(name_len == 0))
+    {
+        // Only matches empty pattern or "*"
+        return (m->strategy == RBC_STRATEGY_EXACT && m->pk.str.len == 0) ||
+               (m->strategy == RBC_STRATEGY_PREFIX && m->pk.str.len == 0);
+    }
 
     // === Phase 1: Pre-filter (fast early rejection) ===
     if (m->prefilter.enabled)
     {
         // Length check (fastest)
-        if (name_len < m->prefilter.min_length)
+        if (unlikely(name_len < m->prefilter.min_length))
             return false;
 
         // Prefix check
@@ -642,13 +747,13 @@ bool rbc_matcher_exec(const rbc_matcher_t *m, const char *name)
         {
             if (casefold)
             {
-                if (!rbc_match_fixed(name, m->prefilter.prefix, m->prefilter.prefix_len, true))
+                if (unlikely(!rbc_match_fixed(name, m->prefilter.prefix, m->prefilter.prefix_len, true)))
                     return false;
             }
             else
             {
-                if (name_len < m->prefilter.prefix_len ||
-                    strncmp(name, m->prefilter.prefix, m->prefilter.prefix_len) != 0)
+                if (unlikely(name_len < m->prefilter.prefix_len ||
+                    strncmp(name, m->prefilter.prefix, m->prefilter.prefix_len) != 0))
                     return false;
             }
         }
@@ -658,14 +763,14 @@ bool rbc_matcher_exec(const rbc_matcher_t *m, const char *name)
         {
             if (casefold)
             {
-                if (!rbc_match_fixed(name + name_len - m->prefilter.suffix_len,
-                                     m->prefilter.suffix, m->prefilter.suffix_len, true))
+                if (unlikely(!rbc_match_fixed(name + name_len - m->prefilter.suffix_len,
+                                     m->prefilter.suffix, m->prefilter.suffix_len, true)))
                     return false;
             }
             else
             {
-                if (name_len < m->prefilter.suffix_len ||
-                    strcmp(name + name_len - m->prefilter.suffix_len, m->prefilter.suffix) != 0)
+                if (unlikely(name_len < m->prefilter.suffix_len ||
+                    strcmp(name + name_len - m->prefilter.suffix_len, m->prefilter.suffix) != 0))
                     return false;
             }
         }
@@ -686,21 +791,21 @@ bool rbc_matcher_exec(const rbc_matcher_t *m, const char *name)
         else
             matched = (name_len >= m->pk.str.len && strncmp(name, m->pk.str.ptr, m->pk.str.len) == 0);
 
-        if (matched && pathname)
+        if (matched && unlikely(pathname))
         {
             if (memchr(name + m->pk.str.len, '/', name_len - m->pk.str.len))
                 matched = false;
         }
         break;
     case RBC_STRATEGY_SUFFIX:
-        if (name_len >= m->pk.str.len)
+        if (likely(name_len >= m->pk.str.len))
         {
             if (casefold)
                 matched = rbc_match_fixed(name + name_len - m->pk.str.len, m->pk.str.ptr, m->pk.str.len, true);
             else
                 matched = (strcmp(name + name_len - m->pk.str.len, m->pk.str.ptr) == 0);
 
-            if (matched && pathname)
+            if (matched && unlikely(pathname))
             {
                 if (memchr(name, '/', name_len - m->pk.str.len))
                     matched = false;
