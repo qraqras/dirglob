@@ -12,8 +12,6 @@ typedef unsigned char uchar;
 #define RBC_MATCH 0
 #define RBC_ABORT_ALL -1
 #define RBC_ABORT_TO_STARSTAR -2
-#define RBC_NEGATE_CLASS '!'
-#define RBC_NEGATE_CLASS2 '^'
 
 // Character class macros
 #define ISUPPER(c) isupper((unsigned char)(c))
@@ -30,45 +28,14 @@ typedef unsigned char uchar;
 #define ISPUNCT(c) ispunct((unsigned char)(c))
 
 #define CC_EQ(s, len, lit) ((len) == sizeof(lit) - 1 && memcmp(s, lit, sizeof(lit) - 1) == 0)
-#define IS_SEGMENT_START(text, text_start) ((text) == (text_start) || ((text) > (text_start) && (text)[-1] == '/'))
-#define IS_HIDDEN_TEXT(text, text_start) (IS_SEGMENT_START(text, text_start) && *(text) == '.')
+#define IS_SEGMENT_START(text, text_start, flags) ((text) == (text_start) || ((flags) & RBC_FNM_PATHNAME && (text) > (text_start) && (text)[-1] == '/'))
+#define IS_HIDDEN_TEXT(text, text_start, flags) (IS_SEGMENT_START(text, text_start, flags) && *(text) == '.')
 #define IS_SLASH_DOT_PATTERN(p) ((p)[0] == '/' && (p)[1] == '.')
 
 static inline int is_glob_special(unsigned char c)
 {
     return c == '*' || c == '?' || c == '[' || c == '\\';
 }
-
-// ============================================================================
-// Type Definitions
-// ============================================================================
-
-/// @brief Match strategy enumeration
-typedef enum rbc_match_strategy_e
-{
-    RBC_MATCH_STRATEGY_LITERAL,       // `literal`
-    RBC_MATCH_STRATEGY_STAR,          // `*`
-    RBC_MATCH_STRATEGY_QUESTION,      // `??`
-    RBC_MATCH_STRATEGY_PREFIX,        // `prefix*`
-    RBC_MATCH_STRATEGY_SUFFIX,        // `*suffix`
-    RBC_MATCH_STRATEGY_PREFIX_SUFFIX, // `prefix*suffix`
-} rbc_match_strategy_t;
-
-/// @brief Match hints structure
-typedef struct rbc_match_hints_s
-{
-    rbc_match_strategy_t strategy; // Fast path type (1 byte)
-    uint16_t pattern_len;          // Pattern length (avoids strlen)
-    uint16_t prefix_len;           // Literal prefix length
-    uint16_t suffix_len;           // Literal suffix length
-} rbc_match_hints_t;
-
-/// @brief Precompiled fnmatch pattern structure
-struct rbc_fnmatch_pattern_s
-{
-    const char *pattern;     // Original pattern string
-    rbc_match_hints_t hints; // Optimization hints
-};
 
 // ============================================================================
 // Forward Declarations
@@ -125,12 +92,12 @@ static int dowild_internal(const uchar *p, const uchar *text, unsigned int flags
             return strcmp((const char *)p, (const char *)text) == 0 ? RBC_MATCH : RBC_NOMATCH;
         case RBC_MATCH_STRATEGY_STAR:
             // <Ruby>: DOTMATCH
-            if (!(flags & RBC_FNM_DOTMATCH) && IS_HIDDEN_TEXT(text, text_start))
+            if (!(flags & RBC_FNM_DOTMATCH) && IS_HIDDEN_TEXT(text, text_start, flags))
                 return RBC_NOMATCH;
             return RBC_MATCH;
         case RBC_MATCH_STRATEGY_QUESTION:
             // <Ruby>: DOTMATCH
-            if (!(flags & RBC_FNM_DOTMATCH) && IS_HIDDEN_TEXT(text, text_start))
+            if (!(flags & RBC_FNM_DOTMATCH) && IS_HIDDEN_TEXT(text, text_start, flags))
                 return RBC_NOMATCH;
             if (strlen((const char *)text) != hints->pattern_len)
                 return RBC_NOMATCH;
@@ -142,7 +109,7 @@ static int dowild_internal(const uchar *p, const uchar *text, unsigned int flags
         case RBC_MATCH_STRATEGY_SUFFIX:
         {
             // <Ruby>: DOTMATCH
-            if (!(flags & RBC_FNM_DOTMATCH) && IS_HIDDEN_TEXT(text, text_start))
+            if (!(flags & RBC_FNM_DOTMATCH) && IS_HIDDEN_TEXT(text, text_start, flags))
                 return RBC_NOMATCH;
             const char *ptr = (const char *)p;
             while (*ptr == '*')
@@ -192,12 +159,12 @@ static int dowild_internal(const uchar *p, const uchar *text, unsigned int flags
             if ((flags & RBC_FNM_PATHNAME) && t_ch == '/')
                 return RBC_NOMATCH;
             // <Ruby>: DOTMATCH
-            if (!(flags & RBC_FNM_DOTMATCH) && IS_HIDDEN_TEXT(text, text_start))
+            if (!(flags & RBC_FNM_DOTMATCH) && IS_HIDDEN_TEXT(text, text_start, flags))
                 return RBC_NOMATCH;
             continue;
         case '*':
             // <Ruby>: DOTMATCH
-            if (!(flags & RBC_FNM_DOTMATCH) && IS_HIDDEN_TEXT(text, text_start))
+            if (!(flags & RBC_FNM_DOTMATCH) && IS_HIDDEN_TEXT(text, text_start, flags))
                 return RBC_NOMATCH;
 
             if (*++p == '*')
@@ -229,7 +196,7 @@ static int dowild_internal(const uchar *p, const uchar *text, unsigned int flags
                     if (strchr((char *)text, '/'))
                         return RBC_ABORT_TO_STARSTAR;
                     // <Ruby>: DOTMATCH - single * should not match leading dot
-                    if (!(flags & RBC_FNM_DOTMATCH) && IS_HIDDEN_TEXT(text, text_start))
+                    if (!(flags & RBC_FNM_DOTMATCH) && IS_HIDDEN_TEXT(text, text_start, flags))
                         return RBC_NOMATCH;
                 }
                 return RBC_MATCH;
@@ -249,7 +216,7 @@ static int dowild_internal(const uchar *p, const uchar *text, unsigned int flags
 
                 // <Ruby>: DOTMATCH
                 // next_slash check to avoid false positive on segments
-                if (!(flags & RBC_FNM_DOTMATCH) && IS_HIDDEN_TEXT(text, text_start) && !IS_SLASH_DOT_PATTERN(p))
+                if (!(flags & RBC_FNM_DOTMATCH) && IS_HIDDEN_TEXT(text, text_start, flags) && !IS_SLASH_DOT_PATTERN(p))
                 {
                     const uchar *next_slash = (const uchar *)strchr((char *)text, '/');
                     if (next_slash && next_slash[1] == '.')
@@ -280,7 +247,7 @@ static int dowild_internal(const uchar *p, const uchar *text, unsigned int flags
                 }
 
                 // <Ruby>: DOTMATCH - skip recursion if dotfile but pattern doesn't match dots
-                if (!(flags & RBC_FNM_DOTMATCH) && IS_HIDDEN_TEXT(text, text_start) && !IS_SLASH_DOT_PATTERN(p))
+                if (!(flags & RBC_FNM_DOTMATCH) && IS_HIDDEN_TEXT(text, text_start, flags) && !IS_SLASH_DOT_PATTERN(p))
                 {
                     matched = RBC_NOMATCH;
                 }

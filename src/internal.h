@@ -21,27 +21,43 @@ typedef enum rbc_segment_type_e
     RBC_SEGMENT_BRANCH,    // Branch segment (`/{a, *, c}/`)
 } rbc_segment_type_t;
 
-/// @brief Match Strategy Types
+/// @brief Match strategy enumeration (fnmatch用)
 typedef enum rbc_match_strategy_e
 {
-    RBC_STRATEGY_EXACT,         // Literal exact match (`abc`)
-    RBC_STRATEGY_PREFIX,        // Literal prefix match (`abc*`)
-    RBC_STRATEGY_SUFFIX,        // Literal suffix match (`*abc`)
+    RBC_MATCH_STRATEGY_LITERAL,       // `literal`
+    RBC_MATCH_STRATEGY_STAR,          // `*`
+    RBC_MATCH_STRATEGY_QUESTION,      // `??`
+    RBC_MATCH_STRATEGY_PREFIX,        // `prefix*`
+    RBC_MATCH_STRATEGY_SUFFIX,        // `*suffix`
+    RBC_MATCH_STRATEGY_PREFIX_SUFFIX, // `prefix*suffix`
+
+    // matcher.c用の追加定義（互換性のため）
+    RBC_STRATEGY_EXACT = RBC_MATCH_STRATEGY_LITERAL,
+    RBC_STRATEGY_PREFIX = RBC_MATCH_STRATEGY_PREFIX,
+    RBC_STRATEGY_SUFFIX = RBC_MATCH_STRATEGY_SUFFIX,
     RBC_STRATEGY_INFIX,         // Literal infix match (`*abc*`)
     RBC_STRATEGY_PATTERN_CHAIN, // Sequence of fixed-length patterns separated by '*' (`a?b*c`)
     RBC_STRATEGY_ALTERNATIVES,  // Multiple matchers (OR condition) from brace expansion
     RBC_STRATEGY_RECURSIVE,     // Complex match with recursion (`[a-c]*`)
 } rbc_match_strategy_t;
 
+/// @brief Match hints structure
+typedef struct rbc_match_hints_s
+{
+    rbc_match_strategy_t strategy; // Fast path type (1 byte)
+    uint16_t pattern_len;          // Pattern length (avoids strlen)
+    uint16_t prefix_len;           // Literal prefix length
+    uint16_t suffix_len;           // Literal suffix length
+} rbc_match_hints_t;
+
 /// @brief Forward declaration of matcher structure
 typedef struct rbc_matcher_s rbc_matcher_t;
 
-/// @brief fnmatch pattern structure (opaque in public API)
-/// Zero-Allocation Streaming用のプリコンパイル済みパターン
-struct rbc_fnmatch_pattern_s {
-    const char *pattern;
-    unsigned flags;
-    void *hints;  /* precompiled_hints_t* (fnmatch_streaming.c内部型) */
+/// @brief Precompiled fnmatch pattern structure
+struct rbc_fnmatch_pattern_s
+{
+    const char *pattern;     // Original pattern string
+    rbc_match_hints_t hints; // Optimization hints
 };
 
 /// @brief Context Structure

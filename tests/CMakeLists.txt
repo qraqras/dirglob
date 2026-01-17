@@ -89,3 +89,17 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_glob_generated.c)
   target_link_libraries(test_glob_generated PRIVATE rbc ${UNITY_TARGET})
   add_test(NAME glob_ruby_compat COMMAND test_glob_generated WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/tests/fixtures)
 endif()
+
+# Generated fnmatch compatibility test
+set(GENERATED_FNMATCH_TEST ${CMAKE_CURRENT_SOURCE_DIR}/generated/test_fnmatch_ruby_compat.c)
+if(EXISTS ${GENERATED_FNMATCH_TEST})
+  add_executable(test_fnmatch_ruby_compat
+    ${GENERATED_FNMATCH_TEST}
+  )
+  target_include_directories(test_fnmatch_ruby_compat PRIVATE
+    "${PROJECT_SOURCE_DIR}/include"
+    "${PROJECT_SOURCE_DIR}/src"
+  )
+  target_link_libraries(test_fnmatch_ruby_compat PRIVATE rbc ${UNITY_TARGET})
+  add_test(NAME fnmatch_ruby_compat COMMAND test_fnmatch_ruby_compat WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/tests)
+endif()

@@ -22,8 +22,8 @@ class FNMFlags(Flag):
 
 
 @dataclass
-class TestCase:
-    """Test Case Definition"""
+class GlobTestCase:
+    """Dir.glob Test Case Definition"""
     id: str
     pattern: str
     flags: FNMFlags = FNMFlags.NONE
@@ -40,6 +40,34 @@ class TestCase:
             "desc": self.desc,
         }
 
+
+@dataclass
+class FnmatchTestCase:
+    """File.fnmatch Test Case Definition"""
+    id: str
+    pattern: str
+    text: str
+    flags: FNMFlags = FNMFlags.NONE
+    desc: str = ""
+
+    def to_dict(self):
+        """Convert to dictionary format"""
+        return {
+            "id": self.id,
+            "pattern": self.pattern,
+            "text": self.text,
+            "flags": self.flags.value,
+            "desc": self.desc,
+        }
+
+
+# Backward compatibility alias
+TestCase = GlobTestCase
+
+
+# ============================================================================
+# Dir.glob Test Definitions
+# ============================================================================
 
 # === Manual Test Cases (重要なエッジケースを手動定義) ===
 
@@ -220,7 +248,7 @@ def generate_matrix_cases():
                     if sort is False:
                         desc_parts.append("unsorted")
 
-                    cases.append(TestCase(
+                    cases.append(GlobTestCase(
                         id=f"t{test_id:04d}",
                         pattern=pattern,
                         flags=flags,
@@ -235,26 +263,298 @@ def generate_matrix_cases():
 
 # === All Test Cases ===
 
-def get_all_test_cases():
-    """全テストケースを取得"""
+def get_glob_test_cases():
+    """Dir.glob用の全テストケースを取得"""
     cases = []
     cases.extend(MANUAL_CASES)
     cases.extend(generate_matrix_cases())
     return cases
 
 
+# Backward compatibility alias
+get_all_test_cases = get_glob_test_cases
+
+
+# ============================================================================
+# File.fnmatch Test Definitions
+# ============================================================================
+
+# === Pattern-Text Pairs (fnmatch用) ===
+
+FNMATCH_PATTERN_TEXT_PAIRS = [
+    # 基本パターン - サフィックス
+    ("*.c", "test.c"),
+    ("*.c", "test.h"),
+    ("*.c", ".hidden.c"),
+    ("*.txt", "file.txt"),
+    ("*.so", "libssl.so"),
+
+    # 基本パターン - プレフィックス
+    ("test*", "test.c"),
+    ("test*", "testing"),
+    ("lib*", "libssl.so"),
+
+    # ワイルドカード - 単一
+    ("*", ""),
+    ("*", "anything"),
+    ("*", "a/b"),
+    ("*", ".hidden"),
+
+    # ワイルドカード - 複合
+    ("a*c", "abc"),
+    ("a*c", "axyzc"),
+    ("a*c", "adc"),
+    ("*test*", "testing"),
+    ("*test*", "atestb"),
+    ("*test*", "test"),
+
+    # ワイルドカード - 複数
+    ("**", "test"),
+    ("***", "test"),
+    ("****c", "test.c"),
+
+    # プレフィックス+サフィックス
+    ("test_*.c", "test_main.c"),
+    ("lib*.so", "libssl.so"),
+    ("*.so.1.0", "libssl.so.1.0"),
+
+    # 疑問符 - 単一
+    ("?", "a"),
+    ("?", ""),
+    ("?", "ab"),
+
+    # 疑問符 - 複数
+    ("??", "ab"),
+    ("??", "a"),
+    ("???", "abc"),
+    ("????.c", "test.c"),
+
+    # 文字クラス - 基本
+    ("[abc]", "a"),
+    ("[abc]", "b"),
+    ("[abc]", "c"),
+    ("[abc]", "d"),
+    ("[abc]", ""),
+
+    # 文字クラス - 範囲
+    ("[a-z]", "a"),
+    ("[a-z]", "m"),
+    ("[a-z]", "z"),
+    ("[a-z]", "A"),
+    ("[0-9]", "5"),
+    ("[0-9]", "a"),
+
+    # 文字クラス - 否定
+    ("[!abc]", "a"),
+    ("[!abc]", "d"),
+    ("[^a-z]", "a"),
+    ("[^a-z]", "1"),
+
+    # 文字クラス - 複合
+    ("file[0-9].txt", "file1.txt"),
+    ("file[0-9].txt", "file5.txt"),
+    ("file[0-9].txt", "filea.txt"),
+    ("[a-z][0-9]", "a1"),
+    ("[a-z][0-9]", "z9"),
+
+    # エスケープシーケンス
+    ("\\*", "*"),
+    ("\\*", "test"),
+    ("\\?", "?"),
+    ("\\[", "["),
+    ("\\\\", "\\"),
+    ("test\\*.c", "test*.c"),
+
+    # パス - 基本
+    ("a/b", "a/b"),
+    ("a/b", "a/c"),
+    ("*/*", "a/b"),
+    ("*/*", "a/b/c"),
+
+    # パス - ワイルドカード
+    ("*/*.c", "src/test.c"),
+    ("*/*.c", "test.c"),
+    ("dir/*", "dir/file"),
+    ("dir/*", "dir/sub/file"),
+
+    # パス - 隠しファイル
+    ("*/*.c", "src/.hidden.c"),
+    (".*/*.c", ".hidden/test.c"),
+    ("*/.*", "dir/.hidden"),
+
+    # 隠しファイル - ドット開始
+    (".*", ".hidden"),
+    (".*", "visible"),
+    (".?", ".a"),
+    (".??", ".ab"),
+
+    # 隠しファイル - パス内
+    ("*", ".hidden"),
+    (".*", ".hidden"),
+    ("a/.*", "a/.hidden"),
+
+    # 大文字小文字
+    ("test", "TEST"),
+    ("test", "Test"),
+    ("TEST", "test"),
+    ("*.TXT", "file.txt"),
+    ("*.txt", "FILE.TXT"),
+
+    # エッジケース - 空文字列
+    ("", ""),
+    ("", "x"),
+    ("x", ""),
+
+    # エッジケース - 長い文字列
+    ("a" * 100, "a" * 100),
+    ("a" * 100, "a" * 99),
+    ("*" + "a" * 100, "x" + "a" * 100),
+
+    # 特殊文字
+    ("file with spaces.txt", "file with spaces.txt"),
+    ("file\twith\ttabs", "file\twith\ttabs"),
+    ("multiple..dots", "multiple..dots"),
+
+    # Unicode
+    ("*.txt", "日本語.txt"),
+    ("日本語*", "日本語ファイル"),
+    ("日本語*", "日本語"),
+
+    # 複雑なパターン
+    ("**/*.c", "a/b/test.c"),
+    ("a*b*c", "abc"),
+    ("a*b*c", "aXbYc"),
+    ("*.*.*", "a.b.c"),
+]
+
+# === Flag Options (fnmatch用) ===
+
+FNMATCH_FLAG_OPTIONS = [
+    FNMFlags.NONE,
+    FNMFlags.PATHNAME,
+    FNMFlags.DOTMATCH,
+    FNMFlags.CASEFOLD,
+    FNMFlags.NOESCAPE,
+    FNMFlags.PATHNAME | FNMFlags.DOTMATCH,
+    FNMFlags.PATHNAME | FNMFlags.CASEFOLD,
+]
+
+# === Manual Cases (手動定義の特殊ケース) ===
+
+FNMATCH_MANUAL_CASES = [
+    # NOESCAPEフラグの重要テスト
+    FnmatchTestCase("fm001", "\\*", "*", FNMFlags.NONE, "Escaped star matches literal star"),
+    FnmatchTestCase("fm002", "\\*", "\\*", FNMFlags.NOESCAPE, "NOESCAPE - backslash literal"),
+    FnmatchTestCase("fm003", "\\\\", "\\", FNMFlags.NONE, "Escaped backslash"),
+
+    # DOTMATCHフラグの重要テスト
+    FnmatchTestCase("fm010", "*", ".hidden", FNMFlags.NONE, "Star no match dotfile (no DOTMATCH)"),
+    FnmatchTestCase("fm011", "*", ".hidden", FNMFlags.DOTMATCH, "Star matches dotfile (DOTMATCH)"),
+    FnmatchTestCase("fm012", ".*", ".hidden", FNMFlags.NONE, "Explicit dot matches"),
+
+    # PATHNAMEフラグの重要テスト
+    FnmatchTestCase("fm020", "*", "a/b", FNMFlags.NONE, "Star matches slash (no PATHNAME)"),
+    FnmatchTestCase("fm021", "*", "a/b", FNMFlags.PATHNAME, "Star no match slash (PATHNAME)"),
+    FnmatchTestCase("fm022", "?", "/", FNMFlags.PATHNAME, "Question no match slash (PATHNAME)"),
+
+    # CASEFOLDフラグの重要テスト
+    FnmatchTestCase("fm030", "test", "TEST", FNMFlags.NONE, "Case sensitive - no match"),
+    FnmatchTestCase("fm031", "test", "TEST", FNMFlags.CASEFOLD, "Case insensitive match"),
+    FnmatchTestCase("fm032", "[a-z]", "A", FNMFlags.CASEFOLD, "Bracket with CASEFOLD"),
+
+    # フラグ組み合わせ
+    FnmatchTestCase("fm040", "*/*.c", "dir/.hidden.c", FNMFlags.PATHNAME, "PATHNAME - dotfile no match"),
+    FnmatchTestCase("fm041", "*/*.c", "dir/.hidden.c", FNMFlags.PATHNAME | FNMFlags.DOTMATCH, "PATHNAME + DOTMATCH"),
+]
+
+# === Matrix Generation ===
+
+def generate_fnmatch_matrix_cases():
+    """(pattern, text)ペア × フラグのマトリクスを生成"""
+    cases = []
+    test_id = 1000
+
+    for pattern, text in FNMATCH_PATTERN_TEXT_PAIRS:
+        for flags in FNMATCH_FLAG_OPTIONS:
+            # 最適化: 不要な組み合わせをスキップ
+
+            # エスケープパターンはNONEとNOESCAPEのみテスト
+            if "\\" in pattern and flags != FNMFlags.NONE and flags != FNMFlags.NOESCAPE:
+                if not (flags & FNMFlags.NOESCAPE):
+                    continue
+
+            # パスが含まれない場合、PATHNAMEフラグ単体は不要
+            if "/" not in pattern and "/" not in text:
+                if flags == FNMFlags.PATHNAME:
+                    continue
+
+            # ドットファイルでない場合、DOTMATCH単体は不要
+            if not text.startswith(".") and "/." not in text:
+                if flags == FNMFlags.DOTMATCH:
+                    continue
+
+            # 大文字小文字が同じ場合、CASEFOLD単体は冗長
+            if pattern.lower() == pattern and text.lower() == text:
+                if flags == FNMFlags.CASEFOLD:
+                    continue
+
+            flag_name = flags.name if flags != FNMFlags.NONE else "NONE"
+            desc = f"Pattern: '{pattern}', Text: '{text}', Flags: {flag_name}"
+
+            cases.append(FnmatchTestCase(
+                id=f"f{test_id:04d}",
+                pattern=pattern,
+                text=text,
+                flags=flags,
+                desc=desc
+            ))
+            test_id += 1
+
+    return cases
+
+
+def get_fnmatch_test_cases():
+    """File.fnmatch用の全テストケースを取得"""
+    cases = []
+    cases.extend(FNMATCH_MANUAL_CASES)
+    cases.extend(generate_fnmatch_matrix_cases())
+    return cases
+
+
+# ============================================================================
+# Main
+# ============================================================================
+
 if __name__ == "__main__":
-    cases = get_all_test_cases()
-    matrix_cases = generate_matrix_cases()
+    # Dir.glob cases
+    glob_cases = get_glob_test_cases()
+    glob_matrix_cases = generate_matrix_cases()
 
     # Count by type
-    base_cases = [c for c in matrix_cases if c.base is not None]
-    unsorted_cases = [c for c in matrix_cases if c.sort is False]
-    base_and_unsorted = [c for c in matrix_cases if c.base is not None and c.sort is False]
+    base_cases = [c for c in glob_matrix_cases if c.base is not None]
+    unsorted_cases = [c for c in glob_matrix_cases if c.sort is False]
+    base_and_unsorted = [c for c in glob_matrix_cases if c.base is not None and c.sort is False]
 
-    print(f"Total test cases: {len(cases)}")
+    print("=" * 60)
+    print("Dir.glob Test Cases")
+    print("=" * 60)
+    print(f"Total test cases: {len(glob_cases)}")
     print(f"  Manual cases: {len(MANUAL_CASES)}")
-    print(f"  Matrix cases: {len(matrix_cases)}")
+    print(f"  Matrix cases: {len(glob_matrix_cases)}")
     print(f"    - with base: {len(base_cases)}")
     print(f"    - unsorted: {len(unsorted_cases)}")
     print(f"    - base+unsorted: {len(base_and_unsorted)}")
+
+    # File.fnmatch cases
+    fnmatch_cases = get_fnmatch_test_cases()
+    fnmatch_matrix_cases = generate_fnmatch_matrix_cases()
+
+    print()
+    print("=" * 60)
+    print("File.fnmatch Test Cases")
+    print("=" * 60)
+    print(f"Total test cases: {len(fnmatch_cases)}")
+    print(f"  Manual cases: {len(FNMATCH_MANUAL_CASES)}")
+    print(f"  Matrix cases: {len(fnmatch_matrix_cases)}")
+    print(f"  Pattern-text pairs: {len(FNMATCH_PATTERN_TEXT_PAIRS)}")
+    print(f"  Flag options: {len(FNMATCH_FLAG_OPTIONS)}")

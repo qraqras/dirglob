@@ -5,6 +5,7 @@ Testing/*
 # Test generated files (generated from test_definitions.py)
 tests/fixtures/
 tests/ruby_expected/
+tests/ruby_fnmatch_expected/
 tests/test_glob_generated.c
 tests/test_runner_generated.c
 

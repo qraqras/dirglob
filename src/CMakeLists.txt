@@ -3,7 +3,7 @@ add_library(rbc
   glob.c
   walker.c
   fnmatch.c
-  fnmatch_streaming.c
+  # fnmatch_streaming.c  # TODO: implement
   utils.c
   arena.c
   matcher.c
