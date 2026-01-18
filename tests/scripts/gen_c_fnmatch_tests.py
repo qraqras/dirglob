@@ -77,11 +77,25 @@ void test_{case_id}(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+
+    if (compiled) {{
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    }} else {{
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }}
+
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }}
 '''
 

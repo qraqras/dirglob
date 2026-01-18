@@ -47,11 +47,25 @@ void test_fm001(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -79,11 +93,25 @@ void test_fm002(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -111,11 +139,25 @@ void test_fm003(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -143,11 +185,25 @@ void test_fm010(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -175,11 +231,25 @@ void test_fm011(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -207,11 +277,25 @@ void test_fm012(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -239,11 +323,25 @@ void test_fm020(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -271,11 +369,25 @@ void test_fm021(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -303,11 +415,25 @@ void test_fm022(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -335,11 +461,25 @@ void test_fm030(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -367,11 +507,25 @@ void test_fm031(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -399,11 +553,25 @@ void test_fm032(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -431,11 +599,25 @@ void test_fm040(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -463,11 +645,25 @@ void test_fm041(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -495,11 +691,25 @@ void test_f1000(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -527,11 +737,25 @@ void test_f1001(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -559,11 +783,25 @@ void test_f1002(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -591,11 +829,25 @@ void test_f1003(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -623,11 +875,25 @@ void test_f1004(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -655,11 +921,25 @@ void test_f1005(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -687,11 +967,25 @@ void test_f1006(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -719,11 +1013,25 @@ void test_f1007(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -751,11 +1059,25 @@ void test_f1008(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -783,11 +1105,25 @@ void test_f1009(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -815,11 +1151,25 @@ void test_f1010(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -847,11 +1197,25 @@ void test_f1011(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -879,11 +1243,25 @@ void test_f1012(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -911,11 +1289,25 @@ void test_f1013(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -943,11 +1335,25 @@ void test_f1014(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -975,11 +1381,25 @@ void test_f1015(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -1007,11 +1427,25 @@ void test_f1016(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -1039,11 +1473,25 @@ void test_f1017(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -1071,11 +1519,25 @@ void test_f1018(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -1103,11 +1565,25 @@ void test_f1019(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -1135,11 +1611,25 @@ void test_f1020(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -1167,11 +1657,25 @@ void test_f1021(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -1199,11 +1703,25 @@ void test_f1022(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -1231,11 +1749,25 @@ void test_f1023(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -1263,11 +1795,25 @@ void test_f1024(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -1295,11 +1841,25 @@ void test_f1025(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -1327,11 +1887,25 @@ void test_f1026(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -1359,11 +1933,25 @@ void test_f1027(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -1391,11 +1979,25 @@ void test_f1028(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -1423,11 +2025,25 @@ void test_f1029(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -1455,11 +2071,25 @@ void test_f1030(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -1487,11 +2117,25 @@ void test_f1031(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -1519,11 +2163,25 @@ void test_f1032(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -1551,11 +2209,25 @@ void test_f1033(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -1583,11 +2255,25 @@ void test_f1034(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -1615,11 +2301,25 @@ void test_f1035(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -1647,11 +2347,25 @@ void test_f1036(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -1679,11 +2393,25 @@ void test_f1037(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -1711,11 +2439,25 @@ void test_f1038(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -1743,11 +2485,25 @@ void test_f1039(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -1775,11 +2531,25 @@ void test_f1040(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -1807,11 +2577,25 @@ void test_f1041(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -1839,11 +2623,25 @@ void test_f1042(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -1871,11 +2669,25 @@ void test_f1043(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -1903,11 +2715,25 @@ void test_f1044(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -1935,11 +2761,25 @@ void test_f1045(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -1967,11 +2807,25 @@ void test_f1046(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -1999,11 +2853,25 @@ void test_f1047(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -2031,11 +2899,25 @@ void test_f1048(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -2063,11 +2945,25 @@ void test_f1049(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -2095,11 +2991,25 @@ void test_f1050(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -2127,11 +3037,25 @@ void test_f1051(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -2159,11 +3083,25 @@ void test_f1052(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -2191,11 +3129,25 @@ void test_f1053(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -2223,11 +3175,25 @@ void test_f1054(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -2255,11 +3221,25 @@ void test_f1055(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -2287,11 +3267,25 @@ void test_f1056(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -2319,11 +3313,25 @@ void test_f1057(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -2351,11 +3359,25 @@ void test_f1058(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -2383,11 +3405,25 @@ void test_f1059(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -2415,11 +3451,25 @@ void test_f1060(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -2447,11 +3497,25 @@ void test_f1061(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -2479,11 +3543,25 @@ void test_f1062(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -2511,11 +3589,25 @@ void test_f1063(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -2543,11 +3635,25 @@ void test_f1064(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -2575,11 +3681,25 @@ void test_f1065(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -2607,11 +3727,25 @@ void test_f1066(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -2639,11 +3773,25 @@ void test_f1067(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -2671,11 +3819,25 @@ void test_f1068(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -2703,11 +3865,25 @@ void test_f1069(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -2735,11 +3911,25 @@ void test_f1070(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -2767,11 +3957,25 @@ void test_f1071(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -2799,11 +4003,25 @@ void test_f1072(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -2831,11 +4049,25 @@ void test_f1073(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -2863,11 +4095,25 @@ void test_f1074(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -2895,11 +4141,25 @@ void test_f1075(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -2927,11 +4187,25 @@ void test_f1076(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -2959,11 +4233,25 @@ void test_f1077(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -2991,11 +4279,25 @@ void test_f1078(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -3023,11 +4325,25 @@ void test_f1079(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -3055,11 +4371,25 @@ void test_f1080(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -3087,11 +4417,25 @@ void test_f1081(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -3119,11 +4463,25 @@ void test_f1082(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -3151,11 +4509,25 @@ void test_f1083(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -3183,11 +4555,25 @@ void test_f1084(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -3215,11 +4601,25 @@ void test_f1085(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -3247,11 +4647,25 @@ void test_f1086(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -3279,11 +4693,25 @@ void test_f1087(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -3311,11 +4739,25 @@ void test_f1088(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -3343,11 +4785,25 @@ void test_f1089(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -3375,11 +4831,25 @@ void test_f1090(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -3407,11 +4877,25 @@ void test_f1091(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -3439,11 +4923,25 @@ void test_f1092(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -3471,11 +4969,25 @@ void test_f1093(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -3503,11 +5015,25 @@ void test_f1094(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -3535,11 +5061,25 @@ void test_f1095(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -3567,11 +5107,25 @@ void test_f1096(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -3599,11 +5153,25 @@ void test_f1097(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -3631,11 +5199,25 @@ void test_f1098(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -3663,11 +5245,25 @@ void test_f1099(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -3695,11 +5291,25 @@ void test_f1100(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -3727,11 +5337,25 @@ void test_f1101(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -3759,11 +5383,25 @@ void test_f1102(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -3791,11 +5429,25 @@ void test_f1103(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -3823,11 +5475,25 @@ void test_f1104(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -3855,11 +5521,25 @@ void test_f1105(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -3887,11 +5567,25 @@ void test_f1106(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -3919,11 +5613,25 @@ void test_f1107(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -3951,11 +5659,25 @@ void test_f1108(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -3983,11 +5705,25 @@ void test_f1109(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -4015,11 +5751,25 @@ void test_f1110(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -4047,11 +5797,25 @@ void test_f1111(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -4079,11 +5843,25 @@ void test_f1112(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -4111,11 +5889,25 @@ void test_f1113(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -4143,11 +5935,25 @@ void test_f1114(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -4175,11 +5981,25 @@ void test_f1115(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -4207,11 +6027,25 @@ void test_f1116(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -4239,11 +6073,25 @@ void test_f1117(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -4271,11 +6119,25 @@ void test_f1118(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -4303,11 +6165,25 @@ void test_f1119(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -4335,11 +6211,25 @@ void test_f1120(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -4367,11 +6257,25 @@ void test_f1121(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -4399,11 +6303,25 @@ void test_f1122(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -4431,11 +6349,25 @@ void test_f1123(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -4463,11 +6395,25 @@ void test_f1124(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -4495,11 +6441,25 @@ void test_f1125(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -4527,11 +6487,25 @@ void test_f1126(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -4559,11 +6533,25 @@ void test_f1127(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -4591,11 +6579,25 @@ void test_f1128(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -4623,11 +6625,25 @@ void test_f1129(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -4655,11 +6671,25 @@ void test_f1130(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -4687,11 +6717,25 @@ void test_f1131(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -4719,11 +6763,25 @@ void test_f1132(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -4751,11 +6809,25 @@ void test_f1133(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -4783,11 +6855,25 @@ void test_f1134(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -4815,11 +6901,25 @@ void test_f1135(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -4847,11 +6947,25 @@ void test_f1136(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -4879,11 +6993,25 @@ void test_f1137(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -4911,11 +7039,25 @@ void test_f1138(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -4943,11 +7085,25 @@ void test_f1139(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -4975,11 +7131,25 @@ void test_f1140(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -5007,11 +7177,25 @@ void test_f1141(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -5039,11 +7223,25 @@ void test_f1142(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -5071,11 +7269,25 @@ void test_f1143(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -5103,11 +7315,25 @@ void test_f1144(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -5135,11 +7361,25 @@ void test_f1145(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -5167,11 +7407,25 @@ void test_f1146(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -5199,11 +7453,25 @@ void test_f1147(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -5231,11 +7499,25 @@ void test_f1148(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -5263,11 +7545,25 @@ void test_f1149(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -5295,11 +7591,25 @@ void test_f1150(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -5327,11 +7637,25 @@ void test_f1151(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -5359,11 +7683,25 @@ void test_f1152(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -5391,11 +7729,25 @@ void test_f1153(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -5423,11 +7775,25 @@ void test_f1154(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -5455,11 +7821,25 @@ void test_f1155(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -5487,11 +7867,25 @@ void test_f1156(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -5519,11 +7913,25 @@ void test_f1157(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -5551,11 +7959,25 @@ void test_f1158(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -5583,11 +8005,25 @@ void test_f1159(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -5615,11 +8051,25 @@ void test_f1160(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -5647,11 +8097,25 @@ void test_f1161(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -5679,11 +8143,25 @@ void test_f1162(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -5711,11 +8189,25 @@ void test_f1163(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -5743,11 +8235,25 @@ void test_f1164(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -5775,11 +8281,25 @@ void test_f1165(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -5807,11 +8327,25 @@ void test_f1166(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -5839,11 +8373,25 @@ void test_f1167(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -5871,11 +8419,25 @@ void test_f1168(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -5903,11 +8465,25 @@ void test_f1169(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -5935,11 +8511,25 @@ void test_f1170(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -5967,11 +8557,25 @@ void test_f1171(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -5999,11 +8603,25 @@ void test_f1172(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -6031,11 +8649,25 @@ void test_f1173(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -6063,11 +8695,25 @@ void test_f1174(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -6095,11 +8741,25 @@ void test_f1175(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -6127,11 +8787,25 @@ void test_f1176(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -6159,11 +8833,25 @@ void test_f1177(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -6191,11 +8879,25 @@ void test_f1178(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -6223,11 +8925,25 @@ void test_f1179(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -6255,11 +8971,25 @@ void test_f1180(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -6287,11 +9017,25 @@ void test_f1181(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -6319,11 +9063,25 @@ void test_f1182(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -6351,11 +9109,25 @@ void test_f1183(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -6383,11 +9155,25 @@ void test_f1184(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -6415,11 +9201,25 @@ void test_f1185(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -6447,11 +9247,25 @@ void test_f1186(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -6479,11 +9293,25 @@ void test_f1187(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -6511,11 +9339,25 @@ void test_f1188(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -6543,11 +9385,25 @@ void test_f1189(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -6575,11 +9431,25 @@ void test_f1190(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -6607,11 +9477,25 @@ void test_f1191(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -6639,11 +9523,25 @@ void test_f1192(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -6671,11 +9569,25 @@ void test_f1193(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -6703,11 +9615,25 @@ void test_f1194(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -6735,11 +9661,25 @@ void test_f1195(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -6767,11 +9707,25 @@ void test_f1196(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -6799,11 +9753,25 @@ void test_f1197(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -6831,11 +9799,25 @@ void test_f1198(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -6863,11 +9845,25 @@ void test_f1199(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -6895,11 +9891,25 @@ void test_f1200(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -6927,11 +9937,25 @@ void test_f1201(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -6959,11 +9983,25 @@ void test_f1202(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -6991,11 +10029,25 @@ void test_f1203(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -7023,11 +10075,25 @@ void test_f1204(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -7055,11 +10121,25 @@ void test_f1205(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -7087,11 +10167,25 @@ void test_f1206(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -7119,11 +10213,25 @@ void test_f1207(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -7151,11 +10259,25 @@ void test_f1208(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -7183,11 +10305,25 @@ void test_f1209(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -7215,11 +10351,25 @@ void test_f1210(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -7247,11 +10397,25 @@ void test_f1211(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -7279,11 +10443,25 @@ void test_f1212(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -7311,11 +10489,25 @@ void test_f1213(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -7343,11 +10535,25 @@ void test_f1214(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -7375,11 +10581,25 @@ void test_f1215(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -7407,11 +10627,25 @@ void test_f1216(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -7439,11 +10673,25 @@ void test_f1217(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -7471,11 +10719,25 @@ void test_f1218(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -7503,11 +10765,25 @@ void test_f1219(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -7535,11 +10811,25 @@ void test_f1220(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -7567,11 +10857,25 @@ void test_f1221(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -7599,11 +10903,25 @@ void test_f1222(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -7631,11 +10949,25 @@ void test_f1223(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -7663,11 +10995,25 @@ void test_f1224(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -7695,11 +11041,25 @@ void test_f1225(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -7727,11 +11087,25 @@ void test_f1226(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -7759,11 +11133,25 @@ void test_f1227(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -7791,11 +11179,25 @@ void test_f1228(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -7823,11 +11225,25 @@ void test_f1229(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -7855,11 +11271,25 @@ void test_f1230(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -7887,11 +11317,25 @@ void test_f1231(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -7919,11 +11363,25 @@ void test_f1232(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -7951,11 +11409,25 @@ void test_f1233(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -7983,11 +11455,25 @@ void test_f1234(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -8015,11 +11501,25 @@ void test_f1235(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -8047,11 +11547,25 @@ void test_f1236(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -8079,11 +11593,25 @@ void test_f1237(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -8111,11 +11639,25 @@ void test_f1238(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -8143,11 +11685,25 @@ void test_f1239(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -8175,11 +11731,25 @@ void test_f1240(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -8207,11 +11777,25 @@ void test_f1241(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -8239,11 +11823,25 @@ void test_f1242(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -8271,11 +11869,25 @@ void test_f1243(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -8303,11 +11915,25 @@ void test_f1244(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -8335,11 +11961,25 @@ void test_f1245(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -8367,11 +12007,25 @@ void test_f1246(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -8399,11 +12053,25 @@ void test_f1247(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -8431,11 +12099,25 @@ void test_f1248(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -8463,11 +12145,25 @@ void test_f1249(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -8495,11 +12191,25 @@ void test_f1250(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -8527,11 +12237,25 @@ void test_f1251(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -8559,11 +12283,25 @@ void test_f1252(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -8591,11 +12329,25 @@ void test_f1253(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -8623,11 +12375,25 @@ void test_f1254(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -8655,11 +12421,25 @@ void test_f1255(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -8687,11 +12467,25 @@ void test_f1256(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -8719,11 +12513,25 @@ void test_f1257(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -8751,11 +12559,25 @@ void test_f1258(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -8783,11 +12605,25 @@ void test_f1259(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -8815,11 +12651,25 @@ void test_f1260(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -8847,11 +12697,25 @@ void test_f1261(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -8879,11 +12743,25 @@ void test_f1262(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -8911,11 +12789,25 @@ void test_f1263(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -8943,11 +12835,25 @@ void test_f1264(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -8975,11 +12881,25 @@ void test_f1265(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -9007,11 +12927,25 @@ void test_f1266(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -9039,11 +12973,25 @@ void test_f1267(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -9071,11 +13019,25 @@ void test_f1268(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -9103,11 +13065,25 @@ void test_f1269(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -9135,11 +13111,25 @@ void test_f1270(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -9167,11 +13157,25 @@ void test_f1271(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -9199,11 +13203,25 @@ void test_f1272(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -9231,11 +13249,25 @@ void test_f1273(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -9263,11 +13295,25 @@ void test_f1274(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -9295,11 +13341,25 @@ void test_f1275(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -9327,11 +13387,25 @@ void test_f1276(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -9359,11 +13433,25 @@ void test_f1277(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -9391,11 +13479,25 @@ void test_f1278(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -9423,11 +13525,25 @@ void test_f1279(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -9455,11 +13571,25 @@ void test_f1280(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -9487,11 +13617,25 @@ void test_f1281(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -9519,11 +13663,25 @@ void test_f1282(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -9551,11 +13709,25 @@ void test_f1283(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -9583,11 +13755,25 @@ void test_f1284(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -9615,11 +13801,25 @@ void test_f1285(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -9647,11 +13847,25 @@ void test_f1286(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -9679,11 +13893,25 @@ void test_f1287(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -9711,11 +13939,25 @@ void test_f1288(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -9743,11 +13985,25 @@ void test_f1289(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -9775,11 +14031,25 @@ void test_f1290(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -9807,11 +14077,25 @@ void test_f1291(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -9839,11 +14123,25 @@ void test_f1292(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -9871,11 +14169,25 @@ void test_f1293(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -9903,11 +14215,25 @@ void test_f1294(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -9935,11 +14261,25 @@ void test_f1295(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -9967,11 +14307,25 @@ void test_f1296(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -9999,11 +14353,25 @@ void test_f1297(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -10031,11 +14399,25 @@ void test_f1298(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -10063,11 +14445,25 @@ void test_f1299(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -10095,11 +14491,25 @@ void test_f1300(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -10127,11 +14537,25 @@ void test_f1301(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -10159,11 +14583,25 @@ void test_f1302(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -10191,11 +14629,25 @@ void test_f1303(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -10223,11 +14675,25 @@ void test_f1304(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -10255,11 +14721,25 @@ void test_f1305(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -10287,11 +14767,25 @@ void test_f1306(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -10319,11 +14813,25 @@ void test_f1307(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -10351,11 +14859,25 @@ void test_f1308(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -10383,11 +14905,25 @@ void test_f1309(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -10415,11 +14951,25 @@ void test_f1310(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -10447,11 +14997,25 @@ void test_f1311(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -10479,11 +15043,25 @@ void test_f1312(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -10511,11 +15089,25 @@ void test_f1313(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -10543,11 +15135,25 @@ void test_f1314(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -10575,11 +15181,25 @@ void test_f1315(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -10607,11 +15227,25 @@ void test_f1316(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -10639,11 +15273,25 @@ void test_f1317(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -10671,11 +15319,25 @@ void test_f1318(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -10703,11 +15365,25 @@ void test_f1319(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -10735,11 +15411,25 @@ void test_f1320(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -10767,11 +15457,25 @@ void test_f1321(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -10799,11 +15503,25 @@ void test_f1322(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -10831,11 +15549,25 @@ void test_f1323(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -10863,11 +15595,25 @@ void test_f1324(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -10895,11 +15641,25 @@ void test_f1325(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -10927,11 +15687,25 @@ void test_f1326(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -10959,11 +15733,25 @@ void test_f1327(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -10991,11 +15779,25 @@ void test_f1328(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -11023,11 +15825,25 @@ void test_f1329(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -11055,11 +15871,25 @@ void test_f1330(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -11087,11 +15917,25 @@ void test_f1331(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -11119,11 +15963,25 @@ void test_f1332(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -11151,11 +16009,25 @@ void test_f1333(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -11183,11 +16055,25 @@ void test_f1334(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -11215,11 +16101,25 @@ void test_f1335(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -11247,11 +16147,25 @@ void test_f1336(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -11279,11 +16193,25 @@ void test_f1337(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -11311,11 +16239,25 @@ void test_f1338(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -11343,11 +16285,25 @@ void test_f1339(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -11375,11 +16331,25 @@ void test_f1340(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -11407,11 +16377,25 @@ void test_f1341(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -11439,11 +16423,25 @@ void test_f1342(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -11471,11 +16469,25 @@ void test_f1343(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -11503,11 +16515,25 @@ void test_f1344(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -11535,11 +16561,25 @@ void test_f1345(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -11567,11 +16607,25 @@ void test_f1346(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -11599,11 +16653,25 @@ void test_f1347(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -11631,11 +16699,25 @@ void test_f1348(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -11663,11 +16745,25 @@ void test_f1349(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -11695,11 +16791,25 @@ void test_f1350(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -11727,11 +16837,25 @@ void test_f1351(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -11759,11 +16883,25 @@ void test_f1352(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -11791,11 +16929,25 @@ void test_f1353(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -11823,11 +16975,25 @@ void test_f1354(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -11855,11 +17021,25 @@ void test_f1355(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -11887,11 +17067,25 @@ void test_f1356(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -11919,11 +17113,25 @@ void test_f1357(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -11951,11 +17159,25 @@ void test_f1358(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -11983,11 +17205,25 @@ void test_f1359(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -12015,11 +17251,25 @@ void test_f1360(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -12047,11 +17297,25 @@ void test_f1361(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -12079,11 +17343,25 @@ void test_f1362(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -12111,11 +17389,25 @@ void test_f1363(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -12143,11 +17435,25 @@ void test_f1364(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -12175,11 +17481,25 @@ void test_f1365(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -12207,11 +17527,25 @@ void test_f1366(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -12239,11 +17573,25 @@ void test_f1367(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -12271,11 +17619,25 @@ void test_f1368(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -12303,11 +17665,25 @@ void test_f1369(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -12335,11 +17711,25 @@ void test_f1370(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -12367,11 +17757,25 @@ void test_f1371(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -12399,11 +17803,25 @@ void test_f1372(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -12431,11 +17849,25 @@ void test_f1373(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -12463,11 +17895,25 @@ void test_f1374(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -12495,11 +17941,25 @@ void test_f1375(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -12527,11 +17987,25 @@ void test_f1376(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -12559,11 +18033,25 @@ void test_f1377(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -12591,11 +18079,25 @@ void test_f1378(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -12623,11 +18125,25 @@ void test_f1379(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -12655,11 +18171,25 @@ void test_f1380(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -12687,11 +18217,25 @@ void test_f1381(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -12719,11 +18263,25 @@ void test_f1382(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -12751,11 +18309,25 @@ void test_f1383(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -12783,11 +18355,25 @@ void test_f1384(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -12815,11 +18401,25 @@ void test_f1385(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -12847,11 +18447,25 @@ void test_f1386(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -12879,11 +18493,25 @@ void test_f1387(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -12911,11 +18539,25 @@ void test_f1388(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -12943,11 +18585,25 @@ void test_f1389(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -12975,11 +18631,25 @@ void test_f1390(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -13007,11 +18677,25 @@ void test_f1391(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -13039,11 +18723,25 @@ void test_f1392(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -13071,11 +18769,25 @@ void test_f1393(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -13103,11 +18815,25 @@ void test_f1394(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -13135,11 +18861,25 @@ void test_f1395(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -13167,11 +18907,25 @@ void test_f1396(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -13199,11 +18953,25 @@ void test_f1397(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -13231,11 +18999,25 @@ void test_f1398(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -13263,11 +19045,25 @@ void test_f1399(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -13295,11 +19091,25 @@ void test_f1400(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -13327,11 +19137,25 @@ void test_f1401(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -13359,11 +19183,25 @@ void test_f1402(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
@@ -13391,11 +19229,25 @@ void test_f1403(void)
 
     bool expected = (strcmp(expected_str, "true") == 0);
 
-    /* Execute rbc_fnmatch */
-    bool result = rbc_fnmatch(pattern, text, flags);
+    /* Test rbc_fnmatch */
+    bool result_fnmatch = rbc_fnmatch(pattern, text, flags);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_fnmatch, "rbc_fnmatch: Result mismatch with Ruby File.fnmatch");
 
-    /* Compare with Ruby result */
-    TEST_ASSERT_EQUAL_MESSAGE(expected, result, "Result mismatch with Ruby File.fnmatch");
+    /* Test rbc_xfnmatch (precompiled) */
+    rbc_fnmatch_pattern_t *compiled = rbc_fnmatch_compile(pattern, flags);
+    bool result_xfnmatch;
+    
+    if (compiled) {
+        /* Fast path available */
+        result_xfnmatch = rbc_xfnmatch(compiled, text, flags);
+        rbc_fnmatch_pattern_free(compiled);
+    } else {
+        /* No fast path, use rbc_fnmatch */
+        result_xfnmatch = rbc_fnmatch(pattern, text, flags);
+    }
+    
+    TEST_ASSERT_EQUAL_MESSAGE(expected, result_xfnmatch, "rbc_xfnmatch: Result mismatch with Ruby File.fnmatch");
+    TEST_ASSERT_EQUAL_MESSAGE(result_fnmatch, result_xfnmatch, "rbc_fnmatch and rbc_xfnmatch must return same result");
 }
 
 
