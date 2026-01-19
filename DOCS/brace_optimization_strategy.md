@@ -77,10 +77,10 @@ match("test_c.txt", "file_x.c")  // 再度 prefix "test_" を評価 ← 無駄
   alternatives1 = ["a", "b", "c"]
   middle = "."
   alternatives2 = ["h", "c"]
-  
+
 デカルト積:
   {a,b,c} × {h,c} = 6パターン
-  
+
 最適化:
   1. "src/" までディレクトリ移動（1回）
   2. "test_" プレフィックスでフィルタ（1回）
@@ -102,7 +102,7 @@ for pattern in [test_a.txt, test_b.txt, test_c.txt]:
 alternatives = {a, b, c}
 scan_directory(".")  // 1回だけ
 for file in directory:
-    if prefix_match(file, "test_") and 
+    if prefix_match(file, "test_") and
        suffix_match(file, ".txt"):
         middle = extract_middle(file)
         if middle in alternatives:  // O(1)
@@ -130,7 +130,7 @@ for file in directory:
   Stage 1: {a,b} を展開 → ディレクトリ "a/", "b/" へ移動
     scan("a/")  // x.c, y.c を探す
     scan("b/")  // x.c, y.c を探す
-  
+
   Stage 2: 各ディレクトリで {x,y}.c をマッチ
 ```
 
@@ -146,23 +146,23 @@ typedef struct rbc_brace_info_s {
     // 分解されたパターン
     char *common_prefix;      // 共通プレフィックス
     char *common_suffix;      // 共通サフィックス
-    
+
     // 代替文字列
     char **alternatives;      // 代替リスト
     size_t alt_count;         // 代替の数
-    
+
     // ハッシュセット（高速ルックアップ用）
     rbc_string_set_t *alt_set;
-    
+
     // 最適化ヒント
     bool is_simple;           // ワイルドカードなし
     bool has_wildcard_prefix; // プレフィックスにワイルドカード
     bool has_wildcard_suffix; // サフィックスにワイルドカード
     bool has_wildcard_alt;    // 代替にワイルドカード
-    
+
     // ネストした展開
     struct rbc_brace_info_s *nested;
-    
+
 } rbc_brace_info_t;
 
 /// @brief 文字列集合（O(1)ルックアップ）
@@ -180,7 +180,7 @@ typedef struct {
 ```c
 /**
  * ブレース展開パターンを解析して最適化情報を抽出
- * 
+ *
  * 例:
  *   入力: "src/test_{a,b,c}.{h,c}"
  *   出力:
@@ -190,53 +190,53 @@ typedef struct {
  *     alternatives[1] = {h,c}
  */
 static rbc_brace_info_t* rbc_brace_analyze(
-    const char *pattern, 
+    const char *pattern,
     rbc_arena_t *arena)
 {
     rbc_brace_info_t *info = rbc_arena_alloc(arena, sizeof(*info));
     if (!info) return NULL;
-    
+
     // 1. 最初のブレースを検索
     const char *brace_open = strchr(pattern, '{');
     if (!brace_open) {
         // ブレースなし → 最適化不要
         return NULL;
     }
-    
+
     // 2. プレフィックス抽出
     size_t prefix_len = brace_open - pattern;
     info->common_prefix = rbc_arena_strndup(arena, pattern, prefix_len);
-    
+
     // 3. 対応する閉じブレースを探す（ネスト考慮）
     const char *brace_close = find_matching_brace(brace_open);
     if (!brace_close) {
         return NULL;  // 不正なパターン
     }
-    
+
     // 4. 代替文字列の抽出
     const char *alt_start = brace_open + 1;
     const char *alt_end = brace_close;
     info->alternatives = parse_comma_separated(
         alt_start, alt_end, arena, &info->alt_count);
-    
+
     // 5. サフィックス抽出
     const char *suffix_start = brace_close + 1;
     info->common_suffix = rbc_arena_strdup(arena, suffix_start);
-    
+
     // 6. ネストチェック
     if (strchr(suffix_start, '{')) {
         info->nested = rbc_brace_analyze(suffix_start, arena);
     } else {
         info->nested = NULL;
     }
-    
+
     // 7. 最適化ヒントの生成
     analyze_optimization_hints(info);
-    
+
     // 8. ハッシュセットの構築
     info->alt_set = build_string_set(
         info->alternatives, info->alt_count, arena);
-    
+
     return info;
 }
 ```
@@ -285,47 +285,47 @@ static void walk_simple_brace(
     // ディレクトリパスの構築
     char dir_path[PATH_MAX];
     extract_directory_from_prefix(info->common_prefix, dir_path);
-    
+
     char full_dir[PATH_MAX];
     join_path(full_dir, base_path, dir_path);
-    
+
     // ファイル名プレフィックスの抽出
     const char *filename_prefix = extract_filename_from_prefix(
         info->common_prefix);
     size_t prefix_len = strlen(filename_prefix);
     size_t suffix_len = strlen(info->common_suffix);
-    
+
     // ディレクトリを1回だけ開く
     DIR *dir = opendir(full_dir);
     if (!dir) return;
-    
+
     struct dirent *entry;
     while ((entry = readdir(dir)) != NULL) {
         const char *name = entry->d_name;
         size_t name_len = strlen(name);
-        
+
         // 早期リジェクト: 長さチェック
         if (name_len < prefix_len + suffix_len) {
             continue;
         }
-        
+
         // プレフィックスマッチ（memcmp - 高速）
         if (memcmp(name, filename_prefix, prefix_len) != 0) {
             continue;
         }
-        
+
         // サフィックスマッチ（memcmp - 高速）
         const char *name_suffix = name + name_len - suffix_len;
         if (memcmp(name_suffix, info->common_suffix, suffix_len) != 0) {
             continue;
         }
-        
+
         // 中間部分の抽出
         size_t middle_len = name_len - prefix_len - suffix_len;
         char middle[middle_len + 1];
         memcpy(middle, name + prefix_len, middle_len);
         middle[middle_len] = '\0';
-        
+
         // ハッシュセットでO(1)チェック
         if (string_set_contains(info->alt_set, middle)) {
             // マッチ！
@@ -334,7 +334,7 @@ static void walk_simple_brace(
             add_result(ctx->results, result_path);
         }
     }
-    
+
     closedir(dir);
 }
 ```
@@ -356,33 +356,33 @@ static uint32_t string_hash(const char *str) {
 
 /// @brief 文字列セットの構築
 static rbc_string_set_t* build_string_set(
-    char **strings, 
-    size_t count, 
+    char **strings,
+    size_t count,
     rbc_arena_t *arena)
 {
     rbc_string_set_t *set = rbc_arena_alloc(arena, sizeof(*set));
     set->strings = strings;
     set->count = count;
     set->hashes = rbc_arena_alloc(arena, sizeof(uint32_t) * count);
-    
+
     // ハッシュ値を事前計算
     for (size_t i = 0; i < count; i++) {
         set->hashes[i] = string_hash(strings[i]);
     }
-    
+
     return set;
 }
 
 /// @brief 文字列セットの検索（O(1)平均）
 static bool string_set_contains(
-    const rbc_string_set_t *set, 
+    const rbc_string_set_t *set,
     const char *str)
 {
     uint32_t hash = string_hash(str);
-    
+
     // 線形探索（小さい集合では十分高速）
     for (size_t i = 0; i < set->count; i++) {
-        if (set->hashes[i] == hash && 
+        if (set->hashes[i] == hash &&
             strcmp(set->strings[i], str) == 0) {
             return true;
         }
@@ -450,14 +450,14 @@ bool rbc_glob_with_brace_optimization(
     rbc_ctx_t *ctx = create_context();
     rbc_results_t results;
     init_results(&results, ctx);
-    
+
     for (size_t i = 0; i < npatterns; i++) {
         const char *pattern = patterns[i];
-        
+
         // ブレース展開を解析
         rbc_brace_info_t *brace_info = rbc_brace_analyze(
             pattern, &ctx->arena);
-        
+
         if (brace_info && should_optimize(brace_info)) {
             // 最適化パスを使用
             rbc_walk_brace_optimized(brace_info, base, &ctx);
@@ -466,7 +466,7 @@ bool rbc_glob_with_brace_optimization(
             rbc_walk_traditional(pattern, base, &ctx);
         }
     }
-    
+
     // 結果のパッケージング
     package_results(&results, out, count, lengths);
     return true;
@@ -476,15 +476,15 @@ bool rbc_glob_with_brace_optimization(
 static bool should_optimize(const rbc_brace_info_t *info) {
     // 代替数が少ない場合は最適化の効果が薄い
     if (info->alt_count < 3) return false;
-    
+
     // 単純なパターンは最適化効果が高い
     if (info->is_simple) return true;
-    
+
     // ワイルドカードが複雑な場合はフォールバック
     if (info->has_wildcard_prefix && info->has_wildcard_alt) {
         return false;
     }
-    
+
     return true;
 }
 ```

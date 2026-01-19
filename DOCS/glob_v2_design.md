@@ -1,7 +1,7 @@
 # glob v2 設計ドキュメント
 
-**バージョン**: 2.0 (設計案)  
-**作成日**: 2026-01-19  
+**バージョン**: 2.0 (設計案)
+**作成日**: 2026-01-19
 **ステータス**: Design Proposal
 
 ---
@@ -236,7 +236,7 @@ typedef enum {
 ```c
 typedef struct {
     glob_hint_type_t type;
-    
+
     // パターンの特性（ビットフラグ）
     struct {
         bool has_brace : 1;
@@ -245,18 +245,18 @@ typedef struct {
         bool has_bracket : 1;
         bool has_escape : 1;
     } flags;
-    
+
     // 基本情報
     int segment_count;        // セグメント数
     int brace_depth;          // ブレースのネスト深さ
-    
+
     // ブレース展開のヒント（BRACE_SINGLE_DIR用）
     struct {
         const char *prefix;      // 共通プレフィックス
         size_t prefix_len;
-        const char *suffix;      // 共通サフィックス  
+        const char *suffix;      // 共通サフィックス
         size_t suffix_len;
-        
+
         // 選択肢（静的解析済み）
         // 注：ポインタのみ保持、元の文字列を参照
         struct {
@@ -264,25 +264,25 @@ typedef struct {
             size_t len;          // 選択肢の長さ
         } choices[32];           // 最大32個（通常十分）
         int choice_count;
-        
+
         // 最適化ヒント
         bool can_use_hashset;    // ハッシュセット最適化可能
         bool all_single_char;    // 全て1文字の選択肢
     } brace_info;
-    
+
     // セグメント情報（プリ解析済み）
     struct {
         const char *segments[16]; // セグメントポインタ（最大16階層）
         size_t lengths[16];       // 各セグメントの長さ
         int count;
     } segment_info;
-    
+
     // コスト推定
     struct {
         size_t estimated_dirs;    // 推定ディレクトリスキャン回数
         size_t estimated_io_cost; // 推定I/Oコスト
     } cost;
-    
+
 } rbc_glob_hints_t;
 ```
 
@@ -302,13 +302,13 @@ rbc_glob_hints_t hints = {
     .flags = { .has_brace = true, .has_wildcard = true },
     .segment_count = 3,
     .brace_depth = 1,
-    
+
     .brace_info = {
         .prefix = "src/",
         .prefix_len = 4,
         .suffix = "/*.txt",
         .suffix_len = 6,
-        
+
         .choices = {
             { .start = "a", .len = 1 },
             { .start = "b", .len = 1 },
@@ -318,7 +318,7 @@ rbc_glob_hints_t hints = {
         .can_use_hashset = true,
         .all_single_char = true,
     },
-    
+
     .cost = {
         .estimated_dirs = 1,  // 最適化により1回のスキャン
         .estimated_io_cost = 1,
@@ -353,44 +353,44 @@ typedef struct glob_node_s glob_node_t;
 
 struct glob_node_s {
     node_type_t type;
-    
+
     union {
         // NODE_DIR: リテラルディレクトリ
         struct {
             char *path;                 // ディレクトリパス
         } dir;
-        
+
         // NODE_MATCH: パターンマッチング
         struct {
             rbc_fnmatch_pattern_t *compiled;  // fnmatchコンパイル済み
             char *original;                   // 元のパターン
         } match;
-        
+
         // NODE_CHOICE: ブレース展開
         struct {
             glob_node_t **alternatives;  // 代替ノード配列
             size_t count;                // 代替の数
-            
+
             // 最適化情報
             bool has_common_prefix;
             bool has_common_suffix;
             char *common_prefix;         // 共通プレフィックス
             char *common_suffix;         // 共通サフィックス
         } choice;
-        
+
         // NODE_RECURSIVE: ** パターン
         struct {
             glob_node_t *continuation;   // ** の後に続くパターン
             int max_depth;               // 最大探索深度（オプション）
         } recursive;
-        
+
         // NODE_SEQUENCE: 連続ノード
         struct {
             glob_node_t **children;      // 子ノード配列
             size_t count;                // 子ノードの数
         } sequence;
     } data;
-    
+
     // メタデータ
     bool can_optimize;              // 最適化可能フラグ
     size_t estimated_results;       // 推定結果数
@@ -436,14 +436,14 @@ typedef struct execution_plan_s execution_plan_t;
 struct execution_plan_s {
     plan_type_t type;
     char *directory;              // スキャン対象ディレクトリ
-    
+
     // フィルタ条件
     filter_set_t *filters;
-    
+
     // 子プラン（ネストした構造用）
     execution_plan_t **subplans;
     size_t subplan_count;
-    
+
     // コスト推定
     struct {
         size_t estimated_io_ops;      // 推定I/O回数
@@ -451,7 +451,7 @@ struct execution_plan_s {
         size_t estimated_results;     // 推定結果数
         double estimated_time_ms;     // 推定実行時間
     } cost;
-    
+
     // デバッグ情報
     char *description;
 };
@@ -476,11 +476,11 @@ typedef enum {
 ```c
 typedef struct {
     filter_type_t type;
-    
+
     union {
         // FILTER_FNMATCH
         rbc_fnmatch_pattern_t *fnmatch;
-        
+
         // FILTER_CHOICE_SET
         struct {
             char *prefix;
@@ -488,7 +488,7 @@ typedef struct {
             rbc_string_set_t *choices;  // ハッシュセット
             uint64_t bloom;             // ブルームフィルタ
         } choice_set;
-        
+
         // FILTER_PREFIX_SUFFIX
         struct {
             char *prefix;
@@ -496,25 +496,25 @@ typedef struct {
             char *suffix;
             size_t suffix_len;
         } prefix_suffix;
-        
+
         // FILTER_LITERAL_SET
         struct {
             rbc_string_set_t *literals;
         } literal_set;
-        
+
         // FILTER_BLOOM
         struct {
             uint64_t bloom_filter;
         } bloom;
     } data;
-    
+
     // 統計情報
     struct {
         uint64_t invocation_count;
         uint64_t match_count;
         uint64_t reject_count;
     } stats;
-    
+
 } filter_t;
 ```
 
@@ -524,13 +524,13 @@ typedef struct {
 typedef struct {
     filter_t **filters;
     size_t count;
-    
+
     // 組み合わせモード
     enum {
         FILTER_MODE_OR,   // いずれか1つがマッチすればOK
         FILTER_MODE_AND,  // すべてマッチする必要がある
     } mode;
-    
+
 } filter_set_t;
 ```
 
@@ -552,15 +552,15 @@ typedef struct {
 ```c
 rbc_glob_hints_t rbc_glob_hints_generate(const char *pattern) {
     rbc_glob_hints_t hints = {0};
-    
+
     // Phase 1: 1パススキャンでパターンを解析
     const char *p = pattern;
     const char *brace_start = NULL;
     const char *segment_starts[16] = {0};
     int segment_idx = 0;
-    
+
     segment_starts[0] = pattern;  // 最初のセグメント
-    
+
     while (*p) {
         switch (*p) {
             case '{':
@@ -568,11 +568,11 @@ rbc_glob_hints_t rbc_glob_hints_generate(const char *pattern) {
                 if (!brace_start) brace_start = p;
                 hints.brace_depth++;
                 break;
-            
+
             case '}':
                 hints.brace_depth--;
                 break;
-            
+
             case '*':
                 hints.flags.has_wildcard = true;
                 if (p[1] == '*') {
@@ -580,20 +580,20 @@ rbc_glob_hints_t rbc_glob_hints_generate(const char *pattern) {
                     p++;  // ** をスキップ
                 }
                 break;
-            
+
             case '?':
                 hints.flags.has_wildcard = true;
                 break;
-            
+
             case '[':
                 hints.flags.has_bracket = true;
                 break;
-            
+
             case '/':
                 hints.segment_count++;
                 segment_starts[++segment_idx] = p + 1;
                 break;
-            
+
             case '\\':
                 hints.flags.has_escape = true;
                 p++;  // エスケープ文字をスキップ
@@ -602,58 +602,58 @@ rbc_glob_hints_t rbc_glob_hints_generate(const char *pattern) {
         p++;
     }
     hints.segment_count++;  // 最後のセグメント
-    
+
     // Phase 2: ヒントタイプを決定
     if (!hints.flags.has_wildcard && !hints.flags.has_brace) {
         hints.type = GLOB_HINT_LITERAL;
         return hints;  // 早期リターン
     }
-    
+
     if (hints.segment_count == 1 && !hints.flags.has_brace) {
         hints.type = GLOB_HINT_SIMPLE_PATTERN;
         return hints;
     }
-    
+
     if (!hints.flags.has_brace && !hints.flags.has_doublestar) {
         hints.type = GLOB_HINT_MULTI_SEGMENT;
         return hints;
     }
-    
+
     if (hints.flags.has_brace && hints.brace_depth == 1) {
         // Phase 3: ブレース展開情報を抽出（単純なケース）
         extract_brace_info(pattern, &hints.brace_info);
         hints.type = GLOB_HINT_BRACE_SINGLE_DIR;
         return hints;
     }
-    
+
     if (hints.flags.has_doublestar) {
         hints.type = GLOB_HINT_RECURSIVE;
         return hints;
     }
-    
+
     // 複雑なパターン（AST構築が必要）
     hints.type = GLOB_HINT_COMPLEX;
     return hints;
 }
 
 // ブレース展開情報の抽出（軽量版）
-static void extract_brace_info(const char *pattern, 
+static void extract_brace_info(const char *pattern,
                                 struct brace_info *info) {
     // プレフィックス: '{' の前
     const char *brace_open = strchr(pattern, '{');
     info->prefix = pattern;
     info->prefix_len = brace_open - pattern;
-    
+
     // サフィックス: '}' の後
     const char *brace_close = strchr(brace_open, '}');
     info->suffix = brace_close + 1;
     info->suffix_len = strlen(info->suffix);
-    
+
     // 選択肢: '{' と '}' の間を ',' で分割
     const char *choice_start = brace_open + 1;
     const char *p = choice_start;
     int choice_idx = 0;
-    
+
     while (*p && *p != '}') {
         if (*p == ',') {
             info->choices[choice_idx].start = choice_start;
@@ -663,12 +663,12 @@ static void extract_brace_info(const char *pattern,
         }
         p++;
     }
-    
+
     // 最後の選択肢
     info->choices[choice_idx].start = choice_start;
     info->choices[choice_idx].len = p - choice_start;
     info->choice_count = choice_idx + 1;
-    
+
     // 最適化ヒント
     info->can_use_hashset = (info->choice_count >= 4);
     info->all_single_char = true;
@@ -695,29 +695,29 @@ static void extract_brace_info(const char *pattern,
 rbc_glob_result_t* rbc_glob_v2(const char *pattern, int flags) {
     // Step 1: ヒント生成（超軽量）
     rbc_glob_hints_t hints = rbc_glob_hints_generate(pattern);
-    
+
     // Step 2: ヒントに基づいて実行パスを選択
     switch (hints.type) {
         case GLOB_HINT_LITERAL:
             // Fast Path: リテラルパス
             return glob_exec_literal(pattern);
-            
+
         case GLOB_HINT_SIMPLE_PATTERN:
             // Fast Path: 単純パターン（v1実装）
             return glob_exec_simple(pattern, flags);
-            
+
         case GLOB_HINT_MULTI_SEGMENT:
             // Fast Path: 標準パターン（v1実装）
             return glob_exec_multi_segment(pattern, flags);
-            
+
         case GLOB_HINT_BRACE_SINGLE_DIR:
             // Optimized Path: ブレース最適化（ヒント使用）
             return glob_exec_brace_optimized(&hints, flags);
-            
+
         case GLOB_HINT_RECURSIVE:
             // Optimized Path: 再帰パターン
             return glob_exec_recursive(pattern, flags);
-            
+
         case GLOB_HINT_COMPLEX:
             // Full Path: 完全なAST構築と最適化
             return glob_exec_full_ast(pattern, flags);
@@ -737,31 +737,31 @@ static rbc_glob_result_t* glob_exec_brace_optimized(
     int flags
 ) {
     const struct brace_info *binfo = &hints->brace_info;
-    
+
     // Step 1: ベースディレクトリを開く
     char base_dir[PATH_MAX];
     memcpy(base_dir, binfo->prefix, binfo->prefix_len);
     base_dir[binfo->prefix_len] = '\0';
-    
+
     // '/' を探して親ディレクトリを特定
     char *last_slash = strrchr(base_dir, '/');
     if (last_slash) *last_slash = '\0';
-    
+
     DIR *dir = opendir(base_dir[0] ? base_dir : ".");
     if (!dir) return create_empty_result();
-    
+
     // Step 2: 選択肢のハッシュセットを構築
     string_set_t *choice_set = create_string_set(binfo->choice_count);
     for (int i = 0; i < binfo->choice_count; i++) {
-        string_set_add_n(choice_set, 
+        string_set_add_n(choice_set,
                          binfo->choices[i].start,
                          binfo->choices[i].len);
     }
-    
+
     // Step 3: ディレクトリを1回スキャン
     rbc_glob_result_t *results = create_result_set();
     struct dirent *entry;
-    
+
     while ((entry = readdir(dir)) != NULL) {
         // 選択肢にマッチするか？（O(1)）
         if (string_set_contains(choice_set, entry->d_name)) {
@@ -769,7 +769,7 @@ static rbc_glob_result_t* glob_exec_brace_optimized(
             char subpath[PATH_MAX];
             snprintf(subpath, sizeof(subpath), "%s/%s%s",
                      base_dir, entry->d_name, binfo->suffix);
-            
+
             // サフィックスがパターンを含む場合は再帰的にglob
             if (strchr(binfo->suffix, '*') || strchr(binfo->suffix, '?')) {
                 rbc_glob_result_t *sub = glob_exec_simple(subpath, flags);
@@ -781,10 +781,10 @@ static rbc_glob_result_t* glob_exec_brace_optimized(
             }
         }
     }
-    
+
     closedir(dir);
     string_set_free(choice_set);
-    
+
     return results;
 }
 ```
@@ -808,13 +808,13 @@ static rbc_glob_result_t* glob_exec_brace_optimized(
 ```c
 execution_plan_t* generate_execution_plan(glob_node_t *ast) {
     execution_plan_t *plan = create_plan();
-    
+
     switch (ast->type) {
     case NODE_SEQUENCE:
         plan->type = PLAN_SCAN_ONCE;
         analyze_sequence_and_create_plan(ast, plan);
         break;
-        
+
     case NODE_CHOICE:
         if (ast->can_optimize) {
             plan->type = PLAN_SCAN_ONCE;
@@ -824,26 +824,26 @@ execution_plan_t* generate_execution_plan(glob_node_t *ast) {
             create_multiple_scan_plan(ast, plan);
         }
         break;
-        
+
     case NODE_DIR:
         plan->type = PLAN_LITERAL_LOOKUP;
         plan->directory = ast->data.dir.path;
         break;
-        
+
     case NODE_MATCH:
         plan->type = PLAN_SCAN_ONCE;
         create_match_plan(ast, plan);
         break;
-        
+
     case NODE_RECURSIVE:
         plan->type = PLAN_RECURSIVE_SCAN;
         create_recursive_plan(ast, plan);
         break;
     }
-    
+
     // コスト推定
     estimate_plan_cost(plan);
-    
+
     return plan;
 }
 ```
@@ -851,27 +851,27 @@ execution_plan_t* generate_execution_plan(glob_node_t *ast) {
 ##### 最適化された選択肢プラン
 
 ```c
-void create_optimized_choice_plan(glob_node_t *choice, 
+void create_optimized_choice_plan(glob_node_t *choice,
                                   execution_plan_t *plan) {
     // FILTER_CHOICE_SET を使用
     filter_t *filter = create_filter(FILTER_CHOICE_SET);
-    
+
     filter->data.choice_set.prefix = choice->data.choice.common_prefix;
     filter->data.choice_set.suffix = choice->data.choice.common_suffix;
-    
+
     // 中間部分を抽出してハッシュセット化
     char **middles = extract_middle_parts(
         choice->data.choice.alternatives,
         choice->data.choice.count
     );
-    
-    filter->data.choice_set.choices = 
+
+    filter->data.choice_set.choices =
         create_string_set(middles, choice->data.choice.count);
-    
+
     // ブルームフィルタも構築
-    filter->data.choice_set.bloom = 
+    filter->data.choice_set.bloom =
         build_bloom_filter(middles, choice->data.choice.count);
-    
+
     add_filter(plan->filters, filter);
 }
 ```
@@ -892,7 +892,7 @@ PLAN: MERGED_SCAN
           choices: {".c", ".h"}
     Estimated I/O: 1 opendir + N readdir + 1 closedir
     Estimated Time: 150μs (100 files)
-  
+
   Subplan 2: SCAN_ONCE "src/app"
     Filters:
       - FILTER_CHOICE_SET
@@ -925,26 +925,26 @@ Total Estimated Time: 300μs
 void execute_plan(execution_plan_t *plan,
                   const char *base_path,
                   result_set_t *results) {
-    
+
     switch (plan->type) {
     case PLAN_SCAN_ONCE:
         execute_single_scan(plan, base_path, results);
         break;
-        
+
     case PLAN_SCAN_MULTIPLE:
         for (size_t i = 0; i < plan->subplan_count; i++) {
             execute_plan(plan->subplans[i], base_path, results);
         }
         break;
-        
+
     case PLAN_LITERAL_LOOKUP:
         execute_literal_lookup(plan, base_path, results);
         break;
-        
+
     case PLAN_RECURSIVE_SCAN:
         execute_recursive_scan(plan, base_path, results);
         break;
-        
+
     case PLAN_MERGED_SCAN:
         execute_merged_scan(plan, base_path, results);
         break;
@@ -958,35 +958,35 @@ void execute_plan(execution_plan_t *plan,
 void execute_single_scan(execution_plan_t *plan,
                          const char *base_path,
                          result_set_t *results) {
-    
+
     char full_path[PATH_MAX];
     build_path(full_path, base_path, plan->directory);
-    
+
     // ディレクトリを1回だけ開く
     DIR *dir = opendir(full_path);
     if (!dir) return;
-    
+
     struct dirent *entry;
     size_t scanned = 0, matched = 0;
-    
+
     while ((entry = readdir(dir)) != NULL) {
         scanned++;
         const char *name = entry->d_name;
-        
+
         // ドットファイルのスキップ
         if (should_skip_dot_file(name)) {
             continue;
         }
-        
+
         // フィルタセットを適用
         if (apply_filters(plan->filters, name)) {
             matched++;
             add_result(results, full_path, name);
         }
     }
-    
+
     closedir(dir);
-    
+
     // 統計更新
     update_statistics(plan, scanned, matched);
 }
@@ -1018,7 +1018,7 @@ bool apply_filters(filter_set_t *filters, const char *name) {
 
 bool apply_single_filter(filter_t *filter, const char *name) {
     filter->stats.invocation_count++;
-    
+
     switch (filter->type) {
     case FILTER_FNMATCH:
         // fnmatchの最適化を活用
@@ -1028,26 +1028,26 @@ bool apply_single_filter(filter_t *filter, const char *name) {
         }
         filter->stats.reject_count++;
         return false;
-        
+
     case FILTER_CHOICE_SET: {
         size_t len = strlen(name);
         size_t prefix_len = strlen(filter->data.choice_set.prefix);
         size_t suffix_len = strlen(filter->data.choice_set.suffix);
-        
+
         // 早期リジェクト: 長さチェック
         if (len < prefix_len + suffix_len) {
             filter->stats.reject_count++;
             return false;
         }
-        
+
         // プレフィックスチェック（memcmp - 最速）
         if (prefix_len > 0 &&
-            memcmp(name, filter->data.choice_set.prefix, 
+            memcmp(name, filter->data.choice_set.prefix,
                    prefix_len) != 0) {
             filter->stats.reject_count++;
             return false;
         }
-        
+
         // サフィックスチェック（memcmp - 最速）
         if (suffix_len > 0 &&
             memcmp(name + len - suffix_len,
@@ -1056,13 +1056,13 @@ bool apply_single_filter(filter_t *filter, const char *name) {
             filter->stats.reject_count++;
             return false;
         }
-        
+
         // 中間部分の抽出
         size_t middle_len = len - prefix_len - suffix_len;
         char middle[middle_len + 1];
         memcpy(middle, name + prefix_len, middle_len);
         middle[middle_len] = '\0';
-        
+
         // ブルームフィルタで早期リジェクト（オプション）
         if (filter->data.choice_set.bloom != 0) {
             if (!bloom_contains(filter->data.choice_set.bloom, middle)) {
@@ -1070,44 +1070,44 @@ bool apply_single_filter(filter_t *filter, const char *name) {
                 return false;
             }
         }
-        
+
         // O(1) ハッシュルックアップ
         if (string_set_contains(filter->data.choice_set.choices, middle)) {
             filter->stats.match_count++;
             return true;
         }
-        
+
         filter->stats.reject_count++;
         return false;
     }
-    
+
     case FILTER_PREFIX_SUFFIX: {
         // prefix + suffix チェック
         size_t len = strlen(name);
-        
+
         if (len < filter->data.prefix_suffix.prefix_len +
                    filter->data.prefix_suffix.suffix_len) {
             filter->stats.reject_count++;
             return false;
         }
-        
+
         if (memcmp(name, filter->data.prefix_suffix.prefix,
                    filter->data.prefix_suffix.prefix_len) != 0) {
             filter->stats.reject_count++;
             return false;
         }
-        
+
         if (memcmp(name + len - filter->data.prefix_suffix.suffix_len,
                    filter->data.prefix_suffix.suffix,
                    filter->data.prefix_suffix.suffix_len) != 0) {
             filter->stats.reject_count++;
             return false;
         }
-        
+
         filter->stats.match_count++;
         return true;
     }
-    
+
     case FILTER_LITERAL_SET:
         // リテラル集合でのルックアップ
         if (string_set_contains(filter->data.literal_set.literals, name)) {
@@ -1116,7 +1116,7 @@ bool apply_single_filter(filter_t *filter, const char *name) {
         }
         filter->stats.reject_count++;
         return false;
-        
+
     default:
         return false;
     }
@@ -1205,15 +1205,15 @@ dir_entry_t* get_directory_entries(const char *path) {
     if (cached = find_in_cache(global_cache, path)) {
         return cached->entries;
     }
-    
+
     // キャッシュミス
     DIR *dir = opendir(path);
     entries = read_all_entries(dir);
     closedir(dir);
-    
+
     // キャッシュに保存
     cache_entries(global_cache, path, entries);
-    
+
     return entries;
 }
 ```
@@ -1264,7 +1264,7 @@ getattrlistbulk(dirfd, &attrs, buffer, buffer_size, 0);
 ```c
 /**
  * @brief 単一パターンのglob
- * 
+ *
  * @param pattern グロブパターン
  * @param base ベースディレクトリ（NULLの場合はカレントディレクトリ）
  * @param flags マッチングフラグ
@@ -1280,10 +1280,10 @@ bool rbc_glob_v2(const char *pattern,
 
 /**
  * @brief 複数パターンのglob（最適化される）
- * 
+ *
  * 複数のパターンを同時に処理することで、
  * ディレクトリスキャンを統合し、I/Oを削減します。
- * 
+ *
  * @param patterns グロブパターンの配列
  * @param npatterns パターンの数
  * @param base ベースディレクトリ
@@ -1301,7 +1301,7 @@ bool rbc_glob_multi_v2(const char **patterns,
 
 /**
  * @brief glob結果の解放
- * 
+ *
  * @param results 結果の配列
  * @param count 結果の数
  */
@@ -1313,10 +1313,10 @@ void rbc_glob_free_v2(char **results, size_t count);
 ```c
 /**
  * @brief パターンをコンパイル
- * 
+ *
  * パターンを事前にコンパイルして実行プランを生成します。
  * 同じパターンを複数回実行する場合に有効です。
- * 
+ *
  * @param pattern グロブパターン
  * @param flags マッチングフラグ
  * @return コンパイル済みパターン
@@ -1326,7 +1326,7 @@ rbc_glob_pattern_v2_t* rbc_glob_compile_v2(const char *pattern,
 
 /**
  * @brief コンパイル済みパターンで実行
- * 
+ *
  * @param pattern コンパイル済みパターン
  * @param base ベースディレクトリ
  * @param out 結果の配列
@@ -1340,16 +1340,16 @@ bool rbc_glob_execute_v2(rbc_glob_pattern_v2_t *pattern,
 
 /**
  * @brief コンパイル済みパターンの解放
- * 
+ *
  * @param pattern コンパイル済みパターン
  */
 void rbc_glob_pattern_free_v2(rbc_glob_pattern_v2_t *pattern);
 
 /**
  * @brief 実行プランの取得（デバッグ用）
- * 
+ *
  * パターンの実行プランを文字列として取得します。
- * 
+ *
  * @param pattern コンパイル済みパターン
  * @return 実行プランの説明（malloc）
  */
@@ -1562,14 +1562,14 @@ typedef struct {
     size_t cache_hits;
     size_t cache_misses;
     uint64_t total_time_ns;
-    
+
     struct {
         size_t invocations;
         size_t matches;
         size_t rejects;
         uint64_t time_ns;
     } filter_stats[FILTER_TYPE_COUNT];
-    
+
 } glob_statistics_t;
 
 // 統計の取得

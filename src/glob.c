@@ -533,19 +533,19 @@ rbc_segment_t *rbc_glob_segment_compile(rbc_arena_t *arena, const char *pattern,
             // Single wildcard pattern - try to compile or use alternatives
             seg = rbc_glob_segment_new(arena, RBC_SEGMENT_WILDCARD);
             seg->data.glob.original_pattern = rbc_arena_strdup(arena, expansions.items[0]);
-            
+
             if (!seg->data.glob.original_pattern)
             {
                 rbc_str_list_free(&expansions);
                 return NULL;
             }
-            
+
             // Try to compile as single pattern first
             seg->data.glob.compiled = rbc_fnmatch_compile(seg->data.glob.original_pattern, flags);
             seg->data.glob.alternatives = NULL;
-            
+
             // If compile failed, we'll use rbc_fnmatch at runtime
-            
+
             rbc_str_list_free(&expansions);
 
             if (!head)
