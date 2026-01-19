@@ -440,7 +440,7 @@ static bool segment_match(const rbc_segment_t *seg, const char *name, const exec
                     return false;
             }
         }
-        return rbc_matcher_exec(&seg->data.glob.matcher, name);
+        return rbc_segment_match(seg, name, ctx->flags);
 
     case RBC_SEGMENT_RECURSIVE:
         return true;
@@ -912,7 +912,7 @@ void rbc_segment_exec(
                         }
                     }
 
-                    if (rbc_matcher_exec(&seg->data.glob.matcher, name))
+                    if (rbc_segment_match(seg, name, ctx.flags))
                     {
                         push_next(&st, path_buf, path_len, seg, stack_ptr, &ctx, true, false);
                         // Don't break - continue to process this frame and move to next entry

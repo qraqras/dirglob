@@ -6,7 +6,7 @@ add_library(rbc
   # fnmatch_streaming.c  # TODO: implement
   utils.c
   arena.c
-  matcher.c
+  # matcher.c  # Removed: replaced by fnmatch-based implementation
   brace.c
   str_list.c
 )

@@ -530,14 +530,22 @@ rbc_segment_t *rbc_glob_segment_compile(rbc_arena_t *arena, const char *pattern,
         }
         else
         {
+            // Single wildcard pattern - try to compile or use alternatives
             seg = rbc_glob_segment_new(arena, RBC_SEGMENT_WILDCARD);
             seg->data.glob.original_pattern = rbc_arena_strdup(arena, expansions.items[0]);
-            if (!seg->data.glob.original_pattern ||
-                !rbc_matcher_build(arena, &seg->data.glob.matcher, seg->data.glob.original_pattern, flags))
+            
+            if (!seg->data.glob.original_pattern)
             {
                 rbc_str_list_free(&expansions);
                 return NULL;
             }
+            
+            // Try to compile as single pattern first
+            seg->data.glob.compiled = rbc_fnmatch_compile(seg->data.glob.original_pattern, flags);
+            seg->data.glob.alternatives = NULL;
+            
+            // If compile failed, we'll use rbc_fnmatch at runtime
+            
             rbc_str_list_free(&expansions);
 
             if (!head)
@@ -559,6 +567,112 @@ rbc_segment_t *rbc_glob_segment_compile(rbc_arena_t *arena, const char *pattern,
         }
     }
     return head;
+}
+
+/// @brief Match a string against a segment
+/// @param seg Segment to match against
+/// @param name String to match
+/// @param flags Matching flags
+/// @return true if match found, false otherwise
+bool rbc_segment_match(const rbc_segment_t *seg, const char *name, unsigned int flags)
+{
+    if (!seg || !name)
+    {
+        return false;
+    }
+
+    if (seg->type != RBC_SEGMENT_WILDCARD)
+    {
+        return false;
+    }
+
+    // Check compiled pattern first
+    if (seg->data.glob.compiled)
+    {
+        return rbc_xfnmatch(seg->data.glob.compiled, name, flags);
+    }
+
+    // Check alternatives
+    if (seg->data.glob.alternatives)
+    {
+        return rbc_alternatives_match(seg->data.glob.alternatives, name, flags);
+    }
+
+    // Fallback to direct fnmatch
+    if (seg->data.glob.original_pattern)
+    {
+        return rbc_fnmatch(seg->data.glob.original_pattern, name, flags);
+    }
+
+    return false;
+}
+
+/// @brief Compile brace expansion alternatives
+/// @param arena Arena to allocate from
+/// @param pattern Pattern with braces (not yet expanded)
+/// @param flags Compilation flags
+/// @return Compiled alternatives structure
+rbc_alternatives_t *rbc_alternatives_compile(rbc_arena_t *arena, const char *pattern, unsigned int flags)
+{
+    // This is a placeholder - real implementation would parse braces
+    // For now, just compile single pattern
+    if (!pattern)
+    {
+        return NULL;
+    }
+
+    rbc_alternatives_t *result = rbc_arena_alloc(arena, sizeof(rbc_alternatives_t));
+    result->count = 1;
+    result->patterns = rbc_arena_alloc(arena, sizeof(rbc_fnmatch_pattern_t *));
+    result->patterns[0] = rbc_fnmatch_compile(pattern, flags);
+
+    if (!result->patterns[0])
+    {
+        return NULL;
+    }
+
+    return result;
+}
+
+/// @brief Free alternatives structure
+/// @param alt Alternatives to free
+/// @param arena Arena (unused, for compatibility)
+void rbc_alternatives_free(rbc_alternatives_t *alt, rbc_arena_t *arena)
+{
+    (void)arena; // Allocated from arena, will be freed with arena
+    if (!alt)
+    {
+        return;
+    }
+
+    // Free compiled patterns
+    for (size_t i = 0; i < alt->count; i++)
+    {
+        rbc_fnmatch_pattern_free(alt->patterns[i]);
+    }
+}
+
+/// @brief Match a string against alternative patterns
+/// @param alt Compiled alternatives
+/// @param name String to match
+/// @param flags Matching flags
+/// @return true if any alternative matches, false otherwise
+bool rbc_alternatives_match(const rbc_alternatives_t *alt, const char *name, unsigned int flags)
+{
+    if (!alt || !name)
+    {
+        return false;
+    }
+
+    for (size_t i = 0; i < alt->count; i++)
+    {
+        if (rbc_xfnmatch(alt->patterns[i], name, flags))
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 /// @}

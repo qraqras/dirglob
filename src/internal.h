@@ -21,7 +21,7 @@ typedef enum rbc_segment_type_e
     RBC_SEGMENT_BRANCH,    // Branch segment (`/{a, *, c}/`)
 } rbc_segment_type_t;
 
-/// @brief Match strategy enumeration (fnmatch用)
+/// @brief Match strategy enumeration
 typedef enum rbc_match_strategy_e
 {
     RBC_MATCH_STRATEGY_LITERAL,       // `literal`
@@ -30,15 +30,6 @@ typedef enum rbc_match_strategy_e
     RBC_MATCH_STRATEGY_PREFIX,        // `prefix*`
     RBC_MATCH_STRATEGY_SUFFIX,        // `*suffix`
     RBC_MATCH_STRATEGY_PREFIX_SUFFIX, // `prefix*suffix`
-
-    // matcher.c用の追加定義（互換性のため）
-    RBC_STRATEGY_EXACT = RBC_MATCH_STRATEGY_LITERAL,
-    RBC_STRATEGY_PREFIX = RBC_MATCH_STRATEGY_PREFIX,
-    RBC_STRATEGY_SUFFIX = RBC_MATCH_STRATEGY_SUFFIX,
-    RBC_STRATEGY_INFIX,         // Literal infix match (`*abc*`)
-    RBC_STRATEGY_PATTERN_CHAIN, // Sequence of fixed-length patterns separated by '*' (`a?b*c`)
-    RBC_STRATEGY_ALTERNATIVES,  // Multiple matchers (OR condition) from brace expansion
-    RBC_STRATEGY_RECURSIVE,     // Complex match with recursion (`[a-c]*`)
 } rbc_match_strategy_t;
 
 /// @brief Match hints structure
@@ -50,15 +41,19 @@ typedef struct rbc_match_hints_s
     uint16_t suffix_len;           // Literal suffix length
 } rbc_match_hints_t;
 
-/// @brief Forward declaration of matcher structure
-typedef struct rbc_matcher_s rbc_matcher_t;
-
 /// @brief Precompiled fnmatch pattern structure
 struct rbc_fnmatch_pattern_s
 {
     const char *pattern;     // Original pattern string
     rbc_match_hints_t hints; // Optimization hints
 };
+
+/// @brief Branch alternatives structure (for brace expansion)
+typedef struct rbc_alternatives_s
+{
+    rbc_fnmatch_pattern_t **patterns; // Array of precompiled patterns
+    size_t count;                     // Number of alternatives
+} rbc_alternatives_t;
 
 /// @brief Context Structure
 typedef struct rbc_ctx_s
@@ -78,54 +73,6 @@ typedef struct rbc_results_s
     rbc_ctx_t *ctx; // Link back to context for arena access
 } rbc_results_t;
 
-/// @brief Pre-filter for fast early rejection
-typedef struct rbc_prefilter_s
-{
-    bool enabled;
-    size_t min_length; // Minimum required length
-    char *prefix;      // Required prefix (NULL if none)
-    size_t prefix_len;
-    char *suffix; // Required suffix (NULL if none)
-    size_t suffix_len;
-} rbc_prefilter_t;
-
-/// @brief Matcher Structure
-struct rbc_matcher_s
-{
-    rbc_match_strategy_t strategy;
-    unsigned int flags;        // Flags used for compilation and matching
-    rbc_prefilter_t prefilter; // Fast pre-filter for early rejection
-    union
-    {
-        // STRATEGY_EXACT | STRATEGY_PREFIX | STRATEGY_SUFFIX | STRATEGY_INFIX
-        struct
-        {
-            char *ptr;
-            size_t len;
-        } str;
-        // STRATEGY_PATTERN_CHAIN
-        struct
-        {
-            char **parts;     // Array of parts (may contain '?')
-            size_t *lengths;  // Cached lengths of each part
-            size_t count;     // Number of parts
-            bool match_start; // If true, first part must match at start
-            bool match_end;   // If true, last part must match at end
-        } chain;
-        // STRATEGY_ALTERNATIVES (from brace expansion)
-        struct
-        {
-            rbc_matcher_t *matchers; // Array of matchers
-            size_t count;            // Number of alternatives
-        } alternatives;
-        // STRATEGY_RECURSIVE
-        struct
-        {
-            char *pattern;
-        } recursive;
-    } pk;
-};
-
 /// @defgroup Segment Structure
 /// @{
 typedef struct rbc_segment_s rbc_segment_t;
@@ -141,7 +88,8 @@ struct rbc_segment_s
         struct
         {
             char *original_pattern;
-            rbc_matcher_t matcher;
+            rbc_fnmatch_pattern_t *compiled;  // Precompiled pattern (may be NULL if fallback needed)
+            rbc_alternatives_t *alternatives; // For brace-expanded patterns (mutually exclusive with compiled)
         } glob;
 
         // SEG_BRANCH
@@ -244,16 +192,18 @@ void rbc_glob_results_deduplicate(rbc_results_t *results);
 void rbc_glob_results_clear(rbc_results_t *results);
 /// @}
 
-/// @defgroup Matcher Functions
-/// @{
-bool rbc_matcher_build(rbc_arena_t *arena, rbc_matcher_t *m, const char *pattern, unsigned int flags);
-bool rbc_matcher_exec(const rbc_matcher_t *m, const char *name);
-/// @}
-
 /// @defgroup Segment Functions
 /// @{
 rbc_segment_t *rbc_glob_segment_compile(rbc_arena_t *arena, const char *pattern, unsigned int flags);
 void rbc_segment_exec(rbc_segment_t *root, const char *base_path, unsigned flags, bool sort, rbc_match_callback_t callback, void *user_data, rbc_arena_t *arena);
+bool rbc_segment_match(const rbc_segment_t *seg, const char *name, unsigned int flags);
+/// @}
+
+/// @defgroup Helper Functions
+/// @{
+rbc_alternatives_t *rbc_alternatives_compile(rbc_arena_t *arena, const char *pattern, unsigned int flags);
+void rbc_alternatives_free(rbc_alternatives_t *alt, rbc_arena_t *arena);
+bool rbc_alternatives_match(const rbc_alternatives_t *alt, const char *name, unsigned int flags);
 /// @}
 
 #endif /* RBC_INTERNAL_H */
