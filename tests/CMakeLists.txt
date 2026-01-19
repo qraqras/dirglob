@@ -32,6 +32,8 @@ endif()
 file(GLOB TEST_IMPLS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CONFIGURE_DEPENDS test_*.c)
 list(FILTER TEST_IMPLS EXCLUDE REGEX "^test_parity_.*\\.c$")
 list(FILTER TEST_IMPLS EXCLUDE REGEX "^test_glob_generated\\.c$")
+list(FILTER TEST_IMPLS EXCLUDE REGEX "^test_glob_v2_hints\\.c$")  # Standalone test
+list(FILTER TEST_IMPLS EXCLUDE REGEX "^test_glob_v2_brace\\.c$")  # Standalone test
 
 # Add test helpers
 list(APPEND TEST_IMPLS test_helpers.c)
@@ -103,3 +105,48 @@ if(EXISTS ${GENERATED_FNMATCH_TEST})
   target_link_libraries(test_fnmatch_ruby_compat PRIVATE rbc ${UNITY_TARGET})
   add_test(NAME fnmatch_ruby_compat COMMAND test_fnmatch_ruby_compat WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/tests)
 endif()
+
+# Standalone glob v2 hint test
+add_executable(test_glob_v2_hints test_glob_v2_hints.c)
+target_include_directories(test_glob_v2_hints PRIVATE
+  "${PROJECT_SOURCE_DIR}/include"
+  "${PROJECT_SOURCE_DIR}/src"
+)
+target_link_libraries(test_glob_v2_hints PRIVATE rbc)
+add_test(NAME glob_v2_hints COMMAND test_glob_v2_hints)
+
+# Standalone glob v2 brace optimization test
+add_executable(test_glob_v2_brace test_glob_v2_brace.c)
+target_include_directories(test_glob_v2_brace PRIVATE
+  "${PROJECT_SOURCE_DIR}/include"
+  "${PROJECT_SOURCE_DIR}/src"
+)
+target_link_libraries(test_glob_v2_brace PRIVATE rbc)
+add_test(NAME glob_v2_brace COMMAND test_glob_v2_brace)
+
+# Standalone glob v2 integration test
+add_executable(test_glob_v2_integration test_glob_v2_integration.c)
+target_include_directories(test_glob_v2_integration PRIVATE
+  "${PROJECT_SOURCE_DIR}/include"
+  "${PROJECT_SOURCE_DIR}/src"
+)
+target_link_libraries(test_glob_v2_integration PRIVATE rbc)
+add_test(NAME glob_v2_integration COMMAND test_glob_v2_integration)
+
+# Standalone glob v2 recursive test
+add_executable(test_glob_v2_recursive test_glob_v2_recursive.c)
+target_include_directories(test_glob_v2_recursive PRIVATE
+  "${PROJECT_SOURCE_DIR}/include"
+  "${PROJECT_SOURCE_DIR}/src"
+)
+target_link_libraries(test_glob_v2_recursive PRIVATE rbc)
+add_test(NAME glob_v2_recursive COMMAND test_glob_v2_recursive)
+
+# Standalone glob v2 multi-pattern test
+add_executable(test_glob_v2_multi test_glob_v2_multi.c)
+target_include_directories(test_glob_v2_multi PRIVATE
+  "${PROJECT_SOURCE_DIR}/include"
+  "${PROJECT_SOURCE_DIR}/src"
+)
+target_link_libraries(test_glob_v2_multi PRIVATE rbc)
+add_test(NAME glob_v2_multi COMMAND test_glob_v2_multi)

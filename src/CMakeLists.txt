@@ -9,6 +9,13 @@ add_library(rbc
   # matcher.c  # Removed: replaced by fnmatch-based implementation
   brace.c
   str_list.c
+  # v2 implementation
+  glob_v2.c
+  glob_v2_hints.c
+  glob_v2_brace.c
+  glob_v2_recursive.c
+  glob_v2_multi.c
+  string_set.c
 )
 
 target_include_directories(rbc

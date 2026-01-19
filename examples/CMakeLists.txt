@@ -10,3 +10,7 @@ install(TARGETS rbc_example RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 add_executable(bench_glob bench_glob.c)
 target_include_directories(bench_glob PRIVATE "${PROJECT_SOURCE_DIR}/include")
 target_link_libraries(bench_glob PRIVATE rbc)
+
+add_executable(example_glob_v2 example_glob_v2.c)
+target_include_directories(example_glob_v2 PRIVATE "${PROJECT_SOURCE_DIR}/include")
+target_link_libraries(example_glob_v2 PRIVATE rbc)
