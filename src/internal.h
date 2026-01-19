@@ -136,9 +136,6 @@ typedef struct rbc_walker_ctx_s
     bool sort;
 } rbc_walker_ctx_t;
 
-bool rbc_walker_run(const char *pattern, rbc_walker_ctx_t *ctx);
-bool rbc_walker_run_compiled(const rbc_glob_pattern_t *cg, rbc_walker_ctx_t *ctx);
-
 /// @name String List Utilities
 /// @{
 
@@ -204,6 +201,16 @@ bool rbc_segment_match(const rbc_segment_t *seg, const char *name, unsigned int 
 rbc_alternatives_t *rbc_alternatives_compile(rbc_arena_t *arena, const char *pattern, unsigned int flags);
 void rbc_alternatives_free(rbc_alternatives_t *alt, rbc_arena_t *arena);
 bool rbc_alternatives_match(const rbc_alternatives_t *alt, const char *name, unsigned int flags);
+
+/// @brief Main walker API (recursive implementation)
+/// This is the primary glob walker, using pure recursion like MRI.
+/// Optimizations: d_type usage, fast-path pattern matching, stack-based buffers.
+bool rbc_glob_walk(
+    rbc_segment_t *segments,
+    rbc_match_callback_t callback,
+    void *userdata,
+    unsigned flags,
+    bool sort);
 /// @}
 
 #endif /* RBC_INTERNAL_H */

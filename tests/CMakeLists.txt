@@ -150,3 +150,12 @@ target_include_directories(test_glob_v2_multi PRIVATE
 )
 target_link_libraries(test_glob_v2_multi PRIVATE rbc)
 add_test(NAME glob_v2_multi COMMAND test_glob_v2_multi)
+
+# Standalone walker v2 test (recursive implementation)
+add_executable(test_walker_v2 test_walker_v2.c)
+target_include_directories(test_walker_v2 PRIVATE
+  "${PROJECT_SOURCE_DIR}/include"
+  "${PROJECT_SOURCE_DIR}/src"
+)
+target_link_libraries(test_walker_v2 PRIVATE rbc)
+add_test(NAME walker_v2 COMMAND test_walker_v2 WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/tests)

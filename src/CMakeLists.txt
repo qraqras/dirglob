@@ -1,7 +1,7 @@
 # src/CMakeLists.txt
 add_library(rbc
   glob.c
-  walker.c
+  walker.c         # Unified walker (recursive, MRI-compatible)
   fnmatch.c
   # fnmatch_streaming.c  # TODO: implement
   utils.c
