@@ -213,4 +213,45 @@ bool rbc_glob_walk(
     bool sort);
 /// @}
 
+/// @defgroup Execution Plan Structures
+/// @{
+
+/// @brief Pattern metadata for execution plan
+typedef struct rbc_plan_pattern_s
+{
+    size_t pattern_id;              // Original pattern index
+    rbc_segment_t *remaining_segs;  // Remaining segments to match
+    rbc_fnmatch_pattern_t *matcher; // Compiled matcher for this level
+    char *pattern_str;              // Pattern string for this segment
+} rbc_plan_pattern_t;
+
+/// @brief Execution plan node (represents a directory level)
+typedef struct rbc_plan_node_s rbc_plan_node_t;
+struct rbc_plan_node_s
+{
+    char *path_segment; // Directory name (e.g., "src", "include")
+    bool is_literal;    // True if path_segment is a literal directory name
+    bool recursive;     // True if this node should recurse (**/)
+
+    // Patterns to match at this level
+    rbc_plan_pattern_t *patterns; // Array of patterns to match
+    size_t pattern_count;
+
+    // Child nodes (sub-directories to descend into)
+    rbc_plan_node_t **children;
+    size_t child_count;
+};
+
+/// @brief Compiled execution plan for multiple patterns
+struct rbc_glob_plan_s
+{
+    rbc_plan_node_t *root;    // Root node of execution tree
+    size_t pattern_count;     // Total number of patterns
+    unsigned int flags;       // Glob flags
+    rbc_arena_t arena;        // Memory arena for plan
+    char **original_patterns; // Original pattern strings
+};
+
+/// @}
+
 #endif /* RBC_INTERNAL_H */

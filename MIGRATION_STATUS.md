@@ -44,7 +44,7 @@ src/
 
 ### Phase 2: メイン化 ✅
 - [x] walker_v2.c → walker.c
-- [x] walker.c → walker_legacy.c  
+- [x] walker.c → walker_legacy.c
 - [x] API名変更: rbc_glob_walk_v2 → rbc_glob_walk
 - [x] レガシーAPI名変更: rbc_walker_run → rbc_walker_run_legacy
 - [x] glob_v2系を新APIに接続

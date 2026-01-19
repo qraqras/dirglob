@@ -139,9 +139,10 @@ extern "C"
      */
     typedef struct
     {
-        char **paths;    /**< Array of matched paths */
-        size_t count;    /**< Number of matched paths */
-        size_t capacity; /**< Allocated capacity */
+        char **paths;           /**< Array of matched paths */
+        size_t count;           /**< Number of matched paths */
+        size_t capacity;        /**< Allocated capacity */
+        bool single_allocation; /**< True if paths+strings in single malloc */
 
         /* Statistics */
         size_t dirs_scanned;    /**< Number of directories scanned */
@@ -250,6 +251,14 @@ extern "C"
      * @brief Execute recursive pattern (**) optimization (internal use)
      */
     rbc_glob_result_t *rbc_glob_exec_recursive_optimized(
+        const rbc_glob_hints_t *hints,
+        const char *pattern,
+        int flags);
+
+    /**
+     * @brief Execute simple pattern optimization (*.c, etc.) (internal use)
+     */
+    rbc_glob_result_t *rbc_glob_exec_simple_optimized(
         const rbc_glob_hints_t *hints,
         const char *pattern,
         int flags);

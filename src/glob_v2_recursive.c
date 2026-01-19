@@ -10,6 +10,7 @@
  */
 
 #include "rbc/glob_v2.h"
+#include "rbc/rbc.h"
 #include "internal.h"
 #include <stdlib.h>
 #include <string.h>
@@ -49,46 +50,8 @@ rbc_glob_result_t *rbc_glob_exec_recursive_optimized(
     const char *doublestar = strstr(pattern, "**");
     if (!doublestar)
     {
-        /* No **, fallback to v1 */
-        char **v1_paths = NULL;
-        size_t count = 0;
-        size_t *lengths = NULL;
-        const char *patterns[] = {pattern};
-
-        bool success = rbc_glob(patterns, 1, (unsigned)flags, NULL, true, &v1_paths, &count, &lengths);
-        if (!success || !v1_paths)
-        {
-            rbc_glob_result_t *result = calloc(1, sizeof(rbc_glob_result_t));
-            if (result)
-            {
-                result->capacity = 16;
-                result->paths = malloc(result->capacity * sizeof(char *));
-            }
-            return result;
-        }
-
-        /* Convert v1 to v2 */
-        rbc_glob_result_t *result = calloc(1, sizeof(rbc_glob_result_t));
-        if (!result)
-        {
-            rbc_glob_free(v1_paths, count, lengths);
-            return NULL;
-        }
-
-        result->capacity = count > 0 ? count : 16;
-        result->paths = malloc(result->capacity * sizeof(char *));
-        result->count = 0;
-
-        for (size_t i = 0; i < count; i++)
-        {
-            if (v1_paths[i])
-            {
-                result->paths[result->count++] = strdup(v1_paths[i]);
-            }
-        }
-
-        rbc_glob_free(v1_paths, count, lengths);
-        return result;
+        /* No ** - this shouldn't be called, return NULL to let caller use standard path */
+        return NULL;
     }
 
     /* Extract prefix (base directory) */

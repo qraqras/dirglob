@@ -19,11 +19,18 @@
 /// @defgroup rbc_glob Glob Functions
 /// @{
 typedef struct rbc_glob_pattern_s rbc_glob_pattern_t;
+typedef struct rbc_glob_plan_s rbc_glob_plan_t;
+
 bool rbc_glob(const char **patterns, size_t npatterns, unsigned flags, const char *base, bool sort, char ***out, size_t *count, size_t **lengths);
 bool rbc_xglob(const rbc_glob_pattern_t *gp, const char *base, bool sort, char ***out, size_t *count, size_t **lengths);
 rbc_glob_pattern_t *rbc_glob_compile(const char *pattern, unsigned flags);
 void rbc_glob_pattern_free(rbc_glob_pattern_t *gp);
 void rbc_glob_free(char **list, size_t count, size_t *lengths);
+
+/// Multi-pattern execution plan API
+rbc_glob_plan_t *rbc_glob_plan_compile(const char **patterns, size_t count, unsigned int flags);
+char **rbc_glob_plan_execute(rbc_glob_plan_t *plan, const char *basedir, size_t *result_count);
+void rbc_glob_plan_free(rbc_glob_plan_t *plan);
 /// @}
 
 /// @defgroup rbc_fnmatch Fnmatch Functions

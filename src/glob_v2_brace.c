@@ -22,6 +22,35 @@ static rbc_glob_result_t *create_result_set(void);
 static void add_result(rbc_glob_result_t *result, const char *path);
 static rbc_glob_result_t *create_empty_result(void);
 
+/* ========================================================================
+ * Result Management
+ * ======================================================================== */
+
+void rbc_glob_result_free(rbc_glob_result_t *result)
+{
+    if (!result)
+        return;
+
+    if (result->paths)
+    {
+        if (result->single_allocation)
+        {
+            /* Single allocation: paths and strings are in one block */
+            free(result->paths);
+        }
+        else
+        {
+            /* Legacy: each path individually malloc'd */
+            for (size_t i = 0; i < result->count; i++)
+            {
+                free(result->paths[i]);
+            }
+            free(result->paths);
+        }
+    }
+    free(result);
+}
+
 /**
  * @brief Execute brace expansion with optimization
  *
@@ -219,6 +248,7 @@ static rbc_glob_result_t *create_result_set(void)
         return NULL;
 
     result->capacity = 16;
+    result->single_allocation = false; /* Uses strdup for each path */
     result->paths = malloc(result->capacity * sizeof(char *));
     if (!result->paths)
     {

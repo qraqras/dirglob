@@ -1,20 +1,17 @@
 # src/CMakeLists.txt
 add_library(rbc
-  glob.c
+  glob.c           # v1 API with v2 optimizations integrated
   walker.c         # Unified walker (recursive, MRI-compatible)
+  plan.c           # Multi-pattern execution plan
   fnmatch.c
-  # fnmatch_streaming.c  # TODO: implement
   utils.c
   arena.c
-  # matcher.c  # Removed: replaced by fnmatch-based implementation
   brace.c
   str_list.c
-  # v2 implementation
-  glob_v2.c
-  glob_v2_hints.c
-  glob_v2_brace.c
-  glob_v2_recursive.c
-  glob_v2_multi.c
+  # v2 optimization modules (used by glob.c)
+  glob_v2_hints.c      # Hint generation
+  glob_v2_brace.c      # Brace expansion optimization
+  glob_v2_simple.c     # Simple pattern optimization (*.c, etc.)
   string_set.c
 )
 
