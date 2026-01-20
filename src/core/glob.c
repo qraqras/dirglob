@@ -125,11 +125,16 @@ bool rbc_glob_results_add_with_index(rbc_results_t *results, const char *path, s
         results->capacity = new_cap;
     }
     const char *p = path ? path : ".";
+
     size_t len = strlen(p);
     results->items[results->count] = rbc_arena_alloc(&results->ctx->arena, len + 1);
     memcpy(results->items[results->count], p, len + 1);
     results->lengths[results->count] = len;
     results->discovery_indices[results->count] = index;
+    if (getenv("RBC_DEBUG_DOTFILES"))
+    {
+        fprintf(stderr, "DBG:ADD index=%zu path='%s' assigned_to_pos=%zu\n", index, p ? p : "(null)", results->count);
+    }
     results->count++;
     return true;
 }

@@ -37,6 +37,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <dirent.h>
+#include <unistd.h> // for getcwd()
 
 /* ========================================================================
  * Brace Expansion (Fixed-size array, max 64 options)
@@ -229,6 +230,7 @@ typedef struct rbc_trie_matcher_s
     size_t pattern_id;               // Original pattern index
     char *pattern_str;               // Pattern string (e.g., "*.c")
     rbc_fnmatch_pattern_t *compiled; // Pre-compiled matcher
+    unsigned int flags;              // Flags used when compiling this matcher (e.g., DOTMATCH)
     struct rbc_trie_matcher_s *next; // Next matcher in list
 } rbc_trie_matcher_t;
 
@@ -314,6 +316,7 @@ static rbc_trie_matcher_t *trie_matcher_new(
     m->pattern_id = pattern_id;
     m->pattern_str = rbc_arena_strdup(arena, pattern_str);
     m->compiled = rbc_fnmatch_compile(pattern_str, flags);
+    m->flags = flags; /* Remember compilation flags (e.g., DOTMATCH) */
 
     return m;
 }
@@ -343,9 +346,27 @@ static char *trie_unescape_string(rbc_arena_t *arena, const char *str)
     return result;
 }
 
+/* Helper: return true if the string contains a slash that is not only a trailing slash */
+static bool trie_has_internal_slash(const char *s)
+{
+    const char *slash = strchr(s, '/');
+    if (!slash)
+        return false;
+    size_t len = strlen(s);
+    /* If the only slash is the last character (a trailing slash), treat as no internal slash */
+    if (slash == s + len - 1)
+        return false;
+    return true;
+}
+
 /* Helper: add result respecting match_dir and directory status */
 static void trie_add_result_diraware(rbc_results_t *results, const char *path, bool match_dir, bool is_dir, size_t pattern_id)
 {
+    if (getenv("RBC_DEBUG_RECURSIVE"))
+    {
+        fprintf(stderr, "DBG:ADD_CALL via=diraware path='%s' match_dir=%d is_dir=%d pattern_id=%zu\n", path, (int)match_dir, (int)is_dir, pattern_id);
+    }
+
     if (match_dir)
     {
         if (!is_dir)
@@ -434,6 +455,18 @@ static void trie_add_matcher(
     rbc_trie_node_t *wildcard_node,
     rbc_trie_matcher_t *matcher)
 {
+    /* Avoid inserting duplicate matchers for the same original pattern and
+       pattern string (can happen when a top-level brace expansion creates
+       multiple expansions sharing common segments). */
+    for (rbc_trie_matcher_t *m = wildcard_node->data.wildcard.matchers; m; m = m->next)
+    {
+        if (m->pattern_id == matcher->pattern_id && m->pattern_str && matcher->pattern_str && strcmp(m->pattern_str, matcher->pattern_str) == 0)
+        {
+            /* Duplicate found, skip adding */
+            return;
+        }
+    }
+
     matcher->next = wildcard_node->data.wildcard.matchers;
     wildcard_node->data.wildcard.matchers = matcher;
     wildcard_node->data.wildcard.matcher_count++;
@@ -555,8 +588,15 @@ static void trie_insert_segment(
         }
 
         // Add matcher to wildcard node
+        // If the pattern component begins with '.' (or an escaped '.'),
+        // ensure fnmatch is called with DOTMATCH so dotfiles are matched properly.
+        unsigned int mflags = trie->flags;
+        if (pattern && (pattern[0] == '.' || (pattern[0] == '\\' && pattern[1] == '.')))
+        {
+            mflags |= RBC_FNM_DOTMATCH;
+        }
         rbc_trie_matcher_t *matcher = trie_matcher_new(
-            trie->arena, pattern_id, pattern, trie->flags);
+            trie->arena, pattern_id, pattern, mflags);
         if (matcher)
         {
             trie_add_matcher(wc_child, matcher);
@@ -723,13 +763,30 @@ static void trie_match_wildcards(
     {
         bool matched = false;
 
+        // Debug: optionally print matcher evaluation for dotfile-related patterns
+        if (getenv("RBC_DEBUG_DOTFILES"))
+        {
+            if (m->pattern_str && (m->pattern_str[0] == '.' || strstr(m->pattern_str, ".hidden") || strcmp(m->pattern_str, ".*") == 0))
+            {
+                fprintf(stderr, "DBG:EVAL matcher='%s' flags=0x%x name='%s' full='%s'\n", m->pattern_str, m->flags, name, full_path);
+            }
+        }
+
         if (m->compiled)
         {
-            matched = rbc_xfnmatch(m->compiled, name, flags);
+            matched = rbc_xfnmatch(m->compiled, name, m->flags);
         }
         else
         {
-            matched = rbc_fnmatch(m->pattern_str, name, flags);
+            matched = rbc_fnmatch(m->pattern_str, name, m->flags);
+        }
+
+        if (getenv("RBC_DEBUG_DOTFILES"))
+        {
+            if (m->pattern_str && (m->pattern_str[0] == '.' || strstr(m->pattern_str, ".hidden") || strcmp(m->pattern_str, ".*") == 0))
+            {
+                fprintf(stderr, "DBG:RES matcher='%s' matched=%d name='%s' full='%s'\n", m->pattern_str, matched, name, full_path);
+            }
         }
 
         if (matched)
@@ -792,7 +849,8 @@ static void trie_match_wildcards(
     {
         for (rbc_trie_matcher_t *m = wc_node->data.wildcard.matchers; m; m = m->next)
         {
-            bool matched = m->compiled ? rbc_xfnmatch(m->compiled, name, flags) : rbc_fnmatch(m->pattern_str, name, flags);
+            unsigned int mflags = m->flags ? m->flags : flags;
+            bool matched = m->compiled ? rbc_xfnmatch(m->compiled, name, mflags) : rbc_fnmatch(m->pattern_str, name, mflags);
 
             if (matched)
             {
@@ -814,6 +872,62 @@ static void trie_execute_node(
 {
     if (!node)
         return;
+
+    /*
+     * Zero-match handling for wildcard nodes: some patterns (for example, the "dot-star slash dot-star" pattern)
+     * allow the wildcard to match the current directory ('.') itself.
+     * To mimic Ruby semantics, if a wildcard child at this node has
+     * non-terminal children and any of its matchers would match ".",
+     * we should execute the wildcard child on the current_path (zero
+     * component consumption) before scanning entries.
+     */
+    for (rbc_trie_node_t *child0 = node->children; child0; child0 = child0->sibling)
+    {
+        if (child0->type == TRIE_NODE_WILDCARD && child0->children)
+        {
+            bool has_non_terminal_children = false;
+            for (rbc_trie_node_t *c = child0->children; c; c = c->sibling)
+            {
+                if (c->type != TRIE_NODE_TERMINAL)
+                {
+                    has_non_terminal_children = true;
+                    break;
+                }
+            }
+
+            if (!has_non_terminal_children)
+                continue;
+
+            /* Check if any matcher would match "." */
+            for (rbc_trie_matcher_t *m = child0->data.wildcard.matchers; m; m = m->next)
+            {
+                bool m_matches_dot = false;
+                unsigned int mflags_dot = m->flags ? m->flags : flags;
+                if (m->compiled)
+                {
+                    m_matches_dot = rbc_xfnmatch(m->compiled, ".", mflags_dot);
+                }
+                else if (m->pattern_str)
+                {
+                    m_matches_dot = rbc_fnmatch(m->pattern_str, ".", mflags_dot);
+                }
+
+                if (getenv("RBC_DEBUG_DOTFILES"))
+                {
+                    if (m->pattern_str && (m->pattern_str[0] == '.' || strstr(m->pattern_str, ".hidden") || strcmp(m->pattern_str, ".*") == 0))
+                    {
+                        fprintf(stderr, "DBG:ZEROMATCH matcher='%s' flags=0x%x matches_dot=%d\n", m->pattern_str, mflags_dot, m_matches_dot);
+                    }
+                }
+
+                if (m_matches_dot)
+                {
+                    trie_execute_node(child0, current_path, results, flags, arena);
+                    break;
+                }
+            }
+        }
+    }
 
     // Open directory ONCE
     DIR *dir = opendir(current_path[0] ? current_path : ".");
@@ -921,10 +1035,85 @@ static void trie_execute_node(
             }
 
             // If directory, recurse with same RECURSIVE node
-            // Skip dotfiles for ** unless FNM_DOTMATCH is set
-            if (is_dir && (name[0] != '.' || (flags & RBC_FNM_DOTMATCH)))
+            // Skip dot-directories for ** unless either FNM_DOTMATCH is set
+            // or the following pattern explicitly matches leading dot names
+            if (is_dir)
             {
-                trie_execute_node(node, path_buf, results, flags, arena);
+                bool allow_recurse = true;
+
+                // If name begins with '.' then, unless DOTMATCH is set, only
+                // recurse if some child pattern would actually match this name.
+                if (name[0] == '.' && !(flags & RBC_FNM_DOTMATCH))
+                {
+                    allow_recurse = false;
+
+                    if (getenv("RBC_DEBUG_RECURSIVE"))
+                    {
+                        fprintf(stderr, "DBG:RECUR_CHECK name='%s' flags=0x%x\n", name, flags);
+                    }
+
+                    for (rbc_trie_node_t *rc = node->children; rc; rc = rc->sibling)
+                    {
+                        if (rc->type == TRIE_NODE_LITERAL)
+                        {
+                            if (rc->data.literal.name && strcmp(rc->data.literal.name, name) == 0)
+                            {
+                                allow_recurse = true;
+                                if (getenv("RBC_DEBUG_RECURSIVE"))
+                                {
+                                    fprintf(stderr, "DBG:RECUR_LITERAL_MATCH name='%s' literal='%s'\n", name, rc->data.literal.name);
+                                }
+                                break;
+                            }
+                        }
+                        else if (rc->type == TRIE_NODE_WILDCARD)
+                        {
+                            for (rbc_trie_matcher_t *m = rc->data.wildcard.matchers; m; m = m->next)
+                            {
+                                bool matched = false;
+                                unsigned int mflags_recurse = m->flags ? m->flags : flags;
+                                if (m->compiled)
+                                {
+                                    matched = rbc_xfnmatch(m->compiled, name, mflags_recurse);
+                                }
+                                else if (m->pattern_str)
+                                {
+                                    matched = rbc_fnmatch(m->pattern_str, name, mflags_recurse);
+                                }
+
+                                if (getenv("RBC_DEBUG_RECURSIVE") && m->pattern_str)
+                                {
+                                    fprintf(stderr, "DBG:RECUR_WC_EVAL name='%s' pattern='%s' mflags=0x%x matched=%d\n", name, m->pattern_str, mflags_recurse, matched);
+                                }
+
+                                if (matched)
+                                {
+                                    allow_recurse = true;
+                                    if (getenv("RBC_DEBUG_RECURSIVE"))
+                                    {
+                                        fprintf(stderr, "DBG:RECUR_WC_MATCH name='%s' pattern='%s'\n", name, m->pattern_str ? m->pattern_str : "(compiled)");
+                                    }
+                                    break;
+                                }
+                            }
+                            if (allow_recurse)
+                                break;
+                        }
+                    }
+
+                    if (getenv("RBC_DEBUG_RECURSIVE"))
+                    {
+                        if (allow_recurse)
+                            fprintf(stderr, "DBG:RECUR_ALLOW name='%s'\n", name);
+                        else
+                            fprintf(stderr, "DBG:RECUR_SKIP name='%s' reason='no matching child and DOTMATCH not set'\n", name);
+                    }
+                }
+
+                if (allow_recurse)
+                {
+                    trie_execute_node(node, path_buf, results, flags, arena);
+                }
             }
             continue; // Skip the normal child processing below
         }
@@ -1025,20 +1214,44 @@ static void trie_execute_node(
 
                 // Second: if directory, recursively descend with same ** node
                 // Skip dotfiles for ** unless FNM_DOTMATCH is set
-                if (is_dir && (name[0] != '.' || (flags & RBC_FNM_DOTMATCH)))
+                if (is_dir)
                 {
-                    trie_execute_node(child, path_buf, results, flags, arena);
+                    if (name[0] != '.' || (flags & RBC_FNM_DOTMATCH))
+                    {
+                        if (getenv("RBC_DEBUG_RECURSIVE"))
+                            fprintf(stderr, "DBG:RECUR_DESCEND name='%s' flags=0x%x\n", name, flags);
+                        trie_execute_node(child, path_buf, results, flags, arena);
+                    }
+                    else
+                    {
+                        if (getenv("RBC_DEBUG_RECURSIVE"))
+                            fprintf(stderr, "DBG:RECUR_DESCEND_SKIP name='%s' flags=0x%x reason='dot and DOTMATCH not set'\n", name, flags);
+                    }
                 }
                 break;
 
             case TRIE_NODE_TERMINAL:
                 // Terminal node at this level - add result
+                // If this terminal is attached to the ROOT node, it was already
+                // handled once during trie_execute and should not be added for
+                // each directory entry here.
+                if (node->type == TRIE_NODE_ROOT)
+                {
+                    /* root terminals were handled earlier */
+                    break;
+                }
+
                 for (size_t i = 0; i < child->data.terminal.count; i++)
                 {
+                    size_t pid = child->data.terminal.pattern_ids[i];
+                    if (getenv("RBC_DEBUG_RECURSIVE"))
+                    {
+                        fprintf(stderr, "DBG:ADD_CALL via=terminal-child path='%s' match_dir=%d pattern_id=%zu\n", path_buf, (int)child->data.terminal.match_dir, pid);
+                    }
                     if (!child->data.terminal.match_dir || is_dir)
                     {
                         rbc_glob_results_add_with_index(
-                            results, path_buf, child->data.terminal.pattern_ids[i]);
+                            results, path_buf, pid);
                     }
                 }
                 break;
@@ -1065,6 +1278,45 @@ static void trie_execute(
 
     const char *base = (basedir && basedir[0]) ? basedir : ".";
     char path_buf[PATH_MAX];
+
+    /*
+     * Handle TERMINAL children attached directly to the root node as matches for
+     * the base itself (e.g., pattern "."). These should be added once (the
+     * base path), not repeated for each entry in the directory.
+     */
+    for (rbc_trie_node_t *rt = trie->root->children; rt; rt = rt->sibling)
+    {
+        if (rt->type == TRIE_NODE_TERMINAL)
+        {
+            struct stat st;
+            bool base_is_dir = (stat(base, &st) == 0 && S_ISDIR(st.st_mode));
+            for (size_t i = 0; i < rt->data.terminal.count; i++)
+            {
+                size_t pid = rt->data.terminal.pattern_ids[i];
+                if (!rt->data.terminal.match_dir || base_is_dir)
+                {
+                    if (rt->data.terminal.match_dir)
+                    {
+                        char tmp_base[PATH_MAX];
+                        snprintf(tmp_base, sizeof(tmp_base), "%s/", base);
+                        if (getenv("RBC_DEBUG_RECURSIVE"))
+                        {
+                            fprintf(stderr, "DBG:ADD_CALL via=root-term path='%s' pattern_id=%zu\n", tmp_base, pid);
+                        }
+                        rbc_glob_results_add_with_index(results, tmp_base, pid);
+                    }
+                    else
+                    {
+                        if (getenv("RBC_DEBUG_RECURSIVE"))
+                        {
+                            fprintf(stderr, "DBG:ADD_CALL via=root-term path='%s' pattern_id=%zu\n", base, pid);
+                        }
+                        rbc_glob_results_add_with_index(results, base, pid);
+                    }
+                }
+            }
+        }
+    }
 
     // Check if root has direct literal children (optimized path)
     bool has_literal_children = false;
@@ -1124,17 +1376,22 @@ static void trie_execute(
                                 {
                                     for (size_t i = 0; i < term->data.terminal.count; i++)
                                     {
+                                        size_t pid = term->data.terminal.pattern_ids[i];
+                                        if (getenv("RBC_DEBUG_RECURSIVE"))
+                                        {
+                                            fprintf(stderr, "DBG:ADD_CALL via=recurse-term path='%s' match_dir=%d pattern_id=%zu\n", path_buf, (int)term->data.terminal.match_dir, pid);
+                                        }
                                         if (!term->data.terminal.match_dir || S_ISDIR(st.st_mode))
                                         {
                                             if (term->data.terminal.match_dir)
                                             {
                                                 char tmp_path2[PATH_MAX];
                                                 snprintf(tmp_path2, sizeof(tmp_path2), "%s/", path_buf);
-                                                rbc_glob_results_add_with_index(results, tmp_path2, term->data.terminal.pattern_ids[i]);
+                                                rbc_glob_results_add_with_index(results, tmp_path2, pid);
                                             }
                                             else
                                             {
-                                                rbc_glob_results_add_with_index(results, path_buf, term->data.terminal.pattern_ids[i]);
+                                                rbc_glob_results_add_with_index(results, path_buf, pid);
                                             }
                                         }
                                     }
@@ -1227,6 +1484,14 @@ bool rbc_glob_trie(
     }
 
     // Compile trie (handles single pattern, brace expansion, etc.)
+    if (getenv("RBC_DEBUG_RECURSIVE"))
+    {
+        for (size_t i = 0; i < npatterns; ++i)
+        {
+            fprintf(stderr, "DBG:TRIE_PAT pattern[%zu]='%s'\n", i, patterns[i] ? patterns[i] : "(null)");
+        }
+    }
+
     rbc_trie_t *trie = trie_compile(patterns, npatterns, flags, &ctx->arena);
     if (!trie)
     {
@@ -1292,7 +1557,10 @@ bool rbc_glob_trie(
                     if (pattern_id < npatterns && patterns[pattern_id])
                     {
                         const char *pat = patterns[pattern_id];
-                        if (pat[0] == '.' && pat[1] == '/')
+                        // Ruby expects that patterns beginning with '.' (even without an explicit './')
+                        // result in paths prefixed with './' when the base is '.' or NULL. E.g.,
+                        // pattern ".*/.*" should produce "./.a" entries.
+                        if (pat[0] == '.')
                             need_leading_dot_slash = true;
                     }
 
@@ -1319,12 +1587,23 @@ bool rbc_glob_trie(
                         size_t qlen = strlen(q);
                         if (need_leading_dot_slash && !(q[0] == '.' && q[1] == '/'))
                         {
-                            char *r = rbc_arena_alloc(&ctx->arena, qlen + 3); // './' + q + '\0'
-                            r[0] = '.';
-                            r[1] = '/';
-                            memcpy(r + 2, q, qlen + 1);
-                            results.items[i] = r;
-                            results.lengths[i] = qlen + 2;
+                            /* Only add leading './' for top-level entries (no '/') to match MRI */
+                            if (!trie_has_internal_slash(q))
+                            {
+                                char *r = rbc_arena_alloc(&ctx->arena, qlen + 3); // './' + q + '\0'
+                                r[0] = '.';
+                                r[1] = '/';
+                                memcpy(r + 2, q, qlen + 1);
+                                results.items[i] = r;
+                                results.lengths[i] = qlen + 2;
+                            }
+                            else
+                            {
+                                char *r = rbc_arena_alloc(&ctx->arena, qlen + 1);
+                                memcpy(r, q, qlen + 1);
+                                results.items[i] = r;
+                                results.lengths[i] = qlen;
+                            }
                         }
                         else
                         {
@@ -1350,15 +1629,131 @@ bool rbc_glob_trie(
                     }
                     else
                     {
-                        size_t nlen = strlen(q);
-                        char *r = rbc_arena_alloc(&ctx->arena, nlen + 1);
-                        memcpy(r, q, nlen + 1);
+                        size_t qlen = strlen(q);
+                        char *r = rbc_arena_alloc(&ctx->arena, qlen + 1);
+                        memcpy(r, q, qlen + 1);
                         results.items[i] = r;
-                        results.lengths[i] = nlen;
+                        results.lengths[i] = qlen;
                     }
                 }
             }
         }
+    }
+    else
+    {
+        /* Base is '.' or NULL. If the original pattern had a leading './',
+         * ensure the results include a leading './' for relative paths.
+         */
+        for (size_t i = 0; i < results.count; i++)
+        {
+            char *p = results.items[i];
+            if (!p)
+                continue;
+
+            size_t pattern_id = results.discovery_indices[i];
+            bool need_leading_dot_slash = false;
+
+            if (getenv("RBC_DEBUG_DOTFILES"))
+            {
+                fprintf(stderr, "DBG:CHECK i=%zu pattern_id=%zu pat='%s' p='%s'\n", i, pattern_id, (pattern_id < npatterns && patterns[pattern_id]) ? patterns[pattern_id] : "(null)", p ? p : "(null)");
+            }
+
+            if (pattern_id < npatterns && patterns[pattern_id])
+            {
+                const char *pat = patterns[pattern_id];
+                // Treat any pattern beginning with '.' as requiring a leading './' in results
+                if (pat[0] == '.')
+                    need_leading_dot_slash = true;
+            }
+
+            if (!need_leading_dot_slash)
+            {
+                /* DEBUG: show when we skip adding leading './' */
+                /* fprintf(stderr, "DEBUG: skip dot for pattern %zu pat='%s' path='%s'\n", pattern_id, patterns[pattern_id] ? patterns[pattern_id] : "(null)", p ? p : "(null)"); */
+                continue;
+            }
+
+            /* Debug: report normalization decisions for dot-leading patterns */
+            if (getenv("RBC_DEBUG_DOTFILES"))
+            {
+                fprintf(stderr, "DBG:NORM pattern_id=%zu pat='%s' orig_path='%s'\n", pattern_id, patterns[pattern_id] ? patterns[pattern_id] : "(null)", p ? p : "(null)");
+            }
+
+            if (p[0] == '.' && p[1] == '/')
+                continue; /* already present */
+
+            if (p[0] == '\0')
+            {
+                char *r = rbc_arena_alloc(&ctx->arena, 3); // './' + '\0'
+                strcpy(r, "./");
+                results.items[i] = r;
+                results.lengths[i] = 2;
+            }
+            else if (!trie_has_internal_slash(p))
+            {
+                /* Only add leading './' for top-level entries (no internal '/') to match MRI */
+                size_t plen2 = strlen(p);
+                char *r = rbc_arena_alloc(&ctx->arena, plen2 + 3); // './' + p + '\0'
+                r[0] = '.';
+                r[1] = '/';
+                memcpy(r + 2, p, plen2 + 1);
+                results.items[i] = r;
+                results.lengths[i] = plen2 + 2;
+            }
+            else
+            {
+                /* Nested path - leave unchanged */
+            }
+        }
+    }
+
+    /*
+     * Special-case: if one of the original patterns is exactly '.', MRI expects
+     * the result to be the base directory only. Defensive filter: if patterns
+     * contains '.', drop any results other than '.' or './'. This prevents
+     * erroneous per-entry additions from causing the '.' pattern to return the
+     * entire directory listing.
+     */
+    bool saw_dot_pattern = false;
+    for (size_t pi = 0; pi < npatterns; pi++)
+    {
+        if (patterns[pi] && strcmp(patterns[pi], ".") == 0)
+        {
+            saw_dot_pattern = true;
+            break;
+        }
+    }
+
+    if (saw_dot_pattern && results.count > 1)
+    {
+        size_t keep = 0;
+        for (size_t i = 0; i < results.count; i++)
+        {
+            char *p = results.items[i];
+            if (!p)
+                continue;
+            if (strcmp(p, ".") == 0 || strcmp(p, "./") == 0 || strcmp(p, "./.") == 0)
+            {
+                /* Normalize './.' to '.' to match MRI */
+                if (strcmp(p, "./.") == 0)
+                {
+                    char *r = rbc_arena_alloc(&ctx->arena, 2);
+                    strcpy(r, ".");
+                    results.items[i] = r;
+                    results.lengths[i] = 1;
+                }
+
+                if (keep != i)
+                {
+                    results.items[keep] = results.items[i];
+                    results.lengths[keep] = results.lengths[i];
+                    results.discovery_indices[keep] = results.discovery_indices[i];
+                }
+                keep++;
+            }
+        }
+        // Free the tail entries (they are arena-allocated; we just update count)
+        results.count = keep;
     }
 
     // Sort if requested
