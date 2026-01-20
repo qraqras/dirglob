@@ -833,12 +833,6 @@ bool rbc_glob_trie(
         return false;
     }
 
-    // For single pattern without braces, use regular glob (no trie benefit)
-    if (npatterns == 1 && !rbc_has_brace(patterns[0]))
-    {
-        return rbc_glob(patterns, 1, flags, base, sort, out, count, lengths);
-    }
-
     // Initialize context
     rbc_ctx_t *ctx = malloc(sizeof(rbc_ctx_t));
     if (!ctx)
@@ -858,7 +852,7 @@ bool rbc_glob_trie(
         return false;
     }
 
-    // Compile trie
+    // Compile trie (handles single pattern, brace expansion, etc.)
     rbc_trie_t *trie = trie_compile(patterns, npatterns, flags, &ctx->arena);
     if (!trie)
     {
