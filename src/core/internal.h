@@ -170,6 +170,7 @@ void rbc_glob_ctx_free(rbc_ctx_t *ctx);
 /// @defgroup Strategy Functions
 /// @{
 bool rbc_has_wildcard(const char *str);
+bool rbc_has_escape(const char *str);
 bool rbc_is_recursive_wildcard(const char *str);
 bool rbc_has_brace(const char *str);
 rbc_pattern_type_t rbc_analyze_pattern(const char *pattern);

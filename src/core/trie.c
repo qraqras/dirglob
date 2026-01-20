@@ -318,6 +318,56 @@ static rbc_trie_matcher_t *trie_matcher_new(
     return m;
 }
 
+/**
+ * @brief Unescape a string (remove backslashes before special characters)
+ * @return Newly allocated unescaped string, or NULL on error
+ */
+static char *trie_unescape_string(rbc_arena_t *arena, const char *str)
+{
+    size_t len = strlen(str);
+    char *result = rbc_arena_alloc(arena, len + 1);
+    if (!result)
+        return NULL;
+
+    char *dst = result;
+    const char *src = str;
+    while (*src)
+    {
+        if (*src == '\\' && src[1])
+        {
+            src++; // Skip backslash
+        }
+        *dst++ = *src++;
+    }
+    *dst = '\0';
+    return result;
+}
+
+/* Helper: add result respecting match_dir and directory status */
+static void trie_add_result_diraware(rbc_results_t *results, const char *path, bool match_dir, bool is_dir, size_t pattern_id)
+{
+    if (match_dir)
+    {
+        if (!is_dir)
+            return;
+        size_t len = strlen(path);
+        if (len > 0 && path[len - 1] == '/')
+        {
+            rbc_glob_results_add_with_index(results, path, pattern_id);
+        }
+        else
+        {
+            char tmp[PATH_MAX];
+            snprintf(tmp, sizeof(tmp), "%s/", path);
+            rbc_glob_results_add_with_index(results, tmp, pattern_id);
+        }
+    }
+    else
+    {
+        rbc_glob_results_add_with_index(results, path, pattern_id);
+    }
+}
+
 /* ========================================================================
  * Trie Child Management
  * ======================================================================== */
@@ -469,14 +519,19 @@ static void trie_insert_segment(
             return;
         }
 
+        // Unescape the name for literal matching (e.g., \*asterisk.txt -> *asterisk.txt)
+        const char *unescaped_name = trie_unescape_string(trie->arena, name);
+        if (!unescaped_name)
+            return;
+
         // Find or create literal child
-        rbc_trie_node_t *child = trie_find_literal_child(parent, name);
+        rbc_trie_node_t *child = trie_find_literal_child(parent, unescaped_name);
         if (!child)
         {
             child = trie_node_new(trie->arena, TRIE_NODE_LITERAL);
             if (!child)
                 return;
-            child->data.literal.name = rbc_arena_strdup(trie->arena, name);
+            child->data.literal.name = unescaped_name;
             trie_add_child(parent, child);
         }
 
@@ -514,8 +569,14 @@ static void trie_insert_segment(
         }
         else
         {
-            // Pattern ends after wildcard
-            wc_child->has_terminal = true;
+            // Pattern ends after wildcard - create TERMINAL node
+            rbc_trie_node_t *term = trie_node_new(trie->arena, TRIE_NODE_TERMINAL);
+            if (term)
+            {
+                trie_add_terminal_pattern(term, pattern_id, false, trie->arena);
+                trie_add_child(wc_child, term);
+                wc_child->has_terminal = true;
+            }
         }
         break;
     }
@@ -654,6 +715,10 @@ static void trie_match_wildcards(
     unsigned int flags,
     rbc_arena_t *arena)
 {
+    // Check if the entry is a directory (needed for match_dir check)
+    struct stat st;
+    bool is_dir = (stat(full_path, &st) == 0 && S_ISDIR(st.st_mode));
+
     for (rbc_trie_matcher_t *m = wc_node->data.wildcard.matchers; m; m = m->next)
     {
         bool matched = false;
@@ -672,27 +737,66 @@ static void trie_match_wildcards(
             // Check if pattern ends at this wildcard node
             if (wc_node->has_terminal)
             {
-                // Pattern ends here - add result with the matcher's pattern_id
-                rbc_glob_results_add_with_index(results, full_path, m->pattern_id);
+                // Find the TERMINAL child for this pattern to check match_dir
+                bool should_add = false;
+                bool add_trailing_slash = false;
+                bool found_terminal = false;
+                for (rbc_trie_node_t *term = wc_node->children; term; term = term->sibling)
+                {
+                    if (term->type == TRIE_NODE_TERMINAL)
+                    {
+                        for (size_t i = 0; i < term->data.terminal.count; i++)
+                        {
+                            if (term->data.terminal.pattern_ids[i] == m->pattern_id)
+                            {
+                                found_terminal = true;
+                                // Check match_dir constraint
+                                if (!term->data.terminal.match_dir || is_dir)
+                                {
+                                    should_add = true;
+                                    add_trailing_slash = term->data.terminal.match_dir;
+                                }
+                                break;
+                            }
+                        }
+                        if (found_terminal)
+                            break;
+                    }
+                }
+                // If no terminal found for this pattern, add anyway (no match_dir constraint)
+                if (!found_terminal)
+                {
+                    should_add = true;
+                }
+                if (should_add)
+                {
+                    trie_add_result_diraware(results, full_path, add_trailing_slash, is_dir, m->pattern_id);
+                }
             }
         }
     }
 
     // If wildcard node has non-terminal children, continue matching for directories
-    if (wc_node->children)
+    // Check if there are any non-terminal children (patterns that continue after this wildcard)
+    bool has_non_terminal_children = false;
+    for (rbc_trie_node_t *child = wc_node->children; child; child = child->sibling)
     {
-        // For each matched file that is a directory, continue descent
-        struct stat st;
-        if (stat(full_path, &st) == 0 && S_ISDIR(st.st_mode))
+        if (child->type != TRIE_NODE_TERMINAL)
         {
-            for (rbc_trie_matcher_t *m = wc_node->data.wildcard.matchers; m; m = m->next)
-            {
-                bool matched = m->compiled ? rbc_xfnmatch(m->compiled, name, flags) : rbc_fnmatch(m->pattern_str, name, flags);
+            has_non_terminal_children = true;
+            break;
+        }
+    }
 
-                if (matched)
-                {
-                    trie_execute_node(wc_node, full_path, results, flags, arena);
-                }
+    if (has_non_terminal_children && is_dir)
+    {
+        for (rbc_trie_matcher_t *m = wc_node->data.wildcard.matchers; m; m = m->next)
+        {
+            bool matched = m->compiled ? rbc_xfnmatch(m->compiled, name, flags) : rbc_fnmatch(m->pattern_str, name, flags);
+
+            if (matched)
+            {
+                trie_execute_node(wc_node, full_path, results, flags, arena);
             }
         }
     }
@@ -730,11 +834,8 @@ static void trie_execute_node(
             continue;
         }
 
-        // Skip dotfiles unless FNM_DOTMATCH
-        if (name[0] == '.' && !(flags & RBC_FNM_DOTMATCH))
-        {
-            continue;
-        }
+        // Note: Dotfile filtering is handled by fnmatch, not here
+        // This allows patterns like ".*" to match dotfiles while "*" does not
 
         // Build full path
         size_t path_len = strlen(current_path);
@@ -787,21 +888,41 @@ static void trie_execute_node(
                 {
                     trie_match_wildcards(rec_child, name, path_buf, results, flags, arena);
                 }
+                else if (rec_child->type == TRIE_NODE_LITERAL)
+                {
+                    if (strcmp(rec_child->data.literal.name, name) == 0)
+                    {
+                        /* Add terminal matches if any */
+                        for (rbc_trie_node_t *term = rec_child->children; term; term = term->sibling)
+                        {
+                            if (term->type == TRIE_NODE_TERMINAL)
+                            {
+                                for (size_t i = 0; i < term->data.terminal.count; i++)
+                                {
+                                    trie_add_result_diraware(results, path_buf, term->data.terminal.match_dir, is_dir, term->data.terminal.pattern_ids[i]);
+                                }
+                            }
+                        }
+
+                        /* Descend if directory */
+                        if (is_dir && rec_child->children)
+                        {
+                            trie_execute_node(rec_child, path_buf, results, flags, arena);
+                        }
+                    }
+                }
                 else if (rec_child->type == TRIE_NODE_TERMINAL)
                 {
                     for (size_t i = 0; i < rec_child->data.terminal.count; i++)
                     {
-                        if (!rec_child->data.terminal.match_dir || is_dir)
-                        {
-                            rbc_glob_results_add_with_index(
-                                results, path_buf, rec_child->data.terminal.pattern_ids[i]);
-                        }
+                        trie_add_result_diraware(results, path_buf, rec_child->data.terminal.match_dir, is_dir, rec_child->data.terminal.pattern_ids[i]);
                     }
                 }
             }
 
             // If directory, recurse with same RECURSIVE node
-            if (is_dir)
+            // Skip dotfiles for ** unless FNM_DOTMATCH is set
+            if (is_dir && (name[0] != '.' || (flags & RBC_FNM_DOTMATCH)))
             {
                 trie_execute_node(node, path_buf, results, flags, arena);
             }
@@ -817,20 +938,16 @@ static void trie_execute_node(
                 // Check if name matches literal
                 if (strcmp(child->data.literal.name, name) == 0)
                 {
-                    if (child->has_terminal && !child->children)
+                    if (child->has_terminal)
                     {
-                        // Pattern ends at this literal
+                        // Pattern ends at this literal - check for TERMINAL children
                         for (rbc_trie_node_t *term = child->children; term; term = term->sibling)
                         {
                             if (term->type == TRIE_NODE_TERMINAL)
                             {
                                 for (size_t i = 0; i < term->data.terminal.count; i++)
                                 {
-                                    if (!term->data.terminal.match_dir || is_dir)
-                                    {
-                                        rbc_glob_results_add_with_index(
-                                            results, path_buf, term->data.terminal.pattern_ids[i]);
-                                    }
+                                    trie_add_result_diraware(results, path_buf, term->data.terminal.match_dir, is_dir, term->data.terminal.pattern_ids[i]);
                                 }
                             }
                         }
@@ -861,6 +978,22 @@ static void trie_execute_node(
                     {
                         if (strcmp(rec_child->data.literal.name, name) == 0)
                         {
+                            fprintf(stderr, "DEBUG RECURSIVE LITERAL MATCH name=%s rec=%s is_dir=%d\n", name, rec_child->data.literal.name, (int)is_dir);
+                            /* If this literal node has TERMINAL children, add matches (file or dir per match_dir) */
+                            for (rbc_trie_node_t *term = rec_child->children; term; term = term->sibling)
+                            {
+                                if (term->type == TRIE_NODE_TERMINAL)
+                                {
+                                    fprintf(stderr, "DEBUG RECURSIVE literal has TERMINAL count=%zu\n", term->data.terminal.count);
+                                    for (size_t i = 0; i < term->data.terminal.count; i++)
+                                    {
+                                        fprintf(stderr, "DEBUG ADDING via recursive literal: pattern_id=%zu match_dir=%d\n", term->data.terminal.pattern_ids[i], (int)term->data.terminal.match_dir);
+                                        trie_add_result_diraware(results, path_buf, term->data.terminal.match_dir, is_dir, term->data.terminal.pattern_ids[i]);
+                                    }
+                                }
+                            }
+
+                            /* Descend if this entry is a directory */
                             if (is_dir && rec_child->children)
                             {
                                 trie_execute_node(rec_child, path_buf, results, flags, arena);
@@ -873,15 +1006,26 @@ static void trie_execute_node(
                         {
                             if (!rec_child->data.terminal.match_dir || is_dir)
                             {
-                                rbc_glob_results_add_with_index(
-                                    results, path_buf, rec_child->data.terminal.pattern_ids[i]);
+                                if (rec_child->data.terminal.match_dir)
+                                {
+                                    char tmp_path[PATH_MAX];
+                                    snprintf(tmp_path, sizeof(tmp_path), "%s/", path_buf);
+                                    rbc_glob_results_add_with_index(
+                                        results, tmp_path, rec_child->data.terminal.pattern_ids[i]);
+                                }
+                                else
+                                {
+                                    rbc_glob_results_add_with_index(
+                                        results, path_buf, rec_child->data.terminal.pattern_ids[i]);
+                                }
                             }
                         }
                     }
                 }
 
                 // Second: if directory, recursively descend with same ** node
-                if (is_dir)
+                // Skip dotfiles for ** unless FNM_DOTMATCH is set
+                if (is_dir && (name[0] != '.' || (flags & RBC_FNM_DOTMATCH)))
                 {
                     trie_execute_node(child, path_buf, results, flags, arena);
                 }
@@ -963,8 +1107,37 @@ static void trie_execute(
                             {
                                 for (size_t i = 0; i < term->data.terminal.count; i++)
                                 {
-                                    rbc_glob_results_add_with_index(
-                                        results, path_buf, term->data.terminal.pattern_ids[i]);
+                                    trie_add_result_diraware(results, path_buf, term->data.terminal.match_dir, S_ISDIR(st.st_mode), term->data.terminal.pattern_ids[i]);
+                                }
+                            }
+                        }
+                    }
+
+                    // Zero-match for RECURSIVE child: patterns like '.../**/' should match the directory itself
+                    for (rbc_trie_node_t *rec = child->children; rec; rec = rec->sibling)
+                    {
+                        if (rec->type == TRIE_NODE_RECURSIVE)
+                        {
+                            for (rbc_trie_node_t *term = rec->children; term; term = term->sibling)
+                            {
+                                if (term->type == TRIE_NODE_TERMINAL)
+                                {
+                                    for (size_t i = 0; i < term->data.terminal.count; i++)
+                                    {
+                                        if (!term->data.terminal.match_dir || S_ISDIR(st.st_mode))
+                                        {
+                                            if (term->data.terminal.match_dir)
+                                            {
+                                                char tmp_path2[PATH_MAX];
+                                                snprintf(tmp_path2, sizeof(tmp_path2), "%s/", path_buf);
+                                                rbc_glob_results_add_with_index(results, tmp_path2, term->data.terminal.pattern_ids[i]);
+                                            }
+                                            else
+                                            {
+                                                rbc_glob_results_add_with_index(results, path_buf, term->data.terminal.pattern_ids[i]);
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1065,6 +1238,128 @@ bool rbc_glob_trie(
 
     // Execute trie
     trie_execute(trie, base, &results);
+
+    // Normalize base and strip base prefix from results when appropriate.
+    // Tests expect paths relative to the base (or CWD when base == "."/NULL).
+    if (base && base[0] && strcmp(base, ".") != 0)
+    {
+        char canonical_base[PATH_MAX];
+        // Build absolute base if needed
+        if (base[0] == '/')
+        {
+            snprintf(canonical_base, sizeof(canonical_base), "%s", base);
+        }
+        else
+        {
+            char cwd[PATH_MAX];
+            if (getcwd(cwd, sizeof(cwd)) == NULL)
+            {
+                canonical_base[0] = '\0';
+            }
+            else
+            {
+                snprintf(canonical_base, sizeof(canonical_base), "%s/%s", cwd, base);
+            }
+        }
+
+        // Remove any trailing slashes (but keep root "/")
+        size_t blen = strlen(canonical_base);
+        while (blen > 1 && canonical_base[blen - 1] == '/')
+        {
+            canonical_base[--blen] = '\0';
+        }
+
+        if (canonical_base[0])
+        {
+            for (size_t i = 0; i < results.count; i++)
+            {
+                char *p = results.items[i];
+                if (!p)
+                    continue;
+
+                // If p starts with canonical_base, strip it (allow optional extra '/')
+                size_t plen = strlen(p);
+                if (plen >= blen && strncmp(p, canonical_base, blen) == 0)
+                {
+                    const char *q = p + blen;
+                    // skip any leading slashes after the prefix
+                    while (*q == '/')
+                        q++;
+
+                    // Determine whether original pattern had leading './' and requires './' in results
+                    size_t pattern_id = results.discovery_indices[i];
+                    bool need_leading_dot_slash = false;
+                    if (pattern_id < npatterns && patterns[pattern_id])
+                    {
+                        const char *pat = patterns[pattern_id];
+                        if (pat[0] == '.' && pat[1] == '/')
+                            need_leading_dot_slash = true;
+                    }
+
+                    if (*q == '\0')
+                    {
+                        // Base itself -> represent as "."
+                        if (need_leading_dot_slash)
+                        {
+                            char *r = rbc_arena_alloc(&ctx->arena, 3); // "./" + '\0'
+                            strcpy(r, "./");
+                            results.items[i] = r;
+                            results.lengths[i] = 2;
+                        }
+                        else
+                        {
+                            char *r = rbc_arena_alloc(&ctx->arena, 2);
+                            strcpy(r, ".");
+                            results.items[i] = r;
+                            results.lengths[i] = 1;
+                        }
+                    }
+                    else
+                    {
+                        size_t qlen = strlen(q);
+                        if (need_leading_dot_slash && !(q[0] == '.' && q[1] == '/'))
+                        {
+                            char *r = rbc_arena_alloc(&ctx->arena, qlen + 3); // './' + q + '\0'
+                            r[0] = '.';
+                            r[1] = '/';
+                            memcpy(r + 2, q, qlen + 1);
+                            results.items[i] = r;
+                            results.lengths[i] = qlen + 2;
+                        }
+                        else
+                        {
+                            char *r = rbc_arena_alloc(&ctx->arena, qlen + 1);
+                            memcpy(r, q, qlen + 1);
+                            results.items[i] = r;
+                            results.lengths[i] = qlen;
+                        }
+                    }
+                }
+                else if (p[0] == '/' && p[1] == '/')
+                {
+                    // Collapse leading double slash to single and keep rest
+                    const char *q = p;
+                    while (*q == '/')
+                        q++;
+                    if (*q == '\0')
+                    {
+                        char *r = rbc_arena_alloc(&ctx->arena, 2);
+                        strcpy(r, "/");
+                        results.items[i] = r;
+                        results.lengths[i] = 1;
+                    }
+                    else
+                    {
+                        size_t nlen = strlen(q);
+                        char *r = rbc_arena_alloc(&ctx->arena, nlen + 1);
+                        memcpy(r, q, nlen + 1);
+                        results.items[i] = r;
+                        results.lengths[i] = nlen;
+                    }
+                }
+            }
+        }
+    }
 
     // Sort if requested
     if (sort)

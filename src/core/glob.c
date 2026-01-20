@@ -425,7 +425,8 @@ rbc_segment_t *rbc_glob_segment_compile(rbc_arena_t *arena, const char *pattern,
             }
         }
 
-        if (!rbc_has_brace(component) && !rbc_has_wildcard(component))
+        // Patterns with escapes should be handled by fnmatch, not literal strcmp
+        if (!rbc_has_brace(component) && !rbc_has_wildcard(component) && !rbc_has_escape(component))
         {
             seg = rbc_glob_segment_new(arena, RBC_SEGMENT_LITERAL);
             seg->data.literal = component;

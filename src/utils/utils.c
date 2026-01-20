@@ -87,6 +87,16 @@ bool rbc_has_wildcard(const char *str)
     return false;
 }
 
+bool rbc_has_escape(const char *str)
+{
+    for (const char *p = str; *p; p++)
+    {
+        if (*p == '\\' && p[1])
+            return true;
+    }
+    return false;
+}
+
 bool rbc_is_recursive_wildcard(const char *str)
 {
     return str != NULL && strcmp(str, "**") == 0;
