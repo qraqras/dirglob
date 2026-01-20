@@ -7,8 +7,8 @@
  */
 
 #include "rbc/glob_v2.h"
-#include "string_set.h"
-#include "internal.h"
+#include "../utils/string_set.h"
+#include "../core/internal.h"
 #include <stdlib.h>
 #include <string.h>
 #include <dirent.h>

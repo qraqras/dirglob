@@ -15,13 +15,18 @@ out_file = sys.argv[2]
 
 # Collect .c files in tests_dir (non-recursive), ignore vendor and scripts directories
 c_files = []
+# List of standalone tests that have their own main() and should not be included
+standalone_tests = {
+    'test_glob_generated.c',
+    'test_glob_v2_hints.c',
+}
 for name in sorted(os.listdir(tests_dir)):
     if not name.endswith('.c'):
         continue
     if name == os.path.basename(out_file):
         continue
-    # Skip test_glob_generated.c (it has its own test executable)
-    if name == 'test_glob_generated.c':
+    # Skip standalone tests (they have their own test executables)
+    if name in standalone_tests:
         continue
     c_files.append(os.path.join(tests_dir, name))
 

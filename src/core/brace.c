@@ -2,7 +2,7 @@
 #include <string.h>
 #include <rbc/rbc.h>
 #include "internal.h"
-#include "utils.h"
+#include "../utils/utils.h"
 
 bool rbc_brace_visit(const char *pattern, rbc_arena_t *arena, rbc_brace_visit_cb cb, void *arg)
 {

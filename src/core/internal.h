@@ -4,8 +4,8 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include "arena.h"
-#include "utils.h"
+#include "../utils/arena.h"
+#include "../utils/utils.h"
 #include "rbc/rbc.h"
 
 #ifndef PATH_MAX
@@ -201,16 +201,6 @@ bool rbc_segment_match(const rbc_segment_t *seg, const char *name, unsigned int 
 rbc_alternatives_t *rbc_alternatives_compile(rbc_arena_t *arena, const char *pattern, unsigned int flags);
 void rbc_alternatives_free(rbc_alternatives_t *alt, rbc_arena_t *arena);
 bool rbc_alternatives_match(const rbc_alternatives_t *alt, const char *name, unsigned int flags);
-
-/// @brief Main walker API (recursive implementation)
-/// This is the primary glob walker, using pure recursion like MRI.
-/// Optimizations: d_type usage, fast-path pattern matching, stack-based buffers.
-bool rbc_glob_walk(
-    rbc_segment_t *segments,
-    rbc_match_callback_t callback,
-    void *userdata,
-    unsigned flags,
-    bool sort);
 /// @}
 
 /// @defgroup Execution Plan Structures
@@ -245,11 +235,12 @@ struct rbc_plan_node_s
 /// @brief Compiled execution plan for multiple patterns
 struct rbc_glob_plan_s
 {
-    rbc_plan_node_t *root;    // Root node of execution tree
-    size_t pattern_count;     // Total number of patterns
-    unsigned int flags;       // Glob flags
-    rbc_arena_t arena;        // Memory arena for plan
-    char **original_patterns; // Original pattern strings
+    rbc_plan_node_t *root;         // Root node of execution tree
+    size_t pattern_count;          // Total number of patterns
+    unsigned int flags;            // Glob flags
+    rbc_arena_t arena;             // Memory arena for plan
+    char **original_patterns;      // Original pattern strings
+    bool use_individual_execution; // If true, fallback to individual execution
 };
 
 /// @}

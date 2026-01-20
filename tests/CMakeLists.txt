@@ -33,7 +33,10 @@ file(GLOB TEST_IMPLS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CONFIGURE_DEPENDS test
 list(FILTER TEST_IMPLS EXCLUDE REGEX "^test_parity_.*\\.c$")
 list(FILTER TEST_IMPLS EXCLUDE REGEX "^test_glob_generated\\.c$")
 list(FILTER TEST_IMPLS EXCLUDE REGEX "^test_glob_v2_hints\\.c$")  # Standalone test
-list(FILTER TEST_IMPLS EXCLUDE REGEX "^test_glob_v2_brace\\.c$")  # Standalone test
+list(FILTER TEST_IMPLS EXCLUDE REGEX "^test_glob_v2_brace\\.c$")  # Standalone test (deleted)
+list(FILTER TEST_IMPLS EXCLUDE REGEX "^test_glob_v2_integration\\.c$")  # Deleted
+list(FILTER TEST_IMPLS EXCLUDE REGEX "^test_glob_v2_recursive\\.c$")  # Deleted
+list(FILTER TEST_IMPLS EXCLUDE REGEX "^test_glob_v2_multi\\.c$")  # Deleted
 
 # Add test helpers
 list(APPEND TEST_IMPLS test_helpers.c)
@@ -114,48 +117,3 @@ target_include_directories(test_glob_v2_hints PRIVATE
 )
 target_link_libraries(test_glob_v2_hints PRIVATE rbc)
 add_test(NAME glob_v2_hints COMMAND test_glob_v2_hints)
-
-# Standalone glob v2 brace optimization test
-add_executable(test_glob_v2_brace test_glob_v2_brace.c)
-target_include_directories(test_glob_v2_brace PRIVATE
-  "${PROJECT_SOURCE_DIR}/include"
-  "${PROJECT_SOURCE_DIR}/src"
-)
-target_link_libraries(test_glob_v2_brace PRIVATE rbc)
-add_test(NAME glob_v2_brace COMMAND test_glob_v2_brace)
-
-# Standalone glob v2 integration test
-add_executable(test_glob_v2_integration test_glob_v2_integration.c)
-target_include_directories(test_glob_v2_integration PRIVATE
-  "${PROJECT_SOURCE_DIR}/include"
-  "${PROJECT_SOURCE_DIR}/src"
-)
-target_link_libraries(test_glob_v2_integration PRIVATE rbc)
-add_test(NAME glob_v2_integration COMMAND test_glob_v2_integration)
-
-# Standalone glob v2 recursive test
-add_executable(test_glob_v2_recursive test_glob_v2_recursive.c)
-target_include_directories(test_glob_v2_recursive PRIVATE
-  "${PROJECT_SOURCE_DIR}/include"
-  "${PROJECT_SOURCE_DIR}/src"
-)
-target_link_libraries(test_glob_v2_recursive PRIVATE rbc)
-add_test(NAME glob_v2_recursive COMMAND test_glob_v2_recursive)
-
-# Standalone glob v2 multi-pattern test
-add_executable(test_glob_v2_multi test_glob_v2_multi.c)
-target_include_directories(test_glob_v2_multi PRIVATE
-  "${PROJECT_SOURCE_DIR}/include"
-  "${PROJECT_SOURCE_DIR}/src"
-)
-target_link_libraries(test_glob_v2_multi PRIVATE rbc)
-add_test(NAME glob_v2_multi COMMAND test_glob_v2_multi)
-
-# Standalone walker v2 test (recursive implementation)
-add_executable(test_walker_v2 test_walker_v2.c)
-target_include_directories(test_walker_v2 PRIVATE
-  "${PROJECT_SOURCE_DIR}/include"
-  "${PROJECT_SOURCE_DIR}/src"
-)
-target_link_libraries(test_walker_v2 PRIVATE rbc)
-add_test(NAME walker_v2 COMMAND test_walker_v2 WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/tests)

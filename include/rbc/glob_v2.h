@@ -264,6 +264,14 @@ extern "C"
         int flags);
 
     /**
+     * @brief Execute multi-segment pattern optimization (src/*.c, etc.) (internal use)
+     */
+    rbc_glob_result_t *rbc_glob_exec_multi_segment_optimized(
+        const rbc_glob_hints_t *hints,
+        const char *pattern,
+        int flags);
+
+    /**
      * @brief Execute multi-pattern optimization (internal use)
      */
     rbc_glob_result_t *rbc_glob_multi_v2_optimized(

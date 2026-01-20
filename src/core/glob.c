@@ -1,7 +1,7 @@
 #include <rbc/rbc.h>
 #include "rbc/glob_v2.h" /* For hints only */
 #include "internal.h"
-#include "utils.h"
+#include "../utils/utils.h"
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -857,12 +857,19 @@ bool rbc_glob(const char **patterns, size_t npatterns, unsigned flags, const cha
             break;
 
         case GLOB_HINT_RECURSIVE:
-            /* Use standard walker for ** patterns */
+            /* Optimized: recursive pattern (**) */
             {
-                rbc_segment_t *segments = rbc_glob_segment_compile(&ctx->arena, patterns[i], flags);
-                if (segments)
+                rbc_glob_result_t *v2_result = rbc_glob_exec_recursive_optimized(&hints, patterns[i], (int)flags);
+                if (v2_result && v2_result->paths)
                 {
-                    rbc_glob_walk(segments, collect_result, &cb_ctx, flags, sort);
+                    for (size_t j = 0; j < v2_result->count; j++)
+                    {
+                        if (v2_result->paths[j])
+                        {
+                            rbc_glob_results_add(&results, v2_result->paths[j]);
+                        }
+                    }
+                    rbc_glob_result_free(v2_result);
                 }
             }
             break;
@@ -886,14 +893,58 @@ bool rbc_glob(const char **patterns, size_t npatterns, unsigned flags, const cha
             break;
 
         case GLOB_HINT_MULTI_SEGMENT:
+            /* Optimized: multi-segment pattern (src/*.c, etc.) */
+            {
+                rbc_glob_result_t *v2_result = rbc_glob_exec_multi_segment_optimized(&hints, patterns[i], (int)flags);
+                if (v2_result && v2_result->paths)
+                {
+                    for (size_t j = 0; j < v2_result->count; j++)
+                    {
+                        if (v2_result->paths[j])
+                        {
+                            rbc_glob_results_add(&results, v2_result->paths[j]);
+                        }
+                    }
+                    rbc_glob_result_free(v2_result);
+                }
+            }
+            break;
+
         case GLOB_HINT_COMPLEX:
         default:
-            /* Standard path: use walker */
+            /* Complex patterns: try recursive first, then multi-segment */
             {
-                rbc_segment_t *segments = rbc_glob_segment_compile(&ctx->arena, patterns[i], flags);
-                if (segments)
+                /* Check if it contains ** */
+                if (strstr(patterns[i], "**"))
                 {
-                    rbc_glob_walk(segments, collect_result, &cb_ctx, flags, sort);
+                    rbc_glob_result_t *v2_result = rbc_glob_exec_recursive_optimized(&hints, patterns[i], (int)flags);
+                    if (v2_result && v2_result->paths)
+                    {
+                        for (size_t j = 0; j < v2_result->count; j++)
+                        {
+                            if (v2_result->paths[j])
+                            {
+                                rbc_glob_results_add(&results, v2_result->paths[j]);
+                            }
+                        }
+                        rbc_glob_result_free(v2_result);
+                    }
+                }
+                else
+                {
+                    /* Try multi-segment for other complex patterns */
+                    rbc_glob_result_t *v2_result = rbc_glob_exec_multi_segment_optimized(&hints, patterns[i], (int)flags);
+                    if (v2_result && v2_result->paths)
+                    {
+                        for (size_t j = 0; j < v2_result->count; j++)
+                        {
+                            if (v2_result->paths[j])
+                            {
+                                rbc_glob_results_add(&results, v2_result->paths[j]);
+                            }
+                        }
+                        rbc_glob_result_free(v2_result);
+                    }
                 }
             }
             break;
@@ -1014,10 +1065,62 @@ bool rbc_xglob(const rbc_glob_pattern_t *gp, const char *base, bool sort, char *
                                         ctx->results->ctx->discovery_counter++);
     }
 
-    /* Execute with pre-compiled segments */
-    if (gp->segments)
+    /* Execute using optimized path based on pattern type */
+    if (gp->original_pattern)
     {
-        rbc_glob_walk(gp->segments, collect_result, &cb_ctx, gp->flags, sort);
+        rbc_glob_hints_t hints = rbc_glob_hints_generate(gp->original_pattern);
+        rbc_glob_result_t *v2_result = NULL;
+
+        switch (hints.type)
+        {
+        case GLOB_HINT_LITERAL:
+        {
+            struct stat st;
+            if (stat(gp->original_pattern, &st) == 0)
+            {
+                rbc_glob_results_add(&results, gp->original_pattern);
+            }
+        }
+        break;
+
+        case GLOB_HINT_BRACE_SINGLE_DIR:
+        case GLOB_HINT_BRACE_NESTED:
+            v2_result = rbc_glob_exec_brace_optimized(&hints, gp->original_pattern, (int)gp->flags);
+            break;
+
+        case GLOB_HINT_RECURSIVE:
+            v2_result = rbc_glob_exec_recursive_optimized(&hints, gp->original_pattern, (int)gp->flags);
+            break;
+
+        case GLOB_HINT_SIMPLE_PATTERN:
+            v2_result = rbc_glob_exec_simple_optimized(&hints, gp->original_pattern, (int)gp->flags);
+            break;
+
+        case GLOB_HINT_MULTI_SEGMENT:
+        case GLOB_HINT_COMPLEX:
+        default:
+            if (strstr(gp->original_pattern, "**"))
+            {
+                v2_result = rbc_glob_exec_recursive_optimized(&hints, gp->original_pattern, (int)gp->flags);
+            }
+            else
+            {
+                v2_result = rbc_glob_exec_multi_segment_optimized(&hints, gp->original_pattern, (int)gp->flags);
+            }
+            break;
+        }
+
+        if (v2_result && v2_result->paths)
+        {
+            for (size_t j = 0; j < v2_result->count; j++)
+            {
+                if (v2_result->paths[j])
+                {
+                    collect_result(v2_result->paths[j], &cb_ctx);
+                }
+            }
+            rbc_glob_result_free(v2_result);
+        }
     }
 
     // if (sort)

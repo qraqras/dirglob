@@ -1,24 +1,39 @@
 # src/CMakeLists.txt
+#
+# Directory structure:
+#   src/
+#   ├── core/       - Core glob/fnmatch implementation
+#   ├── optimizers/ - v2 pattern-specific optimizations
+#   └── utils/      - Utility modules (arena, string helpers)
+#
+
 add_library(rbc
-  glob.c           # v1 API with v2 optimizations integrated
-  walker.c         # Unified walker (recursive, MRI-compatible)
-  plan.c           # Multi-pattern execution plan
-  fnmatch.c
-  utils.c
-  arena.c
-  brace.c
-  str_list.c
-  # v2 optimization modules (used by glob.c)
-  glob_v2_hints.c      # Hint generation
-  glob_v2_brace.c      # Brace expansion optimization
-  glob_v2_simple.c     # Simple pattern optimization (*.c, etc.)
-  string_set.c
+  # Core modules
+  core/glob.c           # Main API (v1 + v2 integration)
+  core/fnmatch.c        # Pattern matching
+  core/plan.c           # Multi-pattern execution plan
+  core/brace.c          # Brace expansion
+
+  # v2 Optimizers (pattern-specific fast paths)
+  optimizers/glob_v2_hints.c      # Hint generation
+  optimizers/glob_v2_brace.c      # Brace expansion optimization
+  optimizers/glob_v2_simple.c     # Simple/Multi-segment pattern optimization
+  optimizers/glob_v2_recursive.c  # Recursive (**) optimization
+
+  # Utilities
+  utils/arena.c         # Memory arena
+  utils/utils.c         # Helper functions
+  utils/str_list.c      # String list
+  utils/string_set.c    # String hash set
 )
 
 target_include_directories(rbc
   PUBLIC
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
+  PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/core
+    ${CMAKE_CURRENT_SOURCE_DIR}/utils
 )
 
 # Set compile options for MSVC and others if needed
