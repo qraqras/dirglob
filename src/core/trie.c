@@ -669,17 +669,16 @@ static void trie_match_wildcards(
 
         if (matched)
         {
-            // Check if pattern continues or ends
-            if (wc_node->has_terminal && !wc_node->children)
+            // Check if pattern ends at this wildcard node
+            if (wc_node->has_terminal)
             {
-                // Pattern ends here
+                // Pattern ends here - add result with the matcher's pattern_id
                 rbc_glob_results_add_with_index(results, full_path, m->pattern_id);
             }
         }
     }
 
-    // If wildcard node has children, continue matching
-    // (This handles cases like *.c/ which expects a directory)
+    // If wildcard node has non-terminal children, continue matching for directories
     if (wc_node->children)
     {
         // For each matched file that is a directory, continue descent
@@ -776,6 +775,38 @@ static void trie_execute_node(
             is_dir = S_ISDIR(st.st_mode);
         }
 #endif
+
+        // Special handling if current node is RECURSIVE
+        // For directories, we need to recurse with the RECURSIVE node itself
+        if (node->type == TRIE_NODE_RECURSIVE)
+        {
+            // Match children of RECURSIVE node against current entry
+            for (rbc_trie_node_t *rec_child = node->children; rec_child; rec_child = rec_child->sibling)
+            {
+                if (rec_child->type == TRIE_NODE_WILDCARD)
+                {
+                    trie_match_wildcards(rec_child, name, path_buf, results, flags, arena);
+                }
+                else if (rec_child->type == TRIE_NODE_TERMINAL)
+                {
+                    for (size_t i = 0; i < rec_child->data.terminal.count; i++)
+                    {
+                        if (!rec_child->data.terminal.match_dir || is_dir)
+                        {
+                            rbc_glob_results_add_with_index(
+                                results, path_buf, rec_child->data.terminal.pattern_ids[i]);
+                        }
+                    }
+                }
+            }
+
+            // If directory, recurse with same RECURSIVE node
+            if (is_dir)
+            {
+                trie_execute_node(node, path_buf, results, flags, arena);
+            }
+            continue; // Skip the normal child processing below
+        }
 
         // Process each child node
         for (rbc_trie_node_t *child = node->children; child; child = child->sibling)
