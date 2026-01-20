@@ -1,6 +1,6 @@
 /**
- * @file glob_v2.h
- * @brief glob v2 API - Hint-based optimized glob implementation
+ * @file glob_hints.h
+ * @brief Hint-based optimized glob implementation (internal)
  *
  * Design Philosophy:
  * - Hint-driven approach (same as fnmatch)
@@ -9,8 +9,8 @@
  * - Consistent with fnmatch architecture
  */
 
-#ifndef RBC_GLOB_V2_H
-#define RBC_GLOB_V2_H
+#ifndef RBC_GLOB_HINTS_H
+#define RBC_GLOB_HINTS_H
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -168,65 +168,14 @@ extern "C"
     rbc_glob_hints_t rbc_glob_hints_generate(const char *pattern);
 
     /**
-     * @brief Execute glob with v2 optimizations
-     *
-     * Uses hint-based execution routing:
-     * - Simple patterns: Fast path (0ns overhead, v1 implementation)
-     * - Brace patterns: Optimized path (20-100ns overhead, 3-10x speedup)
-     * - Complex patterns: Full AST path (500-1000ns overhead, big speedup)
-     *
-     * @param pattern Glob pattern string
-     * @param flags Glob flags (FNM_* flags)
-     * @return Result structure (must be freed with rbc_glob_result_free)
-     *
-     * @example
-     *   rbc_glob_result_t *result = rbc_glob_v2("*.txt", 0);
-     *   for (size_t i = 0; i < result->count; i++) {
-     *       printf("%s\n", result->paths[i]);
-     *   }
-     *   rbc_glob_result_free(result);
-     */
-    rbc_glob_result_t *rbc_glob_v2(const char *pattern, int flags);
-
-    /**
-     * @brief Execute glob using pre-generated hints
-     *
-     * Useful when you want to generate hints once and reuse them.
-     *
-     * @param hints Pre-generated hints
-     * @param pattern Original pattern string
-     * @param flags Glob flags
-     * @return Result structure
-     */
-    rbc_glob_result_t *rbc_glob_exec_with_hints(
-        const rbc_glob_hints_t *hints,
-        const char *pattern,
-        int flags);
-
-    /**
      * @brief Free glob result
      *
      * @param result Result to free
      */
     void rbc_glob_result_free(rbc_glob_result_t *result);
 
-    /**
-     * @brief Execute multiple glob patterns efficiently
-     *
-     * Merges patterns that access the same directories.
-     *
-     * @param patterns Array of pattern strings
-     * @param count Number of patterns
-     * @param flags Glob flags
-     * @return Merged result structure
-     */
-    rbc_glob_result_t *rbc_glob_multi_v2(
-        const char **patterns,
-        size_t count,
-        int flags);
-
     /* ========================================================================
-     * Debug / Testing API
+     * Internal Optimization Functions
      * ======================================================================== */
 
     /**
@@ -271,16 +220,8 @@ extern "C"
         const char *pattern,
         int flags);
 
-    /**
-     * @brief Execute multi-pattern optimization (internal use)
-     */
-    rbc_glob_result_t *rbc_glob_multi_v2_optimized(
-        const char **patterns,
-        size_t count,
-        int flags);
-
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* RBC_GLOB_V2_H */
+#endif /* RBC_GLOB_HINTS_H */

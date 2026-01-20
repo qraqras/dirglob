@@ -18,7 +18,7 @@ c_files = []
 # List of standalone tests that have their own main() and should not be included
 standalone_tests = {
     'test_glob_generated.c',
-    'test_glob_v2_hints.c',
+    'test_glob_hints.c',
 }
 for name in sorted(os.listdir(tests_dir)):
     if not name.endswith('.c'):

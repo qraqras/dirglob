@@ -32,11 +32,7 @@ endif()
 file(GLOB TEST_IMPLS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CONFIGURE_DEPENDS test_*.c)
 list(FILTER TEST_IMPLS EXCLUDE REGEX "^test_parity_.*\\.c$")
 list(FILTER TEST_IMPLS EXCLUDE REGEX "^test_glob_generated\\.c$")
-list(FILTER TEST_IMPLS EXCLUDE REGEX "^test_glob_v2_hints\\.c$")  # Standalone test
-list(FILTER TEST_IMPLS EXCLUDE REGEX "^test_glob_v2_brace\\.c$")  # Standalone test (deleted)
-list(FILTER TEST_IMPLS EXCLUDE REGEX "^test_glob_v2_integration\\.c$")  # Deleted
-list(FILTER TEST_IMPLS EXCLUDE REGEX "^test_glob_v2_recursive\\.c$")  # Deleted
-list(FILTER TEST_IMPLS EXCLUDE REGEX "^test_glob_v2_multi\\.c$")  # Deleted
+list(FILTER TEST_IMPLS EXCLUDE REGEX "^test_glob_hints\\.c$")  # Standalone test
 
 # Add test helpers
 list(APPEND TEST_IMPLS test_helpers.c)
@@ -109,11 +105,11 @@ if(EXISTS ${GENERATED_FNMATCH_TEST})
   add_test(NAME fnmatch_ruby_compat COMMAND test_fnmatch_ruby_compat WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/tests)
 endif()
 
-# Standalone glob v2 hint test
-add_executable(test_glob_v2_hints test_glob_v2_hints.c)
-target_include_directories(test_glob_v2_hints PRIVATE
+# Standalone glob hint test
+add_executable(test_glob_hints test_glob_hints.c)
+target_include_directories(test_glob_hints PRIVATE
   "${PROJECT_SOURCE_DIR}/include"
   "${PROJECT_SOURCE_DIR}/src"
 )
-target_link_libraries(test_glob_v2_hints PRIVATE rbc)
-add_test(NAME glob_v2_hints COMMAND test_glob_v2_hints)
+target_link_libraries(test_glob_hints PRIVATE rbc)
+add_test(NAME glob_hints COMMAND test_glob_hints)

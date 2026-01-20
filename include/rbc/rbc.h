@@ -27,6 +27,9 @@ rbc_glob_pattern_t *rbc_glob_compile(const char *pattern, unsigned flags);
 void rbc_glob_pattern_free(rbc_glob_pattern_t *gp);
 void rbc_glob_free(char **list, size_t count, size_t *lengths);
 
+/// Complete trie-based multi-pattern glob (optimized for shared prefixes)
+bool rbc_glob_trie(const char **patterns, size_t npatterns, unsigned flags, const char *base, bool sort, char ***out, size_t *count, size_t **lengths);
+
 /// Multi-pattern execution plan API
 rbc_glob_plan_t *rbc_glob_plan_compile(const char **patterns, size_t count, unsigned int flags);
 char **rbc_glob_plan_execute(rbc_glob_plan_t *plan, const char *basedir, size_t *result_count);

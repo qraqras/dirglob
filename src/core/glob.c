@@ -1,5 +1,5 @@
 #include <rbc/rbc.h>
-#include "rbc/glob_v2.h" /* For hints only */
+#include "rbc/glob_hints.h"
 #include "internal.h"
 #include "../utils/utils.h"
 #include <stdlib.h>

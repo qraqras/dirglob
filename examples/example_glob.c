@@ -3,7 +3,7 @@
  * @brief Example usage of glob v2 API
  */
 
-#include "rbc/glob_v2.h"
+#include "rbc/glob_hints.h"
 #include <stdio.h>
 
 int main(void)
