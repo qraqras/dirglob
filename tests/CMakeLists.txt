@@ -104,12 +104,3 @@ if(EXISTS ${GENERATED_FNMATCH_TEST})
   target_link_libraries(test_fnmatch_ruby_compat PRIVATE rbc ${UNITY_TARGET})
   add_test(NAME fnmatch_ruby_compat COMMAND test_fnmatch_ruby_compat WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/tests)
 endif()
-
-# Standalone glob hint test
-add_executable(test_glob_hints test_glob_hints.c)
-target_include_directories(test_glob_hints PRIVATE
-  "${PROJECT_SOURCE_DIR}/include"
-  "${PROJECT_SOURCE_DIR}/src"
-)
-target_link_libraries(test_glob_hints PRIVATE rbc)
-add_test(NAME glob_hints COMMAND test_glob_hints)

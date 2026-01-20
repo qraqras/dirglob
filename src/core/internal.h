@@ -139,18 +139,14 @@ typedef struct rbc_walker_ctx_s
 /// @name String List Utilities
 /// @{
 
-/// @brief Dynamic String List (Internal)
+/// @brief Fixed-size String List for brace expansion (max 64 options)
+#define RBC_BRACE_MAX_OPTIONS 64
+
 typedef struct rbc_str_list_s
 {
-    char **items;
+    const char *items[RBC_BRACE_MAX_OPTIONS];
     size_t count;
-    size_t capacity;
-    rbc_arena_t *arena;
 } rbc_str_list_t;
-
-bool rbc_str_list_init(rbc_str_list_t *list, size_t initial_cap, rbc_arena_t *arena);
-bool rbc_str_list_add(rbc_str_list_t *list, const char *str);
-void rbc_str_list_free(rbc_str_list_t *list);
 
 /// @}
 
@@ -201,48 +197,6 @@ bool rbc_segment_match(const rbc_segment_t *seg, const char *name, unsigned int 
 rbc_alternatives_t *rbc_alternatives_compile(rbc_arena_t *arena, const char *pattern, unsigned int flags);
 void rbc_alternatives_free(rbc_alternatives_t *alt, rbc_arena_t *arena);
 bool rbc_alternatives_match(const rbc_alternatives_t *alt, const char *name, unsigned int flags);
-/// @}
-
-/// @defgroup Execution Plan Structures
-/// @{
-
-/// @brief Pattern metadata for execution plan
-typedef struct rbc_plan_pattern_s
-{
-    size_t pattern_id;              // Original pattern index
-    rbc_segment_t *remaining_segs;  // Remaining segments to match
-    rbc_fnmatch_pattern_t *matcher; // Compiled matcher for this level
-    char *pattern_str;              // Pattern string for this segment
-} rbc_plan_pattern_t;
-
-/// @brief Execution plan node (represents a directory level)
-typedef struct rbc_plan_node_s rbc_plan_node_t;
-struct rbc_plan_node_s
-{
-    char *path_segment; // Directory name (e.g., "src", "include")
-    bool is_literal;    // True if path_segment is a literal directory name
-    bool recursive;     // True if this node should recurse (**/)
-
-    // Patterns to match at this level
-    rbc_plan_pattern_t *patterns; // Array of patterns to match
-    size_t pattern_count;
-
-    // Child nodes (sub-directories to descend into)
-    rbc_plan_node_t **children;
-    size_t child_count;
-};
-
-/// @brief Compiled execution plan for multiple patterns
-struct rbc_glob_plan_s
-{
-    rbc_plan_node_t *root;         // Root node of execution tree
-    size_t pattern_count;          // Total number of patterns
-    unsigned int flags;            // Glob flags
-    rbc_arena_t arena;             // Memory arena for plan
-    char **original_patterns;      // Original pattern strings
-    bool use_individual_execution; // If true, fallback to individual execution
-};
-
 /// @}
 
 #endif /* RBC_INTERNAL_H */

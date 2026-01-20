@@ -2,30 +2,19 @@
 #
 # Directory structure:
 #   src/
-#   ├── core/       - Core glob/fnmatch implementation
-#   ├── optimizers/ - Pattern-specific optimizations
-#   └── utils/      - Utility modules (arena, string helpers)
+#   ├── core/  - Core glob/fnmatch/trie implementation
+#   └── utils/ - Utility modules (arena, string helpers)
 #
 
 add_library(rbc
   # Core modules
   core/glob.c           # Main API
   core/fnmatch.c        # Pattern matching
-  core/plan.c           # Multi-pattern execution plan
-  core/trie.c           # Complete trie-based multi-pattern optimization
-  core/brace.c          # Brace expansion
-
-  # Optimizers (pattern-specific fast paths)
-  optimizers/glob_hints.c      # Hint generation
-  optimizers/glob_brace.c      # Brace expansion optimization
-  optimizers/glob_simple.c     # Simple/Multi-segment pattern optimization
-  optimizers/glob_recursive.c  # Recursive (**) optimization
+  core/trie.c           # Trie-based optimization (includes brace expansion)
 
   # Utilities
   utils/arena.c         # Memory arena
   utils/utils.c         # Helper functions
-  utils/str_list.c      # String list
-  utils/string_set.c    # String hash set
 )
 
 target_include_directories(rbc

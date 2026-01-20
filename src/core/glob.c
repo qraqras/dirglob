@@ -1,5 +1,4 @@
 #include <rbc/rbc.h>
-#include "rbc/glob_hints.h"
 #include "internal.h"
 #include "../utils/utils.h"
 #include <stdlib.h>
@@ -377,7 +376,6 @@ rbc_segment_t *rbc_glob_segment_compile(rbc_arena_t *arena, const char *pattern,
 
         if (!rbc_has_brace(component) && rbc_is_recursive_wildcard(component))
         {
-            rbc_str_list_free(&expansions);
 
             // ** is only recursive if followed by /
             // If not followed by /, treat as regular *
@@ -431,7 +429,7 @@ rbc_segment_t *rbc_glob_segment_compile(rbc_arena_t *arena, const char *pattern,
         {
             seg = rbc_glob_segment_new(arena, RBC_SEGMENT_LITERAL);
             seg->data.literal = component;
-            rbc_str_list_free(&expansions);
+
             if (!head)
             {
                 head = seg;
@@ -516,7 +514,6 @@ rbc_segment_t *rbc_glob_segment_compile(rbc_arena_t *arena, const char *pattern,
                     last_alt = alt_chain;
                 }
             }
-            rbc_str_list_free(&expansions);
 
             if (!head)
             {
@@ -537,7 +534,7 @@ rbc_segment_t *rbc_glob_segment_compile(rbc_arena_t *arena, const char *pattern,
 
             if (!seg->data.glob.original_pattern)
             {
-                rbc_str_list_free(&expansions);
+
                 return NULL;
             }
 
@@ -546,8 +543,6 @@ rbc_segment_t *rbc_glob_segment_compile(rbc_arena_t *arena, const char *pattern,
             seg->data.glob.alternatives = NULL;
 
             // If compile failed, we'll use rbc_fnmatch at runtime
-
-            rbc_str_list_free(&expansions);
 
             if (!head)
             {
@@ -772,165 +767,9 @@ bool rbc_xglob(const rbc_glob_pattern_t *gp, const char *base, bool sort, char *
         return false;
     }
 
-    rbc_ctx_t *run_ctx = malloc(sizeof(rbc_ctx_t));
-    if (!run_ctx)
-    {
-        return false;
-    }
-    if (!rbc_glob_ctx_init(run_ctx))
-    {
-        free(run_ctx);
-        return false;
-    }
-
-    rbc_results_t results;
-    if (!rbc_glob_results_init(&results, run_ctx))
-    {
-        rbc_glob_ctx_free(run_ctx);
-        free(run_ctx);
-        return false;
-    }
-
-    /* Context for callback */
-    typedef struct
-    {
-        rbc_results_t *results;
-        const char *base_strip;
-        size_t base_len;
-    } callback_ctx_t;
-
-    callback_ctx_t cb_ctx = {
-        .results = &results,
-        .base_strip = base,
-        .base_len = base ? strlen(base) : 0};
-
-    /* Callback to collect results */
-    void collect_result(const char *path, void *userdata)
-    {
-        callback_ctx_t *ctx = (callback_ctx_t *)userdata;
-        if (!path || !ctx || !ctx->results)
-            return;
-
-        const char *result_path = path;
-        if (ctx->base_strip && ctx->base_len > 0)
-        {
-            if (strncmp(path, ctx->base_strip, ctx->base_len) == 0)
-            {
-                result_path = path + ctx->base_len;
-                if (*result_path == '/')
-                    result_path++;
-                if (*result_path == '\0')
-                    result_path = ".";
-            }
-        }
-        rbc_glob_results_add_with_index(ctx->results, result_path,
-                                        ctx->results->ctx->discovery_counter++);
-    }
-
-    /* Execute using optimized path based on pattern type */
-    if (gp->original_pattern)
-    {
-        rbc_glob_hints_t hints = rbc_glob_hints_generate(gp->original_pattern);
-        rbc_glob_result_t *v2_result = NULL;
-
-        switch (hints.type)
-        {
-        case GLOB_HINT_LITERAL:
-        {
-            struct stat st;
-            if (stat(gp->original_pattern, &st) == 0)
-            {
-                rbc_glob_results_add(&results, gp->original_pattern);
-            }
-        }
-        break;
-
-        case GLOB_HINT_BRACE_SINGLE_DIR:
-        case GLOB_HINT_BRACE_NESTED:
-            v2_result = rbc_glob_exec_brace_optimized(&hints, gp->original_pattern, (int)gp->flags);
-            break;
-
-        case GLOB_HINT_RECURSIVE:
-            v2_result = rbc_glob_exec_recursive_optimized(&hints, gp->original_pattern, (int)gp->flags);
-            break;
-
-        case GLOB_HINT_SIMPLE_PATTERN:
-            v2_result = rbc_glob_exec_simple_optimized(&hints, gp->original_pattern, (int)gp->flags);
-            break;
-
-        case GLOB_HINT_MULTI_SEGMENT:
-        case GLOB_HINT_COMPLEX:
-        default:
-            if (strstr(gp->original_pattern, "**"))
-            {
-                v2_result = rbc_glob_exec_recursive_optimized(&hints, gp->original_pattern, (int)gp->flags);
-            }
-            else
-            {
-                v2_result = rbc_glob_exec_multi_segment_optimized(&hints, gp->original_pattern, (int)gp->flags);
-            }
-            break;
-        }
-
-        if (v2_result && v2_result->paths)
-        {
-            for (size_t j = 0; j < v2_result->count; j++)
-            {
-                if (v2_result->paths[j])
-                {
-                    collect_result(v2_result->paths[j], &cb_ctx);
-                }
-            }
-            rbc_glob_result_free(v2_result);
-        }
-    }
-
-    // if (sort)
-    // {
-    //     rbc_glob_results_sort(&results);
-    // }
-    // rbc_glob_results_deduplicate(&results);
-
-    // Packaging
-    *count = results.count;
-    void **package = malloc(sizeof(void *) + (results.count + 1) * sizeof(char *));
-    if (!package)
-    {
-        rbc_glob_results_clear(&results);
-        rbc_glob_ctx_free(run_ctx);
-        free(run_ctx);
-        return false;
-    }
-
-    package[0] = run_ctx;
-    char **pkg_items = (char **)&package[1];
-    if (results.count > 0)
-    {
-        memcpy(pkg_items, results.items, results.count * sizeof(char *));
-    }
-    pkg_items[results.count] = NULL;
-
-    *out = pkg_items;
-    if (lengths)
-    {
-        *lengths = results.lengths;
-    }
-    else if (results.lengths)
-    {
-        free(results.lengths);
-    }
-
-    if (results.discovery_indices)
-    {
-        free(results.discovery_indices);
-    }
-
-    if (results.items)
-    {
-        free(results.items);
-    }
-
-    return true;
+    /* Delegate to trie-based implementation */
+    const char *patterns[] = {gp->original_pattern};
+    return rbc_glob_trie(patterns, 1, gp->flags, base, sort, out, count, lengths);
 }
 
 /// @brief Free globbing results

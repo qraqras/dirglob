@@ -39,6 +39,176 @@
 #include <dirent.h>
 
 /* ========================================================================
+ * Brace Expansion (Fixed-size array, max 64 options)
+ * ======================================================================== */
+
+bool rbc_brace_visit(const char *pattern, rbc_arena_t *arena, rbc_brace_visit_cb cb, void *arg)
+{
+    const char *p = pattern;
+    bool in_brace = false;
+
+    while (*p)
+    {
+        if (*p == '\\')
+        {
+            p += 2;
+            continue;
+        }
+        if (*p == '{')
+        {
+            in_brace = true;
+            break;
+        }
+        p++;
+    }
+
+    if (!in_brace)
+        return cb(pattern, arg);
+
+    /* Fixed-size array for brace options */
+    const char *options[RBC_BRACE_MAX_OPTIONS];
+    size_t option_count = 0;
+
+    p = pattern;
+    while (*p && *p != '{')
+    {
+        if (*p == '\\')
+            p++;
+        p++;
+    }
+
+    if (*p != '{')
+    {
+        return cb(pattern, arg);
+    }
+
+    size_t prefix_len = p - pattern;
+    p++;
+    int depth = 1;
+    const char *chunk_start = p;
+    bool valid_brace = false;
+
+    while (*p)
+    {
+        if (*p == '\\')
+        {
+            p += 2;
+            continue;
+        }
+        if (*p == '{')
+            depth++;
+        else if (*p == '}')
+        {
+            depth--;
+            if (depth == 0)
+            {
+                if (option_count >= RBC_BRACE_MAX_OPTIONS)
+                    return false;
+                size_t len = p - chunk_start;
+                char *chunk = arena ? rbc_arena_alloc(arena, len + 1) : malloc(len + 1);
+                if (!chunk)
+                    return false;
+                memcpy(chunk, chunk_start, len);
+                chunk[len] = 0;
+                options[option_count++] = chunk;
+                valid_brace = true;
+                break;
+            }
+        }
+        else if (*p == ',' && depth == 1)
+        {
+            if (option_count >= RBC_BRACE_MAX_OPTIONS)
+                return false;
+            size_t len = p - chunk_start;
+            char *chunk = arena ? rbc_arena_alloc(arena, len + 1) : malloc(len + 1);
+            if (!chunk)
+                return false;
+            memcpy(chunk, chunk_start, len);
+            chunk[len] = 0;
+            options[option_count++] = chunk;
+            chunk_start = p + 1;
+        }
+        p++;
+    }
+
+    if (!valid_brace)
+    {
+        /* Free non-arena chunks */
+        if (!arena)
+        {
+            for (size_t i = 0; i < option_count; i++)
+                free((void *)options[i]);
+        }
+        return cb(pattern, arg);
+    }
+
+    const char *suffix = p + 1;
+    bool success = true;
+    for (size_t i = 0; i < option_count && success; i++)
+    {
+        size_t opt_len = strlen(options[i]);
+        size_t suf_len = strlen(suffix);
+        size_t needed = prefix_len + opt_len + suf_len + 1;
+
+        if (needed < PATH_MAX)
+        {
+            char vla[needed];
+            memcpy(vla, pattern, prefix_len);
+            memcpy(vla + prefix_len, options[i], opt_len);
+            memcpy(vla + prefix_len + opt_len, suffix, suf_len + 1);
+            success = rbc_brace_visit(vla, arena, cb, arg);
+        }
+        else
+        {
+            char *next_buf = arena ? rbc_arena_alloc(arena, needed) : malloc(needed);
+            if (!next_buf)
+            {
+                success = false;
+                break;
+            }
+            memcpy(next_buf, pattern, prefix_len);
+            memcpy(next_buf + prefix_len, options[i], opt_len);
+            memcpy(next_buf + prefix_len + opt_len, suffix, suf_len + 1);
+            success = rbc_brace_visit(next_buf, arena, cb, arg);
+            if (!arena)
+                free(next_buf);
+        }
+    }
+
+    /* Free non-arena chunks */
+    if (!arena)
+    {
+        for (size_t i = 0; i < option_count; i++)
+            free((void *)options[i]);
+    }
+    return success;
+}
+
+typedef struct
+{
+    rbc_str_list_t *list;
+    rbc_arena_t *arena;
+} brace_collect_ctx_t;
+
+static bool brace_collect_cb(const char *pattern, void *arg)
+{
+    brace_collect_ctx_t *ctx = (brace_collect_ctx_t *)arg;
+    if (ctx->list->count >= RBC_BRACE_MAX_OPTIONS)
+        return false;
+    /* Must copy pattern since it may be on stack (VLA) */
+    ctx->list->items[ctx->list->count++] = rbc_arena_strdup(ctx->arena, pattern);
+    return true;
+}
+
+rbc_str_list_t rbc_brace_collect(const char *pattern, rbc_arena_t *arena)
+{
+    rbc_str_list_t list = {.count = 0};
+    brace_collect_ctx_t ctx = {.list = &list, .arena = arena};
+    rbc_brace_visit(pattern, arena, brace_collect_cb, &ctx);
+    return list;
+}
+
+/* ========================================================================
  * Trie Node Types
  * ======================================================================== */
 
