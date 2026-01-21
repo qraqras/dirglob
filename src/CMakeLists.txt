@@ -10,7 +10,6 @@ add_library(rbc
   # Core modules
   core/glob.c           # Main API
   core/fnmatch.c        # Pattern matching
-  core/trie.c           # Trie-based optimization (includes brace expansion)
 
   # Utilities
   utils/arena.c         # Memory arena
