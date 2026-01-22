@@ -196,9 +196,9 @@ segment_end:
     {
         seg->type = RBC_SEG_BRACE;
     }
-    else if (char_flags == SEG_HAS_STAR && pattern_len >= 2)
+    else if (char_flags == SEG_HAS_STAR && pattern_len == 2)
     {
-        // ** pattern detected - check if terminal or recursive
+        // ** pattern detected (exactly 2 stars) - check if terminal or recursive
         // MRI behavior:
         // ** (no slash, no following) → same as * (RBC_SEG_ANY)
         // **/ (with slash) → recursive directories (RBC_SEG_RECURSIVE)
@@ -221,8 +221,9 @@ segment_end:
             seg->type = RBC_SEG_RECURSIVE;
         }
     }
-    else if (char_flags == SEG_HAS_STAR && pattern_len == 1)
+    else if (char_flags == SEG_HAS_STAR && pattern_len >= 1)
     {
+        // *, ***, ****, etc. - all treated as single * wildcard
         seg->type = RBC_SEG_ANY;
     }
     else if (char_flags == SEG_HAS_REGULAR || char_flags == 0)
@@ -242,6 +243,34 @@ segment_end:
         p++;
     }
 
+    // MRI behavior: Consecutive ** are treated as a single **
+    // Skip any following "**/" patterns (exactly 2 stars, not 3+)
+    if (seg->type == RBC_SEG_RECURSIVE)
+    {
+        while (*p == '*' && *(p + 1) == '*' && *(p + 2) != '*')
+        {
+            const char *peek = p + 2;
+            // Check if this is another **/ or **<end>
+            if (*peek == '/' || *peek == '\0')
+            {
+                // Skip this ** segment
+                p = peek;
+                // Reset and recount trailing slashes
+                seg->trailing_slashes = 0;
+                while (*p == '/')
+                {
+                    seg->trailing_slashes++;
+                    p++;
+                }
+            }
+            else
+            {
+                // Not a pure **, stop skipping
+                break;
+            }
+        }
+    }
+
     *pattern = p;
     return true;
 }
@@ -251,11 +280,16 @@ segment_end:
 // ============================================================================
 
 /**
- * @brief Build a path with optional trailing slashes preserved
+ * @brief Build a path with optional trailing slashes
+ *
+ * Design note: This function handles inconsistent path state defensively.
+ * - The `base` path MAY contain trailing slashes (from previous segment processing)
+ * - We check base[base_len-1] to avoid double slashes when concatenating
+ * - Trailing slashes are added via the trailing_slashes parameter
  *
  * @param buf Output buffer
  * @param buf_size Size of output buffer
- * @param base Base path (can be empty)
+ * @param base Base path (may or may not end with '/')
  * @param base_len Length of base path
  * @param name Name to append
  * @param trailing_slashes Number of trailing slashes to append
@@ -268,8 +302,7 @@ static size_t rbc_build_path_with_slashes(char *buf, size_t buf_size,
     size_t len;
     if (base_len > 0)
     {
-        // If base already ends with a slash, don't add another one.
-        // This prevents double slashes when the base path has preserved trailing slashes.
+        // Check if base already ends with '/' to prevent double slashes
         if (base[base_len - 1] == '/')
         {
             len = snprintf(buf, buf_size, "%s%s", base, name);
@@ -504,9 +537,9 @@ static void rbc_glob_recursive(
         // For **/, we need to add the current directory with trailing slash
         if (is_dirs_only)
         {
-            // Add current directory with trailing slash
+            // Extract directory path relative to base
             const char *result = path + baselen;
-            // Skip leading slashes only for relative paths
+            // Skip leading slashes for relative paths
             if (baselen > 0) {
                 while (*result == '/')
                     result++;
@@ -514,9 +547,16 @@ static void rbc_glob_recursive(
             if (*result == '\0')
                 result = ".";
 
-            char result_with_slash[RBC_GLOB_MAX_PATH];
-            snprintf(result_with_slash, sizeof(result_with_slash), "%s/", result);
-            rbc_glob_results_add(results, result_with_slash);
+            // Add trailing slash, checking if already present to avoid double slashes
+            size_t result_len = strlen(result);
+            if (result_len > 0 && result[result_len - 1] == '/') {
+                // Already has trailing slash (defensive check)
+                rbc_glob_results_add(results, result);
+            } else {
+                char result_with_slash[RBC_GLOB_MAX_PATH];
+                snprintf(result_with_slash, sizeof(result_with_slash), "%s/", result);
+                rbc_glob_results_add(results, result_with_slash);
+            }
         }
         else
         {
@@ -551,10 +591,10 @@ static void rbc_glob_recursive(
             if (seg.starts_with_dot && name[0] != '.')
                 continue;
 
-            // Build path with trailing slashes preserved
+            // Build path for ** recursion
+            // Don't add trailing slashes here - they are handled by the pattern, not the path
             size_t new_len = rbc_build_path_with_slashes(pathbuf, sizeof(pathbuf),
-                                                          path, path_len, name,
-                                                          seg.trailing_slashes);
+                                                          path, path_len, name, 0);
 
             // Check if it's a directory
             struct stat st;
@@ -622,16 +662,24 @@ static void rbc_glob_recursive(
         // MRI behavior for ".":
         // - In RECURSIVE mode (RBC_INTERNAL_IN_DOUBLESTAR): always skip "."
         // - In normal mode: allow "." only if:
-        //   1. Pattern explicitly starts with '.', OR
-        //   2. FNM_DOTMATCH is set (wildcards can match dots)
+        //   1. Pattern is literal ".", OR
+        //   2. Pattern is dot + wildcard (.*, .?, .[abc]), OR
+        //   3. FNM_DOTMATCH is set (wildcards can match dots)
         if (name[0] == '.' && name[1] == '\0')
         {
             // In recursive ** mode, always skip "." to prevent issues
             if (flags & RBC_INTERNAL_IN_DOUBLESTAR)
                 continue;
 
-            // In normal mode: include "." if pattern starts with '.' OR FNM_DOTMATCH is set
-            if (!seg.starts_with_dot && !(flags & RBC_FNM_DOTMATCH))
+            // Include "." only if:
+            // - Pattern is literal ".", OR
+            // - Pattern starts with '.' AND is a wildcard (.*,  .?, .[abc]), OR
+            // - FNM_DOTMATCH is set
+            bool should_include = is_literal_dot ||
+                                  (seg.starts_with_dot && (seg.type == RBC_SEG_ANY || seg.type == RBC_SEG_MAGICAL)) ||
+                                  (flags & RBC_FNM_DOTMATCH);
+
+            if (!should_include)
                 continue;
             // Include "."
         }
