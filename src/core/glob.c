@@ -34,11 +34,11 @@ typedef struct
 /// @brief Segment type classification (MRI-compatible)
 typedef enum
 {
-    RBC_SEG_LITERAL,  // Plain text, no metacharacters
-    RBC_SEG_STAR,     // Single star "*"
-    RBC_SEG_STARSTAR, // "**" or ".**" (2+ consecutive stars, optionally with leading dot)
-    RBC_SEG_BRACE,    // Brace expansion segment
-    RBC_SEG_MAGICAL,  // Contains wildcards: *, ?, [
+    RBC_SEG_LITERAL,   // Plain text, no metacharacters
+    RBC_SEG_ANY,       // Single star "*" or terminal "**" (same as *)
+    RBC_SEG_RECURSIVE, // "**" with following pattern (recursive search)
+    RBC_SEG_BRACE,     // Brace expansion segment
+    RBC_SEG_MAGICAL,   // Contains wildcards: *, ?, [
 } rbc_segment_type_t;
 
 /// @brief Pattern segment information (for streaming)
@@ -198,11 +198,26 @@ segment_end:
     }
     else if (char_flags == SEG_HAS_STAR && pattern_len >= 2)
     {
-        seg->type = RBC_SEG_STARSTAR;
+        // ** pattern detected - check if terminal
+        // Skip trailing slashes to see if pattern ends
+        const char *check = p;
+        while (*check == '/')
+            check++;
+
+        if (*check == '\0')
+        {
+            // Terminal **: treat as *
+            seg->type = RBC_SEG_ANY;
+        }
+        else
+        {
+            // ** with following pattern: recursive
+            seg->type = RBC_SEG_RECURSIVE;
+        }
     }
     else if (char_flags == SEG_HAS_STAR && pattern_len == 1)
     {
-        seg->type = RBC_SEG_STAR;
+        seg->type = RBC_SEG_ANY;
     }
     else if (char_flags == SEG_HAS_REGULAR || char_flags == 0)
     {
@@ -393,68 +408,57 @@ static void rbc_glob_recursive(
     }
 
     // Handle "**" (recursive wildcard)
-    if (seg.type == RBC_SEG_STARSTAR)
+    if (seg.type == RBC_SEG_RECURSIVE)
     {
         // Skip the separator after **
         if (*pat_ptr == '/')
             pat_ptr++;
 
-        // If ** is terminal (no more pattern after it), treat it as *
-        if (*pat_ptr == '\0')
+        // Match current directory first
+        rbc_glob_recursive(path, path_len, baselen, pat_ptr, flags, results);
+
+        // Recursively descend into subdirectories
+        DIR *dir = opendir((path_len > 0) ? path : ".");
+        if (!dir)
+            return;
+
+        struct dirent *entry;
+        char pathbuf[RBC_GLOB_MAX_PATH];
+
+        while ((entry = readdir(dir)) != NULL)
         {
-            seg.type = RBC_SEG_STAR;
-            seg.len = 1;  // Change length from 2 to 1 for single *
-            // Fall through to normal * handling
-        }
-        else
-        {
-            // ** with following pattern: recursive search
-            // Match current directory first
-            rbc_glob_recursive(path, path_len, baselen, pat_ptr, flags, results);
+            // Skip dot entries
+            const char *name = entry->d_name;
+            if (name[0] == '.' && (name[1] == '\0' || (name[1] == '.' && name[2] == '\0')))
+                continue;
 
-            // Recursively descend into subdirectories
-            DIR *dir = opendir((path_len > 0) ? path : ".");
-            if (!dir)
-                return;
+            // Skip hidden files unless explicitly matched
+            if (name[0] == '.' && !(flags & RBC_FNM_DOTMATCH))
+                continue;
 
-            struct dirent *entry;
-            char pathbuf[RBC_GLOB_MAX_PATH];
-
-            while ((entry = readdir(dir)) != NULL)
+            // Build path
+            size_t new_len;
+            if (path_len > 0)
             {
-                // Skip dot entries
-                const char *name = entry->d_name;
-                if (name[0] == '.' && (name[1] == '\0' || (name[1] == '.' && name[2] == '\0')))
-                    continue;
-
-                // Skip hidden files unless explicitly matched
-                if (name[0] == '.' && !(flags & RBC_FNM_DOTMATCH))
-                    continue;
-
-                // Build path
-                size_t new_len;
-                if (path_len > 0)
-                {
-                    new_len = snprintf(pathbuf, sizeof(pathbuf), "%s/%s", path, name);
-                }
-                else
-                {
-                    new_len = snprintf(pathbuf, sizeof(pathbuf), "%s", name);
-                }
-
-                // Check if it's a directory
-                struct stat st;
-                if (stat(pathbuf, &st) == 0 && S_ISDIR(st.st_mode))
-                {
-                    // Recursively glob from subdirectory with DOUBLESTAR flag
-                    rbc_glob_recursive(pathbuf, new_len, baselen, pat_ptr,
-                                       flags | RBC_INTERNAL_IN_DOUBLESTAR, results);
-                }
+                new_len = snprintf(pathbuf, sizeof(pathbuf), "%s/%s", path, name);
+            }
+            else
+            {
+                new_len = snprintf(pathbuf, sizeof(pathbuf), "%s", name);
             }
 
-            closedir(dir);
-            return;
+            // Check if it's a directory
+            struct stat st;
+            if (stat(pathbuf, &st) == 0 && S_ISDIR(st.st_mode))
+            {
+                // Recursively glob from subdirectory with DOUBLESTAR flag
+                rbc_glob_recursive(pathbuf, new_len, baselen, pat_ptr,
+                                   flags | RBC_INTERNAL_IN_DOUBLESTAR, results);
+            }
         }
+
+        closedir(dir);
+        return;
     }
 
     // Handle normal segment (literal or wildcard)
@@ -467,8 +471,8 @@ static void rbc_glob_recursive(
     char pattern_buf[RBC_GLOB_MAX_PATH];
 
     // Copy segment to null-terminated buffer for fnmatch
-    // If ** was converted to * (terminal **), use "*" explicitly
-    if (seg.type == RBC_SEG_STAR && seg.start[0] == '*' && seg.start[1] == '*')
+    // For terminal **, use "*" explicitly
+    if (seg.type == RBC_SEG_ANY && seg.len >= 2 && seg.start[0] == '*' && seg.start[1] == '*')
     {
         pattern_buf[0] = '*';
         pattern_buf[1] = '\0';
@@ -531,7 +535,7 @@ static void rbc_glob_recursive(
             // Exact string match
             matched = (strcmp(pattern_buf, name) == 0);
             break;
-        case RBC_SEG_STAR:
+        case RBC_SEG_ANY:
         case RBC_SEG_MAGICAL:
             // Wildcard match using fnmatch (use original flags, not local_flags)
             matched = rbc_fnmatch(pattern_buf, name, flags);
@@ -541,7 +545,7 @@ static void rbc_glob_recursive(
             // Treat as literal fallback
             matched = (strcmp(pattern_buf, name) == 0);
             break;
-        case RBC_SEG_STARSTAR:
+        case RBC_SEG_RECURSIVE:
             // Should not reach here (handled above)
             continue;
         }
