@@ -203,8 +203,14 @@ segment_end:
         // ** (no slash, no following) → same as * (RBC_SEG_ANY)
         // **/ (with slash) → recursive directories (RBC_SEG_RECURSIVE)
         // **/*.txt (with following pattern) → recursive (RBC_SEG_RECURSIVE)
+        // .** → same as .* (RBC_SEG_ANY) - dot-prefixed ** is NOT recursive
 
-        if (*p == '\0')
+        // If pattern starts with '.', treat .** as .* (non-recursive)
+        if (seg->starts_with_dot)
+        {
+            seg->type = RBC_SEG_ANY;
+        }
+        else if (*p == '\0')
         {
             // Terminal ** with NO trailing slash: treat as *
             seg->type = RBC_SEG_ANY;
@@ -489,6 +495,11 @@ static void rbc_glob_recursive(
             if (rbc_should_skip_dotfile(name, next_starts_with_dot, flags))
                 continue;
 
+            // If ** pattern itself starts with '.', only descend into dot-directories
+            // This handles patterns like .**/* which should only match .hidden/* etc.
+            if (seg.starts_with_dot && name[0] != '.')
+                continue;
+
             // Build path
             size_t new_len;
             if (path_len > 0)
@@ -543,45 +554,46 @@ static void rbc_glob_recursive(
     // MRI behavior: Skip "." in subdirectories, but include it at the base level
     // At base level (path_len == baselen), don't set SKIPDOT
     // In subdirectories (path_len > baselen), set SKIPDOT
-    bool skipdot = (flags & RBC_GLOB_SKIPDOT) != 0;
     unsigned local_flags = flags;
     if (path_len > baselen) {
         local_flags |= RBC_GLOB_SKIPDOT;
     }
 
+    // Suppress unused variable warnings (used later in directory recursion)
+    (void)is_literal_dot;
+    (void)local_flags;
+
     while ((entry = readdir(dir)) != NULL)
     {
         const char *name = entry->d_name;
 
-        // Always skip ".."
+        // MRI behavior: Always skip ".." to prevent infinite recursion
         if (name[0] == '.' && name[1] == '.' && name[2] == '\0')
+        {
+            // Skip ".." (parent directory)
             continue;
+        }
 
-        // Skip "." in specific cases
+        // MRI behavior for ".":
+        // - In RECURSIVE mode (RBC_INTERNAL_IN_DOUBLESTAR): always skip "."
+        // - In normal mode: allow "." only if:
+        //   1. Pattern explicitly starts with '.', OR
+        //   2. FNM_DOTMATCH is set (wildcards can match dots)
         if (name[0] == '.' && name[1] == '\0')
         {
-            // If we're in a ** recursion (subdirectory), skip "."
+            // In recursive ** mode, always skip "." to prevent issues
             if (flags & RBC_INTERNAL_IN_DOUBLESTAR)
                 continue;
 
-            // If RBC_GLOB_SKIPDOT was set in the incoming flags, skip "."
-            // This matches MRI: skipdot controls whether "." is visible
-            if (skipdot)
+            // In normal mode: include "." if pattern starts with '.' OR FNM_DOTMATCH is set
+            if (!seg.starts_with_dot && !(flags & RBC_FNM_DOTMATCH))
                 continue;
-
-            // MRI behavior: If pattern explicitly starts with '.', include "."
-            // This allows patterns like .*, .???, etc. to match "."
-            if (!seg.starts_with_dot)
-            {
-                // Pattern doesn't start with '.', skip "." unless FNM_DOTMATCH is set
-                if (!(flags & RBC_FNM_DOTMATCH))
-                    continue;
-            }
-            // If pattern starts with '.' or FNM_DOTMATCH is set, include "." (will be matched below)
+            // Include "."
         }
-        else
+
+        // Apply dot-file filtering for other dot files
+        if (name[0] == '.' && name[1] != '\0' && !(name[1] == '.' && name[2] == '\0'))
         {
-            // Apply dot-file filtering for other dot files (not "." or "..")
             if (rbc_should_skip_dotfile(name, seg.starts_with_dot, flags))
                 continue;
         }
