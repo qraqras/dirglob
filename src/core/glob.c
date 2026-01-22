@@ -27,13 +27,24 @@ typedef struct
     void *ctx; // Unused, for compatibility
 } rbc_results_t;
 
+/// @brief Segment type classification (MRI-compatible)
+typedef enum
+{
+    RBC_SEG_LITERAL,  // Plain text, no metacharacters
+    RBC_SEG_STAR,     // Single star "*"
+    RBC_SEG_STARSTAR, // "**" or ".**" (2+ consecutive stars, optionally with leading dot)
+    RBC_SEG_BRACE,    // Brace expansion segment
+    RBC_SEG_MAGICAL   // Contains wildcards: *, ?, [
+} rbc_segment_type_t;
+
 /// @brief Pattern segment information (for streaming)
 typedef struct
 {
-    const char *start;  // Segment start pointer
-    size_t len;         // Segment length
-    bool has_magic;     // Contains wildcards
-    bool is_doublestar; // Is "**"
+    const char *start;       // Segment start pointer
+    size_t len;              // Segment length
+    rbc_segment_type_t type; // Segment type classification
+    bool starts_with_dot;    // Starts with '.'
+    size_t trailing_slashes; // Number of trailing slashes after segment
 } rbc_segment_t;
 
 // ============================================================================
@@ -86,6 +97,14 @@ static void rbc_glob_results_sort(rbc_results_t *results)
 // Pattern Analysis (Streaming - Single Pass)
 // ============================================================================
 
+/// @brief Segment character type flags
+#define SEG_HAS_STAR 0x01     // Contains '*'
+#define SEG_HAS_QUESTION 0x02 // Contains '?'
+#define SEG_HAS_BRACKET 0x04  // Contains '['
+#define SEG_HAS_BRACE 0x08    // Contains '{'
+#define SEG_HAS_REGULAR 0x10  // Contains regular characters
+#define SEG_HAS_ESCAPE 0x20   // Contains escaped characters
+
 /// @brief Check if character is a glob metacharacter
 static inline bool rbc_is_magic_char(char c)
 {
@@ -97,37 +116,105 @@ static inline bool rbc_is_magic_char(char c)
 static bool rbc_next_segment(const char **pattern, rbc_segment_t *seg)
 {
     const char *p = *pattern;
-
-    // Skip leading slashes
-    while (*p == '/')
-        p++;
-
     if (*p == '\0')
-    {
-        *pattern = p;
         return false;
-    }
 
-    seg->start = p;
-    seg->has_magic = false;
-    seg->is_doublestar = false;
-
-    // Scan segment until '/' or end
     const char *seg_start = p;
-    while (*p && *p != '/')
+    seg->start = seg_start;
+    seg->starts_with_dot = (*p == '.');
+
+    // Initialize segment type as LITERAL (will upgrade if needed)
+    seg->type = RBC_SEG_LITERAL;
+
+    // Skip leading dot for pattern analysis (if present)
+    if (*p == '.')
+        p++;
+
+    // Scan segment and collect character types
+    const char *pattern_part = p; // Pattern analysis starts here
+    unsigned char char_flags = 0;
+    int in_bracket = 0;
+    int in_brace = 0;
+
+    while (*p)
     {
-        if (rbc_is_magic_char(*p))
-            seg->has_magic = true;
+        if (*p == '\\' && *(p + 1))
+        {
+            char_flags |= SEG_HAS_ESCAPE | SEG_HAS_REGULAR;
+            p += 2;
+            continue;
+        }
+
+        switch (*p)
+        {
+        case '/':
+            if (in_bracket == 0 && in_brace == 0)
+                goto segment_end;
+            break;
+        case '*':
+            char_flags |= SEG_HAS_STAR;
+            break;
+        case '?':
+            char_flags |= SEG_HAS_QUESTION;
+            break;
+        case '[':
+            char_flags |= SEG_HAS_BRACKET;
+            in_bracket++;
+            break;
+        case ']':
+            if (in_bracket > 0)
+                in_bracket--;
+            else
+                char_flags |= SEG_HAS_REGULAR;
+            break;
+        case '{':
+            char_flags |= SEG_HAS_BRACE;
+            in_brace++;
+            break;
+        case '}':
+            if (in_brace > 0)
+                in_brace--;
+            else
+                char_flags |= SEG_HAS_REGULAR;
+            break;
+        default:
+            char_flags |= SEG_HAS_REGULAR;
+            break;
+        }
         p++;
     }
 
+segment_end:
     seg->len = p - seg_start;
+    size_t pattern_len = p - pattern_part;
 
-    // Check for "**"
-    if (seg->len == 2 && seg_start[0] == '*' && seg_start[1] == '*')
+    if (char_flags & SEG_HAS_BRACE)
     {
-        seg->is_doublestar = true;
-        seg->has_magic = false; // "**" is special, not ordinary magic
+        seg->type = RBC_SEG_BRACE;
+    }
+    else if (char_flags == SEG_HAS_STAR && pattern_len >= 2)
+    {
+        seg->type = RBC_SEG_STARSTAR;
+    }
+    else if (char_flags == SEG_HAS_STAR && pattern_len == 1)
+    {
+        seg->type = RBC_SEG_STAR;
+    }
+    else if (char_flags == SEG_HAS_REGULAR || char_flags == 0)
+    {
+        seg->type = RBC_SEG_LITERAL;
+    }
+    else
+    {
+        seg->type = RBC_SEG_MAGICAL;
+    }
+
+    // Count trailing slashes
+    seg->trailing_slashes = 0;
+    while (*p == '/')
+    {
+        seg->trailing_slashes++;
+        p++;
     }
 
     *pattern = p;
@@ -288,7 +375,7 @@ static void rbc_glob_recursive(const char *path, size_t path_len,
     }
 
     // Handle "**" (recursive wildcard)
-    if (seg.is_doublestar)
+    if (seg.type == RBC_SEG_STARSTAR)
     {
         // Match current directory
         rbc_glob_recursive(path, path_len, baselen, pat_ptr, flags, results);
@@ -353,24 +440,35 @@ static void rbc_glob_recursive(const char *path, size_t path_len,
     {
         const char *name = entry->d_name;
 
-        // Skip "." and ".."
+        // Skip "." and ".." always
         if (name[0] == '.' && (name[1] == '\0' || (name[1] == '.' && name[2] == '\0')))
             continue;
 
-        // Apply dot-file filtering
+        // Apply dot-file filtering for dot files
         if (rbc_should_skip_dotfile(name, pattern_buf, seg.len, flags))
             continue;
 
         // Match against pattern
         bool matched = false;
-        if (seg.has_magic)
+        switch (seg.type)
         {
-            matched = rbc_fnmatch(pattern_buf, name, flags);
-        }
-        else
-        {
-            // Literal match
+        case RBC_SEG_LITERAL:
+            // Exact string match
             matched = (strcmp(pattern_buf, name) == 0);
+            break;
+        case RBC_SEG_STAR:
+        case RBC_SEG_MAGICAL:
+            // Wildcard match using fnmatch
+            matched = rbc_fnmatch(pattern_buf, name, flags);
+            break;
+        case RBC_SEG_BRACE:
+            // Should not happen (brace expansion done earlier)
+            // Treat as literal fallback
+            matched = (strcmp(pattern_buf, name) == 0);
+            break;
+        case RBC_SEG_STARSTAR:
+            // Should not reach here (handled above)
+            continue;
         }
 
         if (!matched)
@@ -388,7 +486,7 @@ static void rbc_glob_recursive(const char *path, size_t path_len,
         }
 
         // Check if more segments remain
-        if (*pat_ptr == '\0' || (*pat_ptr == '/' && *(pat_ptr + 1) == '\0'))
+        if (*pat_ptr == '\0')
         {
             // Last segment - add result
             struct stat st;
@@ -401,7 +499,18 @@ static void rbc_glob_recursive(const char *path, size_t path_len,
                     result++;
                 if (*result == '\0')
                     result = ".";
-                rbc_glob_results_add(results, result);
+
+                // If segment had trailing slashes, append one to the result
+                if (seg.trailing_slashes > 0)
+                {
+                    char result_with_slash[RBC_GLOB_MAX_PATH];
+                    snprintf(result_with_slash, sizeof(result_with_slash), "%s/", result);
+                    rbc_glob_results_add(results, result_with_slash);
+                }
+                else
+                {
+                    rbc_glob_results_add(results, result);
+                }
             }
         }
         else
@@ -409,6 +518,69 @@ static void rbc_glob_recursive(const char *path, size_t path_len,
             // More segments - must be a directory
             struct stat st;
             if (stat(pathbuf, &st) == 0 && S_ISDIR(st.st_mode))
+            {
+                rbc_glob_recursive(pathbuf, new_len, baselen, pat_ptr, flags, results);
+            }
+        }
+    }
+
+    // Special handling for "." entry
+    // MRI behavior: "." matches patterns when FNM_DOTMATCH is set
+    // but is not included in ** recursion (handled separately above)
+    if ((flags & RBC_FNM_DOTMATCH))
+    {
+        bool dot_matched = false;
+        switch (seg.type)
+        {
+        case RBC_SEG_LITERAL:
+            dot_matched = (strcmp(pattern_buf, ".") == 0);
+            break;
+        case RBC_SEG_STAR:
+        case RBC_SEG_MAGICAL:
+            dot_matched = rbc_fnmatch(pattern_buf, ".", flags);
+            break;
+        default:
+            break;
+        }
+
+        if (dot_matched)
+        {
+            // Build path with "."
+            size_t new_len;
+            if (path_len > 0)
+            {
+                snprintf(pathbuf, sizeof(pathbuf), "%s/.", path);
+                new_len = path_len + 2;
+            }
+            else
+            {
+                snprintf(pathbuf, sizeof(pathbuf), ".");
+                new_len = 1;
+            }
+
+            // Check if this is the last segment
+            if (*pat_ptr == '\0')
+            {
+                // Add "." result
+                const char *result = pathbuf + baselen;
+                while (*result == '/')
+                    result++;
+                if (*result == '\0')
+                    result = ".";
+
+                if (seg.trailing_slashes > 0)
+                {
+                    char result_with_slash[RBC_GLOB_MAX_PATH];
+                    snprintf(result_with_slash, sizeof(result_with_slash), "%s/", result);
+                    rbc_glob_results_add(results, result_with_slash);
+                }
+                else
+                {
+                    rbc_glob_results_add(results, result);
+                }
+            }
+            // If more segments remain, "." is the current directory, so continue with next segment
+            else
             {
                 rbc_glob_recursive(pathbuf, new_len, baselen, pat_ptr, flags, results);
             }
