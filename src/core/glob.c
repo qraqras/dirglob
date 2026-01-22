@@ -17,6 +17,10 @@
 #define RBC_FNM_CASEFOLD 0x08
 #define RBC_FNM_EXTGLOB 0x10
 
+// Internal flags (not exposed in API, use high bits)
+#define RBC_INTERNAL_IN_DOUBLESTAR 0x80000000  // Currently recursing from **
+#define RBC_GLOB_SKIPDOT           0x40000000  // Skip "." entry (set for all intermediate segments)
+
 /// @brief Glob results storage
 typedef struct
 {
@@ -34,7 +38,7 @@ typedef enum
     RBC_SEG_STAR,     // Single star "*"
     RBC_SEG_STARSTAR, // "**" or ".**" (2+ consecutive stars, optionally with leading dot)
     RBC_SEG_BRACE,    // Brace expansion segment
-    RBC_SEG_MAGICAL   // Contains wildcards: *, ?, [
+    RBC_SEG_MAGICAL,  // Contains wildcards: *, ?, [
 } rbc_segment_type_t;
 
 /// @brief Pattern segment information (for streaming)
@@ -250,8 +254,12 @@ static const char *rbc_find_matching_brace(const char *p)
 }
 
 /// @brief Expand braces recursively
-static void rbc_brace_expand_impl(const char *pattern, char *buf, size_t buf_pos,
-                                  void (*cb)(const char *, void *), void *arg)
+static void rbc_brace_expand_impl(
+    const char *pattern,
+    char *buf,
+    size_t buf_pos,
+    void (*cb)(const char *, void *),
+    void *arg)
 {
     const char *p = pattern;
 
@@ -311,7 +319,10 @@ static void rbc_brace_expand_impl(const char *pattern, char *buf, size_t buf_pos
     cb(buf, arg);
 }
 
-static void rbc_brace_expand(const char *pattern, void (*cb)(const char *, void *), void *arg)
+static void rbc_brace_expand(
+    const char *pattern,
+    void (*cb)(const char *, void *),
+    void *arg)
 {
     char buf[RBC_GLOB_MAX_PATH];
     rbc_brace_expand_impl(pattern, buf, 0, cb, arg);
@@ -324,8 +335,11 @@ static void rbc_brace_expand(const char *pattern, void (*cb)(const char *, void 
 bool rbc_fnmatch(const char *pattern, const char *string, unsigned flags); // External
 
 /// @brief Check if filename should be skipped based on dot-file rules
-static inline bool rbc_should_skip_dotfile(const char *name, const char *pattern,
-                                           size_t pattern_len, unsigned flags)
+static inline bool rbc_should_skip_dotfile(
+    const char *name,
+    const char *pattern,
+    size_t pattern_len,
+    unsigned flags)
 {
     // MRI behavior: if FNM_DOTMATCH is set, match dot files
     if (flags & RBC_FNM_DOTMATCH)
@@ -347,9 +361,13 @@ static inline bool rbc_should_skip_dotfile(const char *name, const char *pattern
 /// @param path_len Length of current path
 /// @param baselen Length of base directory prefix (excluded from results)
 /// @param pattern Remaining pattern to match
-static void rbc_glob_recursive(const char *path, size_t path_len,
-                               size_t baselen, const char *pattern,
-                               unsigned flags, rbc_results_t *results)
+static void rbc_glob_recursive(
+    const char *path,
+    size_t path_len,
+    size_t baselen,
+    const char *pattern,
+    unsigned flags,
+    rbc_results_t *results)
 {
     rbc_segment_t seg;
     const char *pat_ptr = pattern;
@@ -377,50 +395,66 @@ static void rbc_glob_recursive(const char *path, size_t path_len,
     // Handle "**" (recursive wildcard)
     if (seg.type == RBC_SEG_STARSTAR)
     {
-        // Match current directory
-        rbc_glob_recursive(path, path_len, baselen, pat_ptr, flags, results);
+        // Skip the separator after **
+        if (*pat_ptr == '/')
+            pat_ptr++;
 
-        // Recursively descend into subdirectories
-        DIR *dir = opendir((path_len > 0) ? path : ".");
-        if (!dir)
-            return;
-
-        struct dirent *entry;
-        char pathbuf[RBC_GLOB_MAX_PATH];
-
-        while ((entry = readdir(dir)) != NULL)
+        // If ** is terminal (no more pattern after it), treat it as *
+        if (*pat_ptr == '\0')
         {
-            // Skip dot entries
-            const char *name = entry->d_name;
-            if (name[0] == '.' && (name[1] == '\0' || (name[1] == '.' && name[2] == '\0')))
-                continue;
-
-            // Skip hidden files unless explicitly matched
-            if (name[0] == '.' && !(flags & RBC_FNM_DOTMATCH))
-                continue;
-
-            // Build path
-            size_t new_len;
-            if (path_len > 0)
-            {
-                new_len = snprintf(pathbuf, sizeof(pathbuf), "%s/%s", path, name);
-            }
-            else
-            {
-                new_len = snprintf(pathbuf, sizeof(pathbuf), "%s", name);
-            }
-
-            // Check if it's a directory
-            struct stat st;
-            if (stat(pathbuf, &st) == 0 && S_ISDIR(st.st_mode))
-            {
-                // Recursively glob from subdirectory
-                rbc_glob_recursive(pathbuf, new_len, baselen, pattern, flags, results);
-            }
+            seg.type = RBC_SEG_STAR;
+            seg.len = 1;  // Change length from 2 to 1 for single *
+            // Fall through to normal * handling
         }
+        else
+        {
+            // ** with following pattern: recursive search
+            // Match current directory first
+            rbc_glob_recursive(path, path_len, baselen, pat_ptr, flags, results);
 
-        closedir(dir);
-        return;
+            // Recursively descend into subdirectories
+            DIR *dir = opendir((path_len > 0) ? path : ".");
+            if (!dir)
+                return;
+
+            struct dirent *entry;
+            char pathbuf[RBC_GLOB_MAX_PATH];
+
+            while ((entry = readdir(dir)) != NULL)
+            {
+                // Skip dot entries
+                const char *name = entry->d_name;
+                if (name[0] == '.' && (name[1] == '\0' || (name[1] == '.' && name[2] == '\0')))
+                    continue;
+
+                // Skip hidden files unless explicitly matched
+                if (name[0] == '.' && !(flags & RBC_FNM_DOTMATCH))
+                    continue;
+
+                // Build path
+                size_t new_len;
+                if (path_len > 0)
+                {
+                    new_len = snprintf(pathbuf, sizeof(pathbuf), "%s/%s", path, name);
+                }
+                else
+                {
+                    new_len = snprintf(pathbuf, sizeof(pathbuf), "%s", name);
+                }
+
+                // Check if it's a directory
+                struct stat st;
+                if (stat(pathbuf, &st) == 0 && S_ISDIR(st.st_mode))
+                {
+                    // Recursively glob from subdirectory with DOUBLESTAR flag
+                    rbc_glob_recursive(pathbuf, new_len, baselen, pat_ptr,
+                                       flags | RBC_INTERNAL_IN_DOUBLESTAR, results);
+                }
+            }
+
+            closedir(dir);
+            return;
+        }
     }
 
     // Handle normal segment (literal or wildcard)
@@ -433,20 +467,61 @@ static void rbc_glob_recursive(const char *path, size_t path_len,
     char pattern_buf[RBC_GLOB_MAX_PATH];
 
     // Copy segment to null-terminated buffer for fnmatch
-    memcpy(pattern_buf, seg.start, seg.len);
-    pattern_buf[seg.len] = '\0';
+    // If ** was converted to * (terminal **), use "*" explicitly
+    if (seg.type == RBC_SEG_STAR && seg.start[0] == '*' && seg.start[1] == '*')
+    {
+        pattern_buf[0] = '*';
+        pattern_buf[1] = '\0';
+    }
+    else
+    {
+        memcpy(pattern_buf, seg.start, seg.len);
+        pattern_buf[seg.len] = '\0';
+    }
+
+    // Check if current segment is literal "."
+    bool is_literal_dot = (seg.type == RBC_SEG_LITERAL && seg.len == 1 && pattern_buf[0] == '.');
+
+    // MRI behavior: Skip "." in subdirectories, but include it at the base level
+    // At base level (path_len == baselen), don't set SKIPDOT
+    // In subdirectories (path_len > baselen), set SKIPDOT
+    bool skipdot = (flags & RBC_GLOB_SKIPDOT) != 0;
+    unsigned local_flags = flags;
+    if (path_len > baselen) {
+        local_flags |= RBC_GLOB_SKIPDOT;
+    }
 
     while ((entry = readdir(dir)) != NULL)
     {
         const char *name = entry->d_name;
 
-        // Skip "." and ".." always
-        if (name[0] == '.' && (name[1] == '\0' || (name[1] == '.' && name[2] == '\0')))
+        // Always skip ".."
+        if (name[0] == '.' && name[1] == '.' && name[2] == '\0')
             continue;
 
-        // Apply dot-file filtering for dot files
-        if (rbc_should_skip_dotfile(name, pattern_buf, seg.len, flags))
-            continue;
+        // Skip "." in specific cases
+        if (name[0] == '.' && name[1] == '\0')
+        {
+            // If we're in a ** recursion (subdirectory), skip "."
+            if (flags & RBC_INTERNAL_IN_DOUBLESTAR)
+                continue;
+
+            // If RBC_GLOB_SKIPDOT was set in the incoming flags, skip "."
+            // This matches MRI: skipdot controls whether "." is visible
+            if (skipdot)
+                continue;
+
+            // Otherwise, skip unless FNM_DOTMATCH is set
+            if (!(flags & RBC_FNM_DOTMATCH))
+                continue;
+            // If FNM_DOTMATCH is set, include "." (will be matched below)
+        }
+        else
+        {
+            // Apply dot-file filtering for other dot files (not "." or "..")
+            if (rbc_should_skip_dotfile(name, pattern_buf, seg.len, flags))
+                continue;
+        }
 
         // Match against pattern
         bool matched = false;
@@ -458,7 +533,7 @@ static void rbc_glob_recursive(const char *path, size_t path_len,
             break;
         case RBC_SEG_STAR:
         case RBC_SEG_MAGICAL:
-            // Wildcard match using fnmatch
+            // Wildcard match using fnmatch (use original flags, not local_flags)
             matched = rbc_fnmatch(pattern_buf, name, flags);
             break;
         case RBC_SEG_BRACE:
@@ -492,6 +567,10 @@ static void rbc_glob_recursive(const char *path, size_t path_len,
             struct stat st;
             if (stat(pathbuf, &st) == 0)
             {
+                // If segment has trailing slashes, only match directories
+                if (seg.trailing_slashes > 0 && !S_ISDIR(st.st_mode))
+                    continue;
+
                 // Add result without base prefix
                 const char *result = pathbuf + baselen;
                 // Skip leading slash if present
@@ -519,70 +598,14 @@ static void rbc_glob_recursive(const char *path, size_t path_len,
             struct stat st;
             if (stat(pathbuf, &st) == 0 && S_ISDIR(st.st_mode))
             {
-                rbc_glob_recursive(pathbuf, new_len, baselen, pat_ptr, flags, results);
-            }
-        }
-    }
-
-    // Special handling for "." entry
-    // MRI behavior: "." matches patterns when FNM_DOTMATCH is set
-    // but is not included in ** recursion (handled separately above)
-    if ((flags & RBC_FNM_DOTMATCH))
-    {
-        bool dot_matched = false;
-        switch (seg.type)
-        {
-        case RBC_SEG_LITERAL:
-            dot_matched = (strcmp(pattern_buf, ".") == 0);
-            break;
-        case RBC_SEG_STAR:
-        case RBC_SEG_MAGICAL:
-            dot_matched = rbc_fnmatch(pattern_buf, ".", flags);
-            break;
-        default:
-            break;
-        }
-
-        if (dot_matched)
-        {
-            // Build path with "."
-            size_t new_len;
-            if (path_len > 0)
-            {
-                snprintf(pathbuf, sizeof(pathbuf), "%s/.", path);
-                new_len = path_len + 2;
-            }
-            else
-            {
-                snprintf(pathbuf, sizeof(pathbuf), ".");
-                new_len = 1;
-            }
-
-            // Check if this is the last segment
-            if (*pat_ptr == '\0')
-            {
-                // Add "." result
-                const char *result = pathbuf + baselen;
-                while (*result == '/')
-                    result++;
-                if (*result == '\0')
-                    result = ".";
-
-                if (seg.trailing_slashes > 0)
-                {
-                    char result_with_slash[RBC_GLOB_MAX_PATH];
-                    snprintf(result_with_slash, sizeof(result_with_slash), "%s/", result);
-                    rbc_glob_results_add(results, result_with_slash);
+                // When entering literal "." directory, clear SKIPDOT for the next level
+                // This allows patterns like "02_asterisk/./*" to see "./."
+                // But for wildcards matching ".", keep SKIPDOT set
+                unsigned recurse_flags = local_flags;
+                if (is_literal_dot && name[0] == '.' && name[1] == '\0') {
+                    recurse_flags &= ~RBC_GLOB_SKIPDOT;
                 }
-                else
-                {
-                    rbc_glob_results_add(results, result);
-                }
-            }
-            // If more segments remain, "." is the current directory, so continue with next segment
-            else
-            {
-                rbc_glob_recursive(pathbuf, new_len, baselen, pat_ptr, flags, results);
+                rbc_glob_recursive(pathbuf, new_len, baselen, pat_ptr, recurse_flags, results);
             }
         }
     }
@@ -601,17 +624,28 @@ static void rbc_glob_brace_cb(const char *pat, void *arg)
         rbc_results_t *results;
     } *ctx = arg;
 
-    rbc_glob_recursive(ctx->base, ctx->baselen, ctx->baselen,
-                       pat, ctx->flags, ctx->results);
+    rbc_glob_recursive(
+        ctx->base,
+        ctx->baselen,
+        ctx->baselen,
+        pat,
+        ctx->flags,
+        ctx->results);
 }
 
 // ============================================================================
 // Public API
 // ============================================================================
 
-bool rbc_glob(const char **patterns, size_t npatterns, unsigned flags,
-              const char *base, bool sort, char ***out, size_t *count,
-              size_t **lengths)
+bool rbc_glob(
+    const char **patterns,
+    size_t npatterns,
+    unsigned flags,
+    const char *base,
+    bool sort,
+    char ***out,
+    size_t *count,
+    size_t **lengths)
 {
     if (!patterns || !out || !count || npatterns == 0)
         return false;
@@ -695,10 +729,8 @@ void rbc_glob_free(char **list, size_t count, size_t *lengths)
 
     // Free each string individually
     for (size_t i = 0; i < count; i++)
-    {
         if (list[i])
             free(list[i]);
-    }
 
     // Free the arrays
     free(list);
