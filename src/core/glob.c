@@ -349,26 +349,41 @@ static void rbc_brace_expand(
 
 bool rbc_fnmatch(const char *pattern, const char *string, unsigned flags); // External
 
-/// @brief Check if filename should be skipped based on dot-file rules
+/// @brief Check if filename should be skipped based on dot-file rules (MRI-compatible)
+/// @param name Filename to check
+/// @param pattern_starts_with_dot Whether the current pattern segment starts with '.'
+/// @param flags Glob flags
+/// @return true if the file should be skipped
+///
+/// MRI behavior:
+/// - FNM_DOTMATCH: If set, wildcards can match leading dots
+/// - Without FNM_DOTMATCH: Wildcards (* ? []) don't match leading dots
+/// - Explicit dot in pattern: Always matches dot files (e.g., .* or .hidden)
 static inline bool rbc_should_skip_dotfile(
     const char *name,
-    const char *pattern,
-    size_t pattern_len,
+    bool pattern_starts_with_dot,
     unsigned flags)
 {
-    // MRI behavior: if FNM_DOTMATCH is set, match dot files
+    // Never skip if name doesn't start with dot
+    if (name[0] != '.')
+        return false;
+
+    // Always skip "." and ".."
+    if (name[1] == '\0' || (name[1] == '.' && name[2] == '\0'))
+        return true;
+
+    // If pattern explicitly starts with '.', don't skip
+    // This allows patterns like .*, .hidden, .???, etc. to match dot files
+    if (pattern_starts_with_dot)
+        return false;
+
+    // Pattern doesn't start with '.'
+    // If FNM_DOTMATCH is set, wildcards can match leading dots
     if (flags & RBC_FNM_DOTMATCH)
         return false;
 
-    // Skip "." and ".."
-    if (name[0] == '.' && (name[1] == '\0' || (name[1] == '.' && name[2] == '\0')))
-        return true;
-
-    // If file starts with '.' and pattern doesn't, skip
-    if (name[0] == '.' && pattern[0] != '.')
-        return true;
-
-    return false;
+    // Otherwise, skip dot files (wildcards don't match leading dots)
+    return true;
 }
 
 /// @brief Glob recursively with streaming pattern analysis
@@ -414,6 +429,15 @@ static void rbc_glob_recursive(
         if (*pat_ptr == '/')
             pat_ptr++;
 
+        // Check if the next segment starts with '.' to determine dot file handling
+        rbc_segment_t next_seg;
+        const char *next_pat_ptr = pat_ptr;
+        bool next_starts_with_dot = false;
+        if (rbc_next_segment(&next_pat_ptr, &next_seg))
+        {
+            next_starts_with_dot = next_seg.starts_with_dot;
+        }
+
         // Match current directory first
         rbc_glob_recursive(path, path_len, baselen, pat_ptr, flags, results);
 
@@ -427,13 +451,15 @@ static void rbc_glob_recursive(
 
         while ((entry = readdir(dir)) != NULL)
         {
-            // Skip dot entries
             const char *name = entry->d_name;
+
+            // Always skip "." and ".."
             if (name[0] == '.' && (name[1] == '\0' || (name[1] == '.' && name[2] == '\0')))
                 continue;
 
-            // Skip hidden files unless explicitly matched
-            if (name[0] == '.' && !(flags & RBC_FNM_DOTMATCH))
+            // Apply dot-file filtering using the same logic as normal segments
+            // Check if we should skip this dot directory based on the next pattern segment
+            if (rbc_should_skip_dotfile(name, next_starts_with_dot, flags))
                 continue;
 
             // Build path
@@ -515,15 +541,20 @@ static void rbc_glob_recursive(
             if (skipdot)
                 continue;
 
-            // Otherwise, skip unless FNM_DOTMATCH is set
-            if (!(flags & RBC_FNM_DOTMATCH))
-                continue;
-            // If FNM_DOTMATCH is set, include "." (will be matched below)
+            // MRI behavior: If pattern explicitly starts with '.', include "."
+            // This allows patterns like .*, .???, etc. to match "."
+            if (!seg.starts_with_dot)
+            {
+                // Pattern doesn't start with '.', skip "." unless FNM_DOTMATCH is set
+                if (!(flags & RBC_FNM_DOTMATCH))
+                    continue;
+            }
+            // If pattern starts with '.' or FNM_DOTMATCH is set, include "." (will be matched below)
         }
         else
         {
             // Apply dot-file filtering for other dot files (not "." or "..")
-            if (rbc_should_skip_dotfile(name, pattern_buf, seg.len, flags))
+            if (rbc_should_skip_dotfile(name, seg.starts_with_dot, flags))
                 continue;
         }
 
