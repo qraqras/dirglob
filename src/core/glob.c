@@ -412,9 +412,11 @@ static void rbc_glob_recursive(
         {
             // Add result without base prefix
             const char *result = path + baselen;
-            // Skip leading slashes
-            while (*result == '/')
-                result++;
+            // Skip leading slashes only for relative paths
+            if (baselen > 0) {
+                while (*result == '/')
+                    result++;
+            }
             if (*result == '\0')
                 result = ".";
             rbc_glob_results_add(results, result);
@@ -447,8 +449,11 @@ static void rbc_glob_recursive(
         {
             // Add current directory with trailing slash
             const char *result = path + baselen;
-            while (*result == '/')
-                result++;
+            // Skip leading slashes only for relative paths
+            if (baselen > 0) {
+                while (*result == '/')
+                    result++;
+            }
             if (*result == '\0')
                 result = ".";
 
@@ -631,9 +636,11 @@ static void rbc_glob_recursive(
 
                 // Add result without base prefix
                 const char *result = pathbuf + baselen;
-                // Skip leading slash if present
-                while (*result == '/')
-                    result++;
+                // Skip leading slash only for relative paths
+                if (baselen > 0) {
+                    while (*result == '/')
+                        result++;
+                }
                 if (*result == '\0')
                     result = ".";
 
@@ -682,9 +689,17 @@ static void rbc_glob_brace_cb(const char *pat, void *arg)
         rbc_results_t *results;
     } *ctx = arg;
 
+    // For absolute paths, base contains the full path and baselen=0
+    // We need to pass base as the starting path
+    size_t base_path_len = ctx->baselen > 0 ? ctx->baselen : (ctx->base[0] != '\0' ? strlen(ctx->base) : 0);
+
+    // Remove trailing slash from base_path_len for path construction
+    if (base_path_len > 0 && ctx->base[base_path_len - 1] == '/')
+        base_path_len--;
+
     rbc_glob_recursive(
         ctx->base,
-        ctx->baselen,
+        base_path_len,
         ctx->baselen,
         pat,
         ctx->flags,
@@ -752,6 +767,51 @@ bool rbc_glob(
     // Process each pattern
     for (size_t i = 0; i < npatterns; i++)
     {
+        const char *pattern = patterns[i];
+        const char *pattern_base = baselen > 0 ? normalized_base : "";
+        size_t pattern_baselen = baselen;
+        char abs_base[RBC_GLOB_MAX_PATH] = "";
+        const char *relative_pattern = pattern;
+
+        // Handle absolute paths (pattern starts with '/')
+        if (pattern[0] == '/')
+        {
+            // Extract the base directory from the absolute pattern
+            // Find the first wildcard or end of path
+            const char *p = pattern + 1;
+            const char *last_slash = pattern;
+
+            while (*p && !rbc_is_magic_char(*p))
+            {
+                if (*p == '/')
+                    last_slash = p;
+                p++;
+            }
+
+            // If we found a directory part, use it as base
+            if (last_slash > pattern)
+            {
+                size_t len = last_slash - pattern;
+                if (len < RBC_GLOB_MAX_PATH - 1)
+                {
+                    memcpy(abs_base, pattern, len);
+                    abs_base[len] = '\0';  // No trailing slash
+                    pattern_base = abs_base;
+                    pattern_baselen = 0;  // Don't strip prefix - return absolute paths
+                    relative_pattern = last_slash + 1;  // Pattern after the base
+                }
+            }
+            else
+            {
+                // Root directory with wildcard immediately (e.g., /*)
+                abs_base[0] = '/';
+                abs_base[1] = '\0';
+                pattern_base = abs_base;
+                pattern_baselen = 0;  // Don't strip prefix
+                relative_pattern = pattern + 1;
+            }
+        }
+
         struct
         {
             const char *base;
@@ -759,12 +819,12 @@ bool rbc_glob(
             unsigned flags;
             rbc_results_t *results;
         } cb_ctx = {
-            baselen > 0 ? normalized_base : "",
-            baselen,
+            pattern_base,
+            pattern_baselen,
             flags,
             &results};
 
-        rbc_brace_expand(patterns[i], rbc_glob_brace_cb, &cb_ctx);
+        rbc_brace_expand(relative_pattern, rbc_glob_brace_cb, &cb_ctx);
     }
 
     // Sort results if requested
