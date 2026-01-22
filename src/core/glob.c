@@ -235,7 +235,9 @@ segment_end:
         seg->type = RBC_SEG_MAGICAL;
     }
 
-    // Count trailing slashes
+    // Count trailing slashes (パターン由来のスラッシュ総数)
+    // 例: 'a/b'  → trailing_slashes=1 (分離用)
+    //     'a//b' → trailing_slashes=2 (分離 + 連続スラッシュ1つ)
     seg->trailing_slashes = 0;
     while (*p == '/')
     {
@@ -280,19 +282,35 @@ segment_end:
 // ============================================================================
 
 /**
- * @brief Build a path with optional trailing slashes
+ * @brief Build a path with trailing slashes from pattern
  *
- * Design note: This function handles inconsistent path state defensively.
- * - The `base` path MAY contain trailing slashes (from previous segment processing)
- * - We check base[base_len-1] to avoid double slashes when concatenating
- * - Trailing slashes are added via the trailing_slashes parameter
+ * Design: trailing_slashes = パターン由来のスラッシュ総数（分離用の1つを含む）
+ *
+ * Invariant: base must NEVER end with '/' (caller's responsibility)
+ *
+ * Examples:
+ *   Pattern 'a/b'   → seg='a', trailing_slashes=1
+ *     build("", "a", 1) → "a/"
+ *     build("a", "b", 0) → "a/b"  (最終セグメント)
+ *
+ *   Pattern 'a//b'  → seg='a', trailing_slashes=2
+ *     build("", "a", 2) → "a//"
+ *     build("a", "b", 0) → "a/b"  (注: baseは正規化された "a")
+ *
+ *   Pattern 'a/b/'  → last seg='b', trailing_slashes=1
+ *     build("a", "b", 1) → "a/b/"
+ *
+ * Algorithm:
+ *   1. If base is non-empty: result = base + '/' + name
+ *   2. If base is empty: result = name
+ *   3. Append exactly (trailing_slashes) '/' characters
  *
  * @param buf Output buffer
  * @param buf_size Size of output buffer
- * @param base Base path (may or may not end with '/')
+ * @param base Base path (must NOT end with '/')
  * @param base_len Length of base path
  * @param name Name to append
- * @param trailing_slashes Number of trailing slashes to append
+ * @param trailing_slashes Number of '/' to append
  * @return Length of resulting path
  */
 static size_t rbc_build_path_with_slashes(char *buf, size_t buf_size,
@@ -300,24 +318,19 @@ static size_t rbc_build_path_with_slashes(char *buf, size_t buf_size,
                                            const char *name, size_t trailing_slashes)
 {
     size_t len;
+
     if (base_len > 0)
     {
-        // Check if base already ends with '/' to prevent double slashes
-        if (base[base_len - 1] == '/')
-        {
-            len = snprintf(buf, buf_size, "%s%s", base, name);
-        }
-        else
-        {
-            len = snprintf(buf, buf_size, "%s/%s", base, name);
-        }
+        // base + '/' + name
+        len = snprintf(buf, buf_size, "%s/%s", base, name);
     }
     else
     {
+        // name only
         len = snprintf(buf, buf_size, "%s", name);
     }
 
-    // Append trailing slashes if needed
+    // Append exactly trailing_slashes '/' characters
     if (trailing_slashes > 0 && len < buf_size - 1)
     {
         for (size_t i = 0; i < trailing_slashes && len < buf_size - 1; i++)
@@ -547,10 +560,10 @@ static void rbc_glob_recursive(
             if (*result == '\0')
                 result = ".";
 
-            // Add trailing slash, checking if already present to avoid double slashes
+            // Add trailing slash (defensive check for path normalization)
             size_t result_len = strlen(result);
             if (result_len > 0 && result[result_len - 1] == '/') {
-                // Already has trailing slash (defensive check)
+                // Already has trailing slash
                 rbc_glob_results_add(results, result);
             } else {
                 char result_with_slash[RBC_GLOB_MAX_PATH];
@@ -717,15 +730,15 @@ static void rbc_glob_recursive(
         if (!matched)
             continue;
 
-        // Build new path
+        // Build normalized path (without trailing slashes)
+        // This is used for stat() and recursion
         size_t new_len = rbc_build_path_with_slashes(pathbuf, sizeof(pathbuf),
-                                                      path, path_len, name,
-                                                      seg.trailing_slashes);
+                                                      path, path_len, name, 0);
 
         // Check if more segments remain
         if (*pat_ptr == '\0')
         {
-            // Last segment - add result
+            // Last segment - add result with trailing slashes if needed
             struct stat st;
             if (stat(pathbuf, &st) == 0)
             {
@@ -733,7 +746,7 @@ static void rbc_glob_recursive(
                 if (seg.trailing_slashes > 0 && !S_ISDIR(st.st_mode))
                     continue;
 
-                // Add result without base prefix
+                // Extract result without base prefix
                 const char *result = pathbuf + baselen;
                 // Skip leading slash only for relative paths
                 if (baselen > 0) {
@@ -743,13 +756,23 @@ static void rbc_glob_recursive(
                 if (*result == '\0')
                     result = ".";
 
-                // Result already has trailing slashes from rbc_build_path_with_slashes
-                rbc_glob_results_add(results, result);
+                // Add trailing slashes to final result
+                if (seg.trailing_slashes > 0) {
+                    char result_with_slashes[RBC_GLOB_MAX_PATH];
+                    size_t len = snprintf(result_with_slashes, sizeof(result_with_slashes), "%s", result);
+                    for (size_t i = 0; i < seg.trailing_slashes && len < sizeof(result_with_slashes) - 1; i++) {
+                        result_with_slashes[len++] = '/';
+                    }
+                    result_with_slashes[len] = '\0';
+                    rbc_glob_results_add(results, result_with_slashes);
+                } else {
+                    rbc_glob_results_add(results, result);
+                }
             }
         }
         else
         {
-            // More segments - must be a directory
+            // Intermediate segment - must be a directory
             struct stat st;
             if (stat(pathbuf, &st) == 0 && S_ISDIR(st.st_mode))
             {
@@ -760,6 +783,7 @@ static void rbc_glob_recursive(
                 if (is_literal_dot && name[0] == '.' && name[1] == '\0') {
                     recurse_flags &= ~RBC_GLOB_SKIPDOT;
                 }
+                // Recurse with normalized path (no trailing slashes)
                 rbc_glob_recursive(pathbuf, new_len, baselen, pat_ptr, recurse_flags, results);
             }
         }
