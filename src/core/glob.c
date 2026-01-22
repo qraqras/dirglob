@@ -198,20 +198,20 @@ segment_end:
     }
     else if (char_flags == SEG_HAS_STAR && pattern_len >= 2)
     {
-        // ** pattern detected - check if terminal
-        // Skip trailing slashes to see if pattern ends
-        const char *check = p;
-        while (*check == '/')
-            check++;
+        // ** pattern detected - check if terminal or recursive
+        // MRI behavior:
+        // ** (no slash, no following) → same as * (RBC_SEG_ANY)
+        // **/ (with slash) → recursive directories (RBC_SEG_RECURSIVE)
+        // **/*.txt (with following pattern) → recursive (RBC_SEG_RECURSIVE)
 
-        if (*check == '\0')
+        if (*p == '\0')
         {
-            // Terminal **: treat as *
+            // Terminal ** with NO trailing slash: treat as *
             seg->type = RBC_SEG_ANY;
         }
         else
         {
-            // ** with following pattern: recursive
+            // ** with trailing slash or following pattern: recursive
             seg->type = RBC_SEG_RECURSIVE;
         }
     }
@@ -425,6 +425,9 @@ static void rbc_glob_recursive(
     // Handle "**" (recursive wildcard)
     if (seg.type == RBC_SEG_RECURSIVE)
     {
+        // Check if this is **/ (directories only) by checking if no pattern follows
+        bool is_dirs_only = (*pat_ptr == '\0' && seg.trailing_slashes > 0);
+
         // Skip the separator after **
         if (*pat_ptr == '/')
             pat_ptr++;
@@ -438,10 +441,29 @@ static void rbc_glob_recursive(
             next_starts_with_dot = next_seg.starts_with_dot;
         }
 
-        // Match current directory first
-        rbc_glob_recursive(path, path_len, baselen, pat_ptr, flags, results);
+        // Match current directory first with the remaining pattern (after **)
+        // For **/, we need to add the current directory with trailing slash
+        if (is_dirs_only)
+        {
+            // Add current directory with trailing slash
+            const char *result = path + baselen;
+            while (*result == '/')
+                result++;
+            if (*result == '\0')
+                result = ".";
+
+            char result_with_slash[RBC_GLOB_MAX_PATH];
+            snprintf(result_with_slash, sizeof(result_with_slash), "%s/", result);
+            rbc_glob_results_add(results, result_with_slash);
+        }
+        else
+        {
+            // Normal recursive match with remaining pattern
+            rbc_glob_recursive(path, path_len, baselen, pat_ptr, flags, results);
+        }
 
         // Recursively descend into subdirectories
+        // MRI behavior: ** continues to match in all subdirectories
         DIR *dir = opendir((path_len > 0) ? path : ".");
         if (!dir)
             return;
@@ -477,8 +499,9 @@ static void rbc_glob_recursive(
             struct stat st;
             if (stat(pathbuf, &st) == 0 && S_ISDIR(st.st_mode))
             {
-                // Recursively glob from subdirectory with DOUBLESTAR flag
-                rbc_glob_recursive(pathbuf, new_len, baselen, pat_ptr,
+                // Continue ** recursion: pass the ORIGINAL pattern (with **) to subdirectories
+                // This allows ** to match multiple directory levels
+                rbc_glob_recursive(pathbuf, new_len, baselen, pattern,
                                    flags | RBC_INTERNAL_IN_DOUBLESTAR, results);
             }
         }
