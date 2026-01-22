@@ -203,16 +203,12 @@ segment_end:
         // ** (no slash, no following) → same as * (RBC_SEG_ANY)
         // **/ (with slash) → recursive directories (RBC_SEG_RECURSIVE)
         // **/*.txt (with following pattern) → recursive (RBC_SEG_RECURSIVE)
-        // .** → same as .* (RBC_SEG_ANY) - dot-prefixed ** is NOT recursive
+        // .** (terminal) → same as .* (RBC_SEG_ANY)
+        // .**/ or .**/pattern → recursive matching dot files
 
-        // If pattern starts with '.', treat .** as .* (non-recursive)
-        if (seg->starts_with_dot)
+        if (*p == '\0')
         {
-            seg->type = RBC_SEG_ANY;
-        }
-        else if (*p == '\0')
-        {
-            // Terminal ** with NO trailing slash: treat as *
+            // Terminal ** (with or without dot): treat as * or .*
             seg->type = RBC_SEG_ANY;
         }
         else
@@ -243,34 +239,6 @@ segment_end:
     {
         seg->trailing_slashes++;
         p++;
-    }
-
-    // MRI behavior: Consecutive ** are treated as a single **
-    // Skip any following "**/" patterns (exactly 2 stars, not 3+)
-    if (seg->type == RBC_SEG_RECURSIVE)
-    {
-        while (*p == '*' && *(p + 1) == '*' && *(p + 2) != '*')
-        {
-            const char *peek = p + 2;
-            // Check if this is another **/ or **<end>
-            if (*peek == '/' || *peek == '\0')
-            {
-                // Skip this ** segment
-                p = peek;
-                // Reset and recount trailing slashes
-                seg->trailing_slashes = 0;
-                while (*p == '/')
-                {
-                    seg->trailing_slashes++;
-                    p++;
-                }
-            }
-            else
-            {
-                // Not a pure **, stop skipping
-                break;
-            }
-        }
     }
 
     *pattern = p;
@@ -613,10 +581,28 @@ static void rbc_glob_recursive(
             struct stat st;
             if (stat(pathbuf, &st) == 0 && S_ISDIR(st.st_mode))
             {
-                // Continue ** recursion: pass the ORIGINAL pattern (with **) to subdirectories
-                // This allows ** to match multiple directory levels
-                rbc_glob_recursive(pathbuf, new_len, baselen, pattern,
-                                   flags | RBC_INTERNAL_IN_DOUBLESTAR, results);
+                // Continue ** recursion
+                // For **/ or **//, continue with the original pattern (pattern)
+                // For **/something, create a pattern that continues ** but also matches at current level
+                // Strategy: reconstruct the ** part + remaining pattern
+                if (*pat_ptr == '\0')
+                {
+                    // **/ case - continue with original pattern for directory matching
+                    rbc_glob_recursive(pathbuf, new_len, baselen, pattern,
+                                       flags | RBC_INTERNAL_IN_DOUBLESTAR, results);
+                }
+                else
+                {
+                    // **/pattern case - continue matching the pattern at each level
+                    // Reconstruct: "**/" + remaining pattern
+                    char recursive_pattern[RBC_GLOB_MAX_PATH];
+                    size_t prefix_len = seg.len + seg.trailing_slashes;  // Length of "**/"
+                    memcpy(recursive_pattern, seg.start, prefix_len);
+                    strcpy(recursive_pattern + prefix_len, pat_ptr);
+
+                    rbc_glob_recursive(pathbuf, new_len, baselen, recursive_pattern,
+                                       flags | RBC_INTERNAL_IN_DOUBLESTAR, results);
+                }
             }
         }
 
@@ -649,17 +635,13 @@ static void rbc_glob_recursive(
     // Check if current segment is literal "."
     bool is_literal_dot = (seg.type == RBC_SEG_LITERAL && seg.len == 1 && pattern_buf[0] == '.');
 
-    // MRI behavior: Skip "." in subdirectories, but include it at the base level
+    // MRI behavior: Set SKIPDOT in subdirectories to skip "." entries
     // At base level (path_len == baselen), don't set SKIPDOT
     // In subdirectories (path_len > baselen), set SKIPDOT
     unsigned local_flags = flags;
     if (path_len > baselen) {
         local_flags |= RBC_GLOB_SKIPDOT;
     }
-
-    // Suppress unused variable warnings (used later in directory recursion)
-    (void)is_literal_dot;
-    (void)local_flags;
 
     while ((entry = readdir(dir)) != NULL)
     {
@@ -673,21 +655,26 @@ static void rbc_glob_recursive(
         }
 
         // MRI behavior for ".":
-        // - In RECURSIVE mode (RBC_INTERNAL_IN_DOUBLESTAR): always skip "."
-        // - In normal mode: allow "." only if:
-        //   1. Pattern is literal ".", OR
-        //   2. Pattern is dot + wildcard (.*, .?, .[abc]), OR
-        //   3. FNM_DOTMATCH is set (wildcards can match dots)
+        // - Always skip ".." regardless of flags
+        // - In RECURSIVE mode: skip "." unless FNM_DOTMATCH is set
+        // - With SKIPDOT flag: always skip "."
+        // - Pattern ".": explicitly matches "." entry (literal match)
+        // - Pattern ".*": matches "." entry (explicit dot)
+        // - Pattern "*" with FNM_DOTMATCH: matches "." only at base level (not in subdirectories)
         if (name[0] == '.' && name[1] == '\0')
         {
-            // In recursive ** mode, always skip "." to prevent issues
-            if (flags & RBC_INTERNAL_IN_DOUBLESTAR)
+            // In recursive ** mode without DOTMATCH, skip "."
+            if ((flags & RBC_INTERNAL_IN_DOUBLESTAR) && !(flags & RBC_FNM_DOTMATCH))
                 continue;
 
-            // Include "." only if:
+            // In subdirectories (SKIPDOT set), always skip "."
+            if (flags & RBC_GLOB_SKIPDOT)
+                continue;
+
+            // Include "." if:
             // - Pattern is literal ".", OR
             // - Pattern starts with '.' AND is a wildcard (.*,  .?, .[abc]), OR
-            // - FNM_DOTMATCH is set
+            // - FNM_DOTMATCH is set AND we're at base level (not SKIPDOT)
             bool should_include = is_literal_dot ||
                                   (seg.starts_with_dot && (seg.type == RBC_SEG_ANY || seg.type == RBC_SEG_MAGICAL)) ||
                                   (flags & RBC_FNM_DOTMATCH);
@@ -713,6 +700,9 @@ static void rbc_glob_recursive(
             matched = (strcmp(pattern_buf, name) == 0);
             break;
         case RBC_SEG_ANY:
+            // ANY (*) always matches (dotfile filtering done above)
+            matched = true;
+            break;
         case RBC_SEG_MAGICAL:
             // Wildcard match using fnmatch (use original flags, not local_flags)
             matched = rbc_fnmatch(pattern_buf, name, flags);
@@ -776,15 +766,9 @@ static void rbc_glob_recursive(
             struct stat st;
             if (stat(pathbuf, &st) == 0 && S_ISDIR(st.st_mode))
             {
-                // When entering literal "." directory, clear SKIPDOT for the next level
-                // This allows patterns like "02_asterisk/./*" to see "./."
-                // But for wildcards matching ".", keep SKIPDOT set
-                unsigned recurse_flags = local_flags;
-                if (is_literal_dot && name[0] == '.' && name[1] == '\0') {
-                    recurse_flags &= ~RBC_GLOB_SKIPDOT;
-                }
                 // Recurse with normalized path (no trailing slashes)
-                rbc_glob_recursive(pathbuf, new_len, baselen, pat_ptr, recurse_flags, results);
+                // SKIPDOT remains set in subdirectories (MRI behavior)
+                rbc_glob_recursive(pathbuf, new_len, baselen, pat_ptr, local_flags, results);
             }
         }
     }
