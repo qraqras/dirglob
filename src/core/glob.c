@@ -247,6 +247,57 @@ segment_end:
 }
 
 // ============================================================================
+// Path Building Helpers
+// ============================================================================
+
+/**
+ * @brief Build a path with optional trailing slashes preserved
+ *
+ * @param buf Output buffer
+ * @param buf_size Size of output buffer
+ * @param base Base path (can be empty)
+ * @param base_len Length of base path
+ * @param name Name to append
+ * @param trailing_slashes Number of trailing slashes to append
+ * @return Length of resulting path
+ */
+static size_t rbc_build_path_with_slashes(char *buf, size_t buf_size,
+                                           const char *base, size_t base_len,
+                                           const char *name, size_t trailing_slashes)
+{
+    size_t len;
+    if (base_len > 0)
+    {
+        // If base already ends with a slash, don't add another one.
+        // This prevents double slashes when the base path has preserved trailing slashes.
+        if (base[base_len - 1] == '/')
+        {
+            len = snprintf(buf, buf_size, "%s%s", base, name);
+        }
+        else
+        {
+            len = snprintf(buf, buf_size, "%s/%s", base, name);
+        }
+    }
+    else
+    {
+        len = snprintf(buf, buf_size, "%s", name);
+    }
+
+    // Append trailing slashes if needed
+    if (trailing_slashes > 0 && len < buf_size - 1)
+    {
+        for (size_t i = 0; i < trailing_slashes && len < buf_size - 1; i++)
+        {
+            buf[len++] = '/';
+        }
+        buf[len] = '\0';
+    }
+
+    return len;
+}
+
+// ============================================================================
 // Brace Expansion (Improved)
 // ============================================================================
 
@@ -500,16 +551,10 @@ static void rbc_glob_recursive(
             if (seg.starts_with_dot && name[0] != '.')
                 continue;
 
-            // Build path
-            size_t new_len;
-            if (path_len > 0)
-            {
-                new_len = snprintf(pathbuf, sizeof(pathbuf), "%s/%s", path, name);
-            }
-            else
-            {
-                new_len = snprintf(pathbuf, sizeof(pathbuf), "%s", name);
-            }
+            // Build path with trailing slashes preserved
+            size_t new_len = rbc_build_path_with_slashes(pathbuf, sizeof(pathbuf),
+                                                          path, path_len, name,
+                                                          seg.trailing_slashes);
 
             // Check if it's a directory
             struct stat st;
@@ -625,15 +670,9 @@ static void rbc_glob_recursive(
             continue;
 
         // Build new path
-        size_t new_len;
-        if (path_len > 0)
-        {
-            new_len = snprintf(pathbuf, sizeof(pathbuf), "%s/%s", path, name);
-        }
-        else
-        {
-            new_len = snprintf(pathbuf, sizeof(pathbuf), "%s", name);
-        }
+        size_t new_len = rbc_build_path_with_slashes(pathbuf, sizeof(pathbuf),
+                                                      path, path_len, name,
+                                                      seg.trailing_slashes);
 
         // Check if more segments remain
         if (*pat_ptr == '\0')
@@ -656,17 +695,8 @@ static void rbc_glob_recursive(
                 if (*result == '\0')
                     result = ".";
 
-                // If segment had trailing slashes, append one to the result
-                if (seg.trailing_slashes > 0)
-                {
-                    char result_with_slash[RBC_GLOB_MAX_PATH];
-                    snprintf(result_with_slash, sizeof(result_with_slash), "%s/", result);
-                    rbc_glob_results_add(results, result_with_slash);
-                }
-                else
-                {
-                    rbc_glob_results_add(results, result);
-                }
+                // Result already has trailing slashes from rbc_build_path_with_slashes
+                rbc_glob_results_add(results, result);
             }
         }
         else
