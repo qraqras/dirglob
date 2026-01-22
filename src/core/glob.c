@@ -256,9 +256,13 @@ static inline bool rbc_should_skip_dotfile(const char *name, const char *pattern
 }
 
 /// @brief Glob recursively with streaming pattern analysis
-static void rbc_glob_recursive(const char *base, size_t base_len,
-                               const char *pattern, unsigned flags,
-                               rbc_results_t *results)
+/// @param path Current full path for filesystem operations
+/// @param path_len Length of current path
+/// @param baselen Length of base directory prefix (excluded from results)
+/// @param pattern Remaining pattern to match
+static void rbc_glob_recursive(const char *path, size_t path_len,
+                               size_t baselen, const char *pattern,
+                               unsigned flags, rbc_results_t *results)
 {
     rbc_segment_t seg;
     const char *pat_ptr = pattern;
@@ -268,10 +272,17 @@ static void rbc_glob_recursive(const char *base, size_t base_len,
     {
         // No more segments - check if path exists
         struct stat st;
-        const char *check_path = (base_len > 0) ? base : ".";
+        const char *check_path = (path_len > 0) ? path : ".";
         if (stat(check_path, &st) == 0)
         {
-            rbc_glob_results_add(results, base_len > 0 ? base : ".");
+            // Add result without base prefix
+            const char *result = path + baselen;
+            // Skip leading slashes
+            while (*result == '/')
+                result++;
+            if (*result == '\0')
+                result = ".";
+            rbc_glob_results_add(results, result);
         }
         return;
     }
@@ -280,10 +291,10 @@ static void rbc_glob_recursive(const char *base, size_t base_len,
     if (seg.is_doublestar)
     {
         // Match current directory
-        rbc_glob_recursive(base, base_len, pat_ptr, flags, results);
+        rbc_glob_recursive(path, path_len, baselen, pat_ptr, flags, results);
 
         // Recursively descend into subdirectories
-        DIR *dir = opendir((base_len > 0) ? base : ".");
+        DIR *dir = opendir((path_len > 0) ? path : ".");
         if (!dir)
             return;
 
@@ -303,9 +314,9 @@ static void rbc_glob_recursive(const char *base, size_t base_len,
 
             // Build path
             size_t new_len;
-            if (base_len > 0)
+            if (path_len > 0)
             {
-                new_len = snprintf(pathbuf, sizeof(pathbuf), "%s/%s", base, name);
+                new_len = snprintf(pathbuf, sizeof(pathbuf), "%s/%s", path, name);
             }
             else
             {
@@ -317,7 +328,7 @@ static void rbc_glob_recursive(const char *base, size_t base_len,
             if (stat(pathbuf, &st) == 0 && S_ISDIR(st.st_mode))
             {
                 // Recursively glob from subdirectory
-                rbc_glob_recursive(pathbuf, new_len, pattern, flags, results);
+                rbc_glob_recursive(pathbuf, new_len, baselen, pattern, flags, results);
             }
         }
 
@@ -326,7 +337,7 @@ static void rbc_glob_recursive(const char *base, size_t base_len,
     }
 
     // Handle normal segment (literal or wildcard)
-    DIR *dir = opendir((base_len > 0) ? base : ".");
+    DIR *dir = opendir((path_len > 0) ? path : ".");
     if (!dir)
         return;
 
@@ -367,9 +378,9 @@ static void rbc_glob_recursive(const char *base, size_t base_len,
 
         // Build new path
         size_t new_len;
-        if (base_len > 0)
+        if (path_len > 0)
         {
-            new_len = snprintf(pathbuf, sizeof(pathbuf), "%s/%s", base, name);
+            new_len = snprintf(pathbuf, sizeof(pathbuf), "%s/%s", path, name);
         }
         else
         {
@@ -383,7 +394,14 @@ static void rbc_glob_recursive(const char *base, size_t base_len,
             struct stat st;
             if (stat(pathbuf, &st) == 0)
             {
-                rbc_glob_results_add(results, pathbuf);
+                // Add result without base prefix
+                const char *result = pathbuf + baselen;
+                // Skip leading slash if present
+                while (*result == '/')
+                    result++;
+                if (*result == '\0')
+                    result = ".";
+                rbc_glob_results_add(results, result);
             }
         }
         else
@@ -392,7 +410,7 @@ static void rbc_glob_recursive(const char *base, size_t base_len,
             struct stat st;
             if (stat(pathbuf, &st) == 0 && S_ISDIR(st.st_mode))
             {
-                rbc_glob_recursive(pathbuf, new_len, pat_ptr, flags, results);
+                rbc_glob_recursive(pathbuf, new_len, baselen, pat_ptr, flags, results);
             }
         }
     }
@@ -406,11 +424,12 @@ static void rbc_glob_brace_cb(const char *pat, void *arg)
     struct
     {
         const char *base;
+        size_t baselen;
         unsigned flags;
         rbc_results_t *results;
     } *ctx = arg;
 
-    rbc_glob_recursive(ctx->base, ctx->base ? strlen(ctx->base) : 0,
+    rbc_glob_recursive(ctx->base, ctx->baselen, ctx->baselen,
                        pat, ctx->flags, ctx->results);
 }
 
@@ -440,16 +459,44 @@ bool rbc_glob(const char **patterns, size_t npatterns, unsigned flags,
         return false;
     }
 
+    // Calculate base length and normalize
+    size_t baselen = 0;
+    char normalized_base[RBC_GLOB_MAX_PATH] = "";
+
+    if (base && base[0] != '\0')
+    {
+        baselen = strlen(base);
+        // Copy base and ensure it ends with / for consistent path building
+        if (baselen > 0 && baselen < RBC_GLOB_MAX_PATH - 1)
+        {
+            memcpy(normalized_base, base, baselen);
+            // Remove trailing slashes, we'll add one separator when needed
+            while (baselen > 0 && normalized_base[baselen - 1] == '/')
+            {
+                baselen--;
+            }
+            // Add exactly one trailing slash
+            if (baselen > 0)
+            {
+                normalized_base[baselen] = '/';
+                baselen++;
+            }
+            normalized_base[baselen] = '\0';
+        }
+    }
+
     // Process each pattern
     for (size_t i = 0; i < npatterns; i++)
     {
         struct
         {
             const char *base;
+            size_t baselen;
             unsigned flags;
             rbc_results_t *results;
         } cb_ctx = {
-            base ? base : "",
+            baselen > 0 ? normalized_base : "",
+            baselen,
             flags,
             &results};
 
