@@ -505,15 +505,6 @@ static void rbc_glob_recursive(
         if (*pat_ptr == '/')
             pat_ptr++;
 
-        // Check if the next segment starts with '.' to determine dot file handling
-        rbc_segment_t next_seg;
-        const char *next_pat_ptr = pat_ptr;
-        bool next_starts_with_dot = false;
-        if (rbc_next_segment(&next_pat_ptr, &next_seg))
-        {
-            next_starts_with_dot = next_seg.starts_with_dot;
-        }
-
         // Match current directory first with the remaining pattern (after **)
         // For **/, we need to add the current directory with trailing slash
         if (is_dirs_only)
@@ -541,8 +532,11 @@ static void rbc_glob_recursive(
         }
         else
         {
-            // Normal recursive match with remaining pattern
-            rbc_glob_recursive(path, path_len, baselen, pat_ptr, flags, results);
+            // MRI behavior for **/pattern:
+            // Always match the pattern at the current level
+            // On first call: this is the "0 times recursion" match
+            // On recursive calls: match at every level during recursion
+            rbc_glob_recursive(path, path_len, baselen, pat_ptr, flags | RBC_GLOB_SKIPDOT, results);
         }
 
         // Recursively descend into subdirectories
@@ -562,15 +556,26 @@ static void rbc_glob_recursive(
             if (name[0] == '.' && (name[1] == '\0' || (name[1] == '.' && name[2] == '\0')))
                 continue;
 
-            // Apply dot-file filtering using the same logic as normal segments
-            // Check if we should skip this dot directory based on the next pattern segment
-            if (rbc_should_skip_dotfile(name, next_starts_with_dot, flags))
-                continue;
-
-            // If ** pattern itself starts with '.', only descend into dot-directories
-            // This handles patterns like .**/* which should only match .hidden/* etc.
-            if (seg.starts_with_dot && name[0] != '.')
-                continue;
+            // MRI behavior for ** recursion into directories:
+            // - If ** pattern starts with '.': only descend into dot-directories (.**/)
+            // - If ** pattern doesn't start with '.': skip dot-directories unless FNM_DOTMATCH
+            // - The NEXT pattern segment (after **) doesn't affect directory traversal
+            //
+            // Examples:
+            // - **/.* : ** doesn't start with '.', so skip .hidden/ (unless FNM_DOTMATCH)
+            // - .**/foo : .**/ starts with '.', so only descend into .hidden/
+            if (seg.starts_with_dot)
+            {
+                // .**/ pattern: only descend into dot-directories
+                if (name[0] != '.')
+                    continue;
+            }
+            else
+            {
+                // **/ pattern: skip dot-directories (unless FNM_DOTMATCH)
+                if (rbc_should_skip_dotfile(name, false, flags))
+                    continue;
+            }
 
             // Build path for ** recursion
             // Don't add trailing slashes here - they are handled by the pattern, not the path
@@ -581,20 +586,17 @@ static void rbc_glob_recursive(
             struct stat st;
             if (stat(pathbuf, &st) == 0 && S_ISDIR(st.st_mode))
             {
-                // Continue ** recursion
-                // For **/ or **//, continue with the original pattern (pattern)
-                // For **/something, create a pattern that continues ** but also matches at current level
-                // Strategy: reconstruct the ** part + remaining pattern
+                // Continue ** recursion into subdirectories
                 if (*pat_ptr == '\0')
                 {
-                    // **/ case - continue with original pattern for directory matching
+                    // **/ case (directories only) - continue with original pattern
                     rbc_glob_recursive(pathbuf, new_len, baselen, pattern,
                                        flags | RBC_INTERNAL_IN_DOUBLESTAR, results);
                 }
                 else
                 {
-                    // **/pattern case - continue matching the pattern at each level
-                    // Reconstruct: "**/" + remaining pattern
+                    // **/pattern case - reconstruct pattern and continue matching
+                    // This allows matching the pattern at every level
                     char recursive_pattern[RBC_GLOB_MAX_PATH];
                     size_t prefix_len = seg.len + seg.trailing_slashes;  // Length of "**/"
                     memcpy(recursive_pattern, seg.start, prefix_len);
@@ -684,7 +686,15 @@ static void rbc_glob_recursive(
             // Include "."
         }
 
-        // Apply dot-file filtering for other dot files
+        // If pattern starts with '.', only match files starting with '.'
+        // This handles patterns like .*, .?, .[abc], etc.
+        if (seg.starts_with_dot && name[0] != '.')
+        {
+            // Pattern starts with '.' but file doesn't - skip
+            continue;
+        }
+
+        // Apply dot-file filtering for dot files
         if (name[0] == '.' && name[1] != '\0' && !(name[1] == '.' && name[2] == '\0'))
         {
             if (rbc_should_skip_dotfile(name, seg.starts_with_dot, flags))
