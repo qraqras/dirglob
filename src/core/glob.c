@@ -536,7 +536,21 @@ static void rbc_glob_recursive(
             // Always match the pattern at the current level
             // On first call: this is the "0 times recursion" match
             // On recursive calls: match at every level during recursion
-            rbc_glob_recursive(path, path_len, baselen, pat_ptr, flags | RBC_GLOB_SKIPDOT, results);
+            //
+            // Special rule for "." entry (MRI-compatible):
+            // - First call (base level): include "." only if FNM_DOTMATCH is set
+            // - Recursive calls (subdirectories): always skip "." (set SKIPDOT)
+            unsigned match_flags = flags;
+            if (flags & RBC_INTERNAL_IN_DOUBLESTAR) {
+                // Already in recursive mode, always skip "." in subdirectories
+                match_flags |= RBC_GLOB_SKIPDOT;
+            } else if (!(flags & RBC_FNM_DOTMATCH)) {
+                // First call without DOTMATCH, skip "."
+                match_flags |= RBC_GLOB_SKIPDOT;
+            }
+            // else: First call with DOTMATCH, don't set SKIPDOT (allow "." to match)
+
+            rbc_glob_recursive(path, path_len, baselen, pat_ptr, match_flags, results);
         }
 
         // Recursively descend into subdirectories
