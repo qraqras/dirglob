@@ -768,11 +768,19 @@ static void rbc_glob_match(
         {
             if (namlen == 1)
             {
-                // "." entry: Skip if SKIPDOT was already set (subdirectory or RECURSIVE/MAGICAL/ANY)
+                // "." entry handling (MRI dir.c L2883-2885)
+                // MRI: if (recursive && !(flags & FNM_DOTMATCH)) continue;
                 // MRI: if (skipdot) continue;
+
+                // Skip "." if we're in a RECURSIVE pattern without DOTMATCH
+                if ((flags & RBC_INTERNAL_IN_DOUBLESTAR) && !(flags & RBC_FNM_DOTMATCH))
+                    continue;
+
+                // Skip "." if SKIPDOT was already set (subdirectory or MAGICAL/ANY pattern)
                 if (skipdot)
                     continue;
-                // Top level: let fnmatch decide based on pattern and DOTMATCH
+
+                // Top level with PLAIN pattern and not in recursive: let it through for fnmatch
             }
             else if (namlen == 2 && name[1] == '.')
             {
