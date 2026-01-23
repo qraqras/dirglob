@@ -578,18 +578,30 @@ static void rbc_glob_recursive_helper(
     else
     {
         // **/pattern case: match pattern at current level
-        // For .**/ patterns, we need to use "." as the path prefix for results
+        // For .**/ patterns, append "./" only on first call (not in recursive descent)
         const char *match_path = path;
         size_t match_path_len = path_len;
         char dotpath[RBC_GLOB_MAX_PATH];
 
-        if (recursive_seg->starts_with_dot && path_len == 0)
+        if (recursive_seg->starts_with_dot && !(flags & RBC_INTERNAL_IN_DOUBLESTAR))
         {
-            // .**/pattern from empty path: use "." as prefix
-            dotpath[0] = '.';
-            dotpath[1] = '\0';
+            // .**/pattern: append "./" to current path for first 0-time match only
+            if (path_len == 0)
+            {
+                // Empty path: use "."
+                dotpath[0] = '.';
+                dotpath[1] = '\0';
+                match_path_len = 1;
+            }
+            else
+            {
+                // Non-empty path: append "./"
+                size_t written = snprintf(dotpath, sizeof(dotpath), "%s/.", path);
+                if (written >= sizeof(dotpath))
+                    return; // Path too long
+                match_path_len = written;
+            }
             match_path = dotpath;
-            match_path_len = 1;
         }
 
         // For 0-time match, don't add SKIPDOT - let the pattern itself control dot matching
@@ -645,17 +657,13 @@ static void rbc_glob_recursive_helper(
             }
             // For dotfiles (.hidden, .subhidden0, etc.): dotfile = 1
         }
-        // Filter based on pattern prefix (. or non-.)
+
+        // Filter for .**/ patterns: only descend into dot-directories
+        // For **/ patterns (non-dot), this filter doesn't apply - dotfile counter handles it
         if (recursive_seg->starts_with_dot && name[0] != '.')
         {
-            // .**/ pattern: only descend into dot-directories
+            // .**/ pattern: skip non-dot directories
             continue;
-        }
-        else if (!recursive_seg->starts_with_dot && name[0] == '.')
-        {
-            // **/ pattern: skip dot-directories unless FNM_DOTMATCH
-            if (!(flags & RBC_FNM_DOTMATCH))
-                continue;
         }
 
         // Build path and check if directory
@@ -665,19 +673,19 @@ static void rbc_glob_recursive_helper(
         if (is_directory_path(pathbuf))
         {
             // MRI behavior: For RECURSIVE pattern, check dotfile counter (L2932-2940)
-            // if (dotfile < ((flags & FNM_DOTMATCH) ? 2 : 1))
-            //     append RECURSIVE pattern (continue descent)
-            // else
-            //     only execute 0-time match (don't descend)
+            // For .**/ patterns: descend into dot-directories at first level only
+            // After first descent, behave like **/ (descend into non-dot directories)
 
             bool should_descend;
-            if (flags & RBC_FNM_DOTMATCH)
+            if (recursive_seg->starts_with_dot && !(flags & RBC_INTERNAL_IN_DOUBLESTAR))
             {
-                should_descend = (dotfile < 2); // Descend unless "." entry
+                // .**/ at first level: Descend into dot-directories but not "."
+                should_descend = (dotfile == 1);
             }
             else
             {
-                should_descend = (dotfile < 1); // Descend only for non-dot entries
+                // **/ or nested .**/ : Descend into non-dot directories
+                should_descend = (dotfile == 0);
             }
 
             if (should_descend)
