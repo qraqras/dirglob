@@ -503,11 +503,6 @@ static void rbc_glob_recursive(
     rbc_segment_t seg;
     const char *pat_ptr = pattern;
 
-    // MRI-compatible (dir.c L2865): Save current SKIPDOT state, then set it
-    // This ensures "." is only enumerated at the top level, not in subdirectories
-    bool skipdot = (flags & RBC_GLOB_SKIPDOT) != 0;
-    unsigned child_flags = flags | RBC_GLOB_SKIPDOT;
-
     // Get next segment
     if (!rbc_next_segment(&pat_ptr, &seg))
     {
@@ -625,7 +620,7 @@ static void rbc_glob_recursive(
                 {
                     // **/ case (directories only) - continue with original pattern
                     rbc_glob_recursive(pathbuf, new_len, baselen, pattern,
-                                       (child_flags | RBC_INTERNAL_IN_DOUBLESTAR) & ~RBC_INTERNAL_FIRST_CALL, results);
+                                       (flags | RBC_INTERNAL_IN_DOUBLESTAR) & ~RBC_INTERNAL_FIRST_CALL, results);
                 }
                 else
                 {
@@ -637,7 +632,7 @@ static void rbc_glob_recursive(
                     strcpy(recursive_pattern + prefix_len, pat_ptr);
 
                     rbc_glob_recursive(pathbuf, new_len, baselen, recursive_pattern,
-                                       (child_flags | RBC_INTERNAL_IN_DOUBLESTAR) & ~RBC_INTERNAL_FIRST_CALL, results);
+                                       (flags | RBC_INTERNAL_IN_DOUBLESTAR) & ~RBC_INTERNAL_FIRST_CALL, results);
                 }
             }
         }
@@ -650,6 +645,13 @@ static void rbc_glob_recursive(
     DIR *dir = opendir((path_len > 0) ? path : ".");
     if (!dir)
         return;
+
+    // MRI-compatible (dir.c L2865-2866): Set SKIPDOT only for MAGICAL or RECURSIVE patterns
+    // PLAIN (literal) patterns don't update SKIPDOT, allowing "." to be matched at first descent
+    bool skipdot = (flags & RBC_GLOB_SKIPDOT) != 0;
+    if (seg.type == RBC_SEG_MAGICAL || seg.type == RBC_SEG_ANY) {
+        flags |= RBC_GLOB_SKIPDOT;
+    }
 
     struct dirent *entry;
     char pathbuf[RBC_GLOB_MAX_PATH];
@@ -668,7 +670,7 @@ static void rbc_glob_recursive(
         pattern_buf[seg.len] = '\0';
     }
 
-    // child_flags already defined at function start
+    // flags already modified at function start (MRI-compatible)
 
     while ((entry = readdir(dir)) != NULL)
     {
@@ -770,9 +772,7 @@ static void rbc_glob_recursive(
             struct stat st;
             if (stat(pathbuf, &st) == 0 && S_ISDIR(st.st_mode))
             {
-                // MRI behavior (dir.c L2837-2871): Set SKIPDOT for recursion
-                // to prevent infinite loops on "." entry
-                rbc_glob_recursive(pathbuf, new_len, baselen, pat_ptr, child_flags, results);
+                rbc_glob_recursive(pathbuf, new_len, baselen, pat_ptr, flags, results);
             }
         }
     }
