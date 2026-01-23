@@ -617,8 +617,7 @@ static void rbc_glob_recursive_helper(
     struct dirent *entry;
     char pathbuf[RBC_GLOB_MAX_PATH];
 
-    // MRI behavior: Save skipdot before setting it
-    bool skipdot = (flags & RBC_GLOB_SKIPDOT) != 0;
+    // Set SKIPDOT for recursive calls (MRI-compatible)
     flags |= RBC_GLOB_SKIPDOT;
 
     while ((entry = readdir(dir)) != NULL)
@@ -639,20 +638,8 @@ static void rbc_glob_recursive_helper(
             }
             if (namlen == 1)
             {
-                // "." entry: Always skip to prevent:
-                // 1. Infinite recursion (dotfile=2 prevents RECURSIVE pattern append)
-                // 2. Duplicate matches (0-time match already done at function start)
-                // MRI behavior: skip "." unless first level with DOTMATCH, but we already
-                // handled 0-time match at function start, so always skip here
-
-                if (!(flags & RBC_FNM_DOTMATCH))
-                    continue; // RECURSIVE without DOTMATCH: skip "." entirely
-                if (skipdot)
-                    continue; // Subdirectory level: skip "."
-
-                // Even at first level with DOTMATCH, skip "." in directory loop
-                // because 0-time match already processed it
-                ++dotfile; // "." entry: dotfile = 2 (prevents recursion)
+                // "." entry: dotfile = 2, always skip (0-time match already processed)
+                ++dotfile;
                 continue;
             }
             // For dotfiles (.hidden, .subhidden0, etc.): dotfile = 1
@@ -672,21 +659,11 @@ static void rbc_glob_recursive_helper(
 
         if (is_directory_path(pathbuf))
         {
-            // MRI behavior: For RECURSIVE pattern, check dotfile counter (L2932-2940)
-            // For .**/ patterns: descend into dot-directories at first level only
-            // After first descent, behave like **/ (descend into non-dot directories)
-
-            bool should_descend;
-            if (recursive_seg->starts_with_dot && !(flags & RBC_INTERNAL_IN_DOUBLESTAR))
-            {
-                // .**/ at first level: Descend into dot-directories but not "."
-                should_descend = (dotfile == 1);
-            }
-            else
-            {
-                // **/ or nested .**/ : Descend into non-dot directories
-                should_descend = (dotfile == 0);
-            }
+            // Determine if we should descend into this directory:
+            // .**/ first level: only dot-directories (dotfile==1)
+            // **/ or nested .**/: only non-dot directories (dotfile==0)
+            bool is_dotstar_first_level = recursive_seg->starts_with_dot && !(flags & RBC_INTERNAL_IN_DOUBLESTAR);
+            bool should_descend = is_dotstar_first_level ? (dotfile == 1) : (dotfile == 0);
 
             if (should_descend)
             {
@@ -695,7 +672,6 @@ static void rbc_glob_recursive_helper(
                                           recursive_seg, remaining_pattern,
                                           flags | RBC_INTERNAL_IN_DOUBLESTAR, results);
             }
-            // Note: 0-time match already done at function start, don't repeat it here
         }
     }
 
