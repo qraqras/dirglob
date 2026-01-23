@@ -592,8 +592,9 @@ static void rbc_glob_recursive_helper(
             match_path_len = 1;
         }
 
+        // For 0-time match, don't add SKIPDOT - let the pattern itself control dot matching
         rbc_glob_match(match_path, match_path_len, baselen, pattern_after_doublestar,
-                       flags | RBC_INTERNAL_IN_DOUBLESTAR | RBC_GLOB_SKIPDOT, results);
+                       flags | RBC_INTERNAL_IN_DOUBLESTAR, results);
     }
 
     // 1+ times match: descend into subdirectories
@@ -626,32 +627,24 @@ static void rbc_glob_recursive_helper(
             }
             if (namlen == 1)
             {
-                // "." entry: MRI prevents infinite recursion by NOT adding RECURSIVE pattern
-                // MRI: if (recursive && !(flags & FNM_DOTMATCH)) continue;
-                // MRI: if (skipdot) continue;
-                // MRI: ++dotfile (sets dotfile=2)
-                // MRI: later check: if (dotfile < 1 or dotfile < 2) append RECURSIVE pattern
-                //      => For "." entry, dotfile=2, so NO RECURSIVE pattern appended
-                //      => Only 0-time match executed (p = p->next)
+                // "." entry: Always skip to prevent:
+                // 1. Infinite recursion (dotfile=2 prevents RECURSIVE pattern append)
+                // 2. Duplicate matches (0-time match already done at function start)
+                // MRI behavior: skip "." unless first level with DOTMATCH, but we already
+                // handled 0-time match at function start, so always skip here
 
                 if (!(flags & RBC_FNM_DOTMATCH))
                     continue; // RECURSIVE without DOTMATCH: skip "." entirely
                 if (skipdot)
                     continue; // Subdirectory level: skip "."
 
-                ++dotfile; // "." entry: dotfile = 2
-
-                // First level with DOTMATCH: Execute 0-time match but DON'T descend
-                // Build path for "." (same as current path)
-                size_t dot_len = rbc_build_path_with_slashes(pathbuf, sizeof(pathbuf),
-                                                             path, path_len, name, 0);
-                // Execute 0-time match only (no recursive descent)
-                rbc_glob_match(pathbuf, dot_len, baselen, remaining_pattern, flags, results);
-                continue; // Skip recursive descent for "."
+                // Even at first level with DOTMATCH, skip "." in directory loop
+                // because 0-time match already processed it
+                ++dotfile; // "." entry: dotfile = 2 (prevents recursion)
+                continue;
             }
             // For dotfiles (.hidden, .subhidden0, etc.): dotfile = 1
         }
-
         // Filter based on pattern prefix (. or non-.)
         if (recursive_seg->starts_with_dot && name[0] != '.')
         {
@@ -694,8 +687,7 @@ static void rbc_glob_recursive_helper(
                                           recursive_seg, remaining_pattern,
                                           flags | RBC_INTERNAL_IN_DOUBLESTAR, results);
             }
-            // Execute 0-time match regardless
-            rbc_glob_match(pathbuf, new_len, baselen, remaining_pattern, flags, results);
+            // Note: 0-time match already done at function start, don't repeat it here
         }
     }
 
@@ -739,10 +731,10 @@ static void rbc_glob_match(
     if (!dir)
         return;
 
-    // MRI-compatible (dir.c L2865-2866): Set SKIPDOT only for MAGICAL or RECURSIVE patterns
-    // PLAIN (literal) patterns don't update SKIPDOT, allowing "." to be matched at first descent
+    // MRI-compatible (dir.c L2815-2865): Save skipdot before updating it
+    // Only MAGICAL/ANY patterns update SKIPDOT (PLAIN/LITERAL don't)
     bool skipdot = (flags & RBC_GLOB_SKIPDOT) != 0;
-    if (seg.type == RBC_SEG_MAGICAL || seg.type == RBC_SEG_ANY)
+    if (seg.type == RBC_SEG_MAGICAL || seg.type == RBC_SEG_ANY || seg.type == RBC_SEG_RECURSIVE)
     {
         flags |= RBC_GLOB_SKIPDOT;
     }
