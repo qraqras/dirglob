@@ -347,8 +347,11 @@ FNMATCH_PATTERN_TEXT_PAIRS = [
     # 文字クラス - 否定
     ("[!abc]", "a"),
     ("[!abc]", "d"),
+    ("[^abc]", "."), # DOTMATCHなしでは"."はマッチしない
     ("[^a-z]", "a"),
     ("[^a-z]", "1"),
+    ("[^a-z]", "."), # DOTMATCHなしでは"."はマッチしない
+
 
     # 文字クラス - 複合
     ("file[0-9].txt", "file1.txt"),

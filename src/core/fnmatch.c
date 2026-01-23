@@ -177,6 +177,9 @@ static int rbc_match_core(const uchar *p, const uchar *t, unsigned int flags, co
             }
             return RBC_ABORT_ALL;
         case '[':
+            // <Ruby>: DOTMATCH - bracket expressions don't match leading dot unless DOTMATCH
+            if (!(flags & RBC_FNM_DOTMATCH) && IS_HIDDEN_TEXT(t, t_start, flags))
+                return RBC_NOMATCH;
             p_ch = *++p;
             negated = p_ch == '!' || p_ch == '^' ? 1 : 0;
             if (negated)
@@ -536,7 +539,8 @@ bool rbc_xfnmatch(const rbc_fnmatch_pattern_t *p, const char *string, unsigned f
     switch (hints->strategy)
     {
     case RBC_MATCH_STRATEGY_LITERAL:
-        if (flags & RBC_FNM_CASEFOLD) {
+        if (flags & RBC_FNM_CASEFOLD)
+        {
             // Case-insensitive comparison
             return strcasecmp(p->pattern, string) == 0;
         }
@@ -561,10 +565,13 @@ bool rbc_xfnmatch(const rbc_fnmatch_pattern_t *p, const char *string, unsigned f
         return strlen(string) == hints->pattern_len;
 
     case RBC_MATCH_STRATEGY_PREFIX:
-        if (flags & RBC_FNM_CASEFOLD) {
+        if (flags & RBC_FNM_CASEFOLD)
+        {
             if (strncasecmp(p->pattern, string, hints->prefix_len) != 0)
                 return false;
-        } else {
+        }
+        else
+        {
             if (strncmp(p->pattern, string, hints->prefix_len) != 0)
                 return false;
         }
@@ -586,10 +593,13 @@ bool rbc_xfnmatch(const rbc_fnmatch_pattern_t *p, const char *string, unsigned f
 
     case RBC_MATCH_STRATEGY_PREFIX_SUFFIX:
     {
-        if (flags & RBC_FNM_CASEFOLD) {
+        if (flags & RBC_FNM_CASEFOLD)
+        {
             if (strncasecmp(p->pattern, string, hints->prefix_len) != 0)
                 return false;
-        } else {
+        }
+        else
+        {
             if (strncmp(p->pattern, string, hints->prefix_len) != 0)
                 return false;
         }
