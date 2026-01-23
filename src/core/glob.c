@@ -482,17 +482,186 @@ static void rbc_brace_expand(
 }
 
 // ============================================================================
-// Glob Core Logic (MRI-compatible)
+// Glob Core Logic (MRI-compatible) - Refactored for clarity
 // ============================================================================
 
-bool rbc_fnmatch(const char *pattern, const char *string, unsigned flags); // External
+bool rbc_fnmatch(const char *pattern, const char *string, unsigned flags);  // External
 
-/// @brief Glob recursively with streaming pattern analysis
-/// @param path Current full path for filesystem operations
-/// @param path_len Length of current path
-/// @param baselen Length of base directory prefix (excluded from results)
-/// @param pattern Remaining pattern to match
-static void rbc_glob_recursive(
+// Forward declarations
+static void rbc_glob_match(const char *path, size_t path_len, size_t baselen,
+                          const char *pattern, unsigned flags, rbc_results_t *results);
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/// @brief Check if path is a directory
+static inline bool is_directory_path(const char *path)
+{
+    struct stat st;
+    return (stat(path, &st) == 0 && S_ISDIR(st.st_mode));
+}
+
+/// @brief Add result to results list, extracting relative path from base
+static void add_result_from_path(const char *path, size_t baselen,
+                                 bool with_slash, rbc_results_t *results)
+{
+    const char *result = path + baselen;
+    if (baselen > 0) {
+        while (*result == '/')
+            result++;
+    }
+    if (*result == '\0')
+        result = ".";
+
+    if (with_slash) {
+        char result_with_slash[RBC_GLOB_MAX_PATH];
+        snprintf(result_with_slash, sizeof(result_with_slash), "%s/", result);
+        rbc_glob_results_add(results, result_with_slash);
+    } else {
+        rbc_glob_results_add(results, result);
+    }
+}
+
+/// @brief Match name against segment pattern
+static bool match_segment(const rbc_segment_t *seg, const char *name,
+                         const char *pattern_buf, unsigned flags)
+{
+    switch (seg->type) {
+    case RBC_SEG_LITERAL:
+        return strcmp(pattern_buf, name) == 0;
+    case RBC_SEG_ANY:
+    case RBC_SEG_MAGICAL:
+        return rbc_fnmatch(pattern_buf, name, flags);
+    case RBC_SEG_BRACE:
+        // Should not happen (brace expansion done earlier)
+        return strcmp(pattern_buf, name) == 0;
+    default:
+        return false;
+    }
+}
+
+static void rbc_glob_recursive_helper(const char *path, size_t path_len, size_t baselen,
+                                      const rbc_segment_t *recursive_seg, const char *remaining_pattern,
+                                      unsigned flags, rbc_results_t *results);
+
+/// @brief Handle RECURSIVE (**) pattern matching
+/// Separated from normal matching for clarity and to avoid pattern reconstruction
+static void rbc_glob_recursive_helper(
+    const char *path,
+    size_t path_len,
+    size_t baselen,
+    const rbc_segment_t *recursive_seg,
+    const char *remaining_pattern,
+    unsigned flags,
+    rbc_results_t *results)
+{
+    // Check if this is **/ (directories only)
+    bool is_dirs_only = (*remaining_pattern == '\0' && recursive_seg->trailing_slashes > 0);
+
+    // Skip the separator after **
+    const char *pattern_after_doublestar = remaining_pattern;
+    if (*pattern_after_doublestar == '/')
+        pattern_after_doublestar++;
+
+    // 0-time match: apply remaining pattern at current directory level
+    if (is_dirs_only)
+    {
+        // **/ case: add current directory with trailing slash
+        add_result_from_path(path, baselen, true, results);
+    }
+    else
+    {
+        // **/pattern case: match pattern at current level
+        rbc_glob_match(path, path_len, baselen, pattern_after_doublestar,
+                      flags | RBC_INTERNAL_IN_DOUBLESTAR, results);
+    }
+
+    // 1+ times match: descend into subdirectories
+    DIR *dir = opendir((path_len > 0) ? path : ".");
+    if (!dir)
+        return;
+
+    struct dirent *entry;
+    char pathbuf[RBC_GLOB_MAX_PATH];
+
+    while ((entry = readdir(dir)) != NULL)
+    {
+        const char *name = entry->d_name;
+        size_t namlen = strlen(name);
+
+        // Handle "." and ".." entries
+        if (name[0] == '.')
+        {
+            if (namlen == 2 && name[1] == '.')
+            {
+                // Always skip ".." to prevent infinite recursion
+                continue;
+            }
+            if (namlen == 1)
+            {
+                // Handle "." entry for .** patterns
+                if (recursive_seg->starts_with_dot)
+                {
+                    // .**/ or .**/pattern: "." matches current directory
+                    // Don't actually descend into ".", instead process remaining pattern
+                    // at current directory with "./" prefix in results
+                    char dotpath[RBC_GLOB_MAX_PATH];
+                    size_t dot_len = rbc_build_path_with_slashes(dotpath, sizeof(dotpath),
+                                                                 path, path_len, ".", 0);
+
+                    // Apply remaining pattern (not the full recursive pattern!)
+                    // This is the 1-time match case for the "." directory itself
+                    if (*remaining_pattern == '\0' || *remaining_pattern == '/')
+                    {
+                        const char *after_slash = remaining_pattern;
+                        if (*after_slash == '/')
+                            after_slash++;
+
+                        if (*after_slash != '\0')
+                        {
+                            // .**/pattern: apply pattern at "./" level
+                            rbc_glob_match(dotpath, dot_len, baselen, after_slash,
+                                          flags | RBC_INTERNAL_IN_DOUBLESTAR, results);
+                        }
+                    }
+                }
+                // Always skip actual descent into "."
+                continue;
+            }
+        }
+
+        // Filter based on pattern prefix (. or non-.)
+        if (recursive_seg->starts_with_dot && name[0] != '.')
+        {
+            // .**/ pattern: only descend into dot-directories
+            continue;
+        }
+        else if (!recursive_seg->starts_with_dot && name[0] == '.')
+        {
+            // **/ pattern: skip dot-directories unless FNM_DOTMATCH
+            if (!(flags & RBC_FNM_DOTMATCH))
+                continue;
+        }
+
+        // Build path and check if directory
+        size_t new_len = rbc_build_path_with_slashes(pathbuf, sizeof(pathbuf),
+                                                     path, path_len, name, 0);
+
+        if (is_directory_path(pathbuf))
+        {
+            // Continue recursive descent with same pattern (no reconstruction!)
+            rbc_glob_recursive_helper(pathbuf, new_len, baselen,
+                                    recursive_seg, remaining_pattern,
+                                    flags | RBC_INTERNAL_IN_DOUBLESTAR, results);
+        }
+    }
+
+    closedir(dir);
+}
+
+/// @brief Match pattern against directory entries (excludes RECURSIVE handling)
+static void rbc_glob_match(
     const char *path,
     size_t path_len,
     size_t baselen,
@@ -507,137 +676,19 @@ static void rbc_glob_recursive(
     if (!rbc_next_segment(&pat_ptr, &seg))
     {
         // No more segments - check if path exists
-        struct stat st;
         const char *check_path = (path_len > 0) ? path : ".";
+        struct stat st;
         if (stat(check_path, &st) == 0)
         {
-            // Add result without base prefix
-            const char *result = path + baselen;
-            // Skip leading slashes only for relative paths
-            if (baselen > 0) {
-                while (*result == '/')
-                    result++;
-            }
-            if (*result == '\0')
-                result = ".";
-            rbc_glob_results_add(results, result);
+            add_result_from_path(path, baselen, false, results);
         }
         return;
     }
 
-    // Handle "**" (recursive wildcard)
+    // Delegate RECURSIVE pattern to specialized handler
     if (seg.type == RBC_SEG_RECURSIVE)
     {
-        // Check if this is **/ (directories only) by checking if no pattern follows
-        bool is_dirs_only = (*pat_ptr == '\0' && seg.trailing_slashes > 0);
-
-        // Skip the separator after **
-        if (*pat_ptr == '/')
-            pat_ptr++;
-
-        // Match current directory first with the remaining pattern (after **)
-        // For **/, we need to add the current directory with trailing slash
-        if (is_dirs_only)
-        {
-            // Extract directory path relative to base
-            const char *result = path + baselen;
-            // Skip leading slashes for relative paths
-            if (baselen > 0) {
-                while (*result == '/')
-                    result++;
-            }
-            if (*result == '\0')
-                result = ".";
-
-            // Add trailing slash (defensive check for path normalization)
-            size_t result_len = strlen(result);
-            if (result_len > 0 && result[result_len - 1] == '/') {
-                // Already has trailing slash
-                rbc_glob_results_add(results, result);
-            } else {
-                char result_with_slash[RBC_GLOB_MAX_PATH];
-                snprintf(result_with_slash, sizeof(result_with_slash), "%s/", result);
-                rbc_glob_results_add(results, result_with_slash);
-            }
-        }
-        else
-        {
-            // MRI behavior for **/pattern:
-            // Always match the pattern at the current level
-            // fnmatch will handle "." matching based on pattern and FNM_DOTMATCH
-            unsigned match_flags = flags | RBC_INTERNAL_IN_DOUBLESTAR;
-
-            rbc_glob_recursive(path, path_len, baselen, pat_ptr, match_flags, results);
-        }
-
-        // Recursively descend into subdirectories
-        // MRI behavior: ** continues to match in all subdirectories
-        DIR *dir = opendir((path_len > 0) ? path : ".");
-        if (!dir)
-            return;
-
-        struct dirent *entry;
-        char pathbuf[RBC_GLOB_MAX_PATH];
-
-        while ((entry = readdir(dir)) != NULL)
-        {
-            const char *name = entry->d_name;
-            size_t namlen = strlen(name);
-
-            // MRI behavior: Always skip "." and ".." in ** recursion
-            // Note: "." is never descended into for ** patterns
-            if (name[0] == '.')
-            {
-                if (namlen == 1 || (namlen == 2 && name[1] == '.'))
-                    continue;
-            }
-
-            // MRI behavior for ** recursion: fnmatch handles dotfile matching
-            // Just check if directory name matches the ** pattern rules
-            if (seg.starts_with_dot && name[0] != '.')
-            {
-                // .**/ pattern: only descend into dot-directories
-                continue;
-            }
-            else if (!seg.starts_with_dot && name[0] == '.')
-            {
-                // **/ pattern: skip dot-directories unless FNM_DOTMATCH
-                if (!(flags & RBC_FNM_DOTMATCH))
-                    continue;
-            }
-
-            // Build path for ** recursion
-            // Don't add trailing slashes here - they are handled by the pattern, not the path
-            size_t new_len = rbc_build_path_with_slashes(pathbuf, sizeof(pathbuf),
-                                                          path, path_len, name, 0);
-
-            // Check if it's a directory
-            struct stat st;
-            if (stat(pathbuf, &st) == 0 && S_ISDIR(st.st_mode))
-            {
-                // Continue ** recursion into subdirectories
-                if (*pat_ptr == '\0')
-                {
-                    // **/ case (directories only) - continue with original pattern
-                    rbc_glob_recursive(pathbuf, new_len, baselen, pattern,
-                                       (flags | RBC_INTERNAL_IN_DOUBLESTAR) & ~RBC_INTERNAL_FIRST_CALL, results);
-                }
-                else
-                {
-                    // **/pattern case - reconstruct pattern and continue matching
-                    // This allows matching the pattern at every level
-                    char recursive_pattern[RBC_GLOB_MAX_PATH];
-                    size_t prefix_len = seg.len + seg.trailing_slashes;  // Length of "**/"
-                    memcpy(recursive_pattern, seg.start, prefix_len);
-                    strcpy(recursive_pattern + prefix_len, pat_ptr);
-
-                    rbc_glob_recursive(pathbuf, new_len, baselen, recursive_pattern,
-                                       (flags | RBC_INTERNAL_IN_DOUBLESTAR) & ~RBC_INTERNAL_FIRST_CALL, results);
-                }
-            }
-        }
-
-        closedir(dir);
+        rbc_glob_recursive_helper(path, path_len, baselen, &seg, pat_ptr, flags, results);
         return;
     }
 
@@ -696,34 +747,12 @@ static void rbc_glob_recursive(
         }
 
         // Match against pattern
-        bool matched = false;
-        switch (seg.type)
-        {
-        case RBC_SEG_LITERAL:
-            // Exact string match
-            matched = (strcmp(pattern_buf, name) == 0);
-            break;
-        case RBC_SEG_ANY:
-            // ANY (*) matches everything, but must go through fnmatch for dotfile handling
-            // fnmatch will check DOTMATCH flag for entries starting with '.'
-            matched = rbc_fnmatch(pattern_buf, name, flags);
-            break;
-        case RBC_SEG_MAGICAL:
-            // Wildcard match using fnmatch
-            // fnmatch will handle dotfile matching based on DOTMATCH flag
-            matched = rbc_fnmatch(pattern_buf, name, flags);
-            break;
-        case RBC_SEG_BRACE:
-            // Should not happen (brace expansion done earlier)
-            // Treat as literal fallback
-            matched = (strcmp(pattern_buf, name) == 0);
-            break;
-        case RBC_SEG_RECURSIVE:
+        if (seg.type == RBC_SEG_RECURSIVE) {
             // Should not reach here (handled above)
             continue;
         }
 
-        if (!matched)
+        if (!match_segment(&seg, name, pattern_buf, flags))
             continue;
 
         // Build normalized path (without trailing slashes)
@@ -739,40 +768,39 @@ static void rbc_glob_recursive(
             if (stat(pathbuf, &st) == 0)
             {
                 // If segment has trailing slashes, only match directories
-                if (seg.trailing_slashes > 0 && !S_ISDIR(st.st_mode))
-                    continue;
-
-                // Extract result without base prefix
-                const char *result = pathbuf + baselen;
-                // Skip leading slash only for relative paths
-                if (baselen > 0) {
-                    while (*result == '/')
-                        result++;
-                }
-                if (*result == '\0')
-                    result = ".";
-
-                // Add trailing slashes to final result
                 if (seg.trailing_slashes > 0) {
-                    char result_with_slashes[RBC_GLOB_MAX_PATH];
-                    size_t len = snprintf(result_with_slashes, sizeof(result_with_slashes), "%s", result);
-                    for (size_t i = 0; i < seg.trailing_slashes && len < sizeof(result_with_slashes) - 1; i++) {
-                        result_with_slashes[len++] = '/';
+                    if (!S_ISDIR(st.st_mode))
+                        continue;
+                    // Add with multiple trailing slashes if needed
+                    if (seg.trailing_slashes > 1) {
+                        char result_with_slashes[RBC_GLOB_MAX_PATH];
+                        const char *result = pathbuf + baselen;
+                        if (baselen > 0) {
+                            while (*result == '/')
+                                result++;
+                        }
+                        if (*result == '\0')
+                            result = ".";
+                        size_t len = snprintf(result_with_slashes, sizeof(result_with_slashes), "%s", result);
+                        for (size_t i = 0; i < seg.trailing_slashes && len < sizeof(result_with_slashes) - 1; i++) {
+                            result_with_slashes[len++] = '/';
+                        }
+                        result_with_slashes[len] = '\0';
+                        rbc_glob_results_add(results, result_with_slashes);
+                    } else {
+                        add_result_from_path(pathbuf, baselen, true, results);
                     }
-                    result_with_slashes[len] = '\0';
-                    rbc_glob_results_add(results, result_with_slashes);
                 } else {
-                    rbc_glob_results_add(results, result);
+                    add_result_from_path(pathbuf, baselen, false, results);
                 }
             }
         }
         else
         {
             // Intermediate segment - must be a directory
-            struct stat st;
-            if (stat(pathbuf, &st) == 0 && S_ISDIR(st.st_mode))
+            if (is_directory_path(pathbuf))
             {
-                rbc_glob_recursive(pathbuf, new_len, baselen, pat_ptr, flags, results);
+                rbc_glob_match(pathbuf, new_len, baselen, pat_ptr, flags, results);
             }
         }
     }
@@ -799,7 +827,7 @@ static void rbc_glob_brace_cb(const char *pat, void *arg)
     if (base_path_len > 0 && ctx->base[base_path_len - 1] == '/')
         base_path_len--;
 
-    rbc_glob_recursive(
+    rbc_glob_match(
         ctx->base,
         base_path_len,
         ctx->baselen,
