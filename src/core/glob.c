@@ -368,32 +368,59 @@ static void rbc_brace_expand_impl(
                 continue;
             }
 
-            // Expand each option
+            // Expand each option (supporting nested braces)
             const char *opt_start = p + 1;
             const char *opt_end = opt_start;
+            int depth = 0;
 
             while (opt_end < close)
             {
-                if (*opt_end == ',')
+                // Track nested braces to find real commas (not inside nested braces)
+                if (*opt_end == '{')
+                    depth++;
+                else if (*opt_end == '}')
+                    depth--;
+                else if (depth == 0 && *opt_end == ',')
                 {
-                    // Found an option
+                    // Found a comma at depth 0 - this ends the current option
                     size_t opt_len = opt_end - opt_start;
-                    memcpy(buf + buf_pos, opt_start, opt_len);
-                    buf[buf_pos + opt_len] = '\0';
 
-                    // Recursively expand rest
-                    rbc_brace_expand_impl(close + 1, buf, buf_pos + opt_len, cb, arg);
+                    // Copy the option into a temporary buffer
+                    char option[RBC_GLOB_MAX_PATH];
+                    memcpy(option, opt_start, opt_len);
+                    option[opt_len] = '\0';
+
+                    // Build pattern: current_prefix + option + rest_of_pattern
+                    char temp_pattern[RBC_GLOB_MAX_PATH];
+                    memcpy(temp_pattern, buf, buf_pos);
+                    strcpy(temp_pattern + buf_pos, option);
+                    strcpy(temp_pattern + buf_pos + opt_len, close + 1);
+
+                    // Recursively expand the complete pattern
+                    // (this will handle any nested braces in the option)
+                    rbc_brace_expand_impl(temp_pattern, buf, 0, cb, arg);
 
                     opt_start = opt_end + 1;
                 }
                 opt_end++;
             }
 
-            // Last option
+            // Handle the last option (after the last comma, or the only option)
             size_t opt_len = close - opt_start;
-            memcpy(buf + buf_pos, opt_start, opt_len);
-            buf[buf_pos + opt_len] = '\0';
-            rbc_brace_expand_impl(close + 1, buf, buf_pos + opt_len, cb, arg);
+
+            // Copy the option into a temporary buffer
+            char option[RBC_GLOB_MAX_PATH];
+            memcpy(option, opt_start, opt_len);
+            option[opt_len] = '\0';
+
+            // Build pattern: current_prefix + option + rest_of_pattern
+            char temp_pattern[RBC_GLOB_MAX_PATH];
+            memcpy(temp_pattern, buf, buf_pos);
+            strcpy(temp_pattern + buf_pos, option);
+            strcpy(temp_pattern + buf_pos + opt_len, close + 1);
+
+            // Recursively expand the complete pattern
+            rbc_brace_expand_impl(temp_pattern, buf, 0, cb, arg);
 
             return;
         }
