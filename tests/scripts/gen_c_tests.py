@@ -142,14 +142,53 @@ static void test_glob_against_ruby(const char *pattern, int flags,
              pattern, expected_count, count);
     TEST_ASSERT_EQUAL_size_t_MESSAGE(expected_count, count, count_msg);
 
-    /* Compare each result */
+    /* Compare each result (order-sensitive) */
+    bool order_mismatch = false;
     for (size_t i = 0; i < expected_count; i++) {{
-        char msg[512];
-        snprintf(msg, sizeof(msg),
-                 "Pattern: %s, Index: %zu, Expected: %s, Got: %s",
-                 pattern, i, expected_lines[i],
-                 i < count ? results[i] : "NULL");
-        TEST_ASSERT_EQUAL_STRING_MESSAGE(expected_lines[i], results[i], msg);
+        if (!results[i] || strcmp(expected_lines[i], results[i]) != 0) {{
+            order_mismatch = true;
+            break;
+        }}
+    }}
+
+    /* If order mismatch, check if it's just a sort order issue or content difference */
+    if (order_mismatch) {{
+        /* Check if all expected items exist in results (content match check) */
+        /* Note: Since expected_count == count (verified above), checking one direction is sufficient */
+        bool content_match = true;
+        for (size_t i = 0; i < expected_count; i++) {{
+            bool found = false;
+            for (size_t j = 0; j < count; j++) {{
+                if (results[j] && strcmp(expected_lines[i], results[j]) == 0) {{
+                    found = true;
+                    break;
+                }}
+            }}
+            if (!found) {{
+                content_match = false;
+                break;
+            }}
+        }}
+
+        if (content_match) {{
+            /* Same content, different order - report as sort order mismatch */
+            char sort_msg[512];
+            snprintf(sort_msg, sizeof(sort_msg),
+                     "[SORT ORDER MISMATCH] Pattern: %s\\nExpected order: %s\\nActual order: %s",
+                     pattern,
+                     expected_count > 0 ? expected_lines[0] : "",
+                     count > 0 ? results[0] : "");
+            TEST_FAIL_MESSAGE(sort_msg);
+        }} else {{
+            /* Content difference - report as content mismatch */
+            for (size_t i = 0; i < expected_count; i++) {{
+                char msg[512];
+                snprintf(msg, sizeof(msg),
+                         "[CONTENT MISMATCH] Pattern: %s, Index: %zu\\nExpected: '%s'\\nGot: '%s'",
+                         pattern, i, expected_lines[i], results[i]);
+                TEST_ASSERT_EQUAL_STRING_MESSAGE(expected_lines[i], results[i], msg);
+            }}
+        }}
     }}
 
     /* Cleanup */

@@ -1,6 +1,5 @@
 #include <stdbool.h>
 #include <stddef.h>
-#include <stdint.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,6 +20,7 @@
 // Internal flags (not exposed in API, use high bits)
 #define RBC_INTERNAL_IN_DOUBLESTAR 0x80000000 // Currently recursing from **
 #define RBC_GLOB_SKIPDOT 0x40000000           // Skip "." entry (set for all intermediate segments)
+#define RBC_INTERNAL_FIRST_CALL 0x20000000    // First directory enumeration (allow "." with DOTMATCH)
 
 /// @brief Glob results storage
 typedef struct
@@ -29,6 +29,7 @@ typedef struct
     size_t *lengths;
     size_t count;
     size_t capacity;
+    void *ctx; // Unused, for compatibility
 } rbc_results_t;
 
 /// @brief Segment type classification (MRI-compatible)
@@ -140,38 +141,13 @@ static void rbc_glob_results_sort(rbc_results_t *results)
 // Pattern Analysis (Streaming - Single Pass)
 // ============================================================================
 
-/// @brief Character classification flags (used for pattern analysis)
-#define CHAR_FLAG_STAR 0x01       // '*'
-#define CHAR_FLAG_QUESTION 0x02   // '?'
-#define CHAR_FLAG_BRACKET 0x04    // '['
-#define CHAR_FLAG_BRACE 0x08      // '{'
-#define CHAR_FLAG_REGULAR 0x10    // Regular character
-#define CHAR_FLAG_ESCAPE 0x20     // Escaped character
-#define CHAR_FLAG_BACKSLASH 0x40  // '\'
-#define CHAR_FLAG_SLASH 0x80      // '/'
-#define CHAR_FLAG_RBRACKET 0x100  // ']'
-#define CHAR_FLAG_RBRACE 0x200    // '}'
-
-// Composite flags for segment classification
-#define SEG_HAS_STAR (CHAR_FLAG_STAR)
-#define SEG_HAS_QUESTION (CHAR_FLAG_QUESTION)
-#define SEG_HAS_BRACKET (CHAR_FLAG_BRACKET)
-#define SEG_HAS_BRACE (CHAR_FLAG_BRACE)
-#define SEG_HAS_REGULAR (CHAR_FLAG_REGULAR)
-#define SEG_HAS_ESCAPE (CHAR_FLAG_ESCAPE)
-
-/// @brief Character classification lookup table for fast pattern analysis
-static const uint16_t CHAR_FLAGS[256] = {
-    ['*'] = CHAR_FLAG_STAR,
-    ['?'] = CHAR_FLAG_QUESTION,
-    ['['] = CHAR_FLAG_BRACKET,
-    ['{'] = CHAR_FLAG_BRACE,
-    ['/'] = CHAR_FLAG_SLASH,
-    ['\\'] = CHAR_FLAG_BACKSLASH,
-    [']'] = CHAR_FLAG_RBRACKET,
-    ['}'] = CHAR_FLAG_RBRACE,
-    // All other characters implicitly 0 (treated as CHAR_FLAG_REGULAR)
-};
+/// @brief Segment character type flags
+#define SEG_HAS_STAR 0x01     // Contains '*'
+#define SEG_HAS_QUESTION 0x02 // Contains '?'
+#define SEG_HAS_BRACKET 0x04  // Contains '['
+#define SEG_HAS_BRACE 0x08    // Contains '{'
+#define SEG_HAS_REGULAR 0x10  // Contains regular characters
+#define SEG_HAS_ESCAPE 0x20   // Contains escaped characters
 
 /// @brief Check if character is a glob metacharacter
 static inline bool rbc_is_magic_char(char c)
@@ -204,73 +180,51 @@ static bool rbc_next_segment(const char **pattern, rbc_segment_t *seg)
     int in_bracket = 0;
     int in_brace = 0;
 
-    // Fast path: use lookup table for character classification
     while (*p)
     {
-        uint16_t char_flag = CHAR_FLAGS[(unsigned char)*p];
-
-        // Handle backslash escape sequences
-        if (char_flag & CHAR_FLAG_BACKSLASH)
+        if (*p == '\\' && *(p + 1))
         {
-            if (*(p + 1))
-            {
-                char_flags |= SEG_HAS_ESCAPE | SEG_HAS_REGULAR;
-                p += 2;
-                continue;
-            }
-            // Backslash at end of pattern - treat as regular
-            char_flags |= SEG_HAS_REGULAR;
-            p++;
+            char_flags |= SEG_HAS_ESCAPE | SEG_HAS_REGULAR;
+            p += 2;
             continue;
         }
 
-        // Handle segment delimiter '/'
-        if (char_flag & CHAR_FLAG_SLASH)
+        switch (*p)
         {
+        case '/':
             if (in_bracket == 0 && in_brace == 0)
                 goto segment_end;
-            // '/' inside bracket/brace - treat as regular
-            char_flags |= SEG_HAS_REGULAR;
-            p++;
-            continue;
-        }
-
-        // Handle bracket/brace nesting
-        if (char_flag & CHAR_FLAG_RBRACKET)
-        {
+            break;
+        case '*':
+            char_flags |= SEG_HAS_STAR;
+            break;
+        case '?':
+            char_flags |= SEG_HAS_QUESTION;
+            break;
+        case '[':
+            char_flags |= SEG_HAS_BRACKET;
+            in_bracket++;
+            break;
+        case ']':
             if (in_bracket > 0)
                 in_bracket--;
             else
                 char_flags |= SEG_HAS_REGULAR;
-            p++;
-            continue;
-        }
-
-        if (char_flag & CHAR_FLAG_RBRACE)
-        {
+            break;
+        case '{':
+            char_flags |= SEG_HAS_BRACE;
+            in_brace++;
+            break;
+        case '}':
             if (in_brace > 0)
                 in_brace--;
             else
                 char_flags |= SEG_HAS_REGULAR;
-            p++;
-            continue;
-        }
-
-        // Handle special pattern characters
-        if (char_flag & (CHAR_FLAG_STAR | CHAR_FLAG_QUESTION | CHAR_FLAG_BRACKET | CHAR_FLAG_BRACE))
-        {
-            char_flags |= (char_flag & 0x1F); // Mask to lower bits (pattern chars)
-            if (char_flag & CHAR_FLAG_BRACKET)
-                in_bracket++;
-            if (char_flag & CHAR_FLAG_BRACE)
-                in_brace++;
-        }
-        else
-        {
-            // Regular character (no special meaning)
+            break;
+        default:
             char_flags |= SEG_HAS_REGULAR;
+            break;
         }
-
         p++;
     }
 
@@ -650,9 +604,20 @@ static void rbc_glob_recursive_helper(
             match_path = dotpath;
         }
 
-        // For 0-time match, don't add SKIPDOT - let the pattern itself control dot matching
+        // For 0-time match, set appropriate flags based on pattern type
+        // .**/ patterns: add SKIPDOT to prevent "./" from matching
+        // **/ patterns: add IN_DOUBLESTAR to prevent ".*" from matching "."
+        unsigned match_flags = flags;
+        if (recursive_seg->starts_with_dot)
+        {
+            match_flags |= RBC_GLOB_SKIPDOT;
+        }
+        else
+        {
+            match_flags |= RBC_INTERNAL_IN_DOUBLESTAR;
+        }
         rbc_glob_match(match_path, match_path_len, baselen, pattern_after_doublestar,
-                       flags | RBC_INTERNAL_IN_DOUBLESTAR, results);
+                       match_flags, results);
     }
 
     // 1+ times match: descend into subdirectories
@@ -706,17 +671,27 @@ static void rbc_glob_recursive_helper(
         if (is_directory_path(pathbuf))
         {
             // Determine if we should descend into this directory (MRI-compatible):
-            // 1. .**/: first level only, descend into dot-directories
-            //    After first level, NO MORE DESCENT (pattern remaining is non-recursive)
-            // 2. **/ with DOTMATCH: descend into all directories
+            // 1. .**/: descend into dot-directories at first level, then into ALL subdirectories recursively
+            //    First level: only .hidden-like directories
+            //    Subsequent levels: ALL directories (both .subhidden and sub0)
+            // 2. **/ with DOTMATCH: descend into all directories recursively
             // 3. **/ without DOTMATCH: descend into non-dot directories only
             bool should_descend;
             if (recursive_seg->starts_with_dot)
             {
-                // .**/pattern: first level descends into dot-directories ONLY
-                // After first level (IN_DOUBLESTAR set), NO MORE DESCENT
+                // .**/pattern: behavior changes based on depth
                 bool is_first_level = !(flags & RBC_INTERNAL_IN_DOUBLESTAR);
-                should_descend = is_first_level && (dotfile == 1);
+                if (is_first_level)
+                {
+                    // First level: only descend into dot-directories (.hidden)
+                    should_descend = (dotfile == 1);
+                }
+                else
+                {
+                    // Subsequent levels within dot-directories: descend into ALL subdirectories
+                    // This includes both .subhidden0 and sub0
+                    should_descend = (dotfile == 0 || dotfile == 1);
+                }
             }
             else if (flags & RBC_FNM_DOTMATCH)
             {
@@ -732,10 +707,27 @@ static void rbc_glob_recursive_helper(
 
             if (should_descend)
             {
-                // Continue recursive descent with same pattern
-                rbc_glob_recursive_helper(pathbuf, new_len, baselen,
-                                          recursive_seg, remaining_pattern,
-                                          flags | RBC_INTERNAL_IN_DOUBLESTAR, results);
+                // For .** patterns at first level, switch to non-recursive matching after descent
+                bool is_first_level_dot = recursive_seg->starts_with_dot && !(flags & RBC_INTERNAL_IN_DOUBLESTAR);
+
+                if (is_first_level_dot)
+                {
+                    // First descent into dot-directory: apply remaining pattern non-recursively
+                    // This prevents .**/*/ from recursing indefinitely
+                    const char *pattern_to_match = remaining_pattern;
+                    if (*pattern_to_match == '/')
+                        pattern_to_match++;
+
+                    rbc_glob_match(pathbuf, new_len, baselen, pattern_to_match,
+                                   flags | RBC_INTERNAL_IN_DOUBLESTAR, results);
+                }
+                else
+                {
+                    // Continue recursive descent with same pattern
+                    rbc_glob_recursive_helper(pathbuf, new_len, baselen,
+                                              recursive_seg, remaining_pattern,
+                                              flags | RBC_INTERNAL_IN_DOUBLESTAR, results);
+                }
             }
         }
     }
@@ -829,6 +821,13 @@ static void rbc_glob_match(
                 if (skipdot)
                     continue;
 
+                // For patterns starting with ".*" inside a ** context, skip "." entry
+                // This prevents "**/.*" from matching "." itself
+                // But allows top-level ".*" to match "."
+                // Exception: with DOTMATCH flag, allow "." to match
+                if ((flags & RBC_INTERNAL_IN_DOUBLESTAR) && seg.starts_with_dot && seg.len > 1 && !(flags & RBC_FNM_DOTMATCH))
+                    continue;
+
                 // Top level with PLAIN pattern and not in recursive: let it through for fnmatch
             }
             else if (namlen == 2 && name[1] == '.')
@@ -836,9 +835,9 @@ static void rbc_glob_match(
                 // ".." entry: skip unless pattern is explicitly ".."
                 // Ruby allows Dir.glob("..") to match the parent directory
                 bool is_explicit_dotdot = (seg.type == RBC_SEG_LITERAL &&
-                                          seg.len == 2 &&
-                                          seg.start[0] == '.' &&
-                                          seg.start[1] == '.');
+                                           seg.len == 2 &&
+                                           seg.start[0] == '.' &&
+                                           seg.start[1] == '.');
                 if (!is_explicit_dotdot)
                     continue;
             }
@@ -960,12 +959,13 @@ bool rbc_glob(
     if (!patterns || !out || !count || npatterns == 0)
         return false;
 
-    // Initialize results
+    // Initialize results (no context needed now)
     rbc_results_t results;
     results.capacity = RBC_RESULTS_CAPACITY;
     results.items = malloc(sizeof(char *) * results.capacity);
     results.lengths = malloc(sizeof(size_t) * results.capacity);
     results.count = 0;
+    results.ctx = NULL;
 
     if (!results.items || !results.lengths)
     {
@@ -1059,7 +1059,7 @@ bool rbc_glob(
         } cb_ctx = {
             pattern_base,
             pattern_baselen,
-            flags,
+            flags | RBC_INTERNAL_FIRST_CALL,
             &results};
 
         // MRI-compatible: Fold continuous **/ patterns before processing
