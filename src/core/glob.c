@@ -768,8 +768,14 @@ static void rbc_glob_match(
             }
             else if (namlen == 2 && name[1] == '.')
             {
-                // ".." entry: always skip to prevent infinite recursion
-                continue;
+                // ".." entry: skip unless pattern is explicitly ".."
+                // Ruby allows Dir.glob("..") to match the parent directory
+                bool is_explicit_dotdot = (seg.type == RBC_SEG_LITERAL &&
+                                          seg.len == 2 &&
+                                          seg.start[0] == '.' &&
+                                          seg.start[1] == '.');
+                if (!is_explicit_dotdot)
+                    continue;
             }
         }
 
