@@ -21,7 +21,6 @@
 // Internal flags (not exposed in API, use high bits)
 #define RBC_INTERNAL_IN_DOUBLESTAR 0x80000000 // Currently recursing from **
 #define RBC_GLOB_SKIPDOT 0x40000000           // Skip "." entry (set for all intermediate segments)
-#define RBC_INTERNAL_FIRST_CALL 0x20000000    // First directory enumeration (allow "." with DOTMATCH)
 
 /// @brief Glob results storage
 typedef struct
@@ -30,7 +29,6 @@ typedef struct
     size_t *lengths;
     size_t count;
     size_t capacity;
-    void *ctx; // Unused, for compatibility
 } rbc_results_t;
 
 /// @brief Segment type classification (MRI-compatible)
@@ -962,13 +960,12 @@ bool rbc_glob(
     if (!patterns || !out || !count || npatterns == 0)
         return false;
 
-    // Initialize results (no context needed now)
+    // Initialize results
     rbc_results_t results;
     results.capacity = RBC_RESULTS_CAPACITY;
     results.items = malloc(sizeof(char *) * results.capacity);
     results.lengths = malloc(sizeof(size_t) * results.capacity);
     results.count = 0;
-    results.ctx = NULL;
 
     if (!results.items || !results.lengths)
     {
@@ -1062,7 +1059,7 @@ bool rbc_glob(
         } cb_ctx = {
             pattern_base,
             pattern_baselen,
-            flags | RBC_INTERNAL_FIRST_CALL,
+            flags,
             &results};
 
         // MRI-compatible: Fold continuous **/ patterns before processing
