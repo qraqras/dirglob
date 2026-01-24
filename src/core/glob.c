@@ -659,11 +659,30 @@ static void rbc_glob_recursive_helper(
 
         if (is_directory_path(pathbuf))
         {
-            // Determine if we should descend into this directory:
-            // .**/ first level: only dot-directories (dotfile==1)
-            // **/ or nested .**/: only non-dot directories (dotfile==0)
-            bool is_dotstar_first_level = recursive_seg->starts_with_dot && !(flags & RBC_INTERNAL_IN_DOUBLESTAR);
-            bool should_descend = is_dotstar_first_level ? (dotfile == 1) : (dotfile == 0);
+            // Determine if we should descend into this directory (MRI-compatible):
+            // 1. .**/: first level only, descend into dot-directories
+            //    After first level, NO MORE DESCENT (pattern remaining is non-recursive)
+            // 2. **/ with DOTMATCH: descend into all directories
+            // 3. **/ without DOTMATCH: descend into non-dot directories only
+            bool should_descend;
+            if (recursive_seg->starts_with_dot)
+            {
+                // .**/pattern: first level descends into dot-directories ONLY
+                // After first level (IN_DOUBLESTAR set), NO MORE DESCENT
+                bool is_first_level = !(flags & RBC_INTERNAL_IN_DOUBLESTAR);
+                should_descend = is_first_level && (dotfile == 1);
+            }
+            else if (flags & RBC_FNM_DOTMATCH)
+            {
+                // **/pattern with DOTMATCH: descend into all directories (dot and non-dot)
+                // But still skip "." (dotfile==2 is already skipped above)
+                should_descend = (dotfile == 0 || dotfile == 1);
+            }
+            else
+            {
+                // **/pattern without DOTMATCH: descend into non-dot directories only
+                should_descend = (dotfile == 0);
+            }
 
             if (should_descend)
             {
