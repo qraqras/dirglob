@@ -1,5 +1,6 @@
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -141,13 +142,38 @@ static void rbc_glob_results_sort(rbc_results_t *results)
 // Pattern Analysis (Streaming - Single Pass)
 // ============================================================================
 
-/// @brief Segment character type flags
-#define SEG_HAS_STAR 0x01     // Contains '*'
-#define SEG_HAS_QUESTION 0x02 // Contains '?'
-#define SEG_HAS_BRACKET 0x04  // Contains '['
-#define SEG_HAS_BRACE 0x08    // Contains '{'
-#define SEG_HAS_REGULAR 0x10  // Contains regular characters
-#define SEG_HAS_ESCAPE 0x20   // Contains escaped characters
+/// @brief Character classification flags (used for pattern analysis)
+#define CHAR_FLAG_STAR 0x01       // '*'
+#define CHAR_FLAG_QUESTION 0x02   // '?'
+#define CHAR_FLAG_BRACKET 0x04    // '['
+#define CHAR_FLAG_BRACE 0x08      // '{'
+#define CHAR_FLAG_REGULAR 0x10    // Regular character
+#define CHAR_FLAG_ESCAPE 0x20     // Escaped character
+#define CHAR_FLAG_BACKSLASH 0x40  // '\'
+#define CHAR_FLAG_SLASH 0x80      // '/'
+#define CHAR_FLAG_RBRACKET 0x100  // ']'
+#define CHAR_FLAG_RBRACE 0x200    // '}'
+
+// Composite flags for segment classification
+#define SEG_HAS_STAR (CHAR_FLAG_STAR)
+#define SEG_HAS_QUESTION (CHAR_FLAG_QUESTION)
+#define SEG_HAS_BRACKET (CHAR_FLAG_BRACKET)
+#define SEG_HAS_BRACE (CHAR_FLAG_BRACE)
+#define SEG_HAS_REGULAR (CHAR_FLAG_REGULAR)
+#define SEG_HAS_ESCAPE (CHAR_FLAG_ESCAPE)
+
+/// @brief Character classification lookup table for fast pattern analysis
+static const uint16_t CHAR_FLAGS[256] = {
+    ['*'] = CHAR_FLAG_STAR,
+    ['?'] = CHAR_FLAG_QUESTION,
+    ['['] = CHAR_FLAG_BRACKET,
+    ['{'] = CHAR_FLAG_BRACE,
+    ['/'] = CHAR_FLAG_SLASH,
+    ['\\'] = CHAR_FLAG_BACKSLASH,
+    [']'] = CHAR_FLAG_RBRACKET,
+    ['}'] = CHAR_FLAG_RBRACE,
+    // All other characters implicitly 0 (treated as CHAR_FLAG_REGULAR)
+};
 
 /// @brief Check if character is a glob metacharacter
 static inline bool rbc_is_magic_char(char c)
@@ -180,51 +206,73 @@ static bool rbc_next_segment(const char **pattern, rbc_segment_t *seg)
     int in_bracket = 0;
     int in_brace = 0;
 
+    // Fast path: use lookup table for character classification
     while (*p)
     {
-        if (*p == '\\' && *(p + 1))
+        uint16_t char_flag = CHAR_FLAGS[(unsigned char)*p];
+
+        // Handle backslash escape sequences
+        if (char_flag & CHAR_FLAG_BACKSLASH)
         {
-            char_flags |= SEG_HAS_ESCAPE | SEG_HAS_REGULAR;
-            p += 2;
+            if (*(p + 1))
+            {
+                char_flags |= SEG_HAS_ESCAPE | SEG_HAS_REGULAR;
+                p += 2;
+                continue;
+            }
+            // Backslash at end of pattern - treat as regular
+            char_flags |= SEG_HAS_REGULAR;
+            p++;
             continue;
         }
 
-        switch (*p)
+        // Handle segment delimiter '/'
+        if (char_flag & CHAR_FLAG_SLASH)
         {
-        case '/':
             if (in_bracket == 0 && in_brace == 0)
                 goto segment_end;
-            break;
-        case '*':
-            char_flags |= SEG_HAS_STAR;
-            break;
-        case '?':
-            char_flags |= SEG_HAS_QUESTION;
-            break;
-        case '[':
-            char_flags |= SEG_HAS_BRACKET;
-            in_bracket++;
-            break;
-        case ']':
+            // '/' inside bracket/brace - treat as regular
+            char_flags |= SEG_HAS_REGULAR;
+            p++;
+            continue;
+        }
+
+        // Handle bracket/brace nesting
+        if (char_flag & CHAR_FLAG_RBRACKET)
+        {
             if (in_bracket > 0)
                 in_bracket--;
             else
                 char_flags |= SEG_HAS_REGULAR;
-            break;
-        case '{':
-            char_flags |= SEG_HAS_BRACE;
-            in_brace++;
-            break;
-        case '}':
+            p++;
+            continue;
+        }
+
+        if (char_flag & CHAR_FLAG_RBRACE)
+        {
             if (in_brace > 0)
                 in_brace--;
             else
                 char_flags |= SEG_HAS_REGULAR;
-            break;
-        default:
-            char_flags |= SEG_HAS_REGULAR;
-            break;
+            p++;
+            continue;
         }
+
+        // Handle special pattern characters
+        if (char_flag & (CHAR_FLAG_STAR | CHAR_FLAG_QUESTION | CHAR_FLAG_BRACKET | CHAR_FLAG_BRACE))
+        {
+            char_flags |= (char_flag & 0x1F); // Mask to lower bits (pattern chars)
+            if (char_flag & CHAR_FLAG_BRACKET)
+                in_bracket++;
+            if (char_flag & CHAR_FLAG_BRACE)
+                in_brace++;
+        }
+        else
+        {
+            // Regular character (no special meaning)
+            char_flags |= SEG_HAS_REGULAR;
+        }
+
         p++;
     }
 
