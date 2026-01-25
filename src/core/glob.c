@@ -751,10 +751,22 @@ static void rbc_glob_match(
     if (!rbc_next_segment(&pat_ptr, &seg))
     {
         // No more segments
-        // MRI behavior: empty pattern matches nothing if path is also empty
-        if (path_len == 0 && *pattern == '\0')
+        // MRI behavior: empty pattern matches nothing, EXCEPT when it's a root path "/"
+        if (*pattern == '\0')
         {
-            // Empty pattern with empty path: no match (MRI-compatible)
+            // Check if we have a root path like "/"
+            if (path_len > 0 && path[0] == '/' && path[1] == '\0')
+            {
+                // Root path "/" with empty pattern: match the root
+                const char *check_path = path;
+                struct stat st;
+                if (stat(check_path, &st) == 0)
+                {
+                    add_result_from_path(path, baselen, false, results);
+                }
+                return;
+            }
+            // Otherwise, empty pattern: no match (MRI-compatible)
             return;
         }
 
@@ -861,10 +873,12 @@ static void rbc_glob_match(
         if (!match_segment(&seg, name, pattern_buf, flags))
             continue;
 
-        // Build normalized path (without trailing slashes)
-        // This is used for stat() and recursion
+        // Build path with trailing slashes preserved
+        // trailing_slashes includes the separator, so for recursion we need trailing_slashes - 1 extra slashes
+        // Example: "a//b" has trailing_slashes=2, we add 1 extra slash when building "a/"
+        size_t extra_slashes = (seg.trailing_slashes > 1) ? (seg.trailing_slashes - 1) : 0;
         size_t new_len = rbc_build_path_with_slashes(pathbuf, sizeof(pathbuf),
-                                                     path, path_len, name, 0);
+                                                     path, path_len, name, extra_slashes);
 
         // Check if more segments remain
         if (*pat_ptr == '\0')
@@ -878,9 +892,12 @@ static void rbc_glob_match(
                 {
                     if (!S_ISDIR(st.st_mode))
                         continue;
-                    // Add with multiple trailing slashes if needed
+                    // Result already has the correct trailing slashes from rbc_build_path_with_slashes
+                    // But we need to add one more for the directory separator
                     if (seg.trailing_slashes > 1)
                     {
+                        // Extra slashes already added by rbc_build_path_with_slashes
+                        // Add one more for directory indicator
                         char result_with_slashes[RBC_GLOB_MAX_PATH];
                         const char *result = pathbuf + baselen;
                         if (baselen > 0)
@@ -891,7 +908,8 @@ static void rbc_glob_match(
                         if (*result == '\0')
                             result = ".";
                         size_t len = snprintf(result_with_slashes, sizeof(result_with_slashes), "%s", result);
-                        for (size_t i = 0; i < seg.trailing_slashes && len < sizeof(result_with_slashes) - 1; i++)
+                        // Add one more slash (directory indicator)
+                        if (len < sizeof(result_with_slashes) - 1)
                         {
                             result_with_slashes[len++] = '/';
                         }
@@ -938,7 +956,8 @@ static void rbc_glob_brace_cb(const char *pat, void *arg)
     size_t base_path_len = ctx->baselen > 0 ? ctx->baselen : (ctx->base[0] != '\0' ? strlen(ctx->base) : 0);
 
     // Remove trailing slash from base_path_len for path construction
-    if (base_path_len > 0 && ctx->base[base_path_len - 1] == '/')
+    // Exception: don't remove if it's the root path "/"
+    if (base_path_len > 1 && ctx->base[base_path_len - 1] == '/')
         base_path_len--;
 
     rbc_glob_match(

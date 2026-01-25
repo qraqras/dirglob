@@ -62,7 +62,7 @@ void test_{case_id}(void)
     int flags = {flags};
     const char *base = {base_arg};
     bool sort = {sort};
-    const char *expected_file = "../ruby_expected/{case_id}.txt";
+    const char *expected_file = "../../tests/ruby_expected/{case_id}.txt";
 
     test_glob_against_ruby(pattern, flags, base, sort, expected_file);
 }}
