@@ -750,7 +750,15 @@ static void rbc_glob_match(
     // Get next segment
     if (!rbc_next_segment(&pat_ptr, &seg))
     {
-        // No more segments - check if path exists
+        // No more segments
+        // MRI behavior: empty pattern matches nothing if path is also empty
+        if (path_len == 0 && *pattern == '\0')
+        {
+            // Empty pattern with empty path: no match (MRI-compatible)
+            return;
+        }
+
+        // Non-empty path: check if it exists
         const char *check_path = (path_len > 0) ? path : ".";
         struct stat st;
         if (stat(check_path, &st) == 0)
