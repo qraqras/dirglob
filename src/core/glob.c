@@ -92,6 +92,126 @@ static void rbc_normalize_pattern(const char *pattern, char *normalized, size_t 
 }
 
 // ============================================================================
+// Directory Entry Management (MRI-compatible sorted readdir)
+// ============================================================================
+
+/// @brief Sorted directory entry list
+typedef struct
+{
+    char **names;   // Array of entry names (sorted)
+    size_t count;   // Number of entries
+    size_t current; // Current read position
+} rbc_dir_entries_t;
+
+/// @brief Compare function for sorting entry names
+static int rbc_entry_name_cmp(const void *a, const void *b)
+{
+    const char *s1 = *(const char **)a;
+    const char *s2 = *(const char **)b;
+    return strcmp(s1, s2);
+}
+
+/// @brief Open directory and read all entries (optionally sorted)
+static rbc_dir_entries_t *rbc_opendir_sorted(const char *path, bool sort)
+{
+    DIR *dirp = opendir(path[0] ? path : ".");
+    if (!dirp)
+        return NULL;
+
+    rbc_dir_entries_t *entries = malloc(sizeof(rbc_dir_entries_t));
+    if (!entries)
+    {
+        closedir(dirp);
+        return NULL;
+    }
+
+    size_t capacity = 64;
+    entries->names = malloc(sizeof(char *) * capacity);
+    entries->count = 0;
+    entries->current = 0;
+
+    if (!entries->names)
+    {
+        free(entries);
+        closedir(dirp);
+        return NULL;
+    }
+
+    // Read all entries
+    struct dirent *entry;
+    while ((entry = readdir(dirp)) != NULL)
+    {
+        if (entries->count >= capacity)
+        {
+            size_t new_cap = capacity * 2;
+            char **new_names = realloc(entries->names, sizeof(char *) * new_cap);
+            if (!new_names)
+            {
+                // Cleanup on allocation failure
+                for (size_t i = 0; i < entries->count; i++)
+                {
+                    free(entries->names[i]);
+                }
+                free(entries->names);
+                free(entries);
+                closedir(dirp);
+                return NULL;
+            }
+            entries->names = new_names;
+            capacity = new_cap;
+        }
+
+        // Duplicate entry name
+        entries->names[entries->count] = strdup(entry->d_name);
+        if (!entries->names[entries->count])
+        {
+            // Cleanup on strdup failure
+            for (size_t i = 0; i < entries->count; i++)
+            {
+                free(entries->names[i]);
+            }
+            free(entries->names);
+            free(entries);
+            closedir(dirp);
+            return NULL;
+        }
+        entries->count++;
+    }
+
+    closedir(dirp);
+
+    // Sort if requested
+    if (sort && entries->count > 1)
+    {
+        qsort(entries->names, entries->count, sizeof(char *), rbc_entry_name_cmp);
+    }
+
+    return entries;
+}
+
+/// @brief Get next entry name from sorted list
+static const char *rbc_readdir_sorted(rbc_dir_entries_t *entries)
+{
+    if (!entries || entries->current >= entries->count)
+        return NULL;
+    return entries->names[entries->current++];
+}
+
+/// @brief Close and free sorted directory entries
+static void rbc_closedir_sorted(rbc_dir_entries_t *entries)
+{
+    if (!entries)
+        return;
+
+    for (size_t i = 0; i < entries->count; i++)
+    {
+        free(entries->names[i]);
+    }
+    free(entries->names);
+    free(entries);
+}
+
+// ============================================================================
 // Results Management
 // ============================================================================
 
@@ -489,7 +609,8 @@ bool rbc_fnmatch(const char *pattern, const char *string, unsigned flags); // Ex
 
 // Forward declarations
 static void rbc_glob_match(const char *path, size_t path_len, size_t baselen,
-                           const char *pattern, unsigned flags, rbc_results_t *results);
+                           const char *pattern, unsigned flags, rbc_results_t *results,
+                           bool sort);
 
 // ============================================================================
 // Helper Functions
@@ -548,7 +669,7 @@ static bool match_segment(const rbc_segment_t *seg, const char *name,
 
 static void rbc_glob_recursive_helper(const char *path, size_t path_len, size_t baselen,
                                       const rbc_segment_t *recursive_seg, const char *remaining_pattern,
-                                      unsigned flags, rbc_results_t *results);
+                                      unsigned flags, rbc_results_t *results, bool sort);
 
 /// @brief Handle RECURSIVE (**) pattern matching
 /// Separated from normal matching for clarity and to avoid pattern reconstruction
@@ -559,7 +680,8 @@ static void rbc_glob_recursive_helper(
     const rbc_segment_t *recursive_seg,
     const char *remaining_pattern,
     unsigned flags,
-    rbc_results_t *results)
+    rbc_results_t *results,
+    bool sort)
 {
     // Check if this is **/ (directories only)
     bool is_dirs_only = (*remaining_pattern == '\0' && recursive_seg->trailing_slashes > 0);
@@ -569,71 +691,25 @@ static void rbc_glob_recursive_helper(
     if (*pattern_after_doublestar == '/')
         pattern_after_doublestar++;
 
-    // 0-time match: apply remaining pattern at current directory level
+    // True DFS: Add current directory first (for **/ pattern)
     if (is_dirs_only)
     {
-        // **/ case: add current directory with trailing slash
+        // **/ pattern: add current directory with trailing slash
         add_result_from_path(path, baselen, true, results);
     }
-    else
-    {
-        // **/pattern case: match pattern at current level
-        // For .**/ patterns, append "./" only on first call (not in recursive descent)
-        const char *match_path = path;
-        size_t match_path_len = path_len;
-        char dotpath[RBC_GLOB_MAX_PATH];
 
-        if (recursive_seg->starts_with_dot && !(flags & RBC_INTERNAL_IN_DOUBLESTAR))
-        {
-            // .**/pattern: append "./" to current path for first 0-time match only
-            if (path_len == 0)
-            {
-                // Empty path: use "."
-                dotpath[0] = '.';
-                dotpath[1] = '\0';
-                match_path_len = 1;
-            }
-            else
-            {
-                // Non-empty path: append "./"
-                size_t written = snprintf(dotpath, sizeof(dotpath), "%s/.", path);
-                if (written >= sizeof(dotpath))
-                    return; // Path too long
-                match_path_len = written;
-            }
-            match_path = dotpath;
-        }
-
-        // For 0-time match, set appropriate flags based on pattern type
-        // .**/ patterns: add SKIPDOT to prevent "./" from matching
-        // **/ patterns: add IN_DOUBLESTAR to prevent ".*" from matching "."
-        unsigned match_flags = flags;
-        if (recursive_seg->starts_with_dot)
-        {
-            match_flags |= RBC_GLOB_SKIPDOT;
-        }
-        else
-        {
-            match_flags |= RBC_INTERNAL_IN_DOUBLESTAR;
-        }
-        rbc_glob_match(match_path, match_path_len, baselen, pattern_after_doublestar,
-                       match_flags, results);
-    }
-
-    // 1+ times match: descend into subdirectories
-    DIR *dir = opendir((path_len > 0) ? path : ".");
-    if (!dir)
+    rbc_dir_entries_t *entries = rbc_opendir_sorted((path_len > 0) ? path : ".", sort);
+    if (!entries)
         return;
 
-    struct dirent *entry;
     char pathbuf[RBC_GLOB_MAX_PATH];
 
     // Set SKIPDOT for recursive calls (MRI-compatible)
     flags |= RBC_GLOB_SKIPDOT;
 
-    while ((entry = readdir(dir)) != NULL)
+    const char *name;
+    while ((name = rbc_readdir_sorted(entries)) != NULL)
     {
-        const char *name = entry->d_name;
         size_t namlen = strlen(name);
         int dotfile = 0; // MRI's dotfile counter: 0=normal, 1=dotfile, 2="." entry
 
@@ -707,32 +783,93 @@ static void rbc_glob_recursive_helper(
 
             if (should_descend)
             {
-                // For .** patterns at first level, switch to non-recursive matching after descent
+                // DFS Step 1: Process 0-time match for this directory (only for **/pattern, not **/)
+                if (!is_dirs_only && *pattern_after_doublestar != '\0')
+                {
+                    // **/pattern: check if this directory matches the pattern
+                    // Parse next segment to determine match type
+                    rbc_segment_t next_seg;
+                    const char *next_pat = pattern_after_doublestar;
+                    if (rbc_next_segment(&next_pat, &next_seg))
+                    {
+                        if (next_seg.type == RBC_SEG_RECURSIVE)
+                        {
+                            // **/**... pattern: directory always matches (add without slash)
+                            add_result_from_path(pathbuf, baselen, false, results);
+                        }
+                        else
+                        {
+                            // **/*.txt or **/literal pattern: check if directory name matches
+                            // Extract just the filename for matching
+                            const char *filename = name;
+                            char pattern_buf[RBC_GLOB_MAX_PATH];
+                            memcpy(pattern_buf, next_seg.start, next_seg.len);
+                            pattern_buf[next_seg.len] = '\0';
+
+                            if (match_segment(&next_seg, filename, pattern_buf, flags))
+                            {
+                                add_result_from_path(pathbuf, baselen, false, results);
+                            }
+                        }
+                    }
+                }
+
+                // DFS Step 2: Recurse immediately into this directory
                 bool is_first_level_dot = recursive_seg->starts_with_dot && !(flags & RBC_INTERNAL_IN_DOUBLESTAR);
 
                 if (is_first_level_dot)
                 {
                     // First descent into dot-directory: apply remaining pattern non-recursively
-                    // This prevents .**/*/ from recursing indefinitely
                     const char *pattern_to_match = remaining_pattern;
                     if (*pattern_to_match == '/')
                         pattern_to_match++;
 
                     rbc_glob_match(pathbuf, new_len, baselen, pattern_to_match,
-                                   flags | RBC_INTERNAL_IN_DOUBLESTAR, results);
+                                   flags | RBC_INTERNAL_IN_DOUBLESTAR, results, sort);
                 }
                 else
                 {
-                    // Continue recursive descent with same pattern
+                    // Continue recursive descent (DFS)
                     rbc_glob_recursive_helper(pathbuf, new_len, baselen,
                                               recursive_seg, remaining_pattern,
-                                              flags | RBC_INTERNAL_IN_DOUBLESTAR, results);
+                                              flags | RBC_INTERNAL_IN_DOUBLESTAR, results, sort);
+                }
+            }
+        }
+        else
+        {
+            // File entry: Process 0-time match
+            if (!is_dirs_only && *pattern_after_doublestar != '\0')
+            {
+                // Check if file matches pattern
+                rbc_segment_t next_seg;
+                const char *next_pat = pattern_after_doublestar;
+                if (rbc_next_segment(&next_pat, &next_seg))
+                {
+                    if (next_seg.type == RBC_SEG_RECURSIVE)
+                    {
+                        // **/**... pattern: file always matches
+                        add_result_from_path(pathbuf, baselen, false, results);
+                    }
+                    else
+                    {
+                        // **/*.txt or **/literal pattern: check if filename matches
+                        const char *filename = name;
+                        char pattern_buf[RBC_GLOB_MAX_PATH];
+                        memcpy(pattern_buf, next_seg.start, next_seg.len);
+                        pattern_buf[next_seg.len] = '\0';
+
+                        if (match_segment(&next_seg, filename, pattern_buf, flags))
+                        {
+                            add_result_from_path(pathbuf, baselen, false, results);
+                        }
+                    }
                 }
             }
         }
     }
 
-    closedir(dir);
+    rbc_closedir_sorted(entries);
 }
 
 /// @brief Match pattern against directory entries (excludes RECURSIVE handling)
@@ -742,7 +879,8 @@ static void rbc_glob_match(
     size_t baselen,
     const char *pattern,
     unsigned flags,
-    rbc_results_t *results)
+    rbc_results_t *results,
+    bool sort)
 {
     rbc_segment_t seg;
     const char *pat_ptr = pattern;
@@ -783,13 +921,13 @@ static void rbc_glob_match(
     // Delegate RECURSIVE pattern to specialized handler
     if (seg.type == RBC_SEG_RECURSIVE)
     {
-        rbc_glob_recursive_helper(path, path_len, baselen, &seg, pat_ptr, flags, results);
+        rbc_glob_recursive_helper(path, path_len, baselen, &seg, pat_ptr, flags, results, sort);
         return;
     }
 
     // Handle normal segment (literal or wildcard)
-    DIR *dir = opendir((path_len > 0) ? path : ".");
-    if (!dir)
+    rbc_dir_entries_t *entries = rbc_opendir_sorted((path_len > 0) ? path : ".", sort);
+    if (!entries)
         return;
 
     // MRI-compatible (dir.c L2815-2865): Save skipdot before updating it
@@ -800,7 +938,6 @@ static void rbc_glob_match(
         flags |= RBC_GLOB_SKIPDOT;
     }
 
-    struct dirent *entry;
     char pathbuf[RBC_GLOB_MAX_PATH];
     char pattern_buf[RBC_GLOB_MAX_PATH];
 
@@ -819,9 +956,9 @@ static void rbc_glob_match(
 
     // flags already modified at function start (MRI-compatible)
 
-    while ((entry = readdir(dir)) != NULL)
+    const char *name;
+    while ((name = rbc_readdir_sorted(entries)) != NULL)
     {
-        const char *name = entry->d_name;
         size_t namlen = strlen(name);
 
         // MRI behavior (dir.c L2877-2892): Handle dot entries
@@ -932,12 +1069,12 @@ static void rbc_glob_match(
             // Intermediate segment - must be a directory
             if (is_directory_path(pathbuf))
             {
-                rbc_glob_match(pathbuf, new_len, baselen, pat_ptr, flags, results);
+                rbc_glob_match(pathbuf, new_len, baselen, pat_ptr, flags, results, sort);
             }
         }
     }
 
-    closedir(dir);
+    rbc_closedir_sorted(entries);
 }
 
 /// @brief Callback for brace expansion
@@ -949,6 +1086,7 @@ static void rbc_glob_brace_cb(const char *pat, void *arg)
         size_t baselen;
         unsigned flags;
         rbc_results_t *results;
+        bool sort;
     } *ctx = arg;
 
     // For absolute paths, base contains the full path and baselen=0
@@ -966,7 +1104,8 @@ static void rbc_glob_brace_cb(const char *pat, void *arg)
         ctx->baselen,
         pat,
         ctx->flags,
-        ctx->results);
+        ctx->results,
+        ctx->sort);
 }
 
 // ============================================================================
@@ -1083,11 +1222,13 @@ bool rbc_glob(
             size_t baselen;
             unsigned flags;
             rbc_results_t *results;
+            bool sort;
         } cb_ctx = {
             pattern_base,
             pattern_baselen,
             flags | RBC_INTERNAL_FIRST_CALL,
-            &results};
+            &results,
+            sort};
 
         // MRI-compatible: Fold continuous **/ patterns before processing
         // This prevents duplicate results in patterns like **/**/ or **/**/
@@ -1097,9 +1238,8 @@ bool rbc_glob(
         rbc_brace_expand(normalized_pattern, rbc_glob_brace_cb, &cb_ctx);
     }
 
-    // Sort results if requested
-    if (sort)
-        rbc_glob_results_sort(&results);
+    // Note: Sorting is done at directory level (MRI-compatible)
+    // No global sort needed here
 
     // Return results
     *count = results.count;
