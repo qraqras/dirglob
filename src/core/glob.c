@@ -46,6 +46,7 @@ typedef struct rbc_segment_s
     rbc_segment_type_t type; // Segment type classification
     bool starts_with_dot;    // Starts with '.'
     size_t trailing_slashes; // Number of trailing slashes after segment
+    bool is_last_segment;    // True if this is the last segment in the pattern
 } rbc_segment_t;
 
 /// @brief Brace expansion result (array-based)
@@ -238,6 +239,7 @@ static bool rbc_glob_next_segment(const char **pattern, unsigned flags, rbc_segm
     seg->type = RBC_SEG_LITERAL;
     seg->starts_with_dot = false;
     seg->trailing_slashes = 0;
+    seg->is_last_segment = false;
 
     // Check for leading dot
     if (*p == '.')
@@ -326,6 +328,9 @@ segment_end:
         seg->trailing_slashes++;
         p++;
     }
+
+    // Check if this is the last segment
+    seg->is_last_segment = (*p == '\0');
 
     *pattern = p;
     return true;
@@ -605,7 +610,11 @@ bool rbc_fnmatch(const char *pattern, const char *string, unsigned flags); // Ex
 // Forward declarations
 static void rbc_glob_match(const char *path, size_t path_len, size_t baselen,
                            const char *pattern, unsigned flags, rbc_results_t *results,
-                           bool sort);
+                           bool sort, bool has_wildcard_ancestor);
+static void rbc_glob_match_normal(const char *path, size_t path_len, size_t baselen,
+                                  const rbc_segment_t *seg, const char *remaining_pattern,
+                                  unsigned flags, rbc_results_t *results, bool sort,
+                                  bool has_wildcard_ancestor, bool next_has_wildcard);
 
 // ============================================================================
 // Helper Functions
@@ -676,44 +685,36 @@ static void rbc_glob_recursive_helper(
     unsigned flags,
     rbc_results_t *results,
     bool sort,
-    bool is_first_level)
+    bool has_wildcard_ancestor)
 {
-    const char *next_pattern = remaining_pattern;
-    if (*next_pattern == '/')
-        next_pattern++;
+    // Parse next non-RECURSIVE segment (skipping continuous **)
+    const char *pattern_ptr = remaining_pattern;
+    if (*pattern_ptr == '/')
+        pattern_ptr++;
 
+    rbc_segment_t next_seg;
     bool add_dirs = (recursive_seg->trailing_slashes > 0);
 
-    // Skip continuous RECURSIVE (**) patterns (Ruby: **/** → **)
-    while (*next_pattern != '\0')
+    // Skip consecutive ** segments (but not .** patterns)
+    // Rule: Only **/** → ** (not **/.**  or .**/**)
+    while (true)
     {
-        rbc_segment_t peek_seg;
-        const char *peek_ptr = next_pattern;
-        if (!rbc_glob_next_segment(&peek_ptr, flags, &peek_seg))
+        if (!rbc_glob_next_segment(&pattern_ptr, flags, &next_seg))
             break;
 
-        if (peek_seg.type != RBC_SEG_RECURSIVE)
+        // Stop if not RECURSIVE, or if either current or next starts with '.'
+        if (next_seg.type != RBC_SEG_RECURSIVE)
             break;
 
-        // Update trailing slash status
-        if (peek_seg.trailing_slashes > 0)
+        if (recursive_seg->starts_with_dot || next_seg.starts_with_dot)
+            break; // Cannot fold .** patterns
+
+        // Collect trailing slashes from skipped **
+        if (next_seg.trailing_slashes > 0)
             add_dirs = true;
-
-        // Skip this redundant ** segment
-        next_pattern = peek_ptr;
-        if (*next_pattern == '/')
-            next_pattern++;
     }
 
-    // Check if pattern ends here (e.g., "**/" or "**")
-    bool pattern_ends = (*next_pattern == '\0');
-
-    // Add current directory if pattern matches
-    if (pattern_ends && add_dirs)
-    {
-        add_result_from_path(path, baselen, true, results);
-    }
-
+    // Open directory and enumerate entries
     rbc_dir_entries_t *entries = rbc_opendir_sorted((path_len > 0) ? path : ".", sort);
     if (!entries)
         return;
@@ -723,79 +724,69 @@ static void rbc_glob_recursive_helper(
 
     while ((name = rbc_readdir_sorted(entries)) != NULL)
     {
-        // Skip "." and ".."
-        if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
+        // Skip "." if reached via wildcard (applies to all segments)
+        if (strcmp(name, ".") == 0)
+        {
+            if (has_wildcard_ancestor)
+                continue;
+        }
+
+        // Skip ".." (always excluded from wildcard matching)
+        if (strcmp(name, "..") == 0)
             continue;
 
         // Check dotfile visibility
-        // First level: respect recursive_seg->starts_with_dot
-        // Deeper levels: always skip dotfiles (unless DOTMATCH flag)
         bool is_dotfile = (name[0] == '.');
-        bool allow_dotfile_for_this_level = is_first_level && recursive_seg->starts_with_dot;
+        bool allow_dotfile = !has_wildcard_ancestor && recursive_seg->starts_with_dot;
 
-        if (is_dotfile && !allow_dotfile_for_this_level && !(flags & RBC_FNM_DOTMATCH))
+        if (is_dotfile && !allow_dotfile && !(flags & RBC_FNM_DOTMATCH))
             continue;
 
         // Build full path
         size_t new_len = rbc_build_path_with_slashes(pathbuf, sizeof(pathbuf),
                                                      path, path_len, name, 0);
 
-        // Try to match current entry with pattern
-        if (!pattern_ends)
+        // Check dotfile visibility for next segment
+        if (is_dotfile && !next_seg.starts_with_dot && !(flags & RBC_FNM_DOTMATCH))
         {
-            // Check if current entry matches the next pattern segment
-            rbc_segment_t next_seg;
-            const char *pat_copy = next_pattern;
-            if (rbc_glob_next_segment(&pat_copy, flags, &next_seg))
-            {
-                // Check dotfile visibility for next segment
-                // Always check next segment's dotfile requirement, regardless of recursion level
-                bool should_match = true;
-                if (is_dotfile && !next_seg.starts_with_dot && !(flags & RBC_FNM_DOTMATCH))
-                {
-                    // Dotfile doesn't match this pattern, skip both matching and recursion
-                    should_match = false;
-                }
-
-                if (should_match)
-                {
-                    char pattern_buf[RBC_GLOB_MAX_PATH];
-                    memcpy(pattern_buf, next_seg.start, next_seg.len);
-                    pattern_buf[next_seg.len] = '\0';
-
-                    if (match_segment(&next_seg, name, pattern_buf, flags))
-                    {
-                        struct stat st;
-                        if (stat(pathbuf, &st) == 0)
-                        {
-                            // If pattern has trailing slash, only match directories
-                            if (next_seg.trailing_slashes == 0 || S_ISDIR(st.st_mode))
-                            {
-                                add_result_from_path(pathbuf, baselen, next_seg.trailing_slashes > 0, results);
-                            }
-                        }
-                    }
-
-                    // Recurse into directories
-                    if (is_directory_path(pathbuf))
-                    {
-                        // Recursive descent: always use is_first_level=false
-                        rbc_glob_recursive_helper(pathbuf, new_len, baselen,
-                                                  recursive_seg, remaining_pattern,
-                                                  flags, results, sort, false);
-                    }
-                }
-            }
-        }
-        else
-        {
-            // Pattern ends - recurse into all directories allowed by first level check
+            // Dotfile doesn't match - only recurse
             if (is_directory_path(pathbuf))
             {
                 rbc_glob_recursive_helper(pathbuf, new_len, baselen,
                                           recursive_seg, remaining_pattern,
                                           flags, results, sort, false);
             }
+            continue;
+        }
+
+        // Try to match name against next segment
+        char pattern_buf[RBC_GLOB_MAX_PATH];
+        memcpy(pattern_buf, next_seg.start, next_seg.len);
+        pattern_buf[next_seg.len] = '\0';
+
+        if (match_segment(&next_seg, name, pattern_buf, flags))
+        {
+            // Check if this is the last segment
+            if (next_seg.is_last_segment)
+            {
+                struct stat st;
+                if (stat(pathbuf, &st) == 0)
+                {
+                    // If pattern has trailing slash, only match directories
+                    if (next_seg.trailing_slashes == 0 || S_ISDIR(st.st_mode))
+                    {
+                        add_result_from_path(pathbuf, baselen, next_seg.trailing_slashes > 0 || add_dirs, results);
+                    }
+                }
+            }
+        }
+
+        // Always recurse into directories (** is wildcard, so next level has wildcard ancestor)
+        if (is_directory_path(pathbuf))
+        {
+            rbc_glob_recursive_helper(pathbuf, new_len, baselen,
+                                      recursive_seg, remaining_pattern,
+                                      flags, results, sort, true);
         }
     }
 
@@ -811,7 +802,9 @@ static void rbc_glob_match_normal(
     const char *remaining_pattern,
     unsigned flags,
     rbc_results_t *results,
-    bool sort)
+    bool sort,
+    bool has_wildcard_ancestor,
+    bool next_has_wildcard)
 {
     rbc_dir_entries_t *entries = rbc_opendir_sorted((path_len > 0) ? path : ".", sort);
     if (!entries)
@@ -825,6 +818,14 @@ static void rbc_glob_match_normal(
     const char *name;
     while ((name = rbc_readdir_sorted(entries)) != NULL)
     {
+        // Skip "." if reached via wildcard (applies to all segments)
+        if (strcmp(name, ".") == 0)
+        {
+            if (has_wildcard_ancestor)
+                continue;
+        }
+
+        // Skip ".." unless explicitly matching RBC_SEG_DOTDOT
         if (strcmp(name, "..") == 0)
         {
             if (seg->type != RBC_SEG_DOTDOT)
@@ -846,8 +847,8 @@ static void rbc_glob_match_normal(
         else
             new_len = snprintf(pathbuf, sizeof(pathbuf), "%s", name);
 
-        // Check if more segments remain
-        if (*remaining_pattern == '\0')
+        // Check if this is the last segment
+        if (seg->is_last_segment)
         {
             // Last segment - verify file exists and add result
             struct stat st;
@@ -865,7 +866,7 @@ static void rbc_glob_match_normal(
             // Intermediate segment - must be a directory to continue
             if (is_directory_path(pathbuf))
             {
-                rbc_glob_match(pathbuf, new_len, baselen, remaining_pattern, flags, results, sort);
+                rbc_glob_match(pathbuf, new_len, baselen, remaining_pattern, flags, results, sort, next_has_wildcard);
             }
         }
     }
@@ -881,7 +882,8 @@ static void rbc_glob_match(
     const char *pattern,
     unsigned flags,
     rbc_results_t *results,
-    bool sort)
+    bool sort,
+    bool has_wildcard_ancestor)
 {
     rbc_segment_t seg;
     const char *pat_ptr = pattern;
@@ -890,17 +892,26 @@ static void rbc_glob_match(
     if (!rbc_glob_next_segment(&pat_ptr, flags, &seg))
         return;
 
+    // Update wildcard ancestor flag for next level
+    bool next_has_wildcard = has_wildcard_ancestor;
+    if (seg.type == RBC_SEG_ANY || seg.type == RBC_SEG_MAGICAL || seg.type == RBC_SEG_RECURSIVE)
+    {
+        next_has_wildcard = true;
+    }
+
     // Dispatch to appropriate handler based on segment type
     switch (seg.type)
     {
     case RBC_SEG_ROOT:
         // Absolute path: start from root directory
-        rbc_glob_match("/", 1, 0, pat_ptr, flags, results, sort);
+        rbc_glob_match("/", 1, 0, pat_ptr, flags, results, sort, has_wildcard_ancestor);
         break;
 
     case RBC_SEG_RECURSIVE:
         // Recursive pattern: delegate to specialized handler
-        rbc_glob_recursive_helper(path, path_len, baselen, &seg, pat_ptr, flags, results, sort, true);
+        // Note: Pass current has_wildcard_ancestor, not next_has_wildcard
+        // because ** itself should be treated at the point of invocation
+        rbc_glob_recursive_helper(path, path_len, baselen, &seg, pat_ptr, flags, results, sort, has_wildcard_ancestor);
         break;
 
     case RBC_SEG_DOT:
@@ -909,7 +920,8 @@ static void rbc_glob_match(
     case RBC_SEG_ANY:
     case RBC_SEG_MAGICAL:
         // Normal segment: enumerate directory and match
-        rbc_glob_match_normal(path, path_len, baselen, &seg, pat_ptr, flags, results, sort);
+        // Pass current has_wildcard_ancestor for filtering, next_has_wildcard for recursion
+        rbc_glob_match_normal(path, path_len, baselen, &seg, pat_ptr, flags, results, sort, has_wildcard_ancestor, next_has_wildcard);
         break;
 
     default:
@@ -982,7 +994,8 @@ bool rbc_glob(
                 expanded->patterns[j],
                 flags,
                 &results,
-                sort);
+                sort,
+                false);
 
             // Sort results for this pattern
             if (sort && results.count > count_before)
