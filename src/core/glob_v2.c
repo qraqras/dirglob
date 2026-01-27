@@ -15,6 +15,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h> // For RBC_GLOB_DEBUG fprintf
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <dirent.h>
@@ -268,39 +269,20 @@ typedef struct
     bool is_last;            // This is the last segment
 } rbc_segment_t;
 
-/**
- * @brief Check if segment contains wildcard characters
- */
-static bool rbc_has_wildcard(const char *s, size_t len, unsigned flags)
-{
-    bool in_bracket = false;
-    for (size_t i = 0; i < len; i++)
-    {
-        if (!(flags & RBC_FNM_NOESCAPE) && s[i] == '\\' && i + 1 < len)
-        {
-            i++; // Skip escaped character
-            continue;
-        }
-        switch (s[i])
-        {
-        case '*':
-        case '?':
-            return true;
-        case '[':
-            in_bracket = true;
-            break;
-        case ']':
-            if (in_bracket)
-                return true; // Complete bracket found
-            break;
-        }
-    }
-    return false;
-}
+/// @brief Character flags for single-pass segment classification
+#define SEG_CHAR_STAR 0x01     // Contains '*'
+#define SEG_CHAR_QUESTION 0x02 // Contains '?'
+#define SEG_CHAR_BRACKET 0x04  // Contains '[...]'
+#define SEG_CHAR_ESCAPE 0x08   // Contains escape sequences
+#define SEG_CHAR_REGULAR 0x10  // Contains regular characters
 
 /**
- * @brief Parse next segment from pattern
+ * @brief Parse next segment from pattern (single-pass, glob.c style)
  * @return true if segment found, false if end of pattern
+ *
+ * Single pass through segment to:
+ * 1. Find segment boundaries
+ * 2. Collect character type flags for classification
  */
 static bool rbc_next_segment(const char **pattern_ptr, unsigned flags,
                              rbc_segment_t *seg)
@@ -317,30 +299,84 @@ static bool rbc_next_segment(const char **pattern_ptr, unsigned flags,
     seg->start = p;
     seg->starts_with_dot = (*p == '.');
 
-    // Find segment end
+    // Single-pass: find segment end and collect character flags
     const char *seg_start = p;
-    while (*p != '\0' && *p != '/')
+    unsigned char char_flags = 0;
+    int in_bracket = 0;
+
+    while (*p != '\0' && (*p != '/' || in_bracket > 0))
     {
         if (!(flags & RBC_FNM_NOESCAPE) && *p == '\\' && *(p + 1))
         {
+            char_flags |= SEG_CHAR_ESCAPE;
             p += 2; // Skip escaped char
+            continue;
         }
-        else
+
+        switch (*p)
         {
-            p++;
+        case '*':
+            char_flags |= SEG_CHAR_STAR;
+            break;
+        case '?':
+            char_flags |= SEG_CHAR_QUESTION;
+            break;
+        case '[':
+            in_bracket++;
+            break;
+        case ']':
+            if (in_bracket > 0)
+            {
+                in_bracket--;
+                char_flags |= SEG_CHAR_BRACKET; // Complete bracket
+            }
+            else
+            {
+                char_flags |= SEG_CHAR_REGULAR;
+            }
+            break;
+        default:
+            char_flags |= SEG_CHAR_REGULAR;
+            break;
         }
+        p++;
     }
 
     seg->len = p - seg_start;
     seg->has_trailing_slash = (*p == '/');
 
-    // Skip trailing slashes for next call
+    // Classify segment based on collected flags
+    // Do this BEFORE skipping trailing slashes to correctly identify ** vs **/
+
+    // Check for ** (pure double-star, no other chars)
+    if (seg->len == 2 && char_flags == SEG_CHAR_STAR &&
+        seg_start[0] == '*' && seg_start[1] == '*')
+    {
+        // ** with trailing slash = RECURSIVE (directory descent)
+        // ** without trailing slash = WILDCARD (match like *)
+        if (seg->has_trailing_slash)
+        {
+            seg->type = SEG_RECURSIVE;
+            // Skip trailing slashes
+            while (*p == '/')
+                p++;
+        }
+        else
+        {
+            seg->type = SEG_WILDCARD;
+        }
+        seg->is_last = (*p == '\0');
+        *pattern_ptr = p;
+        return true;
+    }
+
+    // For non-** segments, skip trailing slashes normally
     while (*p == '/')
         p++;
     seg->is_last = (*p == '\0');
     *pattern_ptr = p;
 
-    // Classify segment
+    // Check for special single-char segments first
     if (seg->len == 1 && seg_start[0] == '.')
     {
         seg->type = SEG_DOT;
@@ -349,26 +385,16 @@ static bool rbc_next_segment(const char **pattern_ptr, unsigned flags,
     {
         seg->type = SEG_DOTDOT;
     }
-    else if (seg->len == 2 && seg_start[0] == '*' && seg_start[1] == '*')
-    {
-        // ** is RECURSIVE only with trailing slash and not at end without it
-        if (seg->has_trailing_slash || !seg->is_last)
-        {
-            seg->type = SEG_RECURSIVE;
-        }
-        else
-        {
-            // ** at end without trailing slash = * (WILDCARD)
-            seg->type = SEG_WILDCARD;
-        }
-    }
+    // .** pattern (dot followed by **)
     else if (seg->len == 3 && seg_start[0] == '.' &&
              seg_start[1] == '*' && seg_start[2] == '*')
     {
-        // .** always treated as .* (WILDCARD, not recursive)
+        // .** always treated as wildcard (not recursive)
         seg->type = SEG_WILDCARD;
     }
-    else if (rbc_has_wildcard(seg_start, seg->len, flags))
+    // Any wildcard or escape → delegate to fnmatch
+    else if (char_flags & (SEG_CHAR_STAR | SEG_CHAR_QUESTION |
+                           SEG_CHAR_BRACKET | SEG_CHAR_ESCAPE))
     {
         seg->type = SEG_WILDCARD;
     }
@@ -418,7 +444,7 @@ static bool rbc_match_segment(const rbc_segment_t *seg, const char *name,
 }
 
 // ============================================================================
-// Glob Walker (Stack-based, unified)
+// Glob Walker (Queue-based for correct traversal order)
 // ============================================================================
 
 // Walker state flags
@@ -432,21 +458,26 @@ typedef struct
     uint8_t flags;       // WALK_* flags
 } rbc_walk_frame_t;
 
-#define WALK_STACK_SIZE 64
+#define WALK_QUEUE_SIZE 64
 
 typedef struct
 {
-    rbc_walk_frame_t frames[WALK_STACK_SIZE];
-    size_t depth;
-} rbc_walk_stack_t;
+    rbc_walk_frame_t frames[WALK_QUEUE_SIZE];
+    size_t head; // Index to dequeue from
+    size_t tail; // Index to enqueue to
+    size_t count;
+} rbc_walk_queue_t;
 
-static bool rbc_walk_push(rbc_walk_stack_t *stack,
-                          const char *path, size_t path_len,
-                          const char *pattern, uint8_t flags)
+static bool rbc_walk_enqueue(rbc_walk_queue_t *q,
+                             const char *path, size_t path_len,
+                             const char *pattern, uint8_t flags)
 {
-    if (stack->depth >= WALK_STACK_SIZE)
+    if (q->count >= WALK_QUEUE_SIZE)
         return false;
-    rbc_walk_frame_t *f = &stack->frames[stack->depth++];
+
+    rbc_walk_frame_t *f = &q->frames[q->tail];
+    q->tail = (q->tail + 1) % WALK_QUEUE_SIZE;
+    q->count++;
 
     if (path_len >= RBC_GLOB_MAX_PATH)
         path_len = RBC_GLOB_MAX_PATH - 1;
@@ -458,11 +489,13 @@ static bool rbc_walk_push(rbc_walk_stack_t *stack,
     return true;
 }
 
-static bool rbc_walk_pop(rbc_walk_stack_t *stack, rbc_walk_frame_t *out)
+static bool rbc_walk_dequeue(rbc_walk_queue_t *q, rbc_walk_frame_t *out)
 {
-    if (stack->depth == 0)
+    if (q->count == 0)
         return false;
-    *out = stack->frames[--stack->depth];
+    *out = q->frames[q->head];
+    q->head = (q->head + 1) % WALK_QUEUE_SIZE;
+    q->count--;
     return true;
 }
 
@@ -546,6 +579,131 @@ static bool rbc_should_skip_entry(const char *name, const rbc_segment_t *seg,
     return false;
 }
 
+// ============================================================================
+// Directory Entry Collection (for sorted traversal)
+// ============================================================================
+
+typedef struct
+{
+    char **names;    // Array of entry names
+    bool *is_dir;    // Corresponding directory flags
+    size_t count;    // Number of entries
+    size_t capacity; // Capacity
+} rbc_dirent_list_t;
+
+static bool rbc_dirent_list_init(rbc_dirent_list_t *list)
+{
+    list->capacity = 64;
+    list->names = malloc(list->capacity * sizeof(char *));
+    list->is_dir = malloc(list->capacity * sizeof(bool));
+    list->count = 0;
+    return list->names && list->is_dir;
+}
+
+static bool rbc_dirent_list_add(rbc_dirent_list_t *list, const char *name, bool is_dir)
+{
+    if (list->count >= list->capacity)
+    {
+        size_t new_cap = list->capacity * 2;
+        char **new_names = realloc(list->names, new_cap * sizeof(char *));
+        bool *new_is_dir = realloc(list->is_dir, new_cap * sizeof(bool));
+        if (!new_names || !new_is_dir)
+        {
+            free(new_names);
+            // Note: is_dir realloc may have succeeded, but we keep old pointer
+            return false;
+        }
+        list->names = new_names;
+        list->is_dir = new_is_dir;
+        list->capacity = new_cap;
+    }
+    list->names[list->count] = strdup(name);
+    if (!list->names[list->count])
+        return false;
+    list->is_dir[list->count] = is_dir;
+    list->count++;
+    return true;
+}
+
+static void rbc_dirent_list_free(rbc_dirent_list_t *list)
+{
+    for (size_t i = 0; i < list->count; i++)
+        free(list->names[i]);
+    free(list->names);
+    free(list->is_dir);
+}
+
+static int rbc_dirent_cmp(const void *a, const void *b)
+{
+    return strcmp(*(const char **)a, *(const char **)b);
+}
+
+/**
+ * @brief Sort directory entry list
+ *
+ * We need to sort both names and is_dir arrays together.
+ * Use index-based sorting to keep them synchronized.
+ */
+static void rbc_dirent_list_sort(rbc_dirent_list_t *list)
+{
+    if (list->count <= 1)
+        return;
+
+    // Create index array
+    size_t *indices = malloc(list->count * sizeof(size_t));
+    if (!indices)
+        return;
+    for (size_t i = 0; i < list->count; i++)
+        indices[i] = i;
+
+    // Sort indices by comparing names
+    // Use simple insertion sort for small arrays, otherwise use a different approach
+    // For simplicity, just sort names and rebuild is_dir
+
+    // Actually, we can sort names directly since we have separate is_dir array
+    // But we need to keep them in sync. Let's use a struct-based approach.
+
+    // Simpler: create temp arrays and rebuild
+    char **sorted_names = malloc(list->count * sizeof(char *));
+    bool *sorted_is_dir = malloc(list->count * sizeof(bool));
+    if (!sorted_names || !sorted_is_dir)
+    {
+        free(indices);
+        free(sorted_names);
+        free(sorted_is_dir);
+        return;
+    }
+
+    // Build sorted indices using qsort on pointers
+    // First, sort the indices based on names
+    for (size_t i = 0; i < list->count; i++)
+    {
+        for (size_t j = i + 1; j < list->count; j++)
+        {
+            if (strcmp(list->names[indices[i]], list->names[indices[j]]) > 0)
+            {
+                size_t tmp = indices[i];
+                indices[i] = indices[j];
+                indices[j] = tmp;
+            }
+        }
+    }
+
+    // Rebuild arrays in sorted order
+    for (size_t i = 0; i < list->count; i++)
+    {
+        sorted_names[i] = list->names[indices[i]];
+        sorted_is_dir[i] = list->is_dir[indices[i]];
+    }
+
+    // Swap arrays
+    free(list->names);
+    free(list->is_dir);
+    list->names = sorted_names;
+    list->is_dir = sorted_is_dir;
+    free(indices);
+}
+
 /**
  * @brief Process a single directory with a normal segment (non-recursive)
  */
@@ -553,7 +711,7 @@ static void rbc_glob_process_dir(const char *dir_path, size_t dir_len,
                                  size_t baselen, const rbc_segment_t *seg,
                                  const char *remaining_pattern,
                                  unsigned flags, rbc_results_t *results,
-                                 rbc_walk_stack_t *stack,
+                                 rbc_walk_queue_t *queue,
                                  bool has_wildcard_ancestor)
 {
     DIR *dirp = opendir(dir_len > 0 ? dir_path : ".");
@@ -614,11 +772,11 @@ static void rbc_glob_process_dir(const char *dir_path, size_t dir_len,
         }
         else
         {
-            // Intermediate segment: must be directory, push to stack
+            // Intermediate segment: must be directory, enqueue
             if (rbc_is_dir_entry(entry, pathbuf))
             {
                 uint8_t next_flags = next_has_wildcard ? WALK_HAS_WILDCARD_ANCESTOR : 0;
-                rbc_walk_push(stack, pathbuf, new_len, remaining_pattern, next_flags);
+                rbc_walk_enqueue(queue, pathbuf, new_len, remaining_pattern, next_flags);
             }
         }
     }
@@ -628,29 +786,34 @@ static void rbc_glob_process_dir(const char *dir_path, size_t dir_len,
 
 /**
  * @brief Process recursive (**) pattern
+ *
+ * RECURSIVE only handles directory traversal, NOT matching.
+ * Matching is delegated to the walker by pushing remaining pattern to stack.
+ *
+ * Design:
+ * - Double-star matches "zero or more directories"
+ * - At each directory level, push remaining pattern to stack for matching
+ * - Recurse into subdirectories (except dotdirs without DOTMATCH)
+ * - For trailing slash case, add directories directly
  */
 static void rbc_glob_process_recursive(const char *dir_path, size_t dir_len,
                                        size_t baselen,
                                        const rbc_segment_t *rec_seg,
                                        const char *after_recursive,
                                        unsigned flags, rbc_results_t *results,
-                                       rbc_walk_stack_t *stack,
+                                       rbc_walk_queue_t *queue,
                                        bool has_wildcard_ancestor)
 {
-    (void)has_wildcard_ancestor; // Reserved for future use
-    // Parse the segment after **
+    (void)has_wildcard_ancestor;
+
+    // Check if **/ at end (match directories only)
+    bool match_dirs_only = (rec_seg->has_trailing_slash && after_recursive[0] == '\0');
+
+    // Parse the next segment from after_recursive for direct matching
     rbc_segment_t next_seg;
-    const char *pattern_after = after_recursive;
-    bool has_next = rbc_next_segment(&pattern_after, flags, &next_seg);
-
-    // Skip consecutive ** segments (folding)
-    while (has_next && next_seg.type == SEG_RECURSIVE)
-    {
-        has_next = rbc_next_segment(&pattern_after, flags, &next_seg);
-    }
-
-    // Check if ** should match directories only (trailing slash case)
-    bool match_dirs_only = rec_seg->has_trailing_slash && !has_next;
+    const char *next_remaining = after_recursive;
+    bool has_next_seg = (after_recursive[0] != '\0') &&
+                        rbc_next_segment(&next_remaining, flags, &next_seg);
 
     DIR *dirp = opendir(dir_len > 0 ? dir_path : ".");
     if (!dirp)
@@ -663,26 +826,16 @@ static void rbc_glob_process_recursive(const char *dir_path, size_t dir_len,
     {
         const char *name = entry->d_name;
 
-        // Skip "." - never recurse (infinite loop prevention)
-        if (name[0] == '.' && name[1] == '\0')
+        // Skip "." and ".." - always excluded from ** traversal
+        if (name[0] == '.' && (name[1] == '\0' || (name[1] == '.' && name[2] == '\0')))
             continue;
 
-        // Skip ".." - always excluded
-        if (name[0] == '.' && name[1] == '.' && name[2] == '\0')
-            continue;
-
-        // Dotfile visibility for **
+        // Check if this is a dotfile/dotdir
         bool is_dotfile = (name[0] == '.');
-        if (is_dotfile)
-        {
-            // ** descends into dotfiles only with DOTMATCH
-            // or if next segment explicitly starts with '.'
-            if (!(flags & RBC_FNM_DOTMATCH) &&
-                (!has_next || !next_seg.starts_with_dot))
-            {
-                continue;
-            }
-        }
+
+        // For directory descent: ** does NOT descend into dotfiles/dotdirs without DOTMATCH
+        // But we still need to try matching after_recursive pattern on dotfiles
+        bool skip_descent = is_dotfile && !(flags & RBC_FNM_DOTMATCH);
 
         // Build path
         size_t name_len = strlen(name);
@@ -691,53 +844,58 @@ static void rbc_glob_process_recursive(const char *dir_path, size_t dir_len,
 
         bool is_dir = rbc_is_dir_entry(entry, pathbuf);
 
-        if (has_next)
+        if (match_dirs_only && !skip_descent)
         {
-            // Try matching against next segment
-            // For "." entry skipping with wildcard ancestor
-            if (!rbc_should_skip_entry(name, &next_seg, flags, true))
+            // **/ at end: add all directories (except dotdirs without DOTMATCH)
+            if (is_dir)
             {
-                if (rbc_match_segment(&next_seg, name, flags))
+                rbc_append_slash(pathbuf, new_len, sizeof(pathbuf));
+                rbc_add_result(results, pathbuf, baselen, baselen == 0);
+            }
+        }
+
+        // Direct matching of after_recursive pattern (** matches zero directories)
+        if (has_next_seg)
+        {
+            // Check if entry matches the next segment (respecting dotfile rules)
+            if (!rbc_should_skip_entry(name, &next_seg, flags, true) &&
+                rbc_match_segment(&next_seg, name, flags))
+            {
+                if (next_seg.is_last)
                 {
-                    if (next_seg.is_last)
+                    // Final segment matched - add to results
+                    if (next_seg.has_trailing_slash)
                     {
-                        // Match found at this level
-                        if (next_seg.has_trailing_slash)
+                        if (is_dir)
                         {
-                            if (is_dir)
-                            {
-                                rbc_append_slash(pathbuf, new_len, sizeof(pathbuf));
-                                rbc_add_result(results, pathbuf, baselen, baselen == 0);
-                            }
+                            new_len = rbc_append_slash(pathbuf, new_len, sizeof(pathbuf));
+                            rbc_add_result(results, pathbuf, baselen, baselen == 0);
                         }
-                        else
+                    }
+                    else
+                    {
+                        if (rbc_path_exists(pathbuf))
                         {
                             rbc_add_result(results, pathbuf, baselen, baselen == 0);
                         }
                     }
-                    else if (is_dir)
-                    {
-                        // Continue matching rest of pattern
-                        rbc_walk_push(stack, pathbuf, new_len, pattern_after,
-                                      WALK_HAS_WILDCARD_ANCESTOR);
-                    }
+                }
+                else if (is_dir)
+                {
+                    // More segments to match - enqueue
+                    rbc_walk_enqueue(queue, pathbuf, new_len, next_remaining,
+                                     WALK_HAS_WILDCARD_ANCESTOR);
                 }
             }
         }
-        else if (match_dirs_only && is_dir)
-        {
-            // **/ with nothing after: add all directories
-            rbc_append_slash(pathbuf, new_len, sizeof(pathbuf));
-            rbc_add_result(results, pathbuf, baselen, baselen == 0);
-        }
 
-        // Recurse into subdirectories
-        if (is_dir)
+        // Recurse into subdirectories (only if allowed)
+        if (is_dir && !skip_descent)
         {
-            // Push recursive frame to continue ** matching in subdirectory
+            // Continue ** matching in subdirectory
             rbc_glob_process_recursive(pathbuf, new_len, baselen, rec_seg,
                                        after_recursive, flags, results,
-                                       stack, true);
+                                       queue, true);
         }
     }
 
@@ -751,25 +909,34 @@ static void rbc_glob_walk(const char *base, size_t baselen,
                           const char *pattern, unsigned flags,
                           rbc_results_t *results)
 {
-    rbc_walk_stack_t stack = {.depth = 0};
+    rbc_walk_queue_t queue = {.head = 0, .tail = 0, .count = 0};
 
     // Handle absolute path
     if (pattern[0] == '/')
     {
         // Skip leading slashes
-        while (*pattern == '/')
-            pattern++;
-        rbc_walk_push(&stack, "/", 1, pattern, 0);
+        const char *after_slash = pattern;
+        while (*after_slash == '/')
+            after_slash++;
+
+        // Pattern is just "/" - return "/" itself
+        if (*after_slash == '\0')
+        {
+            rbc_results_add(results, "/", 1);
+            return;
+        }
+
+        rbc_walk_enqueue(&queue, "/", 1, after_slash, 0);
         baselen = 0; // Absolute path ignores base
     }
     else
     {
         // Relative path
-        rbc_walk_push(&stack, base, baselen, pattern, 0);
+        rbc_walk_enqueue(&queue, base, baselen, pattern, 0);
     }
 
     rbc_walk_frame_t frame;
-    while (rbc_walk_pop(&stack, &frame))
+    while (rbc_walk_dequeue(&queue, &frame))
     {
         rbc_segment_t seg;
         const char *pat_ptr = frame.pattern;
@@ -784,24 +951,60 @@ static void rbc_glob_walk(const char *base, size_t baselen,
         switch (seg.type)
         {
         case SEG_RECURSIVE:
-            // First try zero-depth match (** matches zero directories)
-            if (pat_ptr[0] != '\0')
+        {
+            // Collapse consecutive **/ segments (Ruby behavior)
+            // e.g., **/**/ -> **/
+            // But keep trailing ** without slash as after_recursive pattern
+            const char *after_recursive = pat_ptr;
+            while (*after_recursive != '\0')
             {
-                rbc_walk_push(&stack, frame.path, frame.path_len, pat_ptr,
-                              WALK_HAS_WILDCARD_ANCESTOR);
+                // Check for **
+                if (after_recursive[0] == '*' && after_recursive[1] == '*')
+                {
+                    if (after_recursive[2] == '/')
+                    {
+                        // **/ - collapse it
+                        after_recursive += 2;
+                        while (*after_recursive == '/')
+                            after_recursive++;
+                        continue;
+                    }
+                    // ** at end - keep as after_recursive pattern
+                    break;
+                }
+                break;
             }
-            // Then recursive descent
+
+            // Update seg.is_last based on collapsed pattern
+            seg.is_last = (*after_recursive == '\0');
+
+            // Zero-depth match (** matches zero directories) is handled
+            // inside rbc_glob_process_recursive, not here
+            if (seg.has_trailing_slash && *after_recursive == '\0')
+            {
+                // **/ at end: add current directory itself
+                char pathbuf[RBC_GLOB_MAX_PATH];
+                size_t len = frame.path_len;
+                if (len > 0)
+                {
+                    memcpy(pathbuf, frame.path, len);
+                    len = rbc_append_slash(pathbuf, len, sizeof(pathbuf));
+                    rbc_add_result(results, pathbuf, baselen, baselen == 0);
+                }
+            }
+            // Recursive descent
             rbc_glob_process_recursive(frame.path, frame.path_len, baselen,
-                                       &seg, pat_ptr, flags, results,
-                                       &stack, has_wildcard_ancestor);
+                                       &seg, after_recursive, flags, results,
+                                       &queue, has_wildcard_ancestor);
             break;
+        }
 
         case SEG_DOT:
         case SEG_DOTDOT:
         case SEG_LITERAL:
         case SEG_WILDCARD:
             rbc_glob_process_dir(frame.path, frame.path_len, baselen,
-                                 &seg, pat_ptr, flags, results, &stack,
+                                 &seg, pat_ptr, flags, results, &queue,
                                  has_wildcard_ancestor);
             break;
         }
@@ -995,6 +1198,47 @@ static void rbc_brace_free(rbc_brace_result_t *result)
 static int rbc_strcmp_wrapper(const void *a, const void *b)
 {
     return strcmp(*(const char **)a, *(const char **)b);
+}
+
+/**
+ * @brief Sort a range of results within the arena
+ *
+ * Ruby's Dir.glob with sort:true sorts each brace-expanded pattern's
+ * results individually, then concatenates them in brace expansion order.
+ * This function sorts results from index `start` to `end` (exclusive).
+ *
+ * @param r Results structure
+ * @param start Start index (inclusive)
+ * @param end End index (exclusive)
+ */
+static void rbc_results_sort_range(rbc_results_t *r, size_t start, size_t end)
+{
+    if (end <= start + 1)
+        return; // 0 or 1 element, nothing to sort
+
+    size_t n = end - start;
+
+    // Create temporary array of string pointers for sorting
+    const char **ptrs = malloc(n * sizeof(const char *));
+    if (!ptrs)
+        return;
+
+    // Build pointer array from offsets
+    for (size_t i = 0; i < n; i++)
+    {
+        ptrs[i] = r->data + r->offsets[start + i];
+    }
+
+    // Sort the pointer array
+    qsort(ptrs, n, sizeof(const char *), rbc_strcmp_wrapper);
+
+    // Rebuild offsets array from sorted pointers
+    for (size_t i = 0; i < n; i++)
+    {
+        r->offsets[start + i] = (size_t)(ptrs[i] - r->data);
+    }
+
+    free(ptrs);
 }
 
 /**
