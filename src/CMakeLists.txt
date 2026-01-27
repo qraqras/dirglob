@@ -8,7 +8,8 @@
 
 add_library(rbc
   # Core modules
-  core/glob.c           # Main API
+  core/glob.c           # v1 API (disabled)
+  core/glob_v2.c        # v2 API (main)
   core/fnmatch.c        # Pattern matching
 
   # Utilities

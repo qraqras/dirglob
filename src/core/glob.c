@@ -931,10 +931,12 @@ static void rbc_glob_match(
 }
 
 // ============================================================================
-// Public API, true
+// Public API (v1 - DISABLED: replaced by glob_v2.c)
 // ============================================================================
 
-bool rbc_glob(
+#if 0 // v2 implementation is now in glob_v2.c
+
+bool rbc_glob_v1(
     const char **patterns,
     size_t npatterns,
     unsigned flags,
@@ -1015,7 +1017,7 @@ bool rbc_glob(
     return true;
 }
 
-void rbc_glob_free(char **list, size_t count, size_t *lengths)
+void rbc_glob_free_v1(char **list, size_t count, size_t *lengths)
 {
     if (!list)
         return;
@@ -1030,3 +1032,5 @@ void rbc_glob_free(char **list, size_t count, size_t *lengths)
     if (lengths)
         free(lengths);
 }
+
+#endif // v1 disabled
