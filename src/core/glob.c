@@ -675,7 +675,8 @@ static void rbc_glob_recursive_helper(
     const char *remaining_pattern,
     unsigned flags,
     rbc_results_t *results,
-    bool sort)
+    bool sort,
+    bool is_first_level)
 {
     const char *next_pattern = remaining_pattern;
     if (*next_pattern == '/')
@@ -727,8 +728,12 @@ static void rbc_glob_recursive_helper(
             continue;
 
         // Check dotfile visibility
+        // First level: respect recursive_seg->starts_with_dot
+        // Deeper levels: always skip dotfiles (unless DOTMATCH flag)
         bool is_dotfile = (name[0] == '.');
-        if (is_dotfile && !recursive_seg->starts_with_dot && !(flags & RBC_FNM_DOTMATCH))
+        bool allow_dotfile_for_this_level = is_first_level && recursive_seg->starts_with_dot;
+
+        if (is_dotfile && !allow_dotfile_for_this_level && !(flags & RBC_FNM_DOTMATCH))
             continue;
 
         // Build full path
@@ -743,31 +748,54 @@ static void rbc_glob_recursive_helper(
             const char *pat_copy = next_pattern;
             if (rbc_glob_next_segment(&pat_copy, flags, &next_seg))
             {
-                char pattern_buf[RBC_GLOB_MAX_PATH];
-                memcpy(pattern_buf, next_seg.start, next_seg.len);
-                pattern_buf[next_seg.len] = '\0';
-
-                if (match_segment(&next_seg, name, pattern_buf, flags))
+                // Check dotfile visibility for next segment
+                // Always check next segment's dotfile requirement, regardless of recursion level
+                bool should_match = true;
+                if (is_dotfile && !next_seg.starts_with_dot && !(flags & RBC_FNM_DOTMATCH))
                 {
-                    struct stat st;
-                    if (stat(pathbuf, &st) == 0)
+                    // Dotfile doesn't match this pattern, skip both matching and recursion
+                    should_match = false;
+                }
+
+                if (should_match)
+                {
+                    char pattern_buf[RBC_GLOB_MAX_PATH];
+                    memcpy(pattern_buf, next_seg.start, next_seg.len);
+                    pattern_buf[next_seg.len] = '\0';
+
+                    if (match_segment(&next_seg, name, pattern_buf, flags))
                     {
-                        // If pattern has trailing slash, only match directories
-                        if (next_seg.trailing_slashes == 0 || S_ISDIR(st.st_mode))
+                        struct stat st;
+                        if (stat(pathbuf, &st) == 0)
                         {
-                            add_result_from_path(pathbuf, baselen, next_seg.trailing_slashes > 0, results);
+                            // If pattern has trailing slash, only match directories
+                            if (next_seg.trailing_slashes == 0 || S_ISDIR(st.st_mode))
+                            {
+                                add_result_from_path(pathbuf, baselen, next_seg.trailing_slashes > 0, results);
+                            }
                         }
+                    }
+
+                    // Recurse into directories
+                    if (is_directory_path(pathbuf))
+                    {
+                        // Recursive descent: always use is_first_level=false
+                        rbc_glob_recursive_helper(pathbuf, new_len, baselen,
+                                                  recursive_seg, remaining_pattern,
+                                                  flags, results, sort, false);
                     }
                 }
             }
         }
-
-        // Recurse into directories
-        if (is_directory_path(pathbuf))
+        else
         {
-            rbc_glob_recursive_helper(pathbuf, new_len, baselen,
-                                      recursive_seg, remaining_pattern,
-                                      flags, results, sort);
+            // Pattern ends - recurse into all directories allowed by first level check
+            if (is_directory_path(pathbuf))
+            {
+                rbc_glob_recursive_helper(pathbuf, new_len, baselen,
+                                          recursive_seg, remaining_pattern,
+                                          flags, results, sort, false);
+            }
         }
     }
 
@@ -872,7 +900,7 @@ static void rbc_glob_match(
 
     case RBC_SEG_RECURSIVE:
         // Recursive pattern: delegate to specialized handler
-        rbc_glob_recursive_helper(path, path_len, baselen, &seg, pat_ptr, flags, results, sort);
+        rbc_glob_recursive_helper(path, path_len, baselen, &seg, pat_ptr, flags, results, sort, true);
         break;
 
     case RBC_SEG_DOT:
@@ -891,7 +919,7 @@ static void rbc_glob_match(
 }
 
 // ============================================================================
-// Public API
+// Public API, true
 // ============================================================================
 
 bool rbc_glob(
