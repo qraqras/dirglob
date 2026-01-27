@@ -579,131 +579,6 @@ static bool rbc_should_skip_entry(const char *name, const rbc_segment_t *seg,
     return false;
 }
 
-// ============================================================================
-// Directory Entry Collection (for sorted traversal)
-// ============================================================================
-
-typedef struct
-{
-    char **names;    // Array of entry names
-    bool *is_dir;    // Corresponding directory flags
-    size_t count;    // Number of entries
-    size_t capacity; // Capacity
-} rbc_dirent_list_t;
-
-static bool rbc_dirent_list_init(rbc_dirent_list_t *list)
-{
-    list->capacity = 64;
-    list->names = malloc(list->capacity * sizeof(char *));
-    list->is_dir = malloc(list->capacity * sizeof(bool));
-    list->count = 0;
-    return list->names && list->is_dir;
-}
-
-static bool rbc_dirent_list_add(rbc_dirent_list_t *list, const char *name, bool is_dir)
-{
-    if (list->count >= list->capacity)
-    {
-        size_t new_cap = list->capacity * 2;
-        char **new_names = realloc(list->names, new_cap * sizeof(char *));
-        bool *new_is_dir = realloc(list->is_dir, new_cap * sizeof(bool));
-        if (!new_names || !new_is_dir)
-        {
-            free(new_names);
-            // Note: is_dir realloc may have succeeded, but we keep old pointer
-            return false;
-        }
-        list->names = new_names;
-        list->is_dir = new_is_dir;
-        list->capacity = new_cap;
-    }
-    list->names[list->count] = strdup(name);
-    if (!list->names[list->count])
-        return false;
-    list->is_dir[list->count] = is_dir;
-    list->count++;
-    return true;
-}
-
-static void rbc_dirent_list_free(rbc_dirent_list_t *list)
-{
-    for (size_t i = 0; i < list->count; i++)
-        free(list->names[i]);
-    free(list->names);
-    free(list->is_dir);
-}
-
-static int rbc_dirent_cmp(const void *a, const void *b)
-{
-    return strcmp(*(const char **)a, *(const char **)b);
-}
-
-/**
- * @brief Sort directory entry list
- *
- * We need to sort both names and is_dir arrays together.
- * Use index-based sorting to keep them synchronized.
- */
-static void rbc_dirent_list_sort(rbc_dirent_list_t *list)
-{
-    if (list->count <= 1)
-        return;
-
-    // Create index array
-    size_t *indices = malloc(list->count * sizeof(size_t));
-    if (!indices)
-        return;
-    for (size_t i = 0; i < list->count; i++)
-        indices[i] = i;
-
-    // Sort indices by comparing names
-    // Use simple insertion sort for small arrays, otherwise use a different approach
-    // For simplicity, just sort names and rebuild is_dir
-
-    // Actually, we can sort names directly since we have separate is_dir array
-    // But we need to keep them in sync. Let's use a struct-based approach.
-
-    // Simpler: create temp arrays and rebuild
-    char **sorted_names = malloc(list->count * sizeof(char *));
-    bool *sorted_is_dir = malloc(list->count * sizeof(bool));
-    if (!sorted_names || !sorted_is_dir)
-    {
-        free(indices);
-        free(sorted_names);
-        free(sorted_is_dir);
-        return;
-    }
-
-    // Build sorted indices using qsort on pointers
-    // First, sort the indices based on names
-    for (size_t i = 0; i < list->count; i++)
-    {
-        for (size_t j = i + 1; j < list->count; j++)
-        {
-            if (strcmp(list->names[indices[i]], list->names[indices[j]]) > 0)
-            {
-                size_t tmp = indices[i];
-                indices[i] = indices[j];
-                indices[j] = tmp;
-            }
-        }
-    }
-
-    // Rebuild arrays in sorted order
-    for (size_t i = 0; i < list->count; i++)
-    {
-        sorted_names[i] = list->names[indices[i]];
-        sorted_is_dir[i] = list->is_dir[indices[i]];
-    }
-
-    // Swap arrays
-    free(list->names);
-    free(list->is_dir);
-    list->names = sorted_names;
-    list->is_dir = sorted_is_dir;
-    free(indices);
-}
-
 /**
  * @brief Process a single directory with a normal segment (non-recursive)
  */
@@ -1337,15 +1212,24 @@ bool rbc_glob(const char **patterns, size_t npatterns, unsigned flags,
         // Process each expanded pattern
         for (size_t j = 0; j < expanded->count; j++)
         {
+            size_t count_before = results.count;
+
             rbc_glob_walk(actual_base, baselen, expanded->patterns[j],
                           flags, &results);
+
+            // Sort results for this brace-expanded pattern
+            // Ruby sorts each pattern's results individually, then concatenates
+            if (sort && results.count > count_before)
+            {
+                rbc_results_sort_range(&results, count_before, results.count);
+            }
         }
 
         rbc_brace_free(expanded);
     }
 
-    // Convert to output format
-    bool ok = rbc_results_to_output(&results, sort, out, count, lengths);
+    // Convert to output format (don't sort again - already sorted per-pattern)
+    bool ok = rbc_results_to_output(&results, false, out, count, lengths);
     rbc_results_free(&results);
 
     return ok;
