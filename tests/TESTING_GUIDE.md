@@ -173,3 +173,97 @@ cd /workspaces/dirglob/tests/fixtures
 # 失敗パターンを分類
 grep "Pattern:" /tmp/test_results.txt | grep -B1 "FAIL" | head -100
 ```
+
+---
+
+## fnmatch テスト (File.fnmatch 互換テスト)
+
+### ディレクトリ構成
+
+```
+/workspaces/dirglob/
+├── build/tests/
+│   └── test_fnmatch_ruby_compat    # コンパイル済みテスト実行ファイル
+├── tests/
+│   ├── ruby_fnmatch_expected/      # Ruby実装による期待値ファイル
+│   ├── generated/
+│   │   └── test_fnmatch_ruby_compat.c  # 生成されたテストコード
+│   └── scripts/
+│       ├── gen_ruby_fnmatch_expected.py  # Ruby期待値生成
+│       ├── gen_c_fnmatch_tests.py        # Cテストコード生成
+│       └── test_definitions.py           # テストケース定義（FNMATCH_TESTS）
+```
+
+### 1. 期待値ファイルの生成（初回のみ）
+
+Ruby実装でfnmatch実行結果の期待値を生成します：
+
+```bash
+cd /workspaces/dirglob
+python3 tests/scripts/gen_ruby_fnmatch_expected.py
+```
+
+出力先: `tests/ruby_fnmatch_expected/*.txt`（418ファイル）
+
+### 2. テストコードの生成（修正時）
+
+テストケース定義からCテストコードを生成します：
+
+```bash
+cd /workspaces/dirglob
+python3 tests/scripts/gen_c_fnmatch_tests.py
+```
+
+出力先: `tests/generated/test_fnmatch_ruby_compat.c`
+
+### 3. ビルド
+
+```bash
+cd /workspaces/dirglob/build
+make test_fnmatch_ruby_compat
+```
+
+### 4. テスト実行
+
+**重要**: テストは**プロジェクトルート**から実行する必要があります（globテストと異なる）。
+
+```bash
+cd /workspaces/dirglob
+./build/tests/test_fnmatch_ruby_compat
+```
+
+### fnmatchテスト結果の確認
+
+```bash
+cd /workspaces/dirglob
+./build/tests/test_fnmatch_ruby_compat 2>&1 | tail -20
+```
+
+### fnmatchワンライナー実行
+
+```bash
+cd /workspaces/dirglob && \
+  python3 tests/scripts/gen_c_fnmatch_tests.py && \
+  cd build && make test_fnmatch_ruby_compat && \
+  cd .. && ./build/tests/test_fnmatch_ruby_compat 2>&1 | tail -20
+```
+
+### fnmatchテストケースの定義
+
+`test_definitions.py` の `FNMATCH_TESTS` リストで定義されています：
+
+```python
+FNMATCH_TESTS = [
+    # (id, pattern, text, flags, description)
+    ("fm001", "\\*", "*", 0, "Escaped star matches literal star"),
+    ("f1000", "*", "abc", 0, "Star matches any string"),
+    ...
+]
+```
+
+### 実行ディレクトリの違い
+
+| テスト | 実行ディレクトリ | 理由 |
+|--------|------------------|------|
+| glob | `tests/fixtures` | fixtureファイルにアクセスするため |
+| fnmatch | プロジェクトルート | 期待値パスが `tests/ruby_fnmatch_expected/` |
