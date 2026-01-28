@@ -16,10 +16,10 @@
 #define RBC_FNM_CASEFOLD 0x08
 
 // External API
-bool rbc_glob_v2(const char **patterns, size_t npatterns, unsigned flags,
+bool rbc_glob(const char **patterns, size_t npatterns, unsigned flags,
                  const char *base, bool sort,
                  char ***out, size_t *count, size_t **lengths);
-void rbc_glob_free_v2(char **list, size_t count, size_t *lengths);
+void rbc_glob_free(char **list, size_t count, size_t *lengths);
 
 // Test helper
 static int test_count = 0;
@@ -61,10 +61,10 @@ static void test_simple_literal(void)
     char **results = NULL;
     size_t count = 0;
 
-    bool ok = rbc_glob_v2(patterns, 1, 0, ".", true, &results, &count, NULL);
+    bool ok = rbc_glob(patterns, 1, 0, ".", true, &results, &count, NULL);
     if (!ok)
     {
-        FAIL("rbc_glob_v2 returned false");
+        FAIL("rbc_glob returned false");
         return;
     }
 
@@ -74,7 +74,7 @@ static void test_simple_literal(void)
         print_results(results, count);
     }
 
-    rbc_glob_free_v2(results, count, NULL);
+    rbc_glob_free(results, count, NULL);
     PASS();
 }
 
@@ -86,10 +86,10 @@ static void test_recursive_pattern(void)
     char **results = NULL;
     size_t count = 0;
 
-    bool ok = rbc_glob_v2(patterns, 1, 0, ".", true, &results, &count, NULL);
+    bool ok = rbc_glob(patterns, 1, 0, ".", true, &results, &count, NULL);
     if (!ok)
     {
-        FAIL("rbc_glob_v2 returned false");
+        FAIL("rbc_glob returned false");
         return;
     }
 
@@ -107,7 +107,7 @@ static void test_recursive_pattern(void)
         }
     }
 
-    rbc_glob_free_v2(results, count, NULL);
+    rbc_glob_free(results, count, NULL);
     PASS();
 }
 
@@ -119,10 +119,10 @@ static void test_brace_expansion(void)
     char **results = NULL;
     size_t count = 0;
 
-    bool ok = rbc_glob_v2(patterns, 1, 0, ".", true, &results, &count, NULL);
+    bool ok = rbc_glob(patterns, 1, 0, ".", true, &results, &count, NULL);
     if (!ok)
     {
-        FAIL("rbc_glob_v2 returned false");
+        FAIL("rbc_glob returned false");
         return;
     }
 
@@ -132,7 +132,7 @@ static void test_brace_expansion(void)
         print_results(results, count);
     }
 
-    rbc_glob_free_v2(results, count, NULL);
+    rbc_glob_free(results, count, NULL);
     PASS();
 }
 
@@ -147,10 +147,10 @@ static void test_dotmatch(void)
     size_t count_with_dot = 0;
 
     // Without DOTMATCH
-    rbc_glob_v2(patterns, 1, 0, ".", true, &results_no_dot, &count_no_dot, NULL);
+    rbc_glob(patterns, 1, 0, ".", true, &results_no_dot, &count_no_dot, NULL);
 
     // With DOTMATCH
-    rbc_glob_v2(patterns, 1, RBC_FNM_DOTMATCH, ".", true, &results_with_dot, &count_with_dot, NULL);
+    rbc_glob(patterns, 1, RBC_FNM_DOTMATCH, ".", true, &results_with_dot, &count_with_dot, NULL);
 
     printf("without DOTMATCH: %zu, with DOTMATCH: %zu\n", count_no_dot, count_with_dot);
 
@@ -163,8 +163,8 @@ static void test_dotmatch(void)
         FAIL("DOTMATCH should return more or equal results");
     }
 
-    rbc_glob_free_v2(results_no_dot, count_no_dot, NULL);
-    rbc_glob_free_v2(results_with_dot, count_with_dot, NULL);
+    rbc_glob_free(results_no_dot, count_no_dot, NULL);
+    rbc_glob_free(results_with_dot, count_with_dot, NULL);
 }
 
 static void test_trailing_slash(void)
@@ -175,10 +175,10 @@ static void test_trailing_slash(void)
     char **results = NULL;
     size_t count = 0;
 
-    bool ok = rbc_glob_v2(patterns, 1, 0, ".", true, &results, &count, NULL);
+    bool ok = rbc_glob(patterns, 1, 0, ".", true, &results, &count, NULL);
     if (!ok)
     {
-        FAIL("rbc_glob_v2 returned false");
+        FAIL("rbc_glob returned false");
         return;
     }
 
@@ -200,7 +200,7 @@ static void test_trailing_slash(void)
         }
     }
 
-    rbc_glob_free_v2(results, count, NULL);
+    rbc_glob_free(results, count, NULL);
 
     if (all_dirs)
     {
@@ -220,10 +220,10 @@ static void test_double_star_trailing(void)
     char **results = NULL;
     size_t count = 0;
 
-    bool ok = rbc_glob_v2(patterns, 1, 0, "src", true, &results, &count, NULL);
+    bool ok = rbc_glob(patterns, 1, 0, "src", true, &results, &count, NULL);
     if (!ok)
     {
-        FAIL("rbc_glob_v2 returned false");
+        FAIL("rbc_glob returned false");
         return;
     }
 
@@ -233,7 +233,7 @@ static void test_double_star_trailing(void)
         print_results(results, count);
     }
 
-    rbc_glob_free_v2(results, count, NULL);
+    rbc_glob_free(results, count, NULL);
     PASS();
 }
 
@@ -247,10 +247,10 @@ static void test_wildcard_ancestor_dot(void)
     char **results = NULL;
     size_t count = 0;
 
-    bool ok = rbc_glob_v2(patterns, 1, RBC_FNM_DOTMATCH, ".", true, &results, &count, NULL);
+    bool ok = rbc_glob(patterns, 1, RBC_FNM_DOTMATCH, ".", true, &results, &count, NULL);
     if (!ok)
     {
-        FAIL("rbc_glob_v2 returned false");
+        FAIL("rbc_glob returned false");
         return;
     }
 
@@ -273,7 +273,7 @@ static void test_wildcard_ancestor_dot(void)
         }
     }
 
-    rbc_glob_free_v2(results, count, NULL);
+    rbc_glob_free(results, count, NULL);
 
     if (!has_dot)
     {

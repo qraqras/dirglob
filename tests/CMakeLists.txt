@@ -33,6 +33,7 @@ file(GLOB TEST_IMPLS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CONFIGURE_DEPENDS test
 list(FILTER TEST_IMPLS EXCLUDE REGEX "^test_parity_.*\\.c$")
 list(FILTER TEST_IMPLS EXCLUDE REGEX "^test_glob_generated\\.c$")
 list(FILTER TEST_IMPLS EXCLUDE REGEX "^test_glob_hints\\.c$")  # Standalone test
+list(FILTER TEST_IMPLS EXCLUDE REGEX "^test_glob_v2\\.c$")     # Standalone test (v2 API test)
 
 # Add test helpers
 list(APPEND TEST_IMPLS test_helpers.c)
