@@ -7,9 +7,12 @@ target_link_libraries(rbc_example PRIVATE rbc)
 
 install(TARGETS rbc_example RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-add_executable(bench_glob bench_glob.c)
-target_include_directories(bench_glob PRIVATE "${PROJECT_SOURCE_DIR}/include")
-target_link_libraries(bench_glob PRIVATE rbc)
+# bench_glob uses POSIX glob.h, only build on non-Windows
+if(NOT WIN32)
+  add_executable(bench_glob bench_glob.c)
+  target_include_directories(bench_glob PRIVATE "${PROJECT_SOURCE_DIR}/include")
+  target_link_libraries(bench_glob PRIVATE rbc)
+endif()
 
 add_executable(example_glob example_glob.c)
 target_include_directories(example_glob PRIVATE "${PROJECT_SOURCE_DIR}/include")
