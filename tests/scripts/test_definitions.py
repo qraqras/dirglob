@@ -19,6 +19,7 @@ class FNMFlags(Flag):
     DOTMATCH = 0x04  # 1 << 2
     CASEFOLD = 0x08  # 1 << 3
     EXTGLOB  = 0x10  # 1 << 4
+    SYSCASE  = 0x20  # 1 << 5
 
 
 @dataclass
@@ -188,6 +189,19 @@ PATTERNS = [
     ".*.*",
     ".*/.*",
     "**/.*",
+
+    # Windows-specific patterns
+    "C:/*",
+    "C:\\*",
+    "//server/share/*",
+    "\\\\server\\share\\*",
+
+    # tilde patterns
+    "~/*",
+
+    # Complex escape + path combinations
+    "dir\\/*.txt",        # Backslash before wildcard
+    "dir\\*\\file",       # Multiple backslash-star
 ]
 
 # フラグ組み合わせ（重要なもの）
@@ -198,6 +212,7 @@ FLAG_OPTIONS = [
     FNMFlags.PATHNAME,                               # Slash handling
     FNMFlags.CASEFOLD,                               # Case insensitive
     FNMFlags.EXTGLOB,                                # Brace expansion {a,b}
+    FNMFlags.SYSCASE,                                # System case sensitivity
     FNMFlags.DOTMATCH | FNMFlags.PATHNAME,           # Common combo
     FNMFlags.PATHNAME | FNMFlags.CASEFOLD,           # Common combo
     FNMFlags.DOTMATCH | FNMFlags.CASEFOLD,           # Common combo

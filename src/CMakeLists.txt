@@ -6,10 +6,18 @@
 #   └── utils/ - Utility modules (arena, string helpers)
 #
 
+# Determine platform-specific source file
+if(WIN32)
+  set(PLATFORM_SOURCE core/platform_win32.c)
+else()
+  set(PLATFORM_SOURCE core/platform_posix.c)
+endif()
+
 add_library(rbc
   # Core modules
   core/glob.c           # Main glob implementation
   core/fnmatch.c        # Pattern matching
+  ${PLATFORM_SOURCE}    # Platform abstraction
 
   # Utilities
   utils/arena.c         # Memory arena

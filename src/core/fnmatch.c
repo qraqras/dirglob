@@ -469,6 +469,12 @@ bool rbc_fnmatch(const char *pattern, const char *string, unsigned flags)
         return false;
     }
 
+    // On Windows, SYSCASE means case-insensitive matching
+#ifdef _WIN32
+    if (flags & RBC_FNM_SYSCASE)
+        flags |= RBC_FNM_CASEFOLD;
+#endif
+
     // Call core matching (no fast path for single-shot)
     int res = rbc_match_core((const uchar *)pattern, (const uchar *)string, flags, (const uchar *)string);
     return res == RBC_MATCH;

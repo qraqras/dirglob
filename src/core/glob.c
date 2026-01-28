@@ -1,17 +1,16 @@
+#include "platform.h"
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <dirent.h>
 
 // ============================================================================
 // Constants and Flags
 // ============================================================================
 
-#define RBC_GLOB_MAX_PATH 4096
+#define RBC_GLOB_MAX_PATH RBC_MAX_PATH
 #define RBC_RESULTS_INIT_DATA (64 * 1024) // 64KB initial data buffer
 #define RBC_RESULTS_INIT_COUNT 256        // Initial path count
 
@@ -20,6 +19,7 @@
 #define RBC_FNM_PATHNAME 0x02
 #define RBC_FNM_DOTMATCH 0x04
 #define RBC_FNM_CASEFOLD 0x08
+#define RBC_FNM_SYSCASE 0x20
 
 // ============================================================================
 // Segment Types
@@ -158,36 +158,6 @@ static size_t rbc_append_slash(char *buf, size_t len, size_t buf_size)
         buf[len] = '\0';
     }
     return len;
-}
-
-// ============================================================================
-// Directory Entry Helpers (d_type optimization)
-// ============================================================================
-
-/**
- * @brief Check if dirent is a directory using d_type when available
- * Falls back to stat() only when necessary
- */
-static inline bool rbc_is_dir_entry(struct dirent *e, const char *full_path)
-{
-#if defined(_DIRENT_HAVE_D_TYPE) || defined(DT_DIR)
-    if (e->d_type == DT_DIR)
-        return true;
-    if (e->d_type != DT_UNKNOWN && e->d_type != DT_LNK)
-        return false;
-#endif
-    // Fallback to stat for DT_UNKNOWN, DT_LNK, or systems without d_type
-    struct stat st;
-    return (stat(full_path, &st) == 0 && S_ISDIR(st.st_mode));
-}
-
-/**
- * @brief Check if path exists
- */
-static inline bool rbc_path_exists(const char *path)
-{
-    struct stat st;
-    return stat(path, &st) == 0;
 }
 
 // ============================================================================
@@ -354,6 +324,12 @@ bool rbc_fnmatch(const char *pattern, const char *string, unsigned flags);
 static bool rbc_match_segment(const rbc_segment_t *seg, const char *name,
                               unsigned flags)
 {
+    // On Windows, SYSCASE means case-insensitive matching
+#ifdef _WIN32
+    if (flags & RBC_FNM_SYSCASE)
+        flags |= RBC_FNM_CASEFOLD;
+#endif
+
     // Prepare null-terminated pattern
     char pattern_buf[RBC_GLOB_MAX_PATH];
     if (seg->len >= sizeof(pattern_buf))
@@ -364,6 +340,24 @@ static bool rbc_match_segment(const rbc_segment_t *seg, const char *name,
     switch (seg->type)
     {
     case SEG_LITERAL:
+        if (flags & RBC_FNM_CASEFOLD)
+        {
+            // Case-insensitive comparison
+            const char *p = pattern_buf;
+            const char *n = name;
+            while (*p && *n)
+            {
+                unsigned char pc = (unsigned char)*p++;
+                unsigned char nc = (unsigned char)*n++;
+                if (pc >= 'A' && pc <= 'Z')
+                    pc += 'a' - 'A';
+                if (nc >= 'A' && nc <= 'Z')
+                    nc += 'a' - 'A';
+                if (pc != nc)
+                    return false;
+            }
+            return *p == '\0' && *n == '\0';
+        }
         return strcmp(pattern_buf, name) == 0;
     case SEG_DOT:
         return strcmp(name, ".") == 0;
@@ -524,11 +518,11 @@ static void rbc_glob_process_dir(const char *dir_path, size_t dir_len,
                                  rbc_walk_queue_t *queue,
                                  bool has_wildcard_ancestor)
 {
-    DIR *dirp = opendir(dir_len > 0 ? dir_path : ".");
+    rbc_dir_t *dirp = rbc_opendir(dir_len > 0 ? dir_path : ".");
     if (!dirp)
         return;
 
-    struct dirent *entry;
+    rbc_dirent_t entry;
     char pathbuf[RBC_GLOB_MAX_PATH];
 
     // Determine if next segment is a wildcard
@@ -538,9 +532,9 @@ static void rbc_glob_process_dir(const char *dir_path, size_t dir_len,
         next_has_wildcard = true;
     }
 
-    while ((entry = readdir(dirp)) != NULL)
+    while (rbc_readdir(dirp, &entry))
     {
-        const char *name = entry->d_name;
+        const char *name = entry.name;
 
         // Apply skip rules
         if (rbc_should_skip_entry(name, seg, flags, has_wildcard_ancestor))
@@ -565,7 +559,7 @@ static void rbc_glob_process_dir(const char *dir_path, size_t dir_len,
             // If trailing slash, must be directory
             if (seg->has_trailing_slash)
             {
-                if (rbc_is_dir_entry(entry, pathbuf))
+                if (entry.is_dir)
                 {
                     new_len = rbc_append_slash(pathbuf, new_len, sizeof(pathbuf));
                     rbc_add_result(results, pathbuf, baselen, baselen == 0);
@@ -583,7 +577,7 @@ static void rbc_glob_process_dir(const char *dir_path, size_t dir_len,
         else
         {
             // Intermediate segment: must be directory, enqueue
-            if (rbc_is_dir_entry(entry, pathbuf))
+            if (entry.is_dir)
             {
                 uint8_t next_flags = next_has_wildcard ? WALK_HAS_WILDCARD_ANCESTOR : 0;
                 rbc_walk_enqueue(queue, pathbuf, new_len, remaining_pattern, next_flags);
@@ -591,7 +585,7 @@ static void rbc_glob_process_dir(const char *dir_path, size_t dir_len,
         }
     }
 
-    closedir(dirp);
+    rbc_closedir(dirp);
 }
 
 /**
@@ -625,16 +619,16 @@ static void rbc_glob_process_recursive(const char *dir_path, size_t dir_len,
     bool has_next_seg = (after_recursive[0] != '\0') &&
                         rbc_next_segment(&next_remaining, flags, &next_seg);
 
-    DIR *dirp = opendir(dir_len > 0 ? dir_path : ".");
+    rbc_dir_t *dirp = rbc_opendir(dir_len > 0 ? dir_path : ".");
     if (!dirp)
         return;
 
-    struct dirent *entry;
+    rbc_dirent_t entry;
     char pathbuf[RBC_GLOB_MAX_PATH];
 
-    while ((entry = readdir(dirp)) != NULL)
+    while (rbc_readdir(dirp, &entry))
     {
-        const char *name = entry->d_name;
+        const char *name = entry.name;
 
         // Skip "." and ".." - always excluded from ** traversal
         if (name[0] == '.' && (name[1] == '\0' || (name[1] == '.' && name[2] == '\0')))
@@ -652,7 +646,7 @@ static void rbc_glob_process_recursive(const char *dir_path, size_t dir_len,
         size_t new_len = rbc_build_path(pathbuf, sizeof(pathbuf),
                                         dir_path, dir_len, name, name_len);
 
-        bool is_dir = rbc_is_dir_entry(entry, pathbuf);
+        bool is_dir = entry.is_dir;
 
         if (match_dirs_only && !skip_descent)
         {
@@ -709,7 +703,7 @@ static void rbc_glob_process_recursive(const char *dir_path, size_t dir_len,
         }
     }
 
-    closedir(dirp);
+    rbc_closedir(dirp);
 }
 
 /**
@@ -722,21 +716,56 @@ static void rbc_glob_walk(const char *base, size_t baselen,
     rbc_walk_queue_t queue = {.head = 0, .tail = 0, .count = 0};
 
     // Handle absolute path
-    if (pattern[0] == '/')
+    if (rbc_is_absolute_path(pattern))
     {
-        // Skip leading slashes
+        // Skip leading slashes (or drive letter + slash on Windows)
         const char *after_slash = pattern;
-        while (*after_slash == '/')
+#ifdef _WIN32
+        // Skip drive letter (C:) if present
+        if (((after_slash[0] >= 'A' && after_slash[0] <= 'Z') ||
+             (after_slash[0] >= 'a' && after_slash[0] <= 'z')) &&
+            after_slash[1] == ':')
+        {
+            after_slash += 2;
+        }
+#endif
+        while (*after_slash == '/' || *after_slash == '\\')
             after_slash++;
 
-        // Pattern is just "/" - return "/" itself
+        // Pattern is just "/" or "C:\" - return root itself
         if (*after_slash == '\0')
         {
+#ifdef _WIN32
+            // Return the drive root if present
+            if (pattern[1] == ':')
+            {
+                char root[4] = {pattern[0], ':', '/', '\0'};
+                rbc_results_add(results, root, 3);
+            }
+            else
+            {
+                rbc_results_add(results, "/", 1);
+            }
+#else
             rbc_results_add(results, "/", 1);
+#endif
             return;
         }
 
+#ifdef _WIN32
+        // Enqueue with drive root if present
+        if (pattern[1] == ':')
+        {
+            char root[4] = {pattern[0], ':', '/', '\0'};
+            rbc_walk_enqueue(&queue, root, 3, after_slash, 0);
+        }
+        else
+        {
+            rbc_walk_enqueue(&queue, "/", 1, after_slash, 0);
+        }
+#else
         rbc_walk_enqueue(&queue, "/", 1, after_slash, 0);
+#endif
         baselen = 0; // Absolute path ignores base
     }
     else
@@ -1121,20 +1150,27 @@ bool rbc_glob(const char **patterns, size_t npatterns, unsigned flags,
     // Calculate base length
     size_t baselen = 0;
     const char *actual_base = "";
+    char base_norm_buf[RBC_GLOB_MAX_PATH];
+
     if (base && base[0] != '\0')
     {
-        baselen = strlen(base);
+        // Normalize path separators (Windows: \ -> /)
+        actual_base = rbc_normalize_path(base, base_norm_buf, sizeof(base_norm_buf));
+        baselen = strlen(actual_base);
         // Strip trailing slashes
-        while (baselen > 0 && base[baselen - 1] == '/')
+        while (baselen > 0 && actual_base[baselen - 1] == '/')
             baselen--;
-        actual_base = base;
     }
 
     // Process each pattern
     for (size_t i = 0; i < npatterns; i++)
     {
+        // Normalize path separators (Windows: \ -> /)
+        char norm_buf[RBC_GLOB_MAX_PATH];
+        const char *pattern = rbc_normalize_path(patterns[i], norm_buf, sizeof(norm_buf));
+
         // Expand braces
-        rbc_brace_result_t *expanded = rbc_brace_expand(patterns[i]);
+        rbc_brace_result_t *expanded = rbc_brace_expand(pattern);
         if (!expanded)
             continue;
 

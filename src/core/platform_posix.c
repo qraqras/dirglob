@@ -1,0 +1,186 @@
+/**
+ * @file platform_posix.c
+ * @brief POSIX implementation of platform abstraction layer
+ *
+ * For: Linux, macOS, BSD, and other POSIX-compliant systems
+ */
+
+#ifndef _WIN32
+
+#include "platform.h"
+#include <dirent.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+
+// ============================================================================
+// Directory Handle
+// ============================================================================
+
+struct rbc_dir_s
+{
+    DIR *dirp;
+    char path[RBC_MAX_PATH]; // For stat fallback
+};
+
+// ============================================================================
+// Directory Operations
+// ============================================================================
+
+rbc_dir_t *rbc_opendir(const char *path)
+{
+    if (!path)
+        return NULL;
+
+    // Handle empty path as current directory
+    const char *actual_path = (path[0] == '\0') ? "." : path;
+
+    DIR *dirp = opendir(actual_path);
+    if (!dirp)
+        return NULL;
+
+    rbc_dir_t *dir = malloc(sizeof(rbc_dir_t));
+    if (!dir)
+    {
+        closedir(dirp);
+        return NULL;
+    }
+
+    dir->dirp = dirp;
+    strncpy(dir->path, actual_path, RBC_MAX_PATH - 1);
+    dir->path[RBC_MAX_PATH - 1] = '\0';
+
+    return dir;
+}
+
+bool rbc_readdir(rbc_dir_t *dir, rbc_dirent_t *entry)
+{
+    if (!dir || !dir->dirp || !entry)
+        return false;
+
+    struct dirent *de = readdir(dir->dirp);
+    if (!de)
+        return false;
+
+    // Copy name
+    strncpy(entry->name, de->d_name, RBC_MAX_PATH - 1);
+    entry->name[RBC_MAX_PATH - 1] = '\0';
+
+    // Determine type using d_type if available
+    entry->is_dir = false;
+    entry->is_link = false;
+
+#if defined(_DIRENT_HAVE_D_TYPE) || defined(DT_DIR)
+    if (de->d_type == DT_DIR)
+    {
+        entry->is_dir = true;
+    }
+    else if (de->d_type == DT_LNK)
+    {
+        entry->is_link = true;
+        // Need to stat to check if link points to directory
+        char fullpath[RBC_MAX_PATH];
+        size_t pathlen = strlen(dir->path);
+        if (pathlen + 1 + strlen(entry->name) < RBC_MAX_PATH)
+        {
+            snprintf(fullpath, sizeof(fullpath), "%s/%s", dir->path, entry->name);
+            struct stat st;
+            if (stat(fullpath, &st) == 0 && S_ISDIR(st.st_mode))
+            {
+                entry->is_dir = true;
+            }
+        }
+    }
+    else if (de->d_type == DT_UNKNOWN)
+    {
+        // Fallback to stat
+        char fullpath[RBC_MAX_PATH];
+        size_t pathlen = strlen(dir->path);
+        if (pathlen + 1 + strlen(entry->name) < RBC_MAX_PATH)
+        {
+            snprintf(fullpath, sizeof(fullpath), "%s/%s", dir->path, entry->name);
+            struct stat st;
+            if (lstat(fullpath, &st) == 0)
+            {
+                entry->is_dir = S_ISDIR(st.st_mode);
+                entry->is_link = S_ISLNK(st.st_mode);
+                if (entry->is_link && stat(fullpath, &st) == 0)
+                {
+                    entry->is_dir = S_ISDIR(st.st_mode);
+                }
+            }
+        }
+    }
+#else
+    // No d_type support, always use stat
+    char fullpath[RBC_MAX_PATH];
+    size_t pathlen = strlen(dir->path);
+    if (pathlen + 1 + strlen(entry->name) < RBC_MAX_PATH)
+    {
+        snprintf(fullpath, sizeof(fullpath), "%s/%s", dir->path, entry->name);
+        struct stat st;
+        if (lstat(fullpath, &st) == 0)
+        {
+            entry->is_dir = S_ISDIR(st.st_mode);
+            entry->is_link = S_ISLNK(st.st_mode);
+            if (entry->is_link && stat(fullpath, &st) == 0)
+            {
+                entry->is_dir = S_ISDIR(st.st_mode);
+            }
+        }
+    }
+#endif
+
+    return true;
+}
+
+void rbc_closedir(rbc_dir_t *dir)
+{
+    if (dir)
+    {
+        if (dir->dirp)
+            closedir(dir->dirp);
+        free(dir);
+    }
+}
+
+// ============================================================================
+// File Operations
+// ============================================================================
+
+bool rbc_path_exists(const char *path)
+{
+    if (!path)
+        return false;
+    struct stat st;
+    return stat(path, &st) == 0;
+}
+
+bool rbc_is_directory(const char *path)
+{
+    if (!path)
+        return false;
+    struct stat st;
+    return stat(path, &st) == 0 && S_ISDIR(st.st_mode);
+}
+
+// ============================================================================
+// Path Utilities
+// ============================================================================
+
+bool rbc_is_absolute_path(const char *path)
+{
+    return path && path[0] == '/';
+}
+
+const char *rbc_normalize_path(const char *path, char *buf, size_t buf_size)
+{
+    (void)buf;
+    (void)buf_size;
+    // On POSIX, '/' is already the separator, no normalization needed
+    return path;
+}
+
+#endif // !_WIN32

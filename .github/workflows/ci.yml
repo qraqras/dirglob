@@ -1,0 +1,133 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:  # 手動実行も可能
+
+jobs:
+  # ==========================================================================
+  # Linux Build & Test
+  # ==========================================================================
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential ruby
+
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Generate test fixtures
+        run: |
+          python3 tests/scripts/gen_fixtures.py
+
+      - name: Generate Ruby expected values
+        run: |
+          python3 tests/scripts/gen_ruby_expected.py
+
+      - name: Generate test code
+        run: |
+          python3 tests/scripts/gen_c_tests.py
+
+      - name: Rebuild with tests
+        run: cmake --build build --parallel
+
+      - name: Run tests
+        working-directory: tests/fixtures
+        run: |
+          ../../build/tests/test_glob_generated 2>&1 | tee /tmp/test_results.txt
+          tail -5 /tmp/test_results.txt
+
+  # ==========================================================================
+  # Windows Build & Test
+  # ==========================================================================
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Configure (MSVC)
+        run: cmake -B build -G "Visual Studio 17 2022" -A x64
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Generate test fixtures
+        run: |
+          python tests/scripts/gen_fixtures.py
+
+      - name: Generate Ruby expected values
+        run: |
+          python tests/scripts/gen_ruby_expected.py
+
+      - name: Generate test code
+        run: |
+          python tests/scripts/gen_c_tests.py
+
+      - name: Rebuild with tests
+        run: cmake --build build --config Release --parallel
+
+      - name: Run tests
+        working-directory: tests/fixtures
+        shell: cmd
+        run: |
+          ..\..\build\tests\Release\test_glob_generated.exe 2>&1
+
+  # ==========================================================================
+  # macOS Build & Test
+  # ==========================================================================
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          brew install cmake ruby
+
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Generate test fixtures
+        run: |
+          python3 tests/scripts/gen_fixtures.py
+
+      - name: Generate Ruby expected values
+        run: |
+          python3 tests/scripts/gen_ruby_expected.py
+
+      - name: Generate test code
+        run: |
+          python3 tests/scripts/gen_c_tests.py
+
+      - name: Rebuild with tests
+        run: cmake --build build --parallel
+
+      - name: Run tests
+        working-directory: tests/fixtures
+        run: |
+          ../../build/tests/test_glob_generated 2>&1 | tee /tmp/test_results.txt
+          tail -5 /tmp/test_results.txt
