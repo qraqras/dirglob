@@ -1,21 +1,8 @@
-/**
- * @file glob_v2.c
- * @brief Ruby 4.0 Dir.glob compatible implementation - v2 redesign
- *
- * Design goals:
- * - High performance: minimal syscalls, minimal allocations
- * - Lightweight: target ~800 lines (down from ~1100)
- * - Simple: unified walker, arena-based results
- *
- * See: DOCS/DESIGN_V2.md for detailed specifications
- */
-
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
-#include <stdio.h> // For RBC_GLOB_DEBUG fprintf
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <dirent.h>
@@ -38,7 +25,7 @@
 // Segment Types
 // ============================================================================
 
-typedef enum
+typedef enum rbc_seg_type_e
 {
     SEG_LITERAL,   // Literal string (e.g., "foo", "bar.txt")
     SEG_DOT,       // "." (current directory)
@@ -51,7 +38,7 @@ typedef enum
 // Arena-based Results Buffer
 // ============================================================================
 
-typedef struct
+typedef struct rbc_results_s
 {
     char *data;       // Contiguous buffer for all paths
     size_t *offsets;  // Offset of each path in data
@@ -125,45 +112,6 @@ static void rbc_results_free(rbc_results_t *r)
 // ============================================================================
 
 /**
- * @brief Normalize path: remove consecutive slashes
- * @return Length of normalized path
- */
-__attribute__((unused)) static size_t rbc_normalize_path(char *dst, size_t dst_size,
-                                                         const char *src, size_t src_len)
-{
-    if (src_len == 0 || dst_size == 0)
-    {
-        if (dst_size > 0)
-            dst[0] = '\0';
-        return 0;
-    }
-
-    size_t j = 0;
-    bool prev_slash = false;
-
-    for (size_t i = 0; i < src_len && j < dst_size - 1; i++)
-    {
-        if (src[i] == '/')
-        {
-            if (!prev_slash)
-            {
-                dst[j++] = '/';
-                prev_slash = true;
-            }
-            // Skip consecutive slashes
-        }
-        else
-        {
-            dst[j++] = src[i];
-            prev_slash = false;
-        }
-    }
-
-    dst[j] = '\0';
-    return j;
-}
-
-/**
  * @brief Build path: base + '/' + name (no snprintf)
  * @return Length of resulting path
  */
@@ -186,15 +134,11 @@ static size_t rbc_build_path(char *buf, size_t buf_size,
 
     size_t total = base_len + sep_len + name_len;
     if (total >= buf_size)
-    {
         total = buf_size - 1;
-    }
 
     memcpy(buf, base, base_len);
     if (!base_has_slash)
-    {
         buf[base_len] = '/';
-    }
 
     size_t copy_name = (total > base_len + sep_len) ? total - base_len - sep_len : 0;
     memcpy(buf + base_len + sep_len, name, copy_name);
@@ -244,15 +188,6 @@ static inline bool rbc_path_exists(const char *path)
 {
     struct stat st;
     return stat(path, &st) == 0;
-}
-
-/**
- * @brief Check if path is a directory
- */
-static inline bool rbc_is_dir(const char *path)
-{
-    struct stat st;
-    return (stat(path, &st) == 0 && S_ISDIR(st.st_mode));
 }
 
 // ============================================================================
@@ -663,11 +598,11 @@ static void rbc_glob_process_dir(const char *dir_path, size_t dir_len,
  * @brief Process recursive (**) pattern
  *
  * RECURSIVE only handles directory traversal, NOT matching.
- * Matching is delegated to the walker by pushing remaining pattern to stack.
+ * Matching is delegated to the walker by pushing remaining pattern to queue.
  *
  * Design:
  * - Double-star matches "zero or more directories"
- * - At each directory level, push remaining pattern to stack for matching
+ * - At each directory level, enqueue remaining pattern for matching
  * - Recurse into subdirectories (except dotdirs without DOTMATCH)
  * - For trailing slash case, add directories directly
  */
@@ -1119,7 +1054,7 @@ static void rbc_results_sort_range(rbc_results_t *r, size_t start, size_t end)
 /**
  * @brief Convert arena results to output format
  */
-static bool rbc_results_to_output(rbc_results_t *r, bool sort,
+static bool rbc_results_to_output(rbc_results_t *r,
                                   char ***out, size_t *count, size_t **lengths)
 {
     *count = r->count;
@@ -1160,12 +1095,6 @@ static bool rbc_results_to_output(rbc_results_t *r, bool sort,
         memcpy(items[i], src, len + 1);
         if (lens)
             lens[i] = len;
-    }
-
-    // Sort if requested
-    if (sort && r->count > 1)
-    {
-        qsort(items, r->count, sizeof(char *), rbc_strcmp_wrapper);
     }
 
     *out = items;
@@ -1228,8 +1157,8 @@ bool rbc_glob(const char **patterns, size_t npatterns, unsigned flags,
         rbc_brace_free(expanded);
     }
 
-    // Convert to output format (don't sort again - already sorted per-pattern)
-    bool ok = rbc_results_to_output(&results, false, out, count, lengths);
+    // Convert to output format (already sorted per-pattern)
+    bool ok = rbc_results_to_output(&results, out, count, lengths);
     rbc_results_free(&results);
 
     return ok;
@@ -1240,9 +1169,7 @@ void rbc_glob_free(char **list, size_t count, size_t *lengths)
     if (!list)
         return;
     for (size_t i = 0; i < count; i++)
-    {
         free(list[i]);
-    }
     free(list);
     free(lengths);
 }
