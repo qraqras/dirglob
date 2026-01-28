@@ -387,7 +387,7 @@ typedef struct
     uint8_t flags;       // WALK_* flags
 } rbc_walk_frame_t;
 
-#define WALK_QUEUE_SIZE 64
+#define WALK_QUEUE_SIZE 1024
 
 typedef struct
 {
@@ -608,8 +608,6 @@ static void rbc_glob_process_recursive(const char *dir_path, size_t dir_len,
                                        rbc_walk_queue_t *queue,
                                        bool has_wildcard_ancestor)
 {
-    (void)has_wildcard_ancestor;
-
     // Check if **/ at end (match directories only)
     bool match_dirs_only = (rec_seg->has_trailing_slash && after_recursive[0] == '\0');
 
@@ -630,9 +628,22 @@ static void rbc_glob_process_recursive(const char *dir_path, size_t dir_len,
     {
         const char *name = entry.name;
 
-        // Skip "." and ".." - always excluded from ** traversal
-        if (name[0] == '.' && (name[1] == '\0' || (name[1] == '.' && name[2] == '\0')))
+        // ".." is always excluded from glob results
+        if (name[0] == '.' && name[1] == '.' && name[2] == '\0')
             continue;
+
+        // "." handling:
+        // - Without DOTMATCH: always skip
+        // - With DOTMATCH at depth 0 (no wildcard ancestor): allow matching
+        // - With DOTMATCH at depth > 0 (has wildcard ancestor): skip
+        // This matches Ruby's behavior where **/'s zero-depth match is not
+        // considered "through a wildcard"
+        bool is_dot_entry = (name[0] == '.' && name[1] == '\0');
+        if (is_dot_entry)
+        {
+            if (!(flags & RBC_FNM_DOTMATCH) || has_wildcard_ancestor)
+                continue;
+        }
 
         // Check if this is a dotfile/dotdir
         bool is_dotfile = (name[0] == '.');
@@ -651,7 +662,8 @@ static void rbc_glob_process_recursive(const char *dir_path, size_t dir_len,
         if (match_dirs_only && !skip_descent)
         {
             // **/ at end: add all directories (except dotdirs without DOTMATCH)
-            if (is_dir)
+            // Never add "." as it's redundant (same as parent directory)
+            if (is_dir && !is_dot_entry)
             {
                 rbc_append_slash(pathbuf, new_len, sizeof(pathbuf));
                 rbc_add_result(results, pathbuf, baselen, baselen == 0);
@@ -661,8 +673,9 @@ static void rbc_glob_process_recursive(const char *dir_path, size_t dir_len,
         // Direct matching of after_recursive pattern (** matches zero directories)
         if (has_next_seg)
         {
-            // Check if entry matches the next segment (respecting dotfile rules)
-            if (!rbc_should_skip_entry(name, &next_seg, flags, true) &&
+            // At depth 0 (no wildcard ancestor), "." can match with DOTMATCH
+            // At depth > 0, "." is always skipped (passed through wildcard)
+            if (!rbc_should_skip_entry(name, &next_seg, flags, has_wildcard_ancestor) &&
                 rbc_match_segment(&next_seg, name, flags))
             {
                 if (next_seg.is_last)
@@ -694,7 +707,8 @@ static void rbc_glob_process_recursive(const char *dir_path, size_t dir_len,
         }
 
         // Recurse into subdirectories (only if allowed)
-        if (is_dir && !skip_descent)
+        // Never recurse into "." (would cause infinite loop)
+        if (is_dir && !skip_descent && !is_dot_entry)
         {
             // Continue ** matching in subdirectory
             rbc_glob_process_recursive(pathbuf, new_len, baselen, rec_seg,
