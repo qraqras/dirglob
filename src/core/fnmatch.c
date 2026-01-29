@@ -98,8 +98,7 @@ static bool match_bracket(const char *pattern, int c, unsigned flags)
             int end = (unsigned char)p[1];
             if (c >= start && c <= end)
                 matched = true;
-            if ((flags & RBC_FNM_CASEFOLD) &&
-                tolower(c) >= tolower(start) && tolower(c) <= tolower(end))
+            if ((flags & RBC_FNM_CASEFOLD) && tolower(c) >= tolower(start) && tolower(c) <= tolower(end))
                 matched = true;
             p += 2;
             continue;
@@ -183,7 +182,28 @@ static int fnmatch_internal(const char *pattern, const char *string, unsigned fl
                     goto backtrack;
             }
 
-            star_pat = ++p;
+            /* Skip consecutive stars */
+            p++;
+            while (*p == '*')
+                p++;
+
+            /* Optimization: if pattern ends with *, match rest of string */
+            if (*p == '\0')
+            {
+                if (flags & RBC_FNM_PATHNAME)
+                {
+                    /* With PATHNAME, * doesn't match / - check if any / remains */
+                    while (*s)
+                    {
+                        if (*s == '/')
+                            return true; /* No match - / found */
+                        s++;
+                    }
+                }
+                return false; /* Match - pattern ends with * */
+            }
+
+            star_pat = p;
             star_str = s;
             continue;
         }
