@@ -14,14 +14,6 @@
 #include <stdbool.h>
 #include "rbc/rbc.h"
 
-/* Internal flag definitions */
-#define FNM_PATHNAME 0x1
-#define FNM_NOESCAPE 0x2
-#define FNM_PERIOD 0x4
-#define FNM_CASEFOLD 0x10
-
-#define FNM_NOMATCH 1
-
 /* UTF-8 character reader - returns character and advances pointer */
 static int utf8_next(const char **str)
 {
@@ -65,11 +57,11 @@ static int utf8_next(const char **str)
 }
 
 /* Case-insensitive character comparison */
-static bool char_match(int c1, int c2, int flags)
+static bool char_match(int c1, int c2, unsigned flags)
 {
     if (c1 == c2)
         return true;
-    if (!(flags & FNM_CASEFOLD))
+    if (!(flags & RBC_FNM_CASEFOLD))
         return false;
 
     /* Simple ASCII case folding */
@@ -80,8 +72,8 @@ static bool char_match(int c1, int c2, int flags)
     return c1 == c2;
 }
 
-/* Match bracket expression [a-z] [!abc] [:alpha:] */
-static bool match_bracket(const char *pattern, int c, int flags)
+/* Match bracket expression [a-z] [!abc] */
+static bool match_bracket(const char *pattern, int c, unsigned flags)
 {
     bool invert = false;
     bool matched = false;
@@ -106,43 +98,11 @@ static bool match_bracket(const char *pattern, int c, int flags)
             int end = (unsigned char)p[1];
             if (c >= start && c <= end)
                 matched = true;
-            if ((flags & FNM_CASEFOLD) &&
+            if ((flags & RBC_FNM_CASEFOLD) &&
                 tolower(c) >= tolower(start) && tolower(c) <= tolower(end))
                 matched = true;
             p += 2;
             continue;
-        }
-
-        /* Character class [:alpha:] */
-        if (*p == '[' && p[1] == ':')
-        {
-            const char *class_end = strstr(p + 2, ":]");
-            if (class_end)
-            {
-                char classname[16];
-                int len = class_end - (p + 2);
-                if (len > 0 && len < 16)
-                {
-                    memcpy(classname, p + 2, len);
-                    classname[len] = 0;
-
-                    /* Basic POSIX character classes */
-                    if (strcmp(classname, "alpha") == 0 && isalpha(c))
-                        matched = true;
-                    else if (strcmp(classname, "digit") == 0 && isdigit(c))
-                        matched = true;
-                    else if (strcmp(classname, "alnum") == 0 && isalnum(c))
-                        matched = true;
-                    else if (strcmp(classname, "space") == 0 && isspace(c))
-                        matched = true;
-                    else if (strcmp(classname, "upper") == 0 && isupper(c))
-                        matched = true;
-                    else if (strcmp(classname, "lower") == 0 && islower(c))
-                        matched = true;
-                }
-                p = class_end + 2;
-                continue;
-            }
         }
 
         /* Single character */
@@ -155,23 +115,25 @@ static bool match_bracket(const char *pattern, int c, int flags)
 }
 
 /* Core matching algorithm - simple iterative with backtracking */
-static int fnmatch_internal(const char *pattern, const char *string, int flags)
+static int fnmatch_internal(const char *pattern, const char *string, unsigned flags)
 {
     const char *star_pat = NULL; /* Position after last * in pattern */
     const char *star_str = NULL; /* Position in string when * was seen */
     const char *p = pattern;
     const char *s = string;
 
-    /* Check leading period */
-    if ((flags & FNM_PERIOD) && *s == '.' && *p != '.')
+    /* Check leading period (when DOTMATCH is not set) */
+    if (!(flags & RBC_FNM_DOTMATCH) && *s == '.' && *p != '.')
     {
-        return FNM_NOMATCH;
+        /* Dot must be matched explicitly, not by wildcards */
+        if (*p != '.')
+            return true; /* No match */
     }
 
     while (*s)
     {
         /* Check for ** (recursive wildcard) - only with PATHNAME flag and followed by / */
-        if ((flags & FNM_PATHNAME) && p[0] == '*' && p[1] == '*' && p[2] == '/')
+        if ((flags & RBC_FNM_PATHNAME) && p[0] == '*' && p[1] == '*' && p[2] == '/')
         {
             /* ** followed by / matches zero or more directory levels */
             const char *rest_pattern = p + 3;
@@ -180,16 +142,16 @@ static int fnmatch_internal(const char *pattern, const char *string, int flags)
             /* Try matching at current position and after each / in string */
             while (1)
             {
-                /* Check for leading dot restriction */
-                if ((flags & FNM_PERIOD) && *try_pos == '.' && *rest_pattern != '.')
+                /* Check for leading dot restriction (when DOTMATCH is not set) */
+                if (!(flags & RBC_FNM_DOTMATCH) && *try_pos == '.' && *rest_pattern != '.')
                 {
                     /* Can't match dotfile without explicit dot in pattern */
                 }
                 else
                 {
                     /* Try matching rest of pattern from this position */
-                    if (fnmatch_internal(rest_pattern, try_pos, flags) == 0)
-                        return 0;
+                    if (!fnmatch_internal(rest_pattern, try_pos, flags))
+                        return false;
                 }
 
                 /* Find next / to try */
@@ -203,18 +165,18 @@ static int fnmatch_internal(const char *pattern, const char *string, int flags)
                 try_pos++;
             }
 
-            return FNM_NOMATCH;
+            return true;
         }
 
         if (*p == '*')
         {
             /* Single wildcard - save position for backtracking */
             /* With PATHNAME, * doesn't match / */
-            if ((flags & FNM_PATHNAME) && *s == '/')
+            if ((flags & RBC_FNM_PATHNAME) && *s == '/')
                 goto backtrack;
 
-            /* With PERIOD and PATHNAME, * at segment start doesn't match . */
-            if ((flags & FNM_PERIOD) && (flags & FNM_PATHNAME) && *s == '.')
+            /* Without DOTMATCH, with PATHNAME, * at segment start doesn't match . */
+            if (!(flags & RBC_FNM_DOTMATCH) && (flags & RBC_FNM_PATHNAME) && *s == '.')
             {
                 /* Check if this is at segment start (string start or after /) */
                 if (s == string || s[-1] == '/')
@@ -226,7 +188,7 @@ static int fnmatch_internal(const char *pattern, const char *string, int flags)
             continue;
         }
 
-        if (*p == '\\' && !(flags & FNM_NOESCAPE) && p[1])
+        if (*p == '\\' && !(flags & RBC_FNM_NOESCAPE) && p[1])
         {
             /* Escaped character */
             p++;
@@ -240,7 +202,7 @@ static int fnmatch_internal(const char *pattern, const char *string, int flags)
         else if (*p == '?')
         {
             /* Single character wildcard */
-            if ((flags & FNM_PATHNAME) && *s == '/')
+            if ((flags & RBC_FNM_PATHNAME) && *s == '/')
             {
                 /* ? doesn't match / with PATHNAME flag */
                 goto backtrack;
@@ -286,72 +248,44 @@ static int fnmatch_internal(const char *pattern, const char *string, int flags)
         if (star_pat)
         {
             /* With PATHNAME, * cannot match across / */
-            if ((flags & FNM_PATHNAME) && *star_str == '/')
-                return FNM_NOMATCH;
+            if ((flags & RBC_FNM_PATHNAME) && *star_str == '/')
+                return true;
 
             p = star_pat;
             s = ++star_str; /* Advance string and retry */
             continue;
         }
 
-        return FNM_NOMATCH;
+        return true;
     }
 
     /* Skip trailing * in pattern */
     while (*p == '*')
         p++;
 
-    return (*p == 0) ? 0 : FNM_NOMATCH;
+    return (*p != 0);
 }
 
-/* Main fnmatch function with pathname handling */
-static int fnmatch(const char *pattern, const char *string, int flags)
+/* Main fnmatch function */
+static bool fnmatch(const char *pattern, const char *string, unsigned flags)
 {
     if (!pattern || !string)
-        return FNM_NOMATCH;
+        return false;
 
-    if (!(flags & FNM_PATHNAME))
-    {
-        return fnmatch_internal(pattern, string, flags);
-    }
-
-    /* With FNM_PATHNAME, use fnmatch_internal which handles ** correctly */
-    return fnmatch_internal(pattern, string, flags);
+    return !fnmatch_internal(pattern, string, flags);
 }
 
 /* ========================================================================
  * RBC Wrapper Functions (Ruby-compatible API)
  * ======================================================================== */
 
-/* Map RBC flags to internal flags */
-static int rbc_flags_to_internal(unsigned rbc_flags)
-{
-    int flags = 0;
-
-    if (rbc_flags & RBC_FNM_NOESCAPE)
-        flags |= FNM_NOESCAPE;
-    if (rbc_flags & RBC_FNM_PATHNAME)
-        flags |= FNM_PATHNAME;
-    /* [RBC CHANGE] FNM_DOTMATCH logic: Ruby's DOTMATCH means wildcards match leading dots.
-     * musl's FNM_PERIOD means wildcards DON'T match leading dots.
-     * So: if DOTMATCH is NOT set, we enable PERIOD behavior. */
-    if (!(rbc_flags & RBC_FNM_DOTMATCH))
-        flags |= FNM_PERIOD;
-    if (rbc_flags & RBC_FNM_CASEFOLD)
-        flags |= FNM_CASEFOLD;
-    /* Note: RBC_FNM_EXTGLOB and RBC_FNM_SYSCASE not yet supported */
-
-    return flags;
-}
-
 bool rbc_fnmatch(const char *pattern, const char *path, unsigned flags)
 {
     if (!pattern || !path)
         return false;
 
-    int internal_flags = rbc_flags_to_internal(flags);
-    int result = fnmatch(pattern, path, internal_flags);
-    return (result == 0); /* 0 = match, FNM_NOMATCH = no match */
+    /* Note: RBC_FNM_EXTGLOB and RBC_FNM_SYSCASE not yet supported */
+    return fnmatch(pattern, path, flags);
 }
 
 /* Stub implementations for precompiled pattern API */
