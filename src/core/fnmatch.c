@@ -1,404 +1,399 @@
 /*
- * An implementation of what I call the "Sea of Stars" algorithm for
- * POSIX fnmatch(). The basic idea is that we factor the pattern into
- * a head component (which we match first and can reject without ever
- * measuring the length of the string), an optional tail component
- * (which only exists if the pattern contains at least one star), and
- * an optional "sea of stars", a set of star-separated components
- * between the head and tail. After the head and tail matches have
- * been removed from the input string, the components in the "sea of
- * stars" are matched sequentially by searching for their first
- * occurrence past the end of the previous match.
- *
- * - Rich Felker, April 2012
+ * Simple iterative fnmatch implementation
+ * Inspired by SQLite glob.c (Public Domain)
+ * Adapted for Ruby File.fnmatch compatibility
+ */
+
+/*
+ * 参照実装: https://github.com/sqlite/sqlite/blob/master/src/func.c#L728
  */
 
 #include <string.h>
-#include <fnmatch.h>
 #include <stdlib.h>
-#include <wchar.h>
-#include <wctype.h>
+#include <ctype.h>
+#include <stdbool.h>
+#include "rbc/rbc.h"
 
+/* Internal flag definitions */
 #define FNM_PATHNAME 0x1
 #define FNM_NOESCAPE 0x2
 #define FNM_PERIOD 0x4
-#define FNM_LEADING_DIR 0x8
 #define FNM_CASEFOLD 0x10
-#define FNM_FILE_NAME FNM_PATHNAME
 
 #define FNM_NOMATCH 1
-#define FNM_NOSYS (-1)
 
-#define END 0
-#define UNMATCHABLE -2
-#define BRACKET -3
-#define QUESTION -4
-#define STAR -5
-
-static int str_next(const char *str, size_t n, size_t *step)
+/* UTF-8 character reader - returns character and advances pointer */
+static int utf8_next(const char **str)
 {
-    if (!n)
-    {
-        *step = 0;
-        return 0;
-    }
-    if (str[0] >= 128U)
-    {
-        wchar_t wc;
-        int k = mbtowc(&wc, str, n);
-        if (k < 0)
-        {
-            *step = 1;
-            return -1;
-        }
-        *step = k;
-        return wc;
-    }
-    *step = 1;
-    return str[0];
-}
-
-static int pat_next(const char *pat, size_t m, size_t *step, int flags)
-{
-    int esc = 0;
-    if (!m || !*pat)
-    {
-        *step = 0;
-        return END;
-    }
-    *step = 1;
-    if (pat[0] == '\\' && pat[1] && !(flags & FNM_NOESCAPE))
-    {
-        *step = 2;
-        pat++;
-        esc = 1;
-        goto escaped;
-    }
-    if (pat[0] == '[')
-    {
-        size_t k = 1;
-        if (k < m)
-            if (pat[k] == '^' || pat[k] == '!')
-                k++;
-        if (k < m)
-            if (pat[k] == ']')
-                k++;
-        for (; k < m && pat[k] && pat[k] != ']'; k++)
-        {
-            if (k + 1 < m && pat[k + 1] && pat[k] == '[' && (pat[k + 1] == ':' || pat[k + 1] == '.' || pat[k + 1] == '='))
-            {
-                int z = pat[k + 1];
-                k += 2;
-                if (k < m && pat[k])
-                    k++;
-                while (k < m && pat[k] && (pat[k - 1] != z || pat[k] != ']'))
-                    k++;
-                if (k == m || !pat[k])
-                    break;
-            }
-        }
-        if (k == m || !pat[k])
-        {
-            *step = 1;
-            return '[';
-        }
-        *step = k + 1;
-        return BRACKET;
-    }
-    if (pat[0] == '*')
-        return STAR;
-    if (pat[0] == '?')
-        return QUESTION;
-escaped:
-    if (pat[0] >= 128U)
-    {
-        wchar_t wc;
-        int k = mbtowc(&wc, pat, m);
-        if (k < 0)
-        {
-            *step = 0;
-            return UNMATCHABLE;
-        }
-        *step = k + esc;
-        return wc;
-    }
-    return pat[0];
-}
-
-static int casefold(int k)
-{
-    int c = towupper(k);
-    return c == k ? towlower(k) : c;
-}
-
-static int match_bracket(const char *p, int k, int kfold)
-{
-    wchar_t wc;
-    int inv = 0;
-    p++;
-    if (*p == '^' || *p == '!')
-    {
-        inv = 1;
-        p++;
-    }
-    if (*p == ']')
-    {
-        if (k == ']')
-            return !inv;
-        p++;
-    }
-    else if (*p == '-')
-    {
-        if (k == '-')
-            return !inv;
-        p++;
-    }
-    wc = p[-1];
-    for (; *p != ']'; p++)
-    {
-        if (p[0] == '-' && p[1] != ']')
-        {
-            wchar_t wc2;
-            int l = mbtowc(&wc2, p + 1, 4);
-            if (l < 0)
-                return 0;
-            if (wc <= wc2)
-                if ((unsigned)k - wc <= wc2 - wc ||
-                    (unsigned)kfold - wc <= wc2 - wc)
-                    return !inv;
-            p += l - 1;
-            continue;
-        }
-        if (p[0] == '[' && (p[1] == ':' || p[1] == '.' || p[1] == '='))
-        {
-            const char *p0 = p + 2;
-            int z = p[1];
-            p += 3;
-            while (p[-1] != z || p[0] != ']')
-                p++;
-            if (z == ':' && p - 1 - p0 < 16)
-            {
-                char buf[16];
-                memcpy(buf, p0, p - 1 - p0);
-                buf[p - 1 - p0] = 0;
-                if (iswctype(k, wctype(buf)) ||
-                    iswctype(kfold, wctype(buf)))
-                    return !inv;
-            }
-            continue;
-        }
-        if (*p < 128U)
-        {
-            wc = (unsigned char)*p;
-        }
-        else
-        {
-            int l = mbtowc(&wc, p, 4);
-            if (l < 0)
-                return 0;
-            p += l - 1;
-        }
-        if (wc == k || wc == kfold)
-            return !inv;
-    }
-    return inv;
-}
-
-static int fnmatch_internal(const char *pat, size_t m, const char *str, size_t n, int flags)
-{
-    const char *p, *ptail, *endpat;
-    const char *s, *stail, *endstr;
-    size_t pinc, sinc, tailcnt = 0;
-    int c, k, kfold;
-
-    if (flags & FNM_PERIOD)
-    {
-        if (*str == '.' && *pat != '.')
-            return FNM_NOMATCH;
-    }
-    for (;;)
-    {
-        switch ((c = pat_next(pat, m, &pinc, flags)))
-        {
-        case UNMATCHABLE:
-            return FNM_NOMATCH;
-        case STAR:
-            pat++;
-            m--;
-            break;
-        default:
-            k = str_next(str, n, &sinc);
-            if (k <= 0)
-                return (c == END) ? 0 : FNM_NOMATCH;
-            str += sinc;
-            n -= sinc;
-            kfold = flags & FNM_CASEFOLD ? casefold(k) : k;
-            if (c == BRACKET)
-            {
-                if (!match_bracket(pat, k, kfold))
-                    return FNM_NOMATCH;
-            }
-            else if (c != QUESTION && k != c && kfold != c)
-            {
-                return FNM_NOMATCH;
-            }
-            pat += pinc;
-            m -= pinc;
-            continue;
-        }
-        break;
-    }
-
-    /* Compute real pat length if it was initially unknown/-1 */
-    m = strnlen(pat, m);
-    endpat = pat + m;
-
-    /* Find the last * in pat and count chars needed after it */
-    for (p = ptail = pat; p < endpat; p += pinc)
-    {
-        switch (pat_next(p, endpat - p, &pinc, flags))
-        {
-        case UNMATCHABLE:
-            return FNM_NOMATCH;
-        case STAR:
-            tailcnt = 0;
-            ptail = p + 1;
-            break;
-        default:
-            tailcnt++;
-            break;
-        }
-    }
-
-    /* Past this point we need not check for UNMATCHABLE in pat,
-     * because all of pat has already been parsed once. */
-
-    /* Compute real str length if it was initially unknown/-1 */
-    n = strnlen(str, n);
-    endstr = str + n;
-    if (n < tailcnt)
-        return FNM_NOMATCH;
-
-    /* Find the final tailcnt chars of str, accounting for UTF-8.
-     * On illegal sequences we may get it wrong, but in that case
-     * we necessarily have a matching failure anyway. */
-    for (s = endstr; s > str && tailcnt; tailcnt--)
-    {
-        if (s[-1] < 128U || MB_CUR_MAX == 1)
-            s--;
-        else
-            while ((unsigned char)*--s - 0x80U < 0x40 && s > str)
-                ;
-    }
-    if (tailcnt)
-        return FNM_NOMATCH;
-    stail = s;
-
-    /* Check that the pat and str tails match */
-    p = ptail;
-    for (;;)
-    {
-        c = pat_next(p, endpat - p, &pinc, flags);
-        p += pinc;
-        if ((k = str_next(s, endstr - s, &sinc)) <= 0)
-        {
-            if (c != END)
-                return FNM_NOMATCH;
-            break;
-        }
-        s += sinc;
-        kfold = flags & FNM_CASEFOLD ? casefold(k) : k;
-        if (c == BRACKET)
-        {
-            if (!match_bracket(p - pinc, k, kfold))
-                return FNM_NOMATCH;
-        }
-        else if (c != QUESTION && k != c && kfold != c)
-        {
-            return FNM_NOMATCH;
-        }
-    }
-
-    /* We're all done with the tails now, so throw them out */
-    endstr = stail;
-    endpat = ptail;
-
-    /* Match pattern components until there are none left */
-    while (pat < endpat)
-    {
-        p = pat;
-        s = str;
-        for (;;)
-        {
-            c = pat_next(p, endpat - p, &pinc, flags);
-            p += pinc;
-            /* Encountering * completes/commits a component */
-            if (c == STAR)
-            {
-                pat = p;
-                str = s;
-                break;
-            }
-            k = str_next(s, endstr - s, &sinc);
-            if (!k)
-                return FNM_NOMATCH;
-            kfold = flags & FNM_CASEFOLD ? casefold(k) : k;
-            if (c == BRACKET)
-            {
-                if (!match_bracket(p - pinc, k, kfold))
-                    break;
-            }
-            else if (c != QUESTION && k != c && kfold != c)
-            {
-                break;
-            }
-            s += sinc;
-        }
-        if (c == STAR)
-            continue;
-        /* If we failed, advance str, by 1 char if it's a valid
-         * char, or past all invalid bytes otherwise. */
-        k = str_next(str, endstr - str, &sinc);
-        if (k > 0)
-            str += sinc;
-        else
-            for (str++; str_next(str, endstr - str, &sinc) < 0; str++)
-                ;
-    }
-
-    return 0;
-}
-
-int fnmatch(const char *pat, const char *str, int flags)
-{
-    const char *s, *p;
-    size_t inc;
+    const unsigned char *s = (const unsigned char *)*str;
     int c;
-    if (flags & FNM_PATHNAME)
-        for (;;)
-        {
-            for (s = str; *s && *s != '/'; s++)
-                ;
-            for (p = pat; (c = pat_next(p, -1, &inc, flags)) != END && c != '/'; p += inc)
-                ;
-            if (c != *s && (!*s || !(flags & FNM_LEADING_DIR)))
-                return FNM_NOMATCH;
-            if (fnmatch_internal(pat, p - pat, str, s - str, flags))
-                return FNM_NOMATCH;
-            if (!c)
-                return 0;
-            str = s + 1;
-            pat = p + inc;
-        }
-    else if (flags & FNM_LEADING_DIR)
+
+    if (*s == 0)
+        return 0;
+
+    if (*s < 0x80)
     {
-        for (s = str; *s; s++)
-        {
-            if (*s != '/')
-                continue;
-            if (!fnmatch_internal(pat, -1, str, s - str, flags))
-                return 0;
-        }
+        *str += 1;
+        return *s;
     }
-    return fnmatch_internal(pat, -1, str, -1, flags);
+
+    /* Multi-byte UTF-8 */
+    if ((*s & 0xE0) == 0xC0)
+    {
+        c = ((s[0] & 0x1F) << 6) | (s[1] & 0x3F);
+        *str += 2;
+    }
+    else if ((*s & 0xF0) == 0xE0)
+    {
+        c = ((s[0] & 0x0F) << 12) | ((s[1] & 0x3F) << 6) | (s[2] & 0x3F);
+        *str += 3;
+    }
+    else if ((*s & 0xF8) == 0xF0)
+    {
+        c = ((s[0] & 0x07) << 18) | ((s[1] & 0x3F) << 12) |
+            ((s[2] & 0x3F) << 6) | (s[3] & 0x3F);
+        *str += 4;
+    }
+    else
+    {
+        /* Invalid UTF-8, skip one byte */
+        *str += 1;
+        return -1;
+    }
+
+    return c;
+}
+
+/* Case-insensitive character comparison */
+static bool char_match(int c1, int c2, int flags)
+{
+    if (c1 == c2)
+        return true;
+    if (!(flags & FNM_CASEFOLD))
+        return false;
+
+    /* Simple ASCII case folding */
+    if (c1 >= 'A' && c1 <= 'Z')
+        c1 += 32;
+    if (c2 >= 'A' && c2 <= 'Z')
+        c2 += 32;
+    return c1 == c2;
+}
+
+/* Match bracket expression [a-z] [!abc] [:alpha:] */
+static bool match_bracket(const char *pattern, int c, int flags)
+{
+    bool invert = false;
+    bool matched = false;
+    const char *p = pattern;
+
+    if (*p == '!' || *p == '^')
+    {
+        invert = true;
+        p++;
+    }
+
+    /* Empty bracket is literal '[' */
+    if (*p == ']')
+        return false;
+
+    while (*p && *p != ']')
+    {
+        if (*p == '-' && p[1] != ']' && p != pattern + (invert ? 1 : 0))
+        {
+            /* Range [a-z] */
+            int start = (unsigned char)p[-1];
+            int end = (unsigned char)p[1];
+            if (c >= start && c <= end)
+                matched = true;
+            if ((flags & FNM_CASEFOLD) &&
+                tolower(c) >= tolower(start) && tolower(c) <= tolower(end))
+                matched = true;
+            p += 2;
+            continue;
+        }
+
+        /* Character class [:alpha:] */
+        if (*p == '[' && p[1] == ':')
+        {
+            const char *class_end = strstr(p + 2, ":]");
+            if (class_end)
+            {
+                char classname[16];
+                int len = class_end - (p + 2);
+                if (len > 0 && len < 16)
+                {
+                    memcpy(classname, p + 2, len);
+                    classname[len] = 0;
+
+                    /* Basic POSIX character classes */
+                    if (strcmp(classname, "alpha") == 0 && isalpha(c))
+                        matched = true;
+                    else if (strcmp(classname, "digit") == 0 && isdigit(c))
+                        matched = true;
+                    else if (strcmp(classname, "alnum") == 0 && isalnum(c))
+                        matched = true;
+                    else if (strcmp(classname, "space") == 0 && isspace(c))
+                        matched = true;
+                    else if (strcmp(classname, "upper") == 0 && isupper(c))
+                        matched = true;
+                    else if (strcmp(classname, "lower") == 0 && islower(c))
+                        matched = true;
+                }
+                p = class_end + 2;
+                continue;
+            }
+        }
+
+        /* Single character */
+        if (char_match(*p, c, flags))
+            matched = true;
+        p++;
+    }
+
+    return invert ? !matched : matched;
+}
+
+/* Core matching algorithm - simple iterative with backtracking */
+static int fnmatch_internal(const char *pattern, const char *string, int flags)
+{
+    const char *star_pat = NULL; /* Position after last * in pattern */
+    const char *star_str = NULL; /* Position in string when * was seen */
+    const char *p = pattern;
+    const char *s = string;
+
+    /* Check leading period */
+    if ((flags & FNM_PERIOD) && *s == '.' && *p != '.')
+    {
+        return FNM_NOMATCH;
+    }
+
+    while (*s)
+    {
+        /* Check for ** (recursive wildcard) - only with PATHNAME flag and followed by / */
+        if ((flags & FNM_PATHNAME) && p[0] == '*' && p[1] == '*' && p[2] == '/')
+        {
+            /* ** followed by / matches zero or more directory levels */
+            const char *rest_pattern = p + 3;
+            const char *try_pos = s;
+
+            /* Try matching at current position and after each / in string */
+            while (1)
+            {
+                /* Check for leading dot restriction */
+                if ((flags & FNM_PERIOD) && *try_pos == '.' && *rest_pattern != '.')
+                {
+                    /* Can't match dotfile without explicit dot in pattern */
+                }
+                else
+                {
+                    /* Try matching rest of pattern from this position */
+                    if (fnmatch_internal(rest_pattern, try_pos, flags) == 0)
+                        return 0;
+                }
+
+                /* Find next / to try */
+                while (*try_pos && *try_pos != '/')
+                    try_pos++;
+
+                if (!*try_pos)
+                    break; /* No more slashes, matching failed */
+
+                /* Skip the / and try again from next segment */
+                try_pos++;
+            }
+
+            return FNM_NOMATCH;
+        }
+
+        if (*p == '*')
+        {
+            /* Single wildcard - save position for backtracking */
+            /* With PATHNAME, * doesn't match / */
+            if ((flags & FNM_PATHNAME) && *s == '/')
+                goto backtrack;
+
+            /* With PERIOD and PATHNAME, * at segment start doesn't match . */
+            if ((flags & FNM_PERIOD) && (flags & FNM_PATHNAME) && *s == '.')
+            {
+                /* Check if this is at segment start (string start or after /) */
+                if (s == string || s[-1] == '/')
+                    goto backtrack;
+            }
+
+            star_pat = ++p;
+            star_str = s;
+            continue;
+        }
+
+        if (*p == '\\' && !(flags & FNM_NOESCAPE) && p[1])
+        {
+            /* Escaped character */
+            p++;
+            if (char_match(*p, *s, flags))
+            {
+                p++;
+                s++;
+                continue;
+            }
+        }
+        else if (*p == '?')
+        {
+            /* Single character wildcard */
+            if ((flags & FNM_PATHNAME) && *s == '/')
+            {
+                /* ? doesn't match / with PATHNAME flag */
+                goto backtrack;
+            }
+            p++;
+            utf8_next(&s); /* Skip one UTF-8 character */
+            continue;
+        }
+        else if (*p == '[')
+        {
+            /* Bracket expression */
+            const char *bracket_end = strchr(p + 1, ']');
+            if (bracket_end)
+            {
+                int c = utf8_next(&s);
+                if (match_bracket(p + 1, c, flags))
+                {
+                    p = bracket_end + 1;
+                    continue;
+                }
+            }
+            else
+            {
+                /* No closing ], treat [ as literal */
+                if (char_match(*p, *s, flags))
+                {
+                    p++;
+                    s++;
+                    continue;
+                }
+            }
+        }
+        else if (char_match(*p, *s, flags))
+        {
+            /* Literal character match */
+            p++;
+            s++;
+            continue;
+        }
+
+    backtrack:
+        /* Mismatch - try to backtrack to last * */
+        if (star_pat)
+        {
+            /* With PATHNAME, * cannot match across / */
+            if ((flags & FNM_PATHNAME) && *star_str == '/')
+                return FNM_NOMATCH;
+
+            p = star_pat;
+            s = ++star_str; /* Advance string and retry */
+            continue;
+        }
+
+        return FNM_NOMATCH;
+    }
+
+    /* Skip trailing * in pattern */
+    while (*p == '*')
+        p++;
+
+    return (*p == 0) ? 0 : FNM_NOMATCH;
+}
+
+/* Main fnmatch function with pathname handling */
+static int fnmatch(const char *pattern, const char *string, int flags)
+{
+    if (!pattern || !string)
+        return FNM_NOMATCH;
+
+    if (!(flags & FNM_PATHNAME))
+    {
+        return fnmatch_internal(pattern, string, flags);
+    }
+
+    /* With FNM_PATHNAME, use fnmatch_internal which handles ** correctly */
+    return fnmatch_internal(pattern, string, flags);
+}
+
+/* ========================================================================
+ * RBC Wrapper Functions (Ruby-compatible API)
+ * ======================================================================== */
+
+/* Map RBC flags to internal flags */
+static int rbc_flags_to_internal(unsigned rbc_flags)
+{
+    int flags = 0;
+
+    if (rbc_flags & RBC_FNM_NOESCAPE)
+        flags |= FNM_NOESCAPE;
+    if (rbc_flags & RBC_FNM_PATHNAME)
+        flags |= FNM_PATHNAME;
+    /* [RBC CHANGE] FNM_DOTMATCH logic: Ruby's DOTMATCH means wildcards match leading dots.
+     * musl's FNM_PERIOD means wildcards DON'T match leading dots.
+     * So: if DOTMATCH is NOT set, we enable PERIOD behavior. */
+    if (!(rbc_flags & RBC_FNM_DOTMATCH))
+        flags |= FNM_PERIOD;
+    if (rbc_flags & RBC_FNM_CASEFOLD)
+        flags |= FNM_CASEFOLD;
+    /* Note: RBC_FNM_EXTGLOB and RBC_FNM_SYSCASE not yet supported */
+
+    return flags;
+}
+
+bool rbc_fnmatch(const char *pattern, const char *path, unsigned flags)
+{
+    if (!pattern || !path)
+        return false;
+
+    int internal_flags = rbc_flags_to_internal(flags);
+    int result = fnmatch(pattern, path, internal_flags);
+    return (result == 0); /* 0 = match, FNM_NOMATCH = no match */
+}
+
+/* Stub implementations for precompiled pattern API */
+struct rbc_fnmatch_pattern_s
+{
+    char *pattern;
+    unsigned flags;
+};
+
+rbc_fnmatch_pattern_t *rbc_fnmatch_compile(const char *pattern, unsigned flags)
+{
+    if (!pattern)
+        return NULL;
+
+    rbc_fnmatch_pattern_t *fp = malloc(sizeof(rbc_fnmatch_pattern_t));
+    if (!fp)
+        return NULL;
+
+    fp->pattern = strdup(pattern);
+    if (!fp->pattern)
+    {
+        free(fp);
+        return NULL;
+    }
+    fp->flags = flags;
+    return fp;
+}
+
+bool rbc_xfnmatch(const rbc_fnmatch_pattern_t *fp, const char *path, unsigned flags)
+{
+    if (!fp || !fp->pattern || !path)
+        return false;
+    /* Use flags from compiled pattern, but allow override */
+    unsigned use_flags = fp->flags | flags;
+    return rbc_fnmatch(fp->pattern, path, use_flags);
+}
+
+void rbc_fnmatch_pattern_free(rbc_fnmatch_pattern_t *fp)
+{
+    if (fp)
+    {
+        free(fp->pattern);
+        free(fp);
+    }
 }
