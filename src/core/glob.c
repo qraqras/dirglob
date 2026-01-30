@@ -1,4 +1,5 @@
 #include "platform.h"
+#include "rbc/rbc.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -6,185 +7,216 @@
 #include <string.h>
 #include <stdlib.h>
 
-// ============================================================================
-// Constants and Flags
-// ============================================================================
-
 #define RBC_GLOB_MAX_PATH RBC_MAX_PATH
 #define RBC_RESULTS_INIT_DATA (64 * 1024) // 64KB initial data buffer
 #define RBC_RESULTS_INIT_COUNT 256        // Initial path count
 
-// Flags (Ruby File::FNM_* compatible)
-#define RBC_FNM_NOESCAPE 0x01
-#define RBC_FNM_PATHNAME 0x02
-#define RBC_FNM_DOTMATCH 0x04
-#define RBC_FNM_CASEFOLD 0x08
-// SYSCASE: On Windows, use case-insensitive matching by default
-#ifdef _WIN32
-#define RBC_FNM_SYSCASE RBC_FNM_CASEFOLD
-#else
-#define RBC_FNM_SYSCASE 0
-#endif
+/// @defgroup Segment Character Flags
+/// @{
+#define RBC_SEG_CONTAINS_STAR 0x01     // Contains '*'
+#define RBC_SEG_CONTAINS_QUESTION 0x02 // Contains '?'
+#define RBC_SEG_CONTAINS_BRACKET 0x04  // Contains '[...]'
+#define RBC_SEG_CONTAINS_ESCAPE 0x08   // Contains escape sequences
+#define RBC_SEG_CONTAINS_REGULAR 0x10  // Contains regular characters
+/// @}
 
-// ============================================================================
-// Segment Types
-// ============================================================================
+/// @defgroup Walker State Flags
+/// @{
+#define RBC_WALK_HAS_WILDCARD_ANCESTOR 0x01
+#define RBC_WALK_QUEUE_SIZE 1024
+/// @}
 
-typedef enum rbc_seg_type_e
+/// @brief Segment Types
+typedef enum rbc_segment_type_e
 {
-    SEG_LITERAL,   // Literal string (e.g., "foo", "bar.txt")
-    SEG_DOT,       // "." (current directory)
-    SEG_DOTDOT,    // ".." (parent directory)
-    SEG_WILDCARD,  // Wildcard patterns (*, ?, [...], **, .** at end)
-    SEG_RECURSIVE, // **/ only (recursive descent)
-} rbc_seg_type_t;
+    SEG_LITERAL,   // `abc`
+    SEG_DOT,       // `.`
+    SEG_DOTDOT,    // `..`
+    SEG_WILDCARD,  // `*`, `.*`, `?`, `.?`, `[abc]` etc.
+    SEG_RECURSIVE, // `**/`
+} rbc_segment_type_t;
 
-// ============================================================================
-// Arena-based Results Buffer
-// ============================================================================
-
-typedef struct rbc_results_s
-{
-    char *data;       // Contiguous buffer for all paths
-    size_t *offsets;  // Offset of each path in data
-    size_t count;     // Number of paths
-    size_t data_used; // Bytes used in data
-    size_t data_cap;  // Capacity of data
-    size_t off_cap;   // Capacity of offsets array
-} rbc_results_t;
-
-static bool rbc_results_init(rbc_results_t *r)
-{
-    r->data = malloc(RBC_RESULTS_INIT_DATA);
-    r->offsets = malloc(RBC_RESULTS_INIT_COUNT * sizeof(size_t));
-    if (!r->data || !r->offsets)
-    {
-        free(r->data);
-        free(r->offsets);
-        return false;
-    }
-    r->count = 0;
-    r->data_used = 0;
-    r->data_cap = RBC_RESULTS_INIT_DATA;
-    r->off_cap = RBC_RESULTS_INIT_COUNT;
-    return true;
-}
-
-static bool rbc_results_add(rbc_results_t *r, const char *path, size_t len)
-{
-    // Grow offsets array if needed
-    if (r->count >= r->off_cap)
-    {
-        size_t new_cap = r->off_cap * 2;
-        size_t *new_off = realloc(r->offsets, new_cap * sizeof(size_t));
-        if (!new_off)
-            return false;
-        r->offsets = new_off;
-        r->off_cap = new_cap;
-    }
-
-    // Grow data buffer if needed (include null terminator)
-    size_t needed = r->data_used + len + 1;
-    if (needed > r->data_cap)
-    {
-        size_t new_cap = r->data_cap;
-        while (new_cap < needed)
-            new_cap *= 2;
-        char *new_data = realloc(r->data, new_cap);
-        if (!new_data)
-            return false;
-        r->data = new_data;
-        r->data_cap = new_cap;
-    }
-
-    // Store offset and copy path
-    r->offsets[r->count++] = r->data_used;
-    memcpy(r->data + r->data_used, path, len);
-    r->data[r->data_used + len] = '\0';
-    r->data_used += len + 1;
-
-    return true;
-}
-
-static void rbc_results_free(rbc_results_t *r)
-{
-    free(r->data);
-    free(r->offsets);
-}
-
-// ============================================================================
-// Path Utilities (snprintf-free)
-// ============================================================================
-
-/**
- * @brief Build path: base + '/' + name (no snprintf)
- * @return Length of resulting path
- */
-static size_t rbc_build_path(char *buf, size_t buf_size,
-                             const char *base, size_t base_len,
-                             const char *name, size_t name_len)
-{
-    if (base_len == 0)
-    {
-        if (name_len >= buf_size)
-            name_len = buf_size - 1;
-        memcpy(buf, name, name_len);
-        buf[name_len] = '\0';
-        return name_len;
-    }
-
-    // Check if base already ends with '/'
-    bool base_has_slash = (base_len > 0 && base[base_len - 1] == '/');
-    size_t sep_len = base_has_slash ? 0 : 1;
-
-    size_t total = base_len + sep_len + name_len;
-    if (total >= buf_size)
-        total = buf_size - 1;
-
-    memcpy(buf, base, base_len);
-    if (!base_has_slash)
-        buf[base_len] = '/';
-
-    size_t copy_name = (total > base_len + sep_len) ? total - base_len - sep_len : 0;
-    memcpy(buf + base_len + sep_len, name, copy_name);
-    buf[total] = '\0';
-
-    return total;
-}
-
-/**
- * @brief Append trailing slash to path
- */
-static size_t rbc_append_slash(char *buf, size_t len, size_t buf_size)
-{
-    if (len > 0 && len < buf_size - 1 && buf[len - 1] != '/')
-    {
-        buf[len++] = '/';
-        buf[len] = '\0';
-    }
-    return len;
-}
-
-// ============================================================================
-// Pattern Parsing
-// ============================================================================
-
-typedef struct
+/// @brief Segment Structure
+typedef struct rbc_segment_s
 {
     const char *start;       // Segment start in pattern
     size_t len;              // Segment length
-    rbc_seg_type_t type;     // Segment classification
+    rbc_segment_type_t type; // Segment classification
     bool starts_with_dot;    // Segment starts with '.'
     bool has_trailing_slash; // Pattern has '/' after this segment
     bool is_last;            // This is the last segment
 } rbc_segment_t;
 
-/// @brief Character flags for single-pass segment classification
-#define SEG_CHAR_STAR 0x01     // Contains '*'
-#define SEG_CHAR_QUESTION 0x02 // Contains '?'
-#define SEG_CHAR_BRACKET 0x04  // Contains '[...]'
-#define SEG_CHAR_ESCAPE 0x08   // Contains escape sequences
-#define SEG_CHAR_REGULAR 0x10  // Contains regular characters
+/// @brief Walker Frame Structure
+typedef struct rbc_walk_frame_s
+{
+    char path[RBC_GLOB_MAX_PATH]; // Current path
+    uint16_t path_len;            // Length of current path
+    const char *pattern;          // Current position in pattern
+    uint8_t flags;                // WALK_* flags
+} rbc_walk_frame_t;
+
+/// @brief Walker Queue Structure
+typedef struct rbc_walk_queue_s
+{
+    rbc_walk_frame_t frames[RBC_WALK_QUEUE_SIZE]; // Frame storage
+    size_t head;                                  // Index to dequeue from
+    size_t tail;                                  // Index to enqueue to
+    size_t count;                                 // Number of frames in queue
+} rbc_walk_queue_t;
+
+/// @defgroup Results
+/// @{
+
+/// @brief Results Buffer Structure
+typedef struct rbc_results_s
+{
+    char *arena;             // Arena buffer storing all paths contiguously
+    size_t *offsets;         // Offset of each path in arena (in bytes)
+    size_t count;            // Number of stored paths
+    size_t arena_used;       // Bytes used in arena
+    size_t arena_capacity;   // Total capacity of arena (in bytes)
+    size_t offsets_capacity; // Capacity of offsets array (in elements)
+} rbc_results_t;
+
+/// @brief Initialize results buffer
+/// @param[out] r Results buffer
+/// @return true on success, false on failure
+static bool rbc_results_init(rbc_results_t *r)
+{
+    r->arena = malloc(RBC_RESULTS_INIT_DATA);
+    r->offsets = malloc(RBC_RESULTS_INIT_COUNT * sizeof(size_t));
+    if (!r->arena || !r->offsets)
+    {
+        free(r->arena);
+        free(r->offsets);
+        return false;
+    }
+    r->count = 0;
+    r->arena_used = 0;
+    r->arena_capacity = RBC_RESULTS_INIT_DATA;
+    r->offsets_capacity = RBC_RESULTS_INIT_COUNT;
+    return true;
+}
+
+/// @brief Add a path to results buffer
+/// @param[in, out] r Results buffer
+/// @param[in] path Path string
+/// @param[in] len Length of path
+/// @return true on success, false on failure
+static bool rbc_results_add(rbc_results_t *r, const char *path, size_t len)
+{
+    // Grow offsets array if needed
+    if (r->count >= r->offsets_capacity)
+    {
+        size_t new_cap = r->offsets_capacity * 2;
+        size_t *new_off = realloc(r->offsets, new_cap * sizeof(size_t));
+        if (!new_off)
+            return false;
+        r->offsets = new_off;
+        r->offsets_capacity = new_cap;
+    }
+
+    // Grow arena buffer if needed (include null terminator)
+    size_t needed = r->arena_used + len + 1;
+    if (needed > r->arena_capacity)
+    {
+        size_t new_cap = r->arena_capacity;
+        while (new_cap < needed)
+            new_cap *= 2;
+        char *new_arena = realloc(r->arena, new_cap);
+        if (!new_arena)
+            return false;
+        r->arena = new_arena;
+        r->arena_capacity = new_cap;
+    }
+
+    // Store offset and copy path
+    r->offsets[r->count++] = r->arena_used;
+    memcpy(r->arena + r->arena_used, path, len);
+    r->arena[r->arena_used + len] = '\0';
+    r->arena_used += len + 1;
+
+    return true;
+}
+
+/// @brief Free results buffer
+/// @param[in] r Results buffer
+static void rbc_results_free(rbc_results_t *r)
+{
+    free(r->arena);
+    free(r->offsets);
+}
+
+/// @}
+
+// ============================================================================
+// Path Utilities (snprintf-free)
+// ============================================================================
+
+/// @brief Build path: base + '/' + component
+/// @pre base must be normalized (no backslashes, no consecutive or trailing slashes)
+/// @pre component should be a single path component (filename/dirname)
+/// @param[out] buf Output buffer
+/// @param[in] buf_size Size of output buffer
+/// @param[in] base Base path (must be normalized: forward slashes only, no trailing slash)
+/// @param[in] base_len Length of base
+/// @param[in] component Path component to append (single component, not a path)
+/// @param[in] component_len Length of component
+/// @return Length of resulting path on success, 0 on error (buffer overflow)
+static size_t rbc_path_join(char *buf, size_t buf_size, const char *base, size_t base_len, const char *component, size_t component_len)
+{
+    if (base_len == 0)
+    {
+        if (component_len >= buf_size)
+            return 0;
+        memcpy(buf, component, component_len);
+        buf[component_len] = '\0';
+        return component_len;
+    }
+
+    bool should_append_slash = base[base_len - 1] != '/';
+    size_t pos = base_len;
+    if (should_append_slash)
+        pos++;
+
+    size_t result_len = pos + component_len;
+    if (result_len >= buf_size)
+        return 0;
+
+    memcpy(buf, base, base_len);
+    if (should_append_slash)
+        buf[base_len] = '/';
+    memcpy(buf + pos, component, component_len);
+    buf[result_len] = '\0';
+
+    return result_len;
+}
+
+/// @brief Append trailing slash to path buffer if not present
+/// @param[in, out] buf Buffer containing the path
+/// @param[in] buf_size Size of the buffer
+/// @param[in] path_len Current length of the path in the buffer
+/// @return New length of the path after appending slash, or 0 on error
+/// @note Empty path is treated as error because appending "/" would change semantics ("" → "/" converts relative to absolute root)
+/// @note Returns path_len unchanged if path already has trailing slash
+static size_t rbc_path_append_slash(char *buf, size_t buf_size, size_t path_len)
+{
+    if (path_len == 0)
+        return 0;
+    if (buf_size <= path_len + 1)
+        return 0;
+    if (buf[path_len - 1] == '/')
+        return path_len;
+
+    buf[path_len++] = '/';
+    buf[path_len] = '\0';
+    return path_len;
+}
+
+// ============================================================================
+// Pattern Parsing
+// ============================================================================
 
 /**
  * @brief Parse next segment from pattern (single-pass, glob.c style)
@@ -194,8 +226,7 @@ typedef struct
  * 1. Find segment boundaries
  * 2. Collect character type flags for classification
  */
-static bool rbc_next_segment(const char **pattern_ptr, unsigned flags,
-                             rbc_segment_t *seg)
+static bool rbc_next_segment(const char **pattern_ptr, unsigned flags, rbc_segment_t *seg)
 {
     const char *p = *pattern_ptr;
 
@@ -218,7 +249,7 @@ static bool rbc_next_segment(const char **pattern_ptr, unsigned flags,
     {
         if (!(flags & RBC_FNM_NOESCAPE) && *p == '\\' && *(p + 1))
         {
-            char_flags |= SEG_CHAR_ESCAPE;
+            char_flags |= RBC_SEG_CONTAINS_ESCAPE;
             p += 2; // Skip escaped char
             continue;
         }
@@ -226,10 +257,10 @@ static bool rbc_next_segment(const char **pattern_ptr, unsigned flags,
         switch (*p)
         {
         case '*':
-            char_flags |= SEG_CHAR_STAR;
+            char_flags |= RBC_SEG_CONTAINS_STAR;
             break;
         case '?':
-            char_flags |= SEG_CHAR_QUESTION;
+            char_flags |= RBC_SEG_CONTAINS_QUESTION;
             break;
         case '[':
             in_bracket++;
@@ -238,15 +269,15 @@ static bool rbc_next_segment(const char **pattern_ptr, unsigned flags,
             if (in_bracket > 0)
             {
                 in_bracket--;
-                char_flags |= SEG_CHAR_BRACKET; // Complete bracket
+                char_flags |= RBC_SEG_CONTAINS_BRACKET; // Complete bracket
             }
             else
             {
-                char_flags |= SEG_CHAR_REGULAR;
+                char_flags |= RBC_SEG_CONTAINS_REGULAR;
             }
             break;
         default:
-            char_flags |= SEG_CHAR_REGULAR;
+            char_flags |= RBC_SEG_CONTAINS_REGULAR;
             break;
         }
         p++;
@@ -259,7 +290,7 @@ static bool rbc_next_segment(const char **pattern_ptr, unsigned flags,
     // Do this BEFORE skipping trailing slashes to correctly identify ** vs **/
 
     // Check for ** (pure double-star, no other chars)
-    if (seg->len == 2 && char_flags == SEG_CHAR_STAR &&
+    if (seg->len == 2 && char_flags == RBC_SEG_CONTAINS_STAR &&
         seg_start[0] == '*' && seg_start[1] == '*')
     {
         // ** with trailing slash = RECURSIVE (directory descent)
@@ -303,8 +334,8 @@ static bool rbc_next_segment(const char **pattern_ptr, unsigned flags,
         seg->type = SEG_WILDCARD;
     }
     // Any wildcard or escape → delegate to fnmatch
-    else if (char_flags & (SEG_CHAR_STAR | SEG_CHAR_QUESTION |
-                           SEG_CHAR_BRACKET | SEG_CHAR_ESCAPE))
+    else if (char_flags & (RBC_SEG_CONTAINS_STAR | RBC_SEG_CONTAINS_QUESTION |
+                           RBC_SEG_CONTAINS_BRACKET | RBC_SEG_CONTAINS_ESCAPE))
     {
         seg->type = SEG_WILDCARD;
     }
@@ -326,8 +357,7 @@ bool rbc_fnmatch(const char *pattern, const char *string, unsigned flags);
 /**
  * @brief Match name against segment pattern
  */
-static bool rbc_match_segment(const rbc_segment_t *seg, const char *name,
-                              unsigned flags)
+static bool rbc_match_segment(const rbc_segment_t *seg, const char *name, unsigned flags)
 {
     // Prepare null-terminated pattern
     char pattern_buf[RBC_GLOB_MAX_PATH];
@@ -376,35 +406,14 @@ static bool rbc_match_segment(const rbc_segment_t *seg, const char *name,
 // ============================================================================
 
 // Walker state flags
-#define WALK_HAS_WILDCARD_ANCESTOR 0x01
 
-typedef struct
+static bool rbc_walk_enqueue(rbc_walk_queue_t *q, const char *path, size_t path_len, const char *pattern, uint8_t flags)
 {
-    char path[RBC_GLOB_MAX_PATH];
-    uint16_t path_len;
-    const char *pattern; // Current position in pattern
-    uint8_t flags;       // WALK_* flags
-} rbc_walk_frame_t;
-
-#define WALK_QUEUE_SIZE 1024
-
-typedef struct
-{
-    rbc_walk_frame_t frames[WALK_QUEUE_SIZE];
-    size_t head; // Index to dequeue from
-    size_t tail; // Index to enqueue to
-    size_t count;
-} rbc_walk_queue_t;
-
-static bool rbc_walk_enqueue(rbc_walk_queue_t *q,
-                             const char *path, size_t path_len,
-                             const char *pattern, uint8_t flags)
-{
-    if (q->count >= WALK_QUEUE_SIZE)
+    if (q->count >= RBC_WALK_QUEUE_SIZE)
         return false;
 
     rbc_walk_frame_t *f = &q->frames[q->tail];
-    q->tail = (q->tail + 1) % WALK_QUEUE_SIZE;
+    q->tail = (q->tail + 1) % RBC_WALK_QUEUE_SIZE;
     q->count++;
 
     if (path_len >= RBC_GLOB_MAX_PATH)
@@ -422,7 +431,7 @@ static bool rbc_walk_dequeue(rbc_walk_queue_t *q, rbc_walk_frame_t *out)
     if (q->count == 0)
         return false;
     *out = q->frames[q->head];
-    q->head = (q->head + 1) % WALK_QUEUE_SIZE;
+    q->head = (q->head + 1) % RBC_WALK_QUEUE_SIZE;
     q->count--;
     return true;
 }
@@ -437,8 +446,7 @@ static bool rbc_walk_dequeue(rbc_walk_queue_t *q, rbc_walk_frame_t *out)
  * For relative paths: strips baselen and leading slashes
  * For absolute paths (baselen == 0 and path starts with /): keeps leading slash
  */
-static void rbc_add_result(rbc_results_t *results, const char *path,
-                           size_t baselen, bool is_absolute)
+static void rbc_add_result(rbc_results_t *results, const char *path, size_t baselen, bool is_absolute)
 {
     const char *result = path + baselen;
 
@@ -471,8 +479,7 @@ static void rbc_add_result(rbc_results_t *results, const char *path,
  * - "." and ".." are special
  * - Dotfiles (starting with '.') require DOTMATCH or pattern starting with '.'
  */
-static bool rbc_should_skip_entry(const char *name, const rbc_segment_t *seg,
-                                  unsigned flags, bool has_wildcard_ancestor)
+static bool rbc_should_skip_entry(const char *name, const rbc_segment_t *seg, unsigned flags, bool has_wildcard_ancestor)
 {
     // "." entry rules:
     // - Skip if reached via wildcard ancestor (prevents path duplication)
@@ -510,12 +517,16 @@ static bool rbc_should_skip_entry(const char *name, const rbc_segment_t *seg,
 /**
  * @brief Process a single directory with a normal segment (non-recursive)
  */
-static void rbc_glob_process_dir(const char *dir_path, size_t dir_len,
-                                 size_t baselen, const rbc_segment_t *seg,
-                                 const char *remaining_pattern,
-                                 unsigned flags, rbc_results_t *results,
-                                 rbc_walk_queue_t *queue,
-                                 bool has_wildcard_ancestor)
+static void rbc_glob_process_dir(
+    const char *dir_path,
+    size_t dir_len,
+    size_t baselen,
+    const rbc_segment_t *seg,
+    const char *remaining_pattern,
+    unsigned flags,
+    rbc_results_t *results,
+    rbc_walk_queue_t *queue,
+    bool has_wildcard_ancestor)
 {
     rbc_dir_t *dirp = rbc_opendir(dir_len > 0 ? dir_path : ".");
     if (!dirp)
@@ -549,8 +560,10 @@ static void rbc_glob_process_dir(const char *dir_path, size_t dir_len,
 
         // Build full path
         size_t name_len = strlen(name);
-        size_t new_len = rbc_build_path(pathbuf, sizeof(pathbuf),
-                                        dir_path, dir_len, name, name_len);
+        size_t new_len = rbc_path_join(pathbuf, sizeof(pathbuf),
+                                       dir_path, dir_len, name, name_len);
+        if (new_len == 0)
+            continue; // Path too long, skip this entry
 
         if (seg->is_last)
         {
@@ -560,7 +573,9 @@ static void rbc_glob_process_dir(const char *dir_path, size_t dir_len,
             {
                 if (entry.is_dir)
                 {
-                    new_len = rbc_append_slash(pathbuf, new_len, sizeof(pathbuf));
+                    new_len = rbc_path_append_slash(pathbuf, sizeof(pathbuf), new_len);
+                    if (new_len == 0)
+                        continue; // Error: buffer too small
                     rbc_add_result(results, pathbuf, baselen, baselen == 0);
                 }
             }
@@ -578,7 +593,7 @@ static void rbc_glob_process_dir(const char *dir_path, size_t dir_len,
             // Intermediate segment: must be directory, enqueue
             if (entry.is_dir)
             {
-                uint8_t next_flags = next_has_wildcard ? WALK_HAS_WILDCARD_ANCESTOR : 0;
+                uint8_t next_flags = next_has_wildcard ? RBC_WALK_HAS_WILDCARD_ANCESTOR : 0;
                 rbc_walk_enqueue(queue, pathbuf, new_len, remaining_pattern, next_flags);
             }
         }
@@ -599,13 +614,14 @@ static void rbc_glob_process_dir(const char *dir_path, size_t dir_len,
  * - Recurse into subdirectories (except dotdirs without DOTMATCH)
  * - For trailing slash case, add directories directly
  */
-static void rbc_glob_process_recursive(const char *dir_path, size_t dir_len,
-                                       size_t baselen,
-                                       const rbc_segment_t *rec_seg,
-                                       const char *after_recursive,
-                                       unsigned flags, rbc_results_t *results,
-                                       rbc_walk_queue_t *queue,
-                                       bool has_wildcard_ancestor)
+static void rbc_glob_process_recursive(
+    const char *dir_path, size_t dir_len,
+    size_t baselen,
+    const rbc_segment_t *rec_seg,
+    const char *after_recursive,
+    unsigned flags, rbc_results_t *results,
+    rbc_walk_queue_t *queue,
+    bool has_wildcard_ancestor)
 {
     // Check if **/ at end (match directories only)
     bool match_dirs_only = (rec_seg->has_trailing_slash && after_recursive[0] == '\0');
@@ -653,8 +669,10 @@ static void rbc_glob_process_recursive(const char *dir_path, size_t dir_len,
 
         // Build path
         size_t name_len = strlen(name);
-        size_t new_len = rbc_build_path(pathbuf, sizeof(pathbuf),
-                                        dir_path, dir_len, name, name_len);
+        size_t new_len = rbc_path_join(pathbuf, sizeof(pathbuf),
+                                       dir_path, dir_len, name, name_len);
+        if (new_len == 0)
+            continue; // Path too long, skip this entry
 
         bool is_dir = entry.is_dir;
 
@@ -664,8 +682,9 @@ static void rbc_glob_process_recursive(const char *dir_path, size_t dir_len,
             // Never add "." as it's redundant (same as parent directory)
             if (is_dir && !is_dot_entry)
             {
-                rbc_append_slash(pathbuf, new_len, sizeof(pathbuf));
-                rbc_add_result(results, pathbuf, baselen, baselen == 0);
+                size_t slash_len = rbc_path_append_slash(pathbuf, sizeof(pathbuf), new_len);
+                if (slash_len > 0)
+                    rbc_add_result(results, pathbuf, baselen, baselen == 0);
             }
         }
 
@@ -684,7 +703,9 @@ static void rbc_glob_process_recursive(const char *dir_path, size_t dir_len,
                     {
                         if (is_dir)
                         {
-                            new_len = rbc_append_slash(pathbuf, new_len, sizeof(pathbuf));
+                            new_len = rbc_path_append_slash(pathbuf, sizeof(pathbuf), new_len);
+                            if (new_len == 0)
+                                continue; // Error: buffer too small
                             rbc_add_result(results, pathbuf, baselen, baselen == 0);
                         }
                     }
@@ -700,7 +721,7 @@ static void rbc_glob_process_recursive(const char *dir_path, size_t dir_len,
                 {
                     // More segments to match - enqueue
                     rbc_walk_enqueue(queue, pathbuf, new_len, next_remaining,
-                                     WALK_HAS_WILDCARD_ANCESTOR);
+                                     RBC_WALK_HAS_WILDCARD_ANCESTOR);
                 }
             }
         }
@@ -722,9 +743,7 @@ static void rbc_glob_process_recursive(const char *dir_path, size_t dir_len,
 /**
  * @brief Main glob walker
  */
-static void rbc_glob_walk(const char *base, size_t baselen,
-                          const char *pattern, unsigned flags,
-                          rbc_results_t *results)
+static void rbc_glob_walk(const char *base, size_t baselen, const char *pattern, unsigned flags, rbc_results_t *results)
 {
     rbc_walk_queue_t queue = {.head = 0, .tail = 0, .count = 0};
 
@@ -798,7 +817,7 @@ static void rbc_glob_walk(const char *base, size_t baselen,
             continue; // Empty pattern
         }
 
-        bool has_wildcard_ancestor = (frame.flags & WALK_HAS_WILDCARD_ANCESTOR) != 0;
+        bool has_wildcard_ancestor = (frame.flags & RBC_WALK_HAS_WILDCARD_ANCESTOR) != 0;
 
         switch (seg.type)
         {
@@ -840,8 +859,9 @@ static void rbc_glob_walk(const char *base, size_t baselen,
                 if (len > 0)
                 {
                     memcpy(pathbuf, frame.path, len);
-                    len = rbc_append_slash(pathbuf, len, sizeof(pathbuf));
-                    rbc_add_result(results, pathbuf, baselen, baselen == 0);
+                    len = rbc_path_append_slash(pathbuf, sizeof(pathbuf), len);
+                    if (len > 0)
+                        rbc_add_result(results, pathbuf, baselen, baselen == 0);
                 }
             }
             // Recursive descent
@@ -1078,7 +1098,7 @@ static void rbc_results_sort_range(rbc_results_t *r, size_t start, size_t end)
     // Build pointer array from offsets
     for (size_t i = 0; i < n; i++)
     {
-        ptrs[i] = r->data + r->offsets[start + i];
+        ptrs[i] = r->arena + r->offsets[start + i];
     }
 
     // Sort the pointer array
@@ -1087,7 +1107,7 @@ static void rbc_results_sort_range(rbc_results_t *r, size_t start, size_t end)
     // Rebuild offsets array from sorted pointers
     for (size_t i = 0; i < n; i++)
     {
-        r->offsets[start + i] = (size_t)(ptrs[i] - r->data);
+        r->offsets[start + i] = (size_t)(ptrs[i] - r->arena);
     }
 
     free(ptrs);
@@ -1123,7 +1143,7 @@ static bool rbc_results_to_output(rbc_results_t *r,
     // Copy paths from arena to individual allocations
     for (size_t i = 0; i < r->count; i++)
     {
-        const char *src = r->data + r->offsets[i];
+        const char *src = r->arena + r->offsets[i];
         size_t len = strlen(src);
         items[i] = malloc(len + 1);
         if (!items[i])
