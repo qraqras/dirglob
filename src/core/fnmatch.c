@@ -76,6 +76,25 @@ static bool char_match(int c1, int c2, unsigned flags)
     return c1 == c2;
 }
 
+/// @brief Check if dotfile should be skipped (DOTMATCH restriction)
+/// @param pattern Current position in pattern
+/// @param string Current position in string
+/// @param flags Matching flags
+/// @return true if dotfile should be skipped
+static inline bool should_skip_dot(const char *pattern, const char *string, unsigned flags)
+{
+    return !(flags & RBC_FNM_DOTMATCH) && *pattern != '.' && *string == '.';
+}
+
+/// @brief Advance pattern pointer and return segment start status
+/// @param p Pointer to pattern position
+/// @param flags Matching flags
+/// @return true if advanced position is at segment start (after '/')
+static inline bool advance_pattern(const char **p, unsigned flags)
+{
+    return (*(*p)++ == '/') && (flags & RBC_FNM_PATHNAME);
+}
+
 /// @brief Match bracket expression [..]
 /// @param pattern Bracket pattern starting after '['
 /// @param c Character to match
@@ -134,171 +153,164 @@ static const char *match_bracket(const char *pattern, int c, unsigned flags)
 /// @param pattern Pattern string
 /// @param string Target string
 /// @param flags Matching flags
-/// @return true if no match, false if matched
+/// @return true if matched, false if no match
 static int fnmatch_internal(const char *pattern, const char *string, unsigned flags)
 {
     const char *p = pattern;
     const char *s = string;
-    const char *p_strat = NULL;   // Position after last `*` in pattern
+    const char *p_start = NULL;   // Position after last `*` in pattern
     const char *s_start = NULL;   // Position in string when `*` was seen
     bool at_segment_start = true; // Track if at start of path segment
 
-    if (!(flags & RBC_FNM_DOTMATCH) && *s == '.' && *p != '.')
-        return true;
+    if (should_skip_dot(p, s, flags))
+        return false;
 
     while (*s)
     {
-        if (*p == '*')
+        switch (*p)
         {
-            // Handle `**/` (If PATHNAME is not set, this behaves the same as single `*`)
+        case '*':
+            // Handle `**/` (If not PATHNAME, this behaves the same as `*`)
             if ((flags & RBC_FNM_PATHNAME) && at_segment_start && p[1] == '*' && p[2] == '/')
             {
-                /* `**` matches zero or more directory levels */
-                const char *rest_pattern = p + 3;
-                const char *try_pos = s;
+                // Skip `**/` patterns consecutively
+                while (p[0] == '*' && p[1] == '*' && p[2] == '/')
+                    p += 3;
 
-                /* Try matching at current position and after each / in string */
-                while (1)
+                const char *p_rest = p;
+
+                // If pattern ends here, match rest of string
+                if (*p_rest == '\0')
                 {
-                    /* Check for leading dot restriction (when DOTMATCH is not set) */
-                    if (!(flags & RBC_FNM_DOTMATCH) && *try_pos == '.' && *rest_pattern != '.')
-                    {
-                        /* Can't match dotfile without explicit dot in pattern */
-                    }
-                    else
-                    {
-                        /* Try matching rest of pattern from this position */
-                        if (!fnmatch_internal(rest_pattern, try_pos, flags))
-                            return false;
-                    }
-
-                    /* Find next / to try */
-                    while (*try_pos && *try_pos != '/')
-                        try_pos++;
-
-                    if (!*try_pos)
-                        break; /* No more slashes, matching failed */
-
-                    /* Skip the / and try again from next segment */
-                    try_pos++;
+                    if (*s == '\0')
+                        return true;
+                    const char *end = s;
+                    while (*end)
+                        end++;
+                    return (end > s && end[-1] == '/');
                 }
 
-                return true;
+                const char *s_try = s;
+
+                // Try matching at current position and after each / in string
+                while (1)
+                {
+                    // Try matching rest of pattern from here
+                    if (!should_skip_dot(p_rest, s_try, flags) && fnmatch_internal(p_rest, s_try, flags))
+                        return true;
+
+                    // Advance to next `/` in string
+                    while (*s_try && *s_try != '/')
+                        s_try++;
+
+                    // No more `/` to try
+                    if (!*s_try)
+                        break;
+
+                    s_try++;
+                }
+                return false;
             }
 
-            /* Skip consecutive stars (regular wildcard) */
+            // Skip consecutive `*`
             while (*p == '*')
                 p++;
 
-            /* Optimization: if pattern ends with *, match rest of string */
+            // If pattern ends with `*`, match rest of string
             if (*p == '\0')
             {
                 if (flags & RBC_FNM_PATHNAME)
                 {
-                    /* With PATHNAME, * doesn't match / - check if any / remains */
                     while (*s)
                     {
                         if (*s == '/')
-                            return true; /* No match - / found */
+                            return false;
                         s++;
                     }
                 }
-                return false; /* Match - pattern ends with * */
+                return true;
             }
 
-            /* With PATHNAME, * doesn't match / */
-            if ((flags & RBC_FNM_PATHNAME) && *s == '/')
-            {
-                /* Try 0-length match: skip * and continue with rest of pattern */
-                at_segment_start = false;
-                continue;
-            }
+            // If not DOTMATCH, `*` cannot match `.` at segment start
+            if ((flags & RBC_FNM_PATHNAME) && at_segment_start && !(flags & RBC_FNM_DOTMATCH) && *s == '.')
+                goto backtrack;
 
-            /* Without DOTMATCH, with PATHNAME, * at segment start doesn't match . */
-            if (!(flags & RBC_FNM_DOTMATCH) && (flags & RBC_FNM_PATHNAME) && *s == '.')
-            {
-                /* Check if this is at segment start (string start or after /) */
-                if (s == string || s[-1] == '/')
-                    goto backtrack;
-            }
-
-            /* Save position for backtracking (try matching more characters) */
-            p_strat = p;
+            // Record positions for backtracking
+            p_start = p;
             s_start = s;
             at_segment_start = false;
             continue;
-        }
 
-        if (*p == '\\' && !(flags & RBC_FNM_NOESCAPE) && p[1])
-        {
-            /* Escaped character */
-            p++;
-            if (char_match(*p, *s, flags))
-            {
-                p++;
-                s++;
-                at_segment_start = (*p == '/');
-                continue;
-            }
-        }
-        else if (*p == '?')
-        {
-            /* Single character wildcard */
+        case '?':
             if ((flags & RBC_FNM_PATHNAME) && *s == '/')
+                goto backtrack;
+            at_segment_start = advance_pattern(&p, flags);
+            utf8_next(&s);
+            continue;
+
+        case '[':
+            p = match_bracket(p + 1, utf8_next(&s), flags);
+            if (!p)
+                return false;
+            at_segment_start = (*p == '/');
+            continue;
+
+        case '\\':
+            if (!(flags & RBC_FNM_NOESCAPE) && p[1])
             {
-                /* ? doesn't match / with PATHNAME flag */
+                at_segment_start = advance_pattern(&p, flags);
+                if (char_match(*p, *s, flags))
+                {
+                    at_segment_start = advance_pattern(&p, flags);
+                    s++;
+                    continue;
+                }
                 goto backtrack;
             }
-            p++;
-            utf8_next(&s); /* Skip one UTF-8 character */
-            at_segment_start = false;
-            continue;
-        }
-        else if (*p == '[')
-        {
-            /* Bracket expression - Ruby fails entire pattern if no closing ] */
-            const char *next = match_bracket(p + 1, utf8_next(&s), flags);
-            if (next)
+            // **** FALLTHROUGH ****
+
+        default:
+            if (char_match(*p, *s, flags))
             {
-                p = next;
-                at_segment_start = (*p == '/');
+                at_segment_start = advance_pattern(&p, flags);
+                s++;
                 continue;
             }
-            /* No match or invalid bracket - immediate failure (Ruby behavior) */
-            return true;
-        }
-        else if (char_match(*p, *s, flags))
-        {
-            /* Literal character match */
-            bool is_slash = (*p == '/' && (flags & RBC_FNM_PATHNAME));
-            p++;
-            s++;
-            at_segment_start = is_slash;
-            continue;
+            goto backtrack;
         }
 
     backtrack:
-        /* Mismatch - try to backtrack to last * */
-        if (p_strat)
+        if (p_start)
         {
-            /* With PATHNAME, * cannot match across / */
+            // If PATHNAME, `*` cannot match across `/`
             if ((flags & RBC_FNM_PATHNAME) && *s_start == '/')
-                return true;
+                return false;
 
-            p = p_strat;
-            s = ++s_start; /* Advance string and retry */
-            at_segment_start = false;
+            p = p_start;
+            s = ++s_start; // Advance string and retry
+            // Check if p_start is right after '/' in pattern
+            at_segment_start = (p_start > pattern && p_start[-1] == '/');
             continue;
         }
-
-        return true;
+        return false;
     }
 
-    /* Skip trailing * in pattern */
+    // If PATHNAME, skip trailing `**/` at end of pattern
+    if (flags & RBC_FNM_PATHNAME)
+    {
+        const char *pp = p;
+        while (pp[0] == '*' && pp[1] == '*' && pp[2] == '/')
+            pp += 3;
+        // Match if pattern ends with `**/` and string ends with `/`
+        if (*pp == '\0' && pp > p && s > string && s[-1] == '/')
+            return true;
+    }
+
+    // Skip trailing `*`
     while (*p == '*')
         p++;
 
-    return (*p != 0);
+    return (*p == 0);
 }
 
 /* Main fnmatch function */
@@ -307,7 +319,7 @@ static bool fnmatch(const char *pattern, const char *string, unsigned flags)
     if (!pattern || !string)
         return false;
 
-    return !fnmatch_internal(pattern, string, flags);
+    return fnmatch_internal(pattern, string, flags);
 }
 
 /* ========================================================================
