@@ -14,7 +14,12 @@
 #define RBC_FNM_DOTMATCH 0x04
 #define RBC_FNM_CASEFOLD 0x08
 #define RBC_FNM_EXTGLOB 0x10
-#define RBC_FNM_SYSCASE 0x20 // Use system default case sensitivity
+// SYSCASE: On Windows, use case-insensitive matching by default
+#ifdef _WIN32
+#define RBC_FNM_SYSCASE RBC_FNM_CASEFOLD
+#else
+#define RBC_FNM_SYSCASE 0
+#endif
 /// @}
 
 /// @defgroup rbc_glob Glob Functions

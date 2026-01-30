@@ -19,7 +19,12 @@
 #define RBC_FNM_PATHNAME 0x02
 #define RBC_FNM_DOTMATCH 0x04
 #define RBC_FNM_CASEFOLD 0x08
-#define RBC_FNM_SYSCASE 0x20
+// SYSCASE: On Windows, use case-insensitive matching by default
+#ifdef _WIN32
+#define RBC_FNM_SYSCASE RBC_FNM_CASEFOLD
+#else
+#define RBC_FNM_SYSCASE 0
+#endif
 
 // ============================================================================
 // Segment Types
@@ -324,12 +329,6 @@ bool rbc_fnmatch(const char *pattern, const char *string, unsigned flags);
 static bool rbc_match_segment(const rbc_segment_t *seg, const char *name,
                               unsigned flags)
 {
-    // On Windows, SYSCASE means case-insensitive matching
-#ifdef _WIN32
-    if (flags & RBC_FNM_SYSCASE)
-        flags |= RBC_FNM_CASEFOLD;
-#endif
-
     // Prepare null-terminated pattern
     char pattern_buf[RBC_GLOB_MAX_PATH];
     if (seg->len >= sizeof(pattern_buf))

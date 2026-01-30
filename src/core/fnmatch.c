@@ -13,54 +13,14 @@
 #include <ctype.h>
 #include <stdbool.h>
 #include "rbc/rbc.h"
-
-/* UTF-8 character reader - returns character and advances pointer */
-static int utf8_next(const char **str)
-{
-    const unsigned char *s = (const unsigned char *)*str;
-    int c;
-
-    if (*s == 0)
-        return 0;
-
-    if (*s < 0x80)
-    {
-        *str += 1;
-        return *s;
-    }
-
-    /* Multi-byte UTF-8 */
-    if ((*s & 0xE0) == 0xC0)
-    {
-        c = ((s[0] & 0x1F) << 6) | (s[1] & 0x3F);
-        *str += 2;
-    }
-    else if ((*s & 0xF0) == 0xE0)
-    {
-        c = ((s[0] & 0x0F) << 12) | ((s[1] & 0x3F) << 6) | (s[2] & 0x3F);
-        *str += 3;
-    }
-    else if ((*s & 0xF8) == 0xF0)
-    {
-        c = ((s[0] & 0x07) << 18) | ((s[1] & 0x3F) << 12) | ((s[2] & 0x3F) << 6) | (s[3] & 0x3F);
-        *str += 4;
-    }
-    else
-    {
-        /* Invalid UTF-8, skip one byte */
-        *str += 1;
-        return -1;
-    }
-
-    return c;
-}
+#include "../utils/utils.h"
 
 /// @brief Compare two characters with optional case folding
 /// @param c1 character 1
 /// @param c2 character 2
 /// @param flags Matching flags
 /// @return true if characters match
-static bool char_match(int c1, int c2, unsigned flags)
+static bool rbc_char_match(int c1, int c2, unsigned flags)
 {
     if (c1 == c2)
         return true;
@@ -81,18 +41,18 @@ static bool char_match(int c1, int c2, unsigned flags)
 /// @param string Current position in string
 /// @param flags Matching flags
 /// @return true if dotfile should be skipped
-static inline bool should_skip_dot(const char *pattern, const char *string, unsigned flags)
+static inline bool rbc_should_skip_dot(const char *pattern, const char *string, unsigned flags)
 {
     return !(flags & RBC_FNM_DOTMATCH) && *pattern != '.' && *string == '.';
 }
 
 /// @brief Advance pattern pointer and return segment start status
-/// @param p Pointer to pattern position
+/// @param pattern Pointer to pattern position
 /// @param flags Matching flags
 /// @return true if advanced position is at segment start (after '/')
-static inline bool advance_pattern(const char **p, unsigned flags)
+static inline bool rbc_advance_pattern(const char **pattern, unsigned flags)
 {
-    return (*(*p)++ == '/') && (flags & RBC_FNM_PATHNAME);
+    return (*(*pattern)++ == '/') && (flags & RBC_FNM_PATHNAME);
 }
 
 /// @brief Match bracket expression [..]
@@ -101,7 +61,7 @@ static inline bool advance_pattern(const char **p, unsigned flags)
 /// @param flags Matching flags
 /// @return Next position in pattern after ']' if matched, NULL if no match
 /// @note Ruby's fnmatch fails entire pattern if no closing `]`
-static const char *match_bracket(const char *pattern, int c, unsigned flags)
+static const char *rbc_match_bracket(const char *pattern, int c, unsigned flags)
 {
     const char *p = pattern;
     bool invert = false;
@@ -142,7 +102,7 @@ static const char *match_bracket(const char *pattern, int c, unsigned flags)
             continue;
         }
 
-        matched |= char_match(*p, c, flags);
+        matched |= rbc_char_match(*p, c, flags);
         p++;
     }
 
@@ -154,7 +114,7 @@ static const char *match_bracket(const char *pattern, int c, unsigned flags)
 /// @param string Target string
 /// @param flags Matching flags
 /// @return true if matched, false if no match
-static int fnmatch_internal(const char *pattern, const char *string, unsigned flags)
+static int rbc_fnmatch_internal(const char *pattern, const char *string, unsigned flags)
 {
     const char *p = pattern;
     const char *s = string;
@@ -162,7 +122,7 @@ static int fnmatch_internal(const char *pattern, const char *string, unsigned fl
     const char *s_start = NULL;   // Position in string when `*` was seen
     bool at_segment_start = true; // Track if at start of path segment
 
-    if (should_skip_dot(p, s, flags))
+    if (rbc_should_skip_dot(p, s, flags))
         return false;
 
     while (*s)
@@ -196,7 +156,7 @@ static int fnmatch_internal(const char *pattern, const char *string, unsigned fl
                 while (1)
                 {
                     // Try matching rest of pattern from here
-                    if (!should_skip_dot(p_rest, s_try, flags) && fnmatch_internal(p_rest, s_try, flags))
+                    if (!rbc_should_skip_dot(p_rest, s_try, flags) && rbc_fnmatch_internal(p_rest, s_try, flags))
                         return true;
 
                     // Advance to next `/` in string
@@ -244,12 +204,12 @@ static int fnmatch_internal(const char *pattern, const char *string, unsigned fl
         case '?':
             if ((flags & RBC_FNM_PATHNAME) && *s == '/')
                 goto backtrack;
-            at_segment_start = advance_pattern(&p, flags);
-            utf8_next(&s);
+            at_segment_start = rbc_advance_pattern(&p, flags);
+            rbc_next_codepoint(&s);
             continue;
 
         case '[':
-            p = match_bracket(p + 1, utf8_next(&s), flags);
+            p = rbc_match_bracket(p + 1, rbc_next_codepoint(&s), flags);
             if (!p)
                 return false;
             at_segment_start = (*p == '/');
@@ -258,10 +218,10 @@ static int fnmatch_internal(const char *pattern, const char *string, unsigned fl
         case '\\':
             if (!(flags & RBC_FNM_NOESCAPE) && p[1])
             {
-                at_segment_start = advance_pattern(&p, flags);
-                if (char_match(*p, *s, flags))
+                at_segment_start = rbc_advance_pattern(&p, flags);
+                if (rbc_char_match(*p, *s, flags))
                 {
-                    at_segment_start = advance_pattern(&p, flags);
+                    at_segment_start = rbc_advance_pattern(&p, flags);
                     s++;
                     continue;
                 }
@@ -270,9 +230,9 @@ static int fnmatch_internal(const char *pattern, const char *string, unsigned fl
             // **** FALLTHROUGH ****
 
         default:
-            if (char_match(*p, *s, flags))
+            if (rbc_char_match(*p, *s, flags))
             {
-                at_segment_start = advance_pattern(&p, flags);
+                at_segment_start = rbc_advance_pattern(&p, flags);
                 s++;
                 continue;
             }
@@ -313,17 +273,8 @@ static int fnmatch_internal(const char *pattern, const char *string, unsigned fl
     return (*p == 0);
 }
 
-/* Main fnmatch function */
-static bool fnmatch(const char *pattern, const char *string, unsigned flags)
-{
-    if (!pattern || !string)
-        return false;
-
-    return fnmatch_internal(pattern, string, flags);
-}
-
 /* ========================================================================
- * RBC Wrapper Functions (Ruby-compatible API)
+ * RBC Public API (Ruby-compatible)
  * ======================================================================== */
 
 bool rbc_fnmatch(const char *pattern, const char *path, unsigned flags)
@@ -331,8 +282,7 @@ bool rbc_fnmatch(const char *pattern, const char *path, unsigned flags)
     if (!pattern || !path)
         return false;
 
-    /* Note: RBC_FNM_EXTGLOB and RBC_FNM_SYSCASE not yet supported */
-    return fnmatch(pattern, path, flags);
+    return rbc_fnmatch_internal(pattern, path, flags);
 }
 
 /* Stub implementations for precompiled pattern API */

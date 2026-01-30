@@ -233,7 +233,7 @@ cd /workspaces/dirglob
 ```
 
 ### fnmatchテスト結果の確認
-
+必ず`/workspaces/dirglob`から実行する必要があります。
 ```bash
 cd /workspaces/dirglob
 ./build/tests/test_fnmatch_ruby_compat 2>&1 | tail -20
