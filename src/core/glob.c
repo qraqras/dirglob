@@ -1,5 +1,6 @@
 #include "platform.h"
 #include "rbc/rbc.h"
+#include "../utils/utils.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -237,6 +238,7 @@ static bool rbc_path_next_segment(const char **pattern, unsigned flags, rbc_segm
 
     seg->start = p;
     seg->starts_with_dot = (*p == '.');
+    seg->has_trailing_slash = false;
 
     unsigned char_flags = 0;
     bool in_bracket = false; // Bracket can not be nested, so a simple flag is sufficient
@@ -311,6 +313,7 @@ static bool rbc_path_next_segment(const char **pattern, unsigned flags, rbc_segm
 
 // External fnmatch implementation
 bool rbc_fnmatch(const char *pattern, const char *string, unsigned flags);
+bool rbc_fnmatch_len(const char *pattern, size_t pattern_len, const char *path, unsigned flags);
 
 /// @brief Match a single segment against a string
 /// @param[in] seg Segment to match
@@ -323,47 +326,28 @@ static bool rbc_match_segment(const rbc_segment_t *seg, const char *string, unsi
     {
     case SEG_DOT:
         return strcmp(string, ".") == 0;
-
     case SEG_DOTDOT:
         return strcmp(string, "..") == 0;
-
     case SEG_LITERAL:
         if (flags & RBC_FNM_CASEFOLD)
         {
-            // Case-insensitive comparison
+            // Case-insensitive comparison using rbc_char_match
             const char *p = seg->start;
             const char *p_end = seg->start + seg->len;
             const char *s = string;
 
             while (p < p_end && *s)
             {
-                unsigned char pc = (unsigned char)*p++;
-                unsigned char sc = (unsigned char)*s++;
-                if (pc >= 'A' && pc <= 'Z')
-                    pc += 'a' - 'A';
-                if (sc >= 'A' && sc <= 'Z')
-                    sc += 'a' - 'A';
-                if (pc != sc)
+                if (!rbc_char_match(*p++, *s++, flags))
                     return false;
             }
             return p == p_end && *s == '\0';
         }
         return strlen(string) == seg->len && strncmp(seg->start, string, seg->len) == 0;
-
     case SEG_WILDCARD:
-    {
-        // Prepare null-terminated pattern for fnmatch
-        char pattern_buf[RBC_GLOB_MAX_PATH];
-        if (seg->len >= sizeof(pattern_buf))
-            return false;
-        memcpy(pattern_buf, seg->start, seg->len);
-        pattern_buf[seg->len] = '\0';
-        return rbc_fnmatch(pattern_buf, string, flags);
-    }
-
+        return rbc_fnmatch_len(seg->start, seg->len, string, flags);
     case SEG_RECURSIVE:
-        // RECURSIVE segments don't directly match names
-        return false;
+        return false; // RECURSIVE should not be matched directly
     }
 
     return false;

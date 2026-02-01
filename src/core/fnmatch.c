@@ -15,27 +15,6 @@
 #include "rbc/rbc.h"
 #include "../utils/utils.h"
 
-/// @brief Compare two characters with optional case folding
-/// @param c1 character 1
-/// @param c2 character 2
-/// @param flags Matching flags
-/// @return true if characters match
-static bool rbc_char_match(int c1, int c2, unsigned flags)
-{
-    if (c1 == c2)
-        return true;
-
-    if (!(flags & RBC_FNM_CASEFOLD))
-        return false;
-
-    if (c1 >= 'A' && c1 <= 'Z')
-        c1 += 32;
-    if (c2 >= 'A' && c2 <= 'Z')
-        c2 += 32;
-
-    return c1 == c2;
-}
-
 /// @brief Check if dotfile should be skipped (DOTMATCH restriction)
 /// @param pattern Current position in pattern
 /// @param string Current position in string
@@ -112,12 +91,13 @@ static const char *rbc_match_bracket(const char *pattern, int c, unsigned flags)
     return NULL;
 }
 
-/// @brief Internal fnmatch implementation
+/// @brief Internal fnmatch implementation with pattern length
 /// @param pattern Pattern string
+/// @param pattern_end End of pattern (exclusive)
 /// @param string Target string
 /// @param flags Matching flags
 /// @return true if matched, false if no match
-static int rbc_fnmatch_internal(const char *pattern, const char *string, unsigned flags)
+static int rbc_fnmatch_internal_len(const char *pattern, const char *pattern_end, const char *string, unsigned flags)
 {
     const char *p = pattern;
     const char *s = string;
@@ -125,25 +105,29 @@ static int rbc_fnmatch_internal(const char *pattern, const char *string, unsigne
     const char *s_start = NULL;   // Position in string when `*` was seen
     bool at_segment_start = true; // Track if at start of path segment
 
-    if (rbc_should_skip_dot(p, s, flags))
+    if (p < pattern_end && rbc_should_skip_dot(p, s, flags))
         return false;
 
     while (*s)
     {
+        if (p >= pattern_end)
+            goto backtrack;
+
         switch (*p)
         {
         case '*':
             // Handle `**/` (If not PATHNAME, this behaves the same as `*`)
-            if ((flags & RBC_FNM_PATHNAME) && at_segment_start && p[1] == '*' && p[2] == '/')
+            if ((flags & RBC_FNM_PATHNAME) && at_segment_start &&
+                p + 2 < pattern_end && p[1] == '*' && p[2] == '/')
             {
                 // Skip `**/` patterns consecutively
-                while (p[0] == '*' && p[1] == '*' && p[2] == '/')
+                while (p + 2 < pattern_end && p[0] == '*' && p[1] == '*' && p[2] == '/')
                     p += 3;
 
                 const char *p_rest = p;
 
                 // If pattern ends here, match rest of string
-                if (*p_rest == '\0')
+                if (p_rest >= pattern_end)
                 {
                     if (*s == '\0')
                         return true;
@@ -159,7 +143,8 @@ static int rbc_fnmatch_internal(const char *pattern, const char *string, unsigne
                 while (1)
                 {
                     // Try matching rest of pattern from here
-                    if (!rbc_should_skip_dot(p_rest, s_try, flags) && rbc_fnmatch_internal(p_rest, s_try, flags))
+                    if (!rbc_should_skip_dot(p_rest, s_try, flags) &&
+                        rbc_fnmatch_internal_len(p_rest, pattern_end, s_try, flags))
                         return true;
 
                     // Advance to next `/` in string
@@ -176,11 +161,11 @@ static int rbc_fnmatch_internal(const char *pattern, const char *string, unsigne
             }
 
             // Skip consecutive `*`
-            while (*p == '*')
+            while (p < pattern_end && *p == '*')
                 p++;
 
             // If pattern ends with `*`, match rest of string
-            if (*p == '\0')
+            if (p >= pattern_end)
             {
                 if (flags & RBC_FNM_PATHNAME)
                 {
@@ -215,11 +200,11 @@ static int rbc_fnmatch_internal(const char *pattern, const char *string, unsigne
             p = rbc_match_bracket(p + 1, rbc_next_codepoint(&s), flags);
             if (!p)
                 return false;
-            at_segment_start = (*p == '/');
+            at_segment_start = (p < pattern_end && *p == '/');
             continue;
 
         case '\\':
-            if (!(flags & RBC_FNM_NOESCAPE) && p[1])
+            if (!(flags & RBC_FNM_NOESCAPE) && p + 1 < pattern_end)
             {
                 at_segment_start = rbc_advance_pattern(&p, flags);
                 if (rbc_char_match(*p, *s, flags))
@@ -262,18 +247,18 @@ static int rbc_fnmatch_internal(const char *pattern, const char *string, unsigne
     if (flags & RBC_FNM_PATHNAME)
     {
         const char *pp = p;
-        while (pp[0] == '*' && pp[1] == '*' && pp[2] == '/')
+        while (pp + 2 < pattern_end && pp[0] == '*' && pp[1] == '*' && pp[2] == '/')
             pp += 3;
         // Match if pattern ends with `**/` and string ends with `/`
-        if (*pp == '\0' && pp > p && s > string && s[-1] == '/')
+        if (pp >= pattern_end && pp > p && s > string && s[-1] == '/')
             return true;
     }
 
     // Skip trailing `*`
-    while (*p == '*')
+    while (p < pattern_end && *p == '*')
         p++;
 
-    return (*p == 0);
+    return (p >= pattern_end);
 }
 
 /* ========================================================================
@@ -285,7 +270,15 @@ bool rbc_fnmatch(const char *pattern, const char *path, unsigned flags)
     if (!pattern || !path)
         return false;
 
-    return rbc_fnmatch_internal(pattern, path, flags);
+    return rbc_fnmatch_internal_len(pattern, pattern + strlen(pattern), path, flags);
+}
+
+bool rbc_fnmatch_len(const char *pattern, size_t pattern_len, const char *path, unsigned flags)
+{
+    if (!pattern || !path || pattern_len == 0)
+        return false;
+
+    return rbc_fnmatch_internal_len(pattern, pattern + pattern_len, path, flags);
 }
 
 /* Stub implementations for precompiled pattern API */
