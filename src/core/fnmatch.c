@@ -67,6 +67,9 @@ static const char *rbc_match_bracket(const char *pattern, int c, unsigned flags)
     bool invert = false;
     bool matched = false;
 
+    if ((flags & RBC_FNM_PATHNAME) && c == '/')
+        return NULL;
+
     if (*p == ']')
         return NULL;
 

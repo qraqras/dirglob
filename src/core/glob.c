@@ -150,9 +150,8 @@ static void rbc_results_free(rbc_results_t *r)
 
 /// @}
 
-// ============================================================================
-// Path Utilities (snprintf-free)
-// ============================================================================
+/// @defgroup Path Utilities
+/// @{
 
 /// @brief Build path: base + '/' + component
 /// @pre base must be normalized (no backslashes, no consecutive or trailing slashes)
@@ -214,21 +213,20 @@ static size_t rbc_path_append_slash(char *buf, size_t buf_size, size_t path_len)
     return path_len;
 }
 
+/// @}
+
 // ============================================================================
 // Pattern Parsing
 // ============================================================================
 
-/**
- * @brief Parse next segment from pattern (single-pass, glob.c style)
- * @return true if segment found, false if end of pattern
- *
- * Single pass through segment to:
- * 1. Find segment boundaries
- * 2. Collect character type flags for classification
- */
-static bool rbc_next_segment(const char **pattern_ptr, unsigned flags, rbc_segment_t *seg)
+/// @brief Parse next segment from pattern
+/// @param[in, out] pattern Pointer to pattern pointer (updated to after parsed segment)
+/// @param[in] flags Matching flags
+/// @param[out] seg Parsed segment
+/// @return true if a segment was parsed, false if end of pattern
+static bool rbc_path_next_segment(const char **pattern, unsigned flags, rbc_segment_t *seg)
 {
-    const char *p = *pattern_ptr;
+    const char *p = *pattern;
 
     // Skip leading slashes (normalize)
     while (*p == '/')
@@ -240,20 +238,20 @@ static bool rbc_next_segment(const char **pattern_ptr, unsigned flags, rbc_segme
     seg->start = p;
     seg->starts_with_dot = (*p == '.');
 
-    // Single-pass: find segment end and collect character flags
-    const char *seg_start = p;
-    unsigned char char_flags = 0;
-    int in_bracket = 0;
+    unsigned char_flags = 0;
+    bool in_bracket = false; // Bracket can not be nested, so a simple flag is sufficient
 
-    while (*p != '\0' && (*p != '/' || in_bracket > 0))
+    while (*p && !(*p == '/' && !in_bracket))
     {
+        // Handle escape sequences
         if (!(flags & RBC_FNM_NOESCAPE) && *p == '\\' && *(p + 1))
         {
             char_flags |= RBC_SEG_CONTAINS_ESCAPE;
-            p += 2; // Skip escaped char
+            p += 2;
             continue;
         }
 
+        // Collect character flags
         switch (*p)
         {
         case '*':
@@ -263,18 +261,13 @@ static bool rbc_next_segment(const char **pattern_ptr, unsigned flags, rbc_segme
             char_flags |= RBC_SEG_CONTAINS_QUESTION;
             break;
         case '[':
-            in_bracket++;
+            char_flags |= RBC_SEG_CONTAINS_BRACKET;
+            in_bracket = true;
             break;
         case ']':
-            if (in_bracket > 0)
-            {
-                in_bracket--;
-                char_flags |= RBC_SEG_CONTAINS_BRACKET; // Complete bracket
-            }
-            else
-            {
+            if (!in_bracket)
                 char_flags |= RBC_SEG_CONTAINS_REGULAR;
-            }
+            in_bracket = false;
             break;
         default:
             char_flags |= RBC_SEG_CONTAINS_REGULAR;
@@ -283,66 +276,31 @@ static bool rbc_next_segment(const char **pattern_ptr, unsigned flags, rbc_segme
         p++;
     }
 
-    seg->len = p - seg_start;
-    seg->has_trailing_slash = (*p == '/');
+    // If still in bracket at segment end, segment is invalid
+    if (in_bracket)
+        return false;
 
-    // Classify segment based on collected flags
-    // Do this BEFORE skipping trailing slashes to correctly identify ** vs **/
-
-    // Check for ** (pure double-star, no other chars)
-    if (seg->len == 2 && char_flags == RBC_SEG_CONTAINS_STAR &&
-        seg_start[0] == '*' && seg_start[1] == '*')
+    seg->len = p - seg->start;
+    if (*p == '/')
     {
-        // ** with trailing slash = RECURSIVE (directory descent)
-        // ** without trailing slash = WILDCARD (match like *)
-        if (seg->has_trailing_slash)
-        {
-            seg->type = SEG_RECURSIVE;
-            // Skip trailing slashes
-            while (*p == '/')
-                p++;
-        }
-        else
-        {
-            seg->type = SEG_WILDCARD;
-        }
-        seg->is_last = (*p == '\0');
-        *pattern_ptr = p;
-        return true;
+        seg->has_trailing_slash = true;
+        while (*p == '/')
+            p++;
     }
-
-    // For non-** segments, skip trailing slashes normally
-    while (*p == '/')
-        p++;
     seg->is_last = (*p == '\0');
-    *pattern_ptr = p;
 
-    // Check for special single-char segments first
-    if (seg->len == 1 && seg_start[0] == '.')
-    {
+    if (seg->len == 1 && seg->start[0] == '.')
         seg->type = SEG_DOT;
-    }
-    else if (seg->len == 2 && seg_start[0] == '.' && seg_start[1] == '.')
-    {
+    else if (seg->len == 2 && seg->start[0] == '.' && seg->start[1] == '.')
         seg->type = SEG_DOTDOT;
-    }
-    // .** pattern (dot followed by **)
-    else if (seg->len == 3 && seg_start[0] == '.' &&
-             seg_start[1] == '*' && seg_start[2] == '*')
-    {
-        // .** always treated as wildcard (not recursive)
-        seg->type = SEG_WILDCARD;
-    }
-    // Any wildcard or escape → delegate to fnmatch
-    else if (char_flags & (RBC_SEG_CONTAINS_STAR | RBC_SEG_CONTAINS_QUESTION |
-                           RBC_SEG_CONTAINS_BRACKET | RBC_SEG_CONTAINS_ESCAPE))
-    {
-        seg->type = SEG_WILDCARD;
-    }
-    else
-    {
+    else if (seg->len == 2 && char_flags == RBC_SEG_CONTAINS_STAR)
+        seg->type = seg->has_trailing_slash ? SEG_RECURSIVE : SEG_WILDCARD;
+    else if (char_flags == RBC_SEG_CONTAINS_REGULAR)
         seg->type = SEG_LITERAL;
-    }
+    else
+        seg->type = SEG_WILDCARD;
+
+    *pattern = p;
 
     return true;
 }
@@ -354,50 +312,60 @@ static bool rbc_next_segment(const char **pattern_ptr, unsigned flags, rbc_segme
 // External fnmatch implementation
 bool rbc_fnmatch(const char *pattern, const char *string, unsigned flags);
 
-/**
- * @brief Match name against segment pattern
- */
-static bool rbc_match_segment(const rbc_segment_t *seg, const char *name, unsigned flags)
+/// @brief Match a single segment against a string
+/// @param[in] seg Segment to match
+/// @param[in] string String to match against
+/// @param[in] flags Matching flags
+/// @return true if matched, false if no match
+static bool rbc_match_segment(const rbc_segment_t *seg, const char *string, unsigned flags)
 {
-    // Prepare null-terminated pattern
-    char pattern_buf[RBC_GLOB_MAX_PATH];
-    if (seg->len >= sizeof(pattern_buf))
-        return false;
-    memcpy(pattern_buf, seg->start, seg->len);
-    pattern_buf[seg->len] = '\0';
-
     switch (seg->type)
     {
+    case SEG_DOT:
+        return strcmp(string, ".") == 0;
+
+    case SEG_DOTDOT:
+        return strcmp(string, "..") == 0;
+
     case SEG_LITERAL:
         if (flags & RBC_FNM_CASEFOLD)
         {
             // Case-insensitive comparison
-            const char *p = pattern_buf;
-            const char *n = name;
-            while (*p && *n)
+            const char *p = seg->start;
+            const char *p_end = seg->start + seg->len;
+            const char *s = string;
+
+            while (p < p_end && *s)
             {
                 unsigned char pc = (unsigned char)*p++;
-                unsigned char nc = (unsigned char)*n++;
+                unsigned char sc = (unsigned char)*s++;
                 if (pc >= 'A' && pc <= 'Z')
                     pc += 'a' - 'A';
-                if (nc >= 'A' && nc <= 'Z')
-                    nc += 'a' - 'A';
-                if (pc != nc)
+                if (sc >= 'A' && sc <= 'Z')
+                    sc += 'a' - 'A';
+                if (pc != sc)
                     return false;
             }
-            return *p == '\0' && *n == '\0';
+            return p == p_end && *s == '\0';
         }
-        return strcmp(pattern_buf, name) == 0;
-    case SEG_DOT:
-        return strcmp(name, ".") == 0;
-    case SEG_DOTDOT:
-        return strcmp(name, "..") == 0;
+        return strlen(string) == seg->len && strncmp(seg->start, string, seg->len) == 0;
+
     case SEG_WILDCARD:
-        return rbc_fnmatch(pattern_buf, name, flags);
+    {
+        // Prepare null-terminated pattern for fnmatch
+        char pattern_buf[RBC_GLOB_MAX_PATH];
+        if (seg->len >= sizeof(pattern_buf))
+            return false;
+        memcpy(pattern_buf, seg->start, seg->len);
+        pattern_buf[seg->len] = '\0';
+        return rbc_fnmatch(pattern_buf, string, flags);
+    }
+
     case SEG_RECURSIVE:
         // RECURSIVE segments don't directly match names
         return false;
     }
+
     return false;
 }
 
@@ -630,7 +598,7 @@ static void rbc_glob_process_recursive(
     rbc_segment_t next_seg;
     const char *next_remaining = after_recursive;
     bool has_next_seg = (after_recursive[0] != '\0') &&
-                        rbc_next_segment(&next_remaining, flags, &next_seg);
+                        rbc_path_next_segment(&next_remaining, flags, &next_seg);
 
     rbc_dir_t *dirp = rbc_opendir(dir_len > 0 ? dir_path : ".");
     if (!dirp)
@@ -812,7 +780,7 @@ static void rbc_glob_walk(const char *base, size_t baselen, const char *pattern,
         rbc_segment_t seg;
         const char *pat_ptr = frame.pattern;
 
-        if (!rbc_next_segment(&pat_ptr, flags, &seg))
+        if (!rbc_path_next_segment(&pat_ptr, flags, &seg))
         {
             continue; // Empty pattern
         }
