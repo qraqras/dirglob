@@ -565,15 +565,18 @@ static void rbc_glob_process_recursive(
         }
 
         // Direct matching of after_recursive pattern (** matches zero directories)
-        // For "." handling with zero-match:
-        // - Without DOTMATCH: set HAS_WILDCARD_ANCESTOR to exclude "." (Ruby behavior)
-        // - With DOTMATCH: don't set flag, allow "." to be included
+        // Ruby behavior for "." in zero-match:
+        // - Without DOTMATCH: **/.*  matches .a, .b but NOT "." itself
+        // - With DOTMATCH: **/.*  matches "." as well
         if (has_next_seg)
         {
-            unsigned zero_match_flags = flags;
-            if (!(flags & RBC_FNM_DOTMATCH))
-                zero_match_flags |= RBC_GLOB_HAS_WILDCARD_ANCESTOR;
-            if (rbc_segment_match(&parsed_next_seg, name, zero_match_flags))
+            // Skip "." in zero-match case unless DOTMATCH is set
+            // "." would only appear in zero-match because we don't recurse into "."
+            bool is_dot = (name[0] == '.' && name[1] == '\0');
+            if (is_dot && !(flags & RBC_FNM_DOTMATCH))
+                goto skip_zero_match;
+
+            if (rbc_segment_match(&parsed_next_seg, name, flags))
             {
                 if (parsed_next_seg.is_last)
                 {
@@ -606,11 +609,11 @@ static void rbc_glob_process_recursive(
                 }
             }
         }
+    skip_zero_match:
 
         // Recurse into subdirectories (only if allowed)
         // Never recurse into "." (would cause infinite loop)
-        bool is_dot = (name[0] == '.' && name[1] == '\0');
-        if (is_dir && !skip_descent && !is_dot)
+        if (is_dir && !skip_descent && !(name[0] == '.' && name[1] == '\0'))
         {
             // Continue ** matching in subdirectory
             rbc_glob_process_recursive(seg_recursive, NULL,
@@ -643,6 +646,7 @@ static void rbc_glob_walk_recursive(const char *path, size_t path_len, size_t ba
     {
         rbc_segment_t seg_recursive = seg;
         rbc_segment_t seg_after_recursive;
+        bool has_after_seg = false;
 
         // Collapse consecutive **/ segments
         while (!seg_recursive.is_last)
@@ -651,11 +655,50 @@ static void rbc_glob_walk_recursive(const char *path, size_t path_len, size_t ba
             if (!rbc_segment_next(&next_pattern, flags, &seg_after_recursive))
                 break;
             if (seg_after_recursive.type != SEG_RECURSIVE)
+            {
+                has_after_seg = true;
                 break;
+            }
             seg_recursive = seg_after_recursive;
         }
 
-        // Zero-directory match case
+        // Special case: **/. pattern
+        // Ruby behavior: NO recursion, only zero-directory match
+        // - Without DOTMATCH: returns []
+        // - With DOTMATCH: returns only current directory's "."
+        if (has_after_seg && seg_after_recursive.type == SEG_DOT)
+        {
+            if (flags & RBC_FNM_DOTMATCH)
+            {
+                // Emit current directory's "." (zero-directory match)
+                char pathbuf[RBC_GLOB_MAX_PATH];
+                size_t len = rbc_path_join(pathbuf, sizeof(pathbuf),
+                                           path, path_len, ".", 1);
+                if (len > 0)
+                {
+                    // Handle trailing slash if pattern has it (**/./）
+                    if (seg_after_recursive.has_trailing_slash)
+                    {
+                        len = rbc_path_append_slash(pathbuf, sizeof(pathbuf), len);
+                        if (len == 0)
+                            break;
+                    }
+                    rbc_glob_emit(pathbuf, baselen, results);
+                }
+            }
+            // No recursion for **/. pattern
+            break;
+        }
+
+        // Special case: **/.. pattern
+        // Ruby behavior: always returns [] (no recursion, no match)
+        if (has_after_seg && seg_after_recursive.type == SEG_DOTDOT)
+        {
+            // Do nothing - **/.. never matches anything
+            break;
+        }
+
+        // Zero-directory match case for **/ at end
         if (seg_recursive.is_last)
         {
             char pathbuf[RBC_GLOB_MAX_PATH];
