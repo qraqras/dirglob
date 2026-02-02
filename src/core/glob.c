@@ -27,27 +27,6 @@
 #define RBC_WALK_QUEUE_SIZE 1024
 /// @}
 
-/// @brief Segment Types
-typedef enum rbc_segment_type_e
-{
-    SEG_LITERAL,   // `abc`
-    SEG_DOT,       // `.`
-    SEG_DOTDOT,    // `..`
-    SEG_WILDCARD,  // `*`, `.*`, `?`, `.?`, `[abc]` etc.
-    SEG_RECURSIVE, // `**/`
-} rbc_segment_type_t;
-
-/// @brief Segment Structure
-typedef struct rbc_segment_s
-{
-    const char *start;       // Segment start in pattern
-    size_t len;              // Segment length
-    rbc_segment_type_t type; // Segment classification
-    bool starts_with_dot;    // Segment starts with '.'
-    bool has_trailing_slash; // Pattern has '/' after this segment
-    bool is_last;            // This is the last segment
-} rbc_segment_t;
-
 /// @brief Walker Frame Structure
 typedef struct rbc_walk_frame_s
 {
@@ -151,7 +130,7 @@ static void rbc_results_free(rbc_results_t *r)
 
 /// @}
 
-/// @defgroup Path Utilities
+/// @defgroup Path
 /// @{
 
 /// @brief Build path: base + '/' + component
@@ -208,7 +187,6 @@ static size_t rbc_path_append_slash(char *buf, size_t buf_size, size_t path_len)
         return 0;
     if (buf[path_len - 1] == '/')
         return path_len;
-
     buf[path_len++] = '/';
     buf[path_len] = '\0';
     return path_len;
@@ -216,20 +194,45 @@ static size_t rbc_path_append_slash(char *buf, size_t buf_size, size_t path_len)
 
 /// @}
 
-// ============================================================================
-// Pattern Parsing
-// ============================================================================
+/// ============================================================================
+/// Fnmatch Internal Implementation
+/// ============================================================================
+bool rbc_fnmatch(const char *pattern, const char *string, unsigned flags);
+bool rbc_fnmatch_len(const char *pattern, size_t pattern_len, const char *path, unsigned flags);
+
+/// @defgroup Path Segment
+/// @{
+
+/// @brief Segment Types
+typedef enum rbc_segment_type_e
+{
+    SEG_LITERAL,   // `abc`
+    SEG_DOT,       // `.`
+    SEG_DOTDOT,    // `..`
+    SEG_WILDCARD,  // `*`, `.*`, `?`, `.?`, `[abc]` etc.
+    SEG_RECURSIVE, // `**/`
+} rbc_segment_type_t;
+
+/// @brief Segment Structure
+typedef struct rbc_segment_s
+{
+    const char *start;       // Segment start in pattern
+    size_t len;              // Segment length
+    rbc_segment_type_t type; // Segment classification
+    bool starts_with_dot;    // Segment starts with '.'
+    bool has_trailing_slash; // Pattern has '/' after this segment
+    bool is_last;            // This is the last segment
+} rbc_segment_t;
 
 /// @brief Parse next segment from pattern
 /// @param[in, out] pattern Pointer to pattern pointer (updated to after parsed segment)
 /// @param[in] flags Matching flags
 /// @param[out] seg Parsed segment
 /// @return true if a segment was parsed, false if end of pattern
-static bool rbc_path_next_segment(const char **pattern, unsigned flags, rbc_segment_t *seg)
+static bool rbc_segment_next(const char **pattern, unsigned flags, rbc_segment_t *seg)
 {
     const char *p = *pattern;
 
-    // Skip leading slashes (normalize)
     while (*p == '/')
         p++;
 
@@ -307,20 +310,12 @@ static bool rbc_path_next_segment(const char **pattern, unsigned flags, rbc_segm
     return true;
 }
 
-// ============================================================================
-// Pattern Matching (fnmatch wrapper)
-// ============================================================================
-
-// External fnmatch implementation
-bool rbc_fnmatch(const char *pattern, const char *string, unsigned flags);
-bool rbc_fnmatch_len(const char *pattern, size_t pattern_len, const char *path, unsigned flags);
-
 /// @brief Match a single segment against a string
 /// @param[in] seg Segment to match
 /// @param[in] string String to match against
 /// @param[in] flags Matching flags
 /// @return true if matched, false if no match
-static bool rbc_match_segment(const rbc_segment_t *seg, const char *string, unsigned flags)
+static bool rbc_segment_match(const rbc_segment_t *seg, const char *string, unsigned flags)
 {
     switch (seg->type)
     {
@@ -331,17 +326,15 @@ static bool rbc_match_segment(const rbc_segment_t *seg, const char *string, unsi
     case SEG_LITERAL:
         if (flags & RBC_FNM_CASEFOLD)
         {
-            // Case-insensitive comparison using rbc_char_match
-            const char *p = seg->start;
+            const char *p_start = seg->start;
             const char *p_end = seg->start + seg->len;
             const char *s = string;
-
-            while (p < p_end && *s)
+            while (p_start < p_end && *s)
             {
-                if (!rbc_char_match(*p++, *s++, flags))
+                if (!rbc_char_match(*p_start++, *s++, flags))
                     return false;
             }
-            return p == p_end && *s == '\0';
+            return p_start == p_end && *s == '\0';
         }
         return strlen(string) == seg->len && strncmp(seg->start, string, seg->len) == 0;
     case SEG_WILDCARD:
@@ -349,15 +342,14 @@ static bool rbc_match_segment(const rbc_segment_t *seg, const char *string, unsi
     case SEG_RECURSIVE:
         return false; // RECURSIVE should not be matched directly
     }
-
     return false;
 }
+
+/// @}
 
 // ============================================================================
 // Glob Walker (Queue-based for correct traversal order)
 // ============================================================================
-
-// Walker state flags
 
 static bool rbc_walk_enqueue(rbc_walk_queue_t *q, const char *path, size_t path_len, const char *pattern, uint8_t flags)
 {
@@ -505,7 +497,7 @@ static void rbc_glob_process_dir(
         }
 
         // Match against segment
-        if (!rbc_match_segment(seg, name, flags))
+        if (!rbc_segment_match(seg, name, flags))
         {
             continue;
         }
@@ -582,7 +574,7 @@ static void rbc_glob_process_recursive(
     rbc_segment_t next_seg;
     const char *next_remaining = after_recursive;
     bool has_next_seg = (after_recursive[0] != '\0') &&
-                        rbc_path_next_segment(&next_remaining, flags, &next_seg);
+                        rbc_segment_next(&next_remaining, flags, &next_seg);
 
     rbc_dir_t *dirp = rbc_opendir(dir_len > 0 ? dir_path : ".");
     if (!dirp)
@@ -646,7 +638,7 @@ static void rbc_glob_process_recursive(
             // At depth 0 (no wildcard ancestor), "." can match with DOTMATCH
             // At depth > 0, "." is always skipped (passed through wildcard)
             if (!rbc_should_skip_entry(name, &next_seg, flags, has_wildcard_ancestor) &&
-                rbc_match_segment(&next_seg, name, flags))
+                rbc_segment_match(&next_seg, name, flags))
             {
                 if (next_seg.is_last)
                 {
@@ -764,7 +756,7 @@ static void rbc_glob_walk(const char *base, size_t baselen, const char *pattern,
         rbc_segment_t seg;
         const char *pat_ptr = frame.pattern;
 
-        if (!rbc_path_next_segment(&pat_ptr, flags, &seg))
+        if (!rbc_segment_next(&pat_ptr, flags, &seg))
         {
             continue; // Empty pattern
         }
