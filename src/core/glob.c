@@ -378,6 +378,37 @@ static bool rbc_glob_emit(const char *path, size_t baselen, rbc_results_t *resul
     return rbc_results_add(results, result, strlen(result));
 }
 
+/// @brief Join path components, optionally append trailing slash, and emit to results
+/// @param[in] path Base path
+/// @param[in] path_len Length of base path
+/// @param[in] name Entry name to append
+/// @param[in] name_len Length of entry name
+/// @param[in] trailing_slash Whether to append trailing slash
+/// @param[in] baselen Base length to strip from output path
+/// @param[in,out] results Results buffer
+/// @return true on success, false on error (buffer overflow or memory allocation failure)
+static bool rbc_glob_emit_match(
+    const char *path, size_t path_len,
+    const char *name, size_t name_len,
+    bool trailing_slash,
+    size_t baselen,
+    rbc_results_t *results)
+{
+    char pathbuf[RBC_GLOB_MAX_PATH];
+    size_t len = rbc_path_join(pathbuf, sizeof(pathbuf), path, path_len, name, name_len);
+    if (len == 0)
+        return true; // Path too long, skip silently
+
+    if (trailing_slash)
+    {
+        len = rbc_path_append_slash(pathbuf, sizeof(pathbuf), len);
+        if (len == 0)
+            return true; // Buffer too small, skip silently
+    }
+
+    return rbc_glob_emit(pathbuf, baselen, results);
+}
+
 /// @brief Determine if entry should be skipped based on name and flags
 /// @param[in] name Entry name
 /// @param[in] flags Matching flags
@@ -424,7 +455,6 @@ static void rbc_glob_process_dir(
         return;
 
     rbc_dirent_t entry;
-    char pathbuf[RBC_GLOB_MAX_PATH];
 
     // Determine if next segment is a wildcard
     unsigned next_flags = flags;
@@ -439,36 +469,31 @@ static void rbc_glob_process_dir(
         if (!rbc_segment_match(seg, entry.name, flags))
             continue;
 
-        size_t new_len = rbc_path_join(pathbuf, sizeof(pathbuf), path, path_len, entry.name, strlen(entry.name));
-        if (new_len == 0)
-            continue; // Path too long, skip this entry
+        size_t name_len = strlen(entry.name);
 
         if (seg->is_last)
         {
             if (seg->has_trailing_slash)
             {
                 if (entry.is_dir)
-                {
-                    new_len = rbc_path_append_slash(pathbuf, sizeof(pathbuf), new_len);
-                    if (new_len == 0)
-                        continue; // Error: buffer too small
-                    if (!rbc_glob_emit(pathbuf, baselen, results))
+                    if (!rbc_glob_emit_match(path, path_len, entry.name, name_len, true, baselen, results))
                         break; // Memory allocation failed
-                }
             }
             else
             {
-                if (rbc_path_exists(pathbuf))
-                {
-                    if (!rbc_glob_emit(pathbuf, baselen, results))
-                        break; // Memory allocation failed
-                }
+                if (!rbc_glob_emit_match(path, path_len, entry.name, name_len, false, baselen, results))
+                    break; // Memory allocation failed
             }
         }
         else
         {
             if (entry.is_dir)
-                rbc_glob_walk_recursive(pathbuf, new_len, baselen, seg->next, next_flags, results);
+            {
+                char pathbuf[RBC_GLOB_MAX_PATH];
+                size_t new_len = rbc_path_join(pathbuf, sizeof(pathbuf), path, path_len, entry.name, name_len);
+                if (new_len > 0)
+                    rbc_glob_walk_recursive(pathbuf, new_len, baselen, seg->next, next_flags, results);
+            }
         }
     }
 
@@ -555,12 +580,8 @@ static void rbc_glob_process_recursive(
             bool is_dot = (name[0] == '.' && name[1] == '\0');
             if (is_dir && !is_dot)
             {
-                size_t slash_len = rbc_path_append_slash(pathbuf, sizeof(pathbuf), new_len);
-                if (slash_len > 0)
-                {
-                    if (!rbc_glob_emit(pathbuf, baselen, results))
-                        break; // Memory allocation failed
-                }
+                if (!rbc_glob_emit_match(path, path_len, name, name_len, true, baselen, results))
+                    break; // Memory allocation failed
             }
         }
 
@@ -585,20 +606,14 @@ static void rbc_glob_process_recursive(
                     {
                         if (is_dir)
                         {
-                            new_len = rbc_path_append_slash(pathbuf, sizeof(pathbuf), new_len);
-                            if (new_len == 0)
-                                continue; // Error: buffer too small
-                            if (!rbc_glob_emit(pathbuf, baselen, results))
+                            if (!rbc_glob_emit_match(path, path_len, name, name_len, true, baselen, results))
                                 break; // Memory allocation failed
                         }
                     }
                     else
                     {
-                        if (rbc_path_exists(pathbuf))
-                        {
-                            if (!rbc_glob_emit(pathbuf, baselen, results))
-                                break; // Memory allocation failed
-                        }
+                        if (!rbc_glob_emit_match(path, path_len, name, name_len, false, baselen, results))
+                            break; // Memory allocation failed
                     }
                 }
                 else if (is_dir)
@@ -646,7 +661,6 @@ static void rbc_glob_walk_recursive(const char *path, size_t path_len, size_t ba
     {
         rbc_segment_t seg_recursive = seg;
         rbc_segment_t seg_after_recursive;
-        bool has_after_seg = false;
 
         // Collapse consecutive **/ segments
         while (!seg_recursive.is_last)
@@ -655,10 +669,7 @@ static void rbc_glob_walk_recursive(const char *path, size_t path_len, size_t ba
             if (!rbc_segment_next(&next_pattern, flags, &seg_after_recursive))
                 break;
             if (seg_after_recursive.type != SEG_RECURSIVE)
-            {
-                has_after_seg = true;
                 break;
-            }
             seg_recursive = seg_after_recursive;
         }
 
@@ -666,36 +677,16 @@ static void rbc_glob_walk_recursive(const char *path, size_t path_len, size_t ba
         // Ruby behavior: NO recursion, only zero-directory match
         // - Without DOTMATCH: returns []
         // - With DOTMATCH: returns only current directory's "."
-        if (has_after_seg && seg_after_recursive.type == SEG_DOT)
+        if (!seg_recursive.is_last)
         {
-            if (flags & RBC_FNM_DOTMATCH)
+            if (seg_after_recursive.type == SEG_DOT)
             {
-                // Emit current directory's "." (zero-directory match)
-                char pathbuf[RBC_GLOB_MAX_PATH];
-                size_t len = rbc_path_join(pathbuf, sizeof(pathbuf),
-                                           path, path_len, ".", 1);
-                if (len > 0)
-                {
-                    // Handle trailing slash if pattern has it (**/./）
-                    if (seg_after_recursive.has_trailing_slash)
-                    {
-                        len = rbc_path_append_slash(pathbuf, sizeof(pathbuf), len);
-                        if (len == 0)
-                            break;
-                    }
-                    rbc_glob_emit(pathbuf, baselen, results);
-                }
+                if (flags & RBC_FNM_DOTMATCH)
+                    rbc_glob_emit_match(path, path_len, ".", 1, seg_after_recursive.has_trailing_slash, baselen, results);
+                break;
             }
-            // No recursion for **/. pattern
-            break;
-        }
-
-        // Special case: **/.. pattern
-        // Ruby behavior: always returns [] (no recursion, no match)
-        if (has_after_seg && seg_after_recursive.type == SEG_DOTDOT)
-        {
-            // Do nothing - **/.. never matches anything
-            break;
+            if (seg_after_recursive.type == SEG_DOTDOT)
+                break;
         }
 
         // Zero-directory match case for **/ at end
