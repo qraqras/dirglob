@@ -221,6 +221,7 @@ typedef struct rbc_segment_s
     bool starts_with_dot;    // Segment starts with '.'
     bool has_trailing_slash; // Pattern has '/' after this segment
     bool is_last;            // This is the last segment
+    const char *next;        // Remaining pattern after this segment
 } rbc_segment_t;
 
 /// @brief Parse next segment from pattern
@@ -304,6 +305,7 @@ static bool rbc_segment_next(const char **pattern, unsigned flags, rbc_segment_t
     else
         seg->type = SEG_WILDCARD;
 
+    seg->next = p;
     *pattern = p;
 
     return true;
@@ -386,7 +388,7 @@ static bool rbc_glob_should_skip_entry(const char *name, unsigned flags, bool ex
     if (name[0] == '.')
     {
         // `.` reached via wildcard is always skipped (prevents path duplication)
-        if (name[1] == '\0' && (flags & RBC_GLOB_HAS_WILDCARD_ANCESTOR))
+        if (name[1] == '\0' && (!(flags & RBC_FNM_DOTMATCH) || (flags & RBC_GLOB_HAS_WILDCARD_ANCESTOR)))
             return true;
         // `..` is always skipped (SEG_DOTDOT patterns are handled separately in segment_match)
         if (name[1] == '.' && name[2] == '\0')
@@ -402,15 +404,14 @@ static bool rbc_glob_should_skip_entry(const char *name, unsigned flags, bool ex
  * @brief Process a single directory with a normal segment (non-recursive)
  */
 static void rbc_glob_process_dir(
-    const char *dir_path,
-    size_t dir_len,
-    size_t baselen,
     const rbc_segment_t *seg,
-    const char *remaining_pattern,
+    const char *path,
+    size_t path_len,
+    size_t baselen,
     unsigned flags,
     rbc_results_t *results)
 {
-    rbc_dir_t *dirp = rbc_opendir(dir_len > 0 ? dir_path : ".");
+    rbc_dir_t *dirp = rbc_opendir(path_len > 0 ? path : ".");
     if (!dirp)
         return;
 
@@ -420,35 +421,22 @@ static void rbc_glob_process_dir(
     // Determine if next segment is a wildcard
     unsigned next_flags = flags;
     if (seg->type == SEG_WILDCARD || seg->type == SEG_RECURSIVE)
-    {
         next_flags |= RBC_GLOB_HAS_WILDCARD_ANCESTOR;
-    }
 
     while (rbc_readdir(dirp, &entry))
     {
-        // Check for allocation errors and abort early
         if (results->has_error)
             break;
 
-        const char *name = entry.name;
-
-        // Match against segment
-        if (!rbc_segment_match(seg, name, flags))
-        {
+        if (!rbc_segment_match(seg, entry.name, flags))
             continue;
-        }
 
-        // Build full path
-        size_t name_len = strlen(name);
-        size_t new_len = rbc_path_join(pathbuf, sizeof(pathbuf),
-                                       dir_path, dir_len, name, name_len);
+        size_t new_len = rbc_path_join(pathbuf, sizeof(pathbuf), path, path_len, entry.name, strlen(entry.name));
         if (new_len == 0)
             continue; // Path too long, skip this entry
 
         if (seg->is_last)
         {
-            // Last segment: add to results if it exists
-            // If trailing slash, must be directory
             if (seg->has_trailing_slash)
             {
                 if (entry.is_dir)
@@ -462,7 +450,6 @@ static void rbc_glob_process_dir(
             }
             else
             {
-                // No trailing slash - any entry type
                 if (rbc_path_exists(pathbuf))
                 {
                     if (!rbc_glob_emit(pathbuf, baselen, results))
@@ -472,49 +459,54 @@ static void rbc_glob_process_dir(
         }
         else
         {
-            // Intermediate segment: must be directory, recurse
             if (entry.is_dir)
-            {
-                rbc_glob_walk_recursive(pathbuf, new_len, baselen,
-                                        remaining_pattern, next_flags, results);
-            }
+                rbc_glob_walk_recursive(pathbuf, new_len, baselen, seg->next, next_flags, results);
         }
     }
 
     rbc_closedir(dirp);
 }
 
-/**
- * @brief Process recursive (**) pattern
- *
- * RECURSIVE only handles directory traversal, NOT matching.
- * Matching is delegated to the walker by pushing remaining pattern to queue.
- *
- * Design:
- * - Double-star matches "zero or more directories"
- * - At each directory level, enqueue remaining pattern for matching
- * - Recurse into subdirectories (except dotdirs without DOTMATCH)
- * - For trailing slash case, add directories directly
- */
+/// @brief Process a directory for recursive globbing (**)
+/// @param seg_recursive
+/// @param seg_next
+/// @param path
+/// @param path_len
+/// @param baselen
+/// @param flags
+/// @param results
 static void rbc_glob_process_recursive(
-    const char *dir_path, size_t dir_len,
+    const rbc_segment_t *seg_recursive,
+    const rbc_segment_t *seg_next,
+    const char *path,
+    size_t path_len,
     size_t baselen,
-    const rbc_segment_t *rec_seg,
-    const char *after_recursive,
-    unsigned flags, rbc_results_t *results)
+    unsigned flags,
+    rbc_results_t *results)
 {
-    bool has_wildcard_ancestor = (flags & RBC_GLOB_HAS_WILDCARD_ANCESTOR);
+    bool match_dirs_only = seg_recursive->is_last;
 
-    // Check if **/ at end (match directories only)
-    bool match_dirs_only = (rec_seg->has_trailing_slash && after_recursive[0] == '\0');
+    // Use pre-parsed next segment or parse from rec_seg->next
+    rbc_segment_t parsed_next_seg;
+    const char *next_remaining;
+    bool has_next_seg;
 
-    // Parse the next segment from after_recursive for direct matching
-    rbc_segment_t next_seg;
-    const char *next_remaining = after_recursive;
-    bool has_next_seg = (after_recursive[0] != '\0') &&
-                        rbc_segment_next(&next_remaining, flags, &next_seg);
+    if (seg_next)
+    {
+        // Use pre-parsed segment from collapse loop
+        parsed_next_seg = *seg_next;
+        next_remaining = seg_next->next;
+        has_next_seg = true;
+    }
+    else
+    {
+        // Parse next segment from rec_seg->next
+        next_remaining = seg_recursive->next;
+        has_next_seg = (seg_recursive->next[0] != '\0') &&
+                       rbc_segment_next(&next_remaining, flags, &parsed_next_seg);
+    }
 
-    rbc_dir_t *dirp = rbc_opendir(dir_len > 0 ? dir_path : ".");
+    rbc_dir_t *dirp = rbc_opendir(path_len > 0 ? path : ".");
     if (!dirp)
         return;
 
@@ -533,30 +525,16 @@ static void rbc_glob_process_recursive(
         if (name[0] == '.' && name[1] == '.' && name[2] == '\0')
             continue;
 
-        // "." handling:
-        // - Without DOTMATCH: always skip
-        // - With DOTMATCH at depth 0 (no wildcard ancestor): allow matching
-        // - With DOTMATCH at depth > 0 (has wildcard ancestor): skip
-        // This matches Ruby's behavior where **/'s zero-depth match is not
-        // considered "through a wildcard"
-        bool is_dot_entry = (name[0] == '.' && name[1] == '\0');
-        if (is_dot_entry)
-        {
-            if (!(flags & RBC_FNM_DOTMATCH) || has_wildcard_ancestor)
-                continue;
-        }
-
         // Check if this is a dotfile/dotdir
         bool is_dotfile = (name[0] == '.');
 
         // For directory descent: ** does NOT descend into dotfiles/dotdirs without DOTMATCH
-        // But we still need to try matching after_recursive pattern on dotfiles
         bool skip_descent = is_dotfile && !(flags & RBC_FNM_DOTMATCH);
 
         // Build path
         size_t name_len = strlen(name);
         size_t new_len = rbc_path_join(pathbuf, sizeof(pathbuf),
-                                       dir_path, dir_len, name, name_len);
+                                       path, path_len, name, name_len);
         if (new_len == 0)
             continue; // Path too long, skip this entry
 
@@ -566,7 +544,8 @@ static void rbc_glob_process_recursive(
         {
             // **/ at end: add all directories (except dotdirs without DOTMATCH)
             // Never add "." as it's redundant (same as parent directory)
-            if (is_dir && !is_dot_entry)
+            bool is_dot = (name[0] == '.' && name[1] == '\0');
+            if (is_dir && !is_dot)
             {
                 size_t slash_len = rbc_path_append_slash(pathbuf, sizeof(pathbuf), new_len);
                 if (slash_len > 0)
@@ -580,14 +559,12 @@ static void rbc_glob_process_recursive(
         // Direct matching of after_recursive pattern (** matches zero directories)
         if (has_next_seg)
         {
-            // At depth 0 (no wildcard ancestor), "." can match with DOTMATCH
-            // At depth > 0, "." is always skipped (passed through wildcard)
-            if (rbc_segment_match(&next_seg, name, flags))
+            if (rbc_segment_match(&parsed_next_seg, name, flags))
             {
-                if (next_seg.is_last)
+                if (parsed_next_seg.is_last)
                 {
                     // Final segment matched - add to results
-                    if (next_seg.has_trailing_slash)
+                    if (parsed_next_seg.has_trailing_slash)
                     {
                         if (is_dir)
                         {
@@ -618,11 +595,13 @@ static void rbc_glob_process_recursive(
 
         // Recurse into subdirectories (only if allowed)
         // Never recurse into "." (would cause infinite loop)
-        if (is_dir && !skip_descent && !is_dot_entry)
+        bool is_dot = (name[0] == '.' && name[1] == '\0');
+        if (is_dir && !skip_descent && !is_dot)
         {
             // Continue ** matching in subdirectory
-            rbc_glob_process_recursive(pathbuf, new_len, baselen, rec_seg,
-                                       after_recursive, flags | RBC_GLOB_HAS_WILDCARD_ANCESTOR, results);
+            rbc_glob_process_recursive(seg_recursive, NULL,
+                                       pathbuf, new_len, baselen,
+                                       flags | RBC_GLOB_HAS_WILDCARD_ANCESTOR, results);
         }
     }
 
@@ -648,37 +627,23 @@ static void rbc_glob_walk_recursive(const char *path, size_t path_len, size_t ba
     {
     case SEG_RECURSIVE:
     {
-        // Collapse consecutive **/ segments (Ruby behavior)
-        // e.g., **/**/ -> **/
-        // But keep trailing ** without slash as after_recursive pattern
-        const char *after_recursive = pat_ptr;
-        while (*after_recursive != '\0')
+        rbc_segment_t seg_recursive = seg;
+        rbc_segment_t seg_after_recursive;
+
+        // Collapse consecutive **/ segments
+        while (!seg_recursive.is_last)
         {
-            // Check for **
-            if (after_recursive[0] == '*' && after_recursive[1] == '*')
-            {
-                if (after_recursive[2] == '/')
-                {
-                    // **/ - collapse it
-                    after_recursive += 2;
-                    while (*after_recursive == '/')
-                        after_recursive++;
-                    continue;
-                }
-                // ** at end - keep as after_recursive pattern
+            const char *next_pattern = seg_recursive.next;
+            if (!rbc_segment_next(&next_pattern, flags, &seg_after_recursive))
                 break;
-            }
-            break;
+            if (seg_after_recursive.type != SEG_RECURSIVE)
+                break;
+            seg_recursive = seg_after_recursive;
         }
 
-        // Update seg.is_last based on collapsed pattern
-        seg.is_last = (*after_recursive == '\0');
-
-        // Zero-depth match (** matches zero directories) is handled
-        // inside rbc_glob_process_recursive, not here
-        if (seg.has_trailing_slash && *after_recursive == '\0')
+        // Zero-directory match case
+        if (seg_recursive.is_last)
         {
-            // **/ at end: add current directory itself
             char pathbuf[RBC_GLOB_MAX_PATH];
             if (path_len > 0 && path_len < sizeof(pathbuf))
             {
@@ -686,22 +651,24 @@ static void rbc_glob_walk_recursive(const char *path, size_t path_len, size_t ba
                 size_t len = rbc_path_append_slash(pathbuf, sizeof(pathbuf), path_len);
                 if (len > 0)
                     rbc_glob_emit(pathbuf, baselen, results);
-                // Note: error check omitted here as this is at top level
-                // and we want to continue processing other patterns
             }
         }
-        // Recursive descent
-        rbc_glob_process_recursive(path, path_len, baselen,
-                                   &seg, after_recursive, flags, results);
+
+        rbc_glob_process_recursive(
+            &seg_recursive,
+            seg_recursive.is_last ? NULL : &seg_after_recursive,
+            path,
+            path_len,
+            baselen,
+            flags,
+            results);
         break;
     }
-
     case SEG_DOT:
     case SEG_DOTDOT:
     case SEG_LITERAL:
     case SEG_WILDCARD:
-        rbc_glob_process_dir(path, path_len, baselen,
-                             &seg, pat_ptr, flags, results);
+        rbc_glob_process_dir(&seg, path, path_len, baselen, flags, results);
         break;
     }
 }
