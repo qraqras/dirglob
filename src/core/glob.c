@@ -36,15 +36,6 @@ typedef struct rbc_walk_frame_s
     uint8_t flags;                // WALK_* flags
 } rbc_walk_frame_t;
 
-/// @brief Walker Queue Structure
-typedef struct rbc_walk_queue_s
-{
-    rbc_walk_frame_t frames[RBC_WALK_QUEUE_SIZE]; // Frame storage
-    size_t head;                                  // Index to dequeue from
-    size_t tail;                                  // Index to enqueue to
-    size_t count;                                 // Number of frames in queue
-} rbc_walk_queue_t;
-
 /// @defgroup Results
 /// @{
 
@@ -347,42 +338,12 @@ static bool rbc_segment_match(const rbc_segment_t *seg, const char *string, unsi
 
 /// @}
 
-// ============================================================================
-// Glob Walker (Queue-based for correct traversal order)
-// ============================================================================
-
-static bool rbc_walk_enqueue(rbc_walk_queue_t *q, const char *path, size_t path_len, const char *pattern, uint8_t flags)
-{
-    if (q->count >= RBC_WALK_QUEUE_SIZE)
-        return false;
-
-    rbc_walk_frame_t *f = &q->frames[q->tail];
-    q->tail = (q->tail + 1) % RBC_WALK_QUEUE_SIZE;
-    q->count++;
-
-    if (path_len >= RBC_GLOB_MAX_PATH)
-        path_len = RBC_GLOB_MAX_PATH - 1;
-    memcpy(f->path, path, path_len);
-    f->path[path_len] = '\0';
-    f->path_len = (uint16_t)path_len;
-    f->pattern = pattern;
-    f->flags = flags;
-    return true;
-}
-
-static bool rbc_walk_dequeue(rbc_walk_queue_t *q, rbc_walk_frame_t *out)
-{
-    if (q->count == 0)
-        return false;
-    *out = q->frames[q->head];
-    q->head = (q->head + 1) % RBC_WALK_QUEUE_SIZE;
-    q->count--;
-    return true;
-}
-
-// ============================================================================
-// Glob Core Implementation
-// ============================================================================
+/// ============================================================================
+/// Glob Internal Implementation
+/// ============================================================================
+static void rbc_glob_walk_recursive(const char *path, size_t path_len, size_t baselen,
+                                    const char *pattern, unsigned flags,
+                                    rbc_results_t *results, bool has_wildcard_ancestor);
 
 /**
  * @brief Add result path to results, stripping base prefix
@@ -469,7 +430,6 @@ static void rbc_glob_process_dir(
     const char *remaining_pattern,
     unsigned flags,
     rbc_results_t *results,
-    rbc_walk_queue_t *queue,
     bool has_wildcard_ancestor)
 {
     rbc_dir_t *dirp = rbc_opendir(dir_len > 0 ? dir_path : ".");
@@ -534,11 +494,12 @@ static void rbc_glob_process_dir(
         }
         else
         {
-            // Intermediate segment: must be directory, enqueue
+            // Intermediate segment: must be directory, recurse
             if (entry.is_dir)
             {
-                uint8_t next_flags = next_has_wildcard ? RBC_WALK_HAS_WILDCARD_ANCESTOR : 0;
-                rbc_walk_enqueue(queue, pathbuf, new_len, remaining_pattern, next_flags);
+                rbc_glob_walk_recursive(pathbuf, new_len, baselen,
+                                        remaining_pattern, flags, results,
+                                        next_has_wildcard);
             }
         }
     }
@@ -564,7 +525,6 @@ static void rbc_glob_process_recursive(
     const rbc_segment_t *rec_seg,
     const char *after_recursive,
     unsigned flags, rbc_results_t *results,
-    rbc_walk_queue_t *queue,
     bool has_wildcard_ancestor)
 {
     // Check if **/ at end (match directories only)
@@ -663,9 +623,9 @@ static void rbc_glob_process_recursive(
                 }
                 else if (is_dir)
                 {
-                    // More segments to match - enqueue
-                    rbc_walk_enqueue(queue, pathbuf, new_len, next_remaining,
-                                     RBC_WALK_HAS_WILDCARD_ANCESTOR);
+                    // More segments to match - recurse
+                    rbc_glob_walk_recursive(pathbuf, new_len, baselen,
+                                            next_remaining, flags, results, true);
                 }
             }
         }
@@ -676,8 +636,7 @@ static void rbc_glob_process_recursive(
         {
             // Continue ** matching in subdirectory
             rbc_glob_process_recursive(pathbuf, new_len, baselen, rec_seg,
-                                       after_recursive, flags, results,
-                                       queue, true);
+                                       after_recursive, flags, results, true);
         }
     }
 
@@ -685,12 +644,87 @@ static void rbc_glob_process_recursive(
 }
 
 /**
- * @brief Main glob walker
+ * @brief Recursive glob walker implementation
+ */
+static void rbc_glob_walk_recursive(const char *path, size_t path_len, size_t baselen,
+                                    const char *pattern, unsigned flags,
+                                    rbc_results_t *results, bool has_wildcard_ancestor)
+{
+    rbc_segment_t seg;
+    const char *pat_ptr = pattern;
+
+    if (!rbc_segment_next(&pat_ptr, flags, &seg))
+    {
+        return; // Empty pattern
+    }
+
+    switch (seg.type)
+    {
+    case SEG_RECURSIVE:
+    {
+        // Collapse consecutive **/ segments (Ruby behavior)
+        // e.g., **/**/ -> **/
+        // But keep trailing ** without slash as after_recursive pattern
+        const char *after_recursive = pat_ptr;
+        while (*after_recursive != '\0')
+        {
+            // Check for **
+            if (after_recursive[0] == '*' && after_recursive[1] == '*')
+            {
+                if (after_recursive[2] == '/')
+                {
+                    // **/ - collapse it
+                    after_recursive += 2;
+                    while (*after_recursive == '/')
+                        after_recursive++;
+                    continue;
+                }
+                // ** at end - keep as after_recursive pattern
+                break;
+            }
+            break;
+        }
+
+        // Update seg.is_last based on collapsed pattern
+        seg.is_last = (*after_recursive == '\0');
+
+        // Zero-depth match (** matches zero directories) is handled
+        // inside rbc_glob_process_recursive, not here
+        if (seg.has_trailing_slash && *after_recursive == '\0')
+        {
+            // **/ at end: add current directory itself
+            char pathbuf[RBC_GLOB_MAX_PATH];
+            if (path_len > 0 && path_len < sizeof(pathbuf))
+            {
+                memcpy(pathbuf, path, path_len);
+                size_t len = rbc_path_append_slash(pathbuf, sizeof(pathbuf), path_len);
+                if (len > 0)
+                    rbc_add_result(results, pathbuf, baselen, baselen == 0);
+            }
+        }
+        // Recursive descent
+        rbc_glob_process_recursive(path, path_len, baselen,
+                                   &seg, after_recursive, flags, results,
+                                   has_wildcard_ancestor);
+        break;
+    }
+
+    case SEG_DOT:
+    case SEG_DOTDOT:
+    case SEG_LITERAL:
+    case SEG_WILDCARD:
+        rbc_glob_process_dir(path, path_len, baselen,
+                             &seg, pat_ptr, flags, results,
+                             has_wildcard_ancestor);
+        break;
+    }
+}
+
+/**
+ * @brief Main glob walker entry point
  */
 static void rbc_glob_walk(const char *base, size_t baselen, const char *pattern, unsigned flags, rbc_results_t *results)
 {
-    rbc_walk_queue_t queue = {.head = 0, .tail = 0, .count = 0};
-
     // Handle absolute path
     if (rbc_is_absolute_path(pattern))
     {
@@ -729,101 +763,24 @@ static void rbc_glob_walk(const char *base, size_t baselen, const char *pattern,
         }
 
 #ifdef _WIN32
-        // Enqueue with drive root if present
+        // Start recursive walk with drive root if present
         if (pattern[1] == ':')
         {
             char root[4] = {pattern[0], ':', '/', '\0'};
-            rbc_walk_enqueue(&queue, root, 3, after_slash, 0);
+            rbc_glob_walk_recursive(root, 3, 0, after_slash, flags, results, false);
         }
         else
         {
-            rbc_walk_enqueue(&queue, "/", 1, after_slash, 0);
+            rbc_glob_walk_recursive("/", 1, 0, after_slash, flags, results, false);
         }
 #else
-        rbc_walk_enqueue(&queue, "/", 1, after_slash, 0);
+        rbc_glob_walk_recursive("/", 1, 0, after_slash, flags, results, false);
 #endif
-        baselen = 0; // Absolute path ignores base
     }
     else
     {
         // Relative path
-        rbc_walk_enqueue(&queue, base, baselen, pattern, 0);
-    }
-
-    rbc_walk_frame_t frame;
-    while (rbc_walk_dequeue(&queue, &frame))
-    {
-        rbc_segment_t seg;
-        const char *pat_ptr = frame.pattern;
-
-        if (!rbc_segment_next(&pat_ptr, flags, &seg))
-        {
-            continue; // Empty pattern
-        }
-
-        bool has_wildcard_ancestor = (frame.flags & RBC_WALK_HAS_WILDCARD_ANCESTOR) != 0;
-
-        switch (seg.type)
-        {
-        case SEG_RECURSIVE:
-        {
-            // Collapse consecutive **/ segments (Ruby behavior)
-            // e.g., **/**/ -> **/
-            // But keep trailing ** without slash as after_recursive pattern
-            const char *after_recursive = pat_ptr;
-            while (*after_recursive != '\0')
-            {
-                // Check for **
-                if (after_recursive[0] == '*' && after_recursive[1] == '*')
-                {
-                    if (after_recursive[2] == '/')
-                    {
-                        // **/ - collapse it
-                        after_recursive += 2;
-                        while (*after_recursive == '/')
-                            after_recursive++;
-                        continue;
-                    }
-                    // ** at end - keep as after_recursive pattern
-                    break;
-                }
-                break;
-            }
-
-            // Update seg.is_last based on collapsed pattern
-            seg.is_last = (*after_recursive == '\0');
-
-            // Zero-depth match (** matches zero directories) is handled
-            // inside rbc_glob_process_recursive, not here
-            if (seg.has_trailing_slash && *after_recursive == '\0')
-            {
-                // **/ at end: add current directory itself
-                char pathbuf[RBC_GLOB_MAX_PATH];
-                size_t len = frame.path_len;
-                if (len > 0)
-                {
-                    memcpy(pathbuf, frame.path, len);
-                    len = rbc_path_append_slash(pathbuf, sizeof(pathbuf), len);
-                    if (len > 0)
-                        rbc_add_result(results, pathbuf, baselen, baselen == 0);
-                }
-            }
-            // Recursive descent
-            rbc_glob_process_recursive(frame.path, frame.path_len, baselen,
-                                       &seg, after_recursive, flags, results,
-                                       &queue, has_wildcard_ancestor);
-            break;
-        }
-
-        case SEG_DOT:
-        case SEG_DOTDOT:
-        case SEG_LITERAL:
-        case SEG_WILDCARD:
-            rbc_glob_process_dir(frame.path, frame.path_len, baselen,
-                                 &seg, pat_ptr, flags, results, &queue,
-                                 has_wildcard_ancestor);
-            break;
-        }
+        rbc_glob_walk_recursive(base, baselen, baselen, pattern, flags, results, false);
     }
 }
 
