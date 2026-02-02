@@ -387,9 +387,17 @@ static bool rbc_glob_should_skip_entry(const char *name, unsigned flags, bool ex
 {
     if (name[0] == '.')
     {
-        // `.` reached via wildcard is always skipped (prevents path duplication)
-        if (name[1] == '\0' && (!(flags & RBC_FNM_DOTMATCH) || (flags & RBC_GLOB_HAS_WILDCARD_ANCESTOR)))
-            return true;
+        // `.` (current directory):
+        // - If reached via wildcard ancestor (**), always skip (prevents path duplication)
+        // - Otherwise, allow if pattern explicitly starts with dot OR DOTMATCH is set
+        if (name[1] == '\0')
+        {
+            if (flags & RBC_GLOB_HAS_WILDCARD_ANCESTOR)
+                return true; // Skip `.` with wildcard ancestor (always)
+            if (!explicit_dot && !(flags & RBC_FNM_DOTMATCH))
+                return true; // Skip `.` if pattern doesn't start with dot and no DOTMATCH
+            return false;
+        }
         // `..` is always skipped (SEG_DOTDOT patterns are handled separately in segment_match)
         if (name[1] == '.' && name[2] == '\0')
             return true;
@@ -557,9 +565,15 @@ static void rbc_glob_process_recursive(
         }
 
         // Direct matching of after_recursive pattern (** matches zero directories)
+        // For "." handling with zero-match:
+        // - Without DOTMATCH: set HAS_WILDCARD_ANCESTOR to exclude "." (Ruby behavior)
+        // - With DOTMATCH: don't set flag, allow "." to be included
         if (has_next_seg)
         {
-            if (rbc_segment_match(&parsed_next_seg, name, flags))
+            unsigned zero_match_flags = flags;
+            if (!(flags & RBC_FNM_DOTMATCH))
+                zero_match_flags |= RBC_GLOB_HAS_WILDCARD_ANCESTOR;
+            if (rbc_segment_match(&parsed_next_seg, name, zero_match_flags))
             {
                 if (parsed_next_seg.is_last)
                 {
