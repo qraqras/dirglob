@@ -197,6 +197,7 @@ static size_t rbc_path_append_slash(char *buf, size_t buf_size, size_t path_len)
 /// ============================================================================
 bool rbc_fnmatch(const char *pattern, const char *string, unsigned flags);
 bool rbc_fnmatch_len(const char *pattern, size_t pattern_len, const char *path, unsigned flags);
+static bool rbc_glob_should_skip_entry(const char *name, unsigned flags, bool explicit_dot);
 
 /// @defgroup Path Segment
 /// @{
@@ -328,14 +329,14 @@ static bool rbc_segment_match(const rbc_segment_t *seg, const char *string, unsi
             const char *p_end = seg->start + seg->len;
             const char *s = string;
             while (p_start < p_end && *s)
-            {
                 if (!rbc_char_match(*p_start++, *s++, flags))
                     return false;
-            }
             return p_start == p_end && *s == '\0';
         }
         return strlen(string) == seg->len && strncmp(seg->start, string, seg->len) == 0;
     case SEG_WILDCARD:
+        if (rbc_glob_should_skip_entry(string, flags, seg->starts_with_dot))
+            return false;
         return rbc_fnmatch_len(seg->start, seg->len, string, flags);
     case SEG_RECURSIVE:
         return false; // RECURSIVE should not be matched directly
@@ -378,8 +379,9 @@ static bool rbc_glob_emit(const char *path, size_t baselen, rbc_results_t *resul
 /// @brief Determine if entry should be skipped based on name and flags
 /// @param[in] name Entry name
 /// @param[in] flags Matching flags
+/// @param[in] explicit_dot Whether the pattern explicitly starts with '.'
 /// @return true if entry should be skipped, false otherwise
-static bool rbc_glob_should_skip_entry(const char *name, unsigned flags)
+static bool rbc_glob_should_skip_entry(const char *name, unsigned flags, bool explicit_dot)
 {
     if (name[0] == '.')
     {
@@ -389,8 +391,8 @@ static bool rbc_glob_should_skip_entry(const char *name, unsigned flags)
         // `..` is always skipped (SEG_DOTDOT patterns are handled separately in segment_match)
         if (name[1] == '.' && name[2] == '\0')
             return true;
-        // Other dotfiles without DOTMATCH are skipped (pattern-specific matching is in segment_match)
-        if (!(flags & RBC_FNM_DOTMATCH))
+        // Other dotfiles: skip if pattern doesn't start with dot and no DOTMATCH
+        if (!explicit_dot && !(flags & RBC_FNM_DOTMATCH))
             return true;
     }
     return false;
@@ -429,12 +431,6 @@ static void rbc_glob_process_dir(
             break;
 
         const char *name = entry.name;
-
-        // Apply skip rules
-        if (rbc_glob_should_skip_entry(name, flags))
-        {
-            continue;
-        }
 
         // Match against segment
         if (!rbc_segment_match(seg, name, flags))
@@ -586,8 +582,7 @@ static void rbc_glob_process_recursive(
         {
             // At depth 0 (no wildcard ancestor), "." can match with DOTMATCH
             // At depth > 0, "." is always skipped (passed through wildcard)
-            if (!rbc_glob_should_skip_entry(name, flags) &&
-                rbc_segment_match(&next_seg, name, flags))
+            if (rbc_segment_match(&next_seg, name, flags))
             {
                 if (next_seg.is_last)
                 {
