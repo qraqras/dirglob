@@ -21,10 +21,9 @@
 #define RBC_SEG_CONTAINS_REGULAR 0x10  // Contains regular characters
 /// @}
 
-/// @defgroup Walker State Flags
+/// @defgroup Internal Glob Flags (high bits, not part of public FNM_* flags)
 /// @{
-#define RBC_WALK_HAS_WILDCARD_ANCESTOR 0x01
-#define RBC_WALK_QUEUE_SIZE 1024
+#define RBC_GLOB_HAS_WILDCARD_ANCESTOR 0x10000000 // Internal: traversed through wildcard
 /// @}
 
 /// @brief Walker Frame Structure
@@ -48,6 +47,7 @@ typedef struct rbc_results_s
     size_t arena_used;       // Bytes used in arena
     size_t arena_capacity;   // Total capacity of arena (in bytes)
     size_t offsets_capacity; // Capacity of offsets array (in elements)
+    bool has_error;          // Error flag (memory allocation failure)
 } rbc_results_t;
 
 /// @brief Initialize results buffer
@@ -67,6 +67,7 @@ static bool rbc_results_init(rbc_results_t *r)
     r->arena_used = 0;
     r->arena_capacity = RBC_RESULTS_INIT_DATA;
     r->offsets_capacity = RBC_RESULTS_INIT_COUNT;
+    r->has_error = false;
     return true;
 }
 
@@ -83,7 +84,10 @@ static bool rbc_results_add(rbc_results_t *r, const char *path, size_t len)
         size_t new_cap = r->offsets_capacity * 2;
         size_t *new_off = realloc(r->offsets, new_cap * sizeof(size_t));
         if (!new_off)
+        {
+            r->has_error = true;
             return false;
+        }
         r->offsets = new_off;
         r->offsets_capacity = new_cap;
     }
@@ -97,7 +101,10 @@ static bool rbc_results_add(rbc_results_t *r, const char *path, size_t len)
             new_cap *= 2;
         char *new_arena = realloc(r->arena, new_cap);
         if (!new_arena)
+        {
+            r->has_error = true;
             return false;
+        }
         r->arena = new_arena;
         r->arena_capacity = new_cap;
     }
@@ -343,79 +350,49 @@ static bool rbc_segment_match(const rbc_segment_t *seg, const char *string, unsi
 /// ============================================================================
 static void rbc_glob_walk_recursive(const char *path, size_t path_len, size_t baselen,
                                     const char *pattern, unsigned flags,
-                                    rbc_results_t *results, bool has_wildcard_ancestor);
+                                    rbc_results_t *results);
 
-/**
- * @brief Add result path to results, stripping base prefix
- *
- * For relative paths: strips baselen and leading slashes
- * For absolute paths (baselen == 0 and path starts with /): keeps leading slash
- */
-static void rbc_add_result(rbc_results_t *results, const char *path, size_t baselen, bool is_absolute)
+/// @brief Emit a matched path to results buffer
+/// @param[in] path Matched path (must not be empty)
+/// @param[in] baselen Base length to strip from path (0 for absolute paths)
+/// @param[in,out] results Results buffer
+/// @return true on success, false on memory allocation failure
+static bool rbc_glob_emit(const char *path, size_t baselen, rbc_results_t *results)
 {
-    const char *result = path + baselen;
-
-    if (is_absolute)
-    {
-        // Absolute path: keep as-is (path already starts with /)
-        // Just skip separator between base "/" and rest
-        if (baselen == 1 && path[0] == '/')
-        {
-            // path is like "/foo/bar", result should be "/foo/bar"
-            result = path; // Keep the full absolute path
-        }
-    }
+    const char *result;
+    if (baselen == 0)
+        result = path;
     else
     {
-        // Relative path: skip leading slashes after base
+        result = path + baselen;
         while (*result == '/')
             result++;
-        if (*result == '\0')
-            result = ".";
     }
 
-    rbc_results_add(results, result, strlen(result));
+    if (*result == '\0')
+        return true; // Skip empty results
+
+    return rbc_results_add(results, result, strlen(result));
 }
 
-/**
- * @brief Check if entry should be skipped based on dotfile rules
- *
- * Rules:
- * - "." and ".." are special
- * - Dotfiles (starting with '.') require DOTMATCH or pattern starting with '.'
- */
-static bool rbc_should_skip_entry(const char *name, const rbc_segment_t *seg, unsigned flags, bool has_wildcard_ancestor)
+/// @brief Determine if entry should be skipped based on name and flags
+/// @param[in] name Entry name
+/// @param[in] flags Matching flags
+/// @return true if entry should be skipped, false otherwise
+static bool rbc_glob_should_skip_entry(const char *name, unsigned flags)
 {
-    // "." entry rules:
-    // - Skip if reached via wildcard ancestor (prevents path duplication)
-    // - Otherwise allow for explicit matching
-    if (name[0] == '.' && name[1] == '\0')
-    {
-        if (has_wildcard_ancestor)
-            return true;
-        if (seg->type != SEG_DOT && seg->type != SEG_WILDCARD)
-            return true;
-        if (seg->type == SEG_WILDCARD && !seg->starts_with_dot &&
-            !(flags & RBC_FNM_DOTMATCH))
-            return true;
-        return false;
-    }
-
-    // ".." is always excluded from wildcard matching
-    if (name[0] == '.' && name[1] == '.' && name[2] == '\0')
-    {
-        if (seg->type != SEG_DOTDOT)
-            return true;
-        return false;
-    }
-
-    // Other dotfiles
     if (name[0] == '.')
     {
-        if (!seg->starts_with_dot && !(flags & RBC_FNM_DOTMATCH))
+        // `.` reached via wildcard is always skipped (prevents path duplication)
+        if (name[1] == '\0' && (flags & RBC_GLOB_HAS_WILDCARD_ANCESTOR))
+            return true;
+        // `..` is always skipped (SEG_DOTDOT patterns are handled separately in segment_match)
+        if (name[1] == '.' && name[2] == '\0')
+            return true;
+        // Other dotfiles without DOTMATCH are skipped (pattern-specific matching is in segment_match)
+        if (!(flags & RBC_FNM_DOTMATCH))
             return true;
     }
-
     return false;
 }
 
@@ -429,8 +406,7 @@ static void rbc_glob_process_dir(
     const rbc_segment_t *seg,
     const char *remaining_pattern,
     unsigned flags,
-    rbc_results_t *results,
-    bool has_wildcard_ancestor)
+    rbc_results_t *results)
 {
     rbc_dir_t *dirp = rbc_opendir(dir_len > 0 ? dir_path : ".");
     if (!dirp)
@@ -440,18 +416,22 @@ static void rbc_glob_process_dir(
     char pathbuf[RBC_GLOB_MAX_PATH];
 
     // Determine if next segment is a wildcard
-    bool next_has_wildcard = has_wildcard_ancestor;
+    unsigned next_flags = flags;
     if (seg->type == SEG_WILDCARD || seg->type == SEG_RECURSIVE)
     {
-        next_has_wildcard = true;
+        next_flags |= RBC_GLOB_HAS_WILDCARD_ANCESTOR;
     }
 
     while (rbc_readdir(dirp, &entry))
     {
+        // Check for allocation errors and abort early
+        if (results->has_error)
+            break;
+
         const char *name = entry.name;
 
         // Apply skip rules
-        if (rbc_should_skip_entry(name, seg, flags, has_wildcard_ancestor))
+        if (rbc_glob_should_skip_entry(name, flags))
         {
             continue;
         }
@@ -480,7 +460,8 @@ static void rbc_glob_process_dir(
                     new_len = rbc_path_append_slash(pathbuf, sizeof(pathbuf), new_len);
                     if (new_len == 0)
                         continue; // Error: buffer too small
-                    rbc_add_result(results, pathbuf, baselen, baselen == 0);
+                    if (!rbc_glob_emit(pathbuf, baselen, results))
+                        break; // Memory allocation failed
                 }
             }
             else
@@ -488,7 +469,8 @@ static void rbc_glob_process_dir(
                 // No trailing slash - any entry type
                 if (rbc_path_exists(pathbuf))
                 {
-                    rbc_add_result(results, pathbuf, baselen, baselen == 0);
+                    if (!rbc_glob_emit(pathbuf, baselen, results))
+                        break; // Memory allocation failed
                 }
             }
         }
@@ -498,8 +480,7 @@ static void rbc_glob_process_dir(
             if (entry.is_dir)
             {
                 rbc_glob_walk_recursive(pathbuf, new_len, baselen,
-                                        remaining_pattern, flags, results,
-                                        next_has_wildcard);
+                                        remaining_pattern, next_flags, results);
             }
         }
     }
@@ -524,9 +505,10 @@ static void rbc_glob_process_recursive(
     size_t baselen,
     const rbc_segment_t *rec_seg,
     const char *after_recursive,
-    unsigned flags, rbc_results_t *results,
-    bool has_wildcard_ancestor)
+    unsigned flags, rbc_results_t *results)
 {
+    bool has_wildcard_ancestor = (flags & RBC_GLOB_HAS_WILDCARD_ANCESTOR);
+
     // Check if **/ at end (match directories only)
     bool match_dirs_only = (rec_seg->has_trailing_slash && after_recursive[0] == '\0');
 
@@ -545,6 +527,10 @@ static void rbc_glob_process_recursive(
 
     while (rbc_readdir(dirp, &entry))
     {
+        // Check for allocation errors and abort early
+        if (results->has_error)
+            break;
+
         const char *name = entry.name;
 
         // ".." is always excluded from glob results
@@ -588,7 +574,10 @@ static void rbc_glob_process_recursive(
             {
                 size_t slash_len = rbc_path_append_slash(pathbuf, sizeof(pathbuf), new_len);
                 if (slash_len > 0)
-                    rbc_add_result(results, pathbuf, baselen, baselen == 0);
+                {
+                    if (!rbc_glob_emit(pathbuf, baselen, results))
+                        break; // Memory allocation failed
+                }
             }
         }
 
@@ -597,7 +586,7 @@ static void rbc_glob_process_recursive(
         {
             // At depth 0 (no wildcard ancestor), "." can match with DOTMATCH
             // At depth > 0, "." is always skipped (passed through wildcard)
-            if (!rbc_should_skip_entry(name, &next_seg, flags, has_wildcard_ancestor) &&
+            if (!rbc_glob_should_skip_entry(name, flags) &&
                 rbc_segment_match(&next_seg, name, flags))
             {
                 if (next_seg.is_last)
@@ -610,14 +599,16 @@ static void rbc_glob_process_recursive(
                             new_len = rbc_path_append_slash(pathbuf, sizeof(pathbuf), new_len);
                             if (new_len == 0)
                                 continue; // Error: buffer too small
-                            rbc_add_result(results, pathbuf, baselen, baselen == 0);
+                            if (!rbc_glob_emit(pathbuf, baselen, results))
+                                break; // Memory allocation failed
                         }
                     }
                     else
                     {
                         if (rbc_path_exists(pathbuf))
                         {
-                            rbc_add_result(results, pathbuf, baselen, baselen == 0);
+                            if (!rbc_glob_emit(pathbuf, baselen, results))
+                                break; // Memory allocation failed
                         }
                     }
                 }
@@ -625,7 +616,7 @@ static void rbc_glob_process_recursive(
                 {
                     // More segments to match - recurse
                     rbc_glob_walk_recursive(pathbuf, new_len, baselen,
-                                            next_remaining, flags, results, true);
+                                            next_remaining, flags | RBC_GLOB_HAS_WILDCARD_ANCESTOR, results);
                 }
             }
         }
@@ -636,7 +627,7 @@ static void rbc_glob_process_recursive(
         {
             // Continue ** matching in subdirectory
             rbc_glob_process_recursive(pathbuf, new_len, baselen, rec_seg,
-                                       after_recursive, flags, results, true);
+                                       after_recursive, flags | RBC_GLOB_HAS_WILDCARD_ANCESTOR, results);
         }
     }
 
@@ -648,7 +639,7 @@ static void rbc_glob_process_recursive(
  */
 static void rbc_glob_walk_recursive(const char *path, size_t path_len, size_t baselen,
                                     const char *pattern, unsigned flags,
-                                    rbc_results_t *results, bool has_wildcard_ancestor)
+                                    rbc_results_t *results)
 {
     rbc_segment_t seg;
     const char *pat_ptr = pattern;
@@ -699,13 +690,14 @@ static void rbc_glob_walk_recursive(const char *path, size_t path_len, size_t ba
                 memcpy(pathbuf, path, path_len);
                 size_t len = rbc_path_append_slash(pathbuf, sizeof(pathbuf), path_len);
                 if (len > 0)
-                    rbc_add_result(results, pathbuf, baselen, baselen == 0);
+                    rbc_glob_emit(pathbuf, baselen, results);
+                // Note: error check omitted here as this is at top level
+                // and we want to continue processing other patterns
             }
         }
         // Recursive descent
         rbc_glob_process_recursive(path, path_len, baselen,
-                                   &seg, after_recursive, flags, results,
-                                   has_wildcard_ancestor);
+                                   &seg, after_recursive, flags, results);
         break;
     }
 
@@ -714,8 +706,7 @@ static void rbc_glob_walk_recursive(const char *path, size_t path_len, size_t ba
     case SEG_LITERAL:
     case SEG_WILDCARD:
         rbc_glob_process_dir(path, path_len, baselen,
-                             &seg, pat_ptr, flags, results,
-                             has_wildcard_ancestor);
+                             &seg, pat_ptr, flags, results);
         break;
     }
 }
@@ -767,20 +758,20 @@ static void rbc_glob_walk(const char *base, size_t baselen, const char *pattern,
         if (pattern[1] == ':')
         {
             char root[4] = {pattern[0], ':', '/', '\0'};
-            rbc_glob_walk_recursive(root, 3, 0, after_slash, flags, results, false);
+            rbc_glob_walk_recursive(root, 3, 0, after_slash, flags, results);
         }
         else
         {
-            rbc_glob_walk_recursive("/", 1, 0, after_slash, flags, results, false);
+            rbc_glob_walk_recursive("/", 1, 0, after_slash, flags, results);
         }
 #else
-        rbc_glob_walk_recursive("/", 1, 0, after_slash, flags, results, false);
+        rbc_glob_walk_recursive("/", 1, 0, after_slash, flags, results);
 #endif
     }
     else
     {
         // Relative path
-        rbc_glob_walk_recursive(base, baselen, baselen, pattern, flags, results, false);
+        rbc_glob_walk_recursive(base, baselen, baselen, pattern, flags, results);
     }
 }
 
@@ -1122,13 +1113,26 @@ bool rbc_glob(const char **patterns, size_t npatterns, unsigned flags,
             {
                 rbc_results_sort_range(&results, count_before, results.count);
             }
+
+            // Stop processing if memory allocation failed
+            if (results.has_error)
+                break;
         }
 
         rbc_brace_free(expanded);
+
+        // Stop processing patterns if memory allocation failed
+        if (results.has_error)
+            break;
     }
 
     // Convert to output format (already sorted per-pattern)
     bool ok = rbc_results_to_output(&results, out, count, lengths);
+
+    // Check for errors during processing
+    if (results.has_error)
+        ok = false;
+
     rbc_results_free(&results);
 
     return ok;
