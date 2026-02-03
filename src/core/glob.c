@@ -26,13 +26,6 @@
 #define RBC_GLOB_HAS_WILDCARD_ANCESTOR 0x10000000 // Internal: traversed through wildcard
 /// @}
 
-/// @brief Scan Mode
-typedef enum rbc_scan_mode_e
-{
-    SCAN_MODE_NORMAL,   // Normal segment (*, ?, [...], literal, ., ..)
-    SCAN_MODE_RECURSIVE // ** segment
-} rbc_scan_mode_t;
-
 /// @brief Action to take for a directory entry
 typedef struct rbc_glob_action_s
 {
@@ -239,11 +232,8 @@ typedef struct rbc_scan_ctx_s
     size_t baselen;         // Length to strip from output path
     unsigned flags;         // Match flags
     rbc_results_t *results; // Results buffer
-    rbc_scan_mode_t mode;   // Scan mode
     rbc_segment_t seg;      // Current segment (copied, not pointer)
-    rbc_segment_t next_seg; // Next segment for RECURSIVE mode
-    bool has_next_seg;      // Whether next_seg is valid
-    const char *remaining;  // Remaining pattern string after current segment(s)
+    rbc_segment_t next_seg; // Next segment for SEG_RECURSIVE (valid when !seg.is_last)
 } rbc_scan_ctx_t;
 
 /// @brief Parse next segment from pattern
@@ -464,18 +454,15 @@ static void rbc_glob_dispatch(const char *path, size_t path_len, size_t baselen,
                               rbc_results_t *results);
 
 /// @brief Determine action for a directory entry (pure function, no side effects)
-/// @param[in] mode Scan mode
 /// @param[in] seg Current segment
-/// @param[in] next_seg Next segment (for RECURSIVE mode, may be NULL)
+/// @param[in] next_seg Next segment (for SEG_RECURSIVE, may be NULL)
 /// @param[in] has_next_seg Whether next_seg is valid
 /// @param[in] entry Directory entry
 /// @param[in] flags Match flags
 /// @return Action to take for this entry
 static rbc_glob_action_t rbc_glob_entry_action(
-    rbc_scan_mode_t mode,
     const rbc_segment_t *seg,
     const rbc_segment_t *next_seg,
-    bool has_next_seg,
     const rbc_dirent_t *entry,
     unsigned flags)
 {
@@ -493,7 +480,7 @@ static rbc_glob_action_t rbc_glob_entry_action(
     bool is_dotfile = (name[0] == '.');
     bool dotmatch = (flags & RBC_FNM_DOTMATCH) != 0;
 
-    if (mode == SCAN_MODE_NORMAL)
+    if (seg->type != SEG_RECURSIVE)
     {
         // Normal mode: match segment, then emit or descend
         if (!rbc_segment_match(seg, name, flags))
@@ -518,7 +505,7 @@ static rbc_glob_action_t rbc_glob_entry_action(
     }
     else
     {
-        // SCAN_MODE_RECURSIVE
+        // SEG_RECURSIVE: ** pattern
         bool skip_dotfile = is_dotfile && !dotmatch;
 
         // 1. **/ at end: emit all directories (except dotdirs without DOTMATCH)
@@ -529,7 +516,7 @@ static rbc_glob_action_t rbc_glob_entry_action(
         }
 
         // 2. Zero-directory match with next segment
-        if (has_next_seg)
+        if (!seg->is_last)
         {
             // Skip "." unless DOTMATCH is set
             if (!(is_dot && !dotmatch))
@@ -587,7 +574,7 @@ static void rbc_glob_scan(const rbc_scan_ctx_t *ctx)
 
         // Determine action
         rbc_glob_action_t action = rbc_glob_entry_action(
-            ctx->mode, &ctx->seg, &ctx->next_seg, ctx->has_next_seg,
+            &ctx->seg, &ctx->next_seg,
             &entry, ctx->flags);
 
         size_t name_len = strlen(entry.name);
@@ -621,8 +608,12 @@ static void rbc_glob_scan(const rbc_scan_ctx_t *ctx)
             if (ctx->seg.type == SEG_WILDCARD || ctx->seg.type == SEG_RECURSIVE)
                 descend_flags |= RBC_GLOB_HAS_WILDCARD_ANCESTOR;
 
+            // For SEG_RECURSIVE, descend uses next_seg.next; otherwise seg.next
+            const char *next_pattern = (ctx->seg.type == SEG_RECURSIVE)
+                                           ? ctx->next_seg.next
+                                           : ctx->seg.next;
             rbc_glob_dispatch(pathbuf, new_len, ctx->baselen,
-                              ctx->remaining,
+                              next_pattern,
                               descend_flags,
                               ctx->results);
         }
@@ -666,14 +657,11 @@ static void rbc_glob_dispatch(const char *path, size_t path_len, size_t baselen,
         .flags = flags,
         .results = results,
         .seg = seg,
-        .has_next_seg = false,
-        .remaining = seg.next,
+        .next_seg = {0},
     };
 
     if (seg.type == SEG_RECURSIVE)
     {
-        ctx.mode = SCAN_MODE_RECURSIVE;
-
         // Collapse consecutive **/ segments
         rbc_segment_t collapsed = seg;
         rbc_segment_t after = {0};
@@ -705,8 +693,6 @@ static void rbc_glob_dispatch(const char *path, size_t path_len, size_t baselen,
                 return; // Never match anything
 
             ctx.next_seg = after;
-            ctx.has_next_seg = true;
-            ctx.remaining = after.next;
         }
 
         // Zero-directory match: **/ at end matches current directory itself
@@ -722,13 +708,8 @@ static void rbc_glob_dispatch(const char *path, size_t path_len, size_t baselen,
             }
         }
     }
-    else
-    {
-        ctx.mode = SCAN_MODE_NORMAL;
-
-        // Note: RBC_GLOB_HAS_WILDCARD_ANCESTOR is NOT set here for current scan.
-        // It will be set when descending to child directories (in rbc_glob_scan).
-    }
+    // Note: RBC_GLOB_HAS_WILDCARD_ANCESTOR is NOT set here for current scan.
+    // It will be set when descending to child directories (in rbc_glob_scan).
 
     // Execute scan
     rbc_glob_scan(&ctx);
