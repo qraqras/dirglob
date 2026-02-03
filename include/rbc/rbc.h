@@ -26,24 +26,6 @@
 /// @{
 typedef struct rbc_glob_pattern_s rbc_glob_pattern_t;
 
-/// Callback function type for rbc_glob_each
-/// @param path Matched path (null-terminated)
-/// @param path_len Length of the path
-/// @param is_dir true if the path is a directory
-/// @param userdata User-provided context pointer
-/// @return true to continue, false to abort
-typedef bool (*rbc_glob_callback_t)(const char *path, size_t path_len, bool is_dir, void *userdata);
-
-/// Callback-based glob (streaming API)
-/// @param patterns Array of glob patterns
-/// @param npatterns Number of patterns
-/// @param flags Matching flags (RBC_FNM_*)
-/// @param base Base directory (NULL or "" for current directory)
-/// @param callback Function called for each match
-/// @param userdata User context passed to callback
-/// @return true on success, false on error
-bool rbc_glob_each(const char **patterns, size_t npatterns, unsigned flags, const char *base, rbc_glob_callback_t callback, void *userdata);
-
 bool rbc_glob(const char **patterns, size_t npatterns, unsigned flags, const char *base, bool sort, char ***out, size_t *count, size_t **lengths);
 bool rbc_glob_trie(const char **patterns, size_t npatterns, unsigned flags, const char *base, bool sort, char ***out, size_t *count, size_t **lengths);
 bool rbc_xglob(const rbc_glob_pattern_t *gp, const char *base, bool sort, char ***out, size_t *count, size_t **lengths);
