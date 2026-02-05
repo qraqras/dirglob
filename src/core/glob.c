@@ -218,54 +218,16 @@ static bool rbc_wildcard_can_match_dotfile(const char *name, unsigned flags, boo
         return true;
     // `.`
     if (name[1] == '\0')
-        return ((explicit_dot || (flags & RBC_FNM_DOTMATCH)) && !(flags & RBC_GLOB_HAS_WILDCARD_ANCESTOR));
+        // `**/`の0階層マッチングは明示的な`.`であっても除外する可能性がある
+        // `.`がマッチする条件は以下の通り
+        // - 明示的なドットまたはDOTMATCHフラグがある(ただし0階層マッチング時は明示的なドットは無効)
+        // - 先祖にワイルドカードがない
+        return (((explicit_dot && !(flags & RBC_GLOB_RECURSIVE_DEPTH_ZERO)) || (flags & RBC_FNM_DOTMATCH)) && !(flags & RBC_GLOB_HAS_WILDCARD_ANCESTOR));
     // `..`
     if (name[1] == '.' && name[2] == '\0')
         return false;
     // `.hidden`
     return (explicit_dot || (flags & RBC_FNM_DOTMATCH));
-}
-
-/// @brief Check if wildcard pattern can match a dotfile entry
-/// @param[in] name Entry name
-/// @param[in] flags Matching flags (DOTMATCH, HAS_WILDCARD_ANCESTOR)
-/// @param[in] explicit_dot Whether the pattern segment starts with '.'
-/// @return true if pattern can match this entry, false if should be SKIPPED (hidden)
-/// @note Used for ** zero-directory match at top level (Decision 2, depth 0)
-/// @note `.` is excluded if reached via wildcard ancestor to prevent duplicate paths
-static bool rbc_zero_dir_can_match_dotfile(const char *name, unsigned flags, bool explicit_dot)
-{
-    if (name[0] != '.')
-        return true;
-    // `.` - excluded if reached via wildcard ancestor
-    if (name[1] == '\0')
-        return ((flags & RBC_FNM_DOTMATCH) && !(flags & RBC_GLOB_HAS_WILDCARD_ANCESTOR));
-    // `..`
-    if (name[1] == '.' && name[2] == '\0')
-        return false;
-    // `.hidden` - visible if explicit dot or DOTMATCH
-    return (explicit_dot || (flags & RBC_FNM_DOTMATCH));
-}
-
-/// @brief Check if ** zero-level match can match a dotfile entry
-/// @param[in] name Entry name
-/// @return true if entry should be processed for next_seg matching, false if should be SKIPPED
-/// @note Used for ** (SEG_RECURSIVE) zero-directory matching (Decision 2)
-/// @note Special rule: `.` is always hidden in zero-level match unless DOTMATCH
-/// @note Other dotfiles: visible if DOTMATCH or pattern starts with dot
-/// @note `.` is hidden when reached via wildcard ancestor (prevents path duplication)
-static bool rbc_recursive_dir_can_match_dotfile(const char *name)
-{
-    if (name[0] != '.')
-        return true;
-    // `.`
-    if (name[1] == '\0')
-        return false;
-    // `..`
-    if (name[1] == '.' && name[2] == '\0')
-        return false;
-    // `.hidden`
-    return false;
 }
 
 /// @brief Check if ** pattern can descend into or emit a dotfile entry
@@ -594,7 +556,7 @@ static rbc_glob_action_t rbc_glob_entry_action(
         // Decision 2: Zero-directory match with next segment
         if (!seg->is_last)
         {
-            bool should_match = (flags & RBC_GLOB_RECURSIVE_DEPTH_ZERO) ? rbc_zero_dir_can_match_dotfile(name, flags, next_seg->starts_with_dot) : rbc_wildcard_can_match_dotfile(name, flags, next_seg->starts_with_dot);
+            bool should_match = rbc_wildcard_can_match_dotfile(name, flags, next_seg->starts_with_dot);
             if (should_match && rbc_segment_match(next_seg, name, flags))
             {
                 if (next_seg->is_last)
