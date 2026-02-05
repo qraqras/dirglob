@@ -204,54 +204,67 @@ static size_t rbc_path_append_slash(char *buf, size_t buf_size, size_t path_len)
 bool rbc_fnmatch(const char *pattern, const char *string, unsigned flags);
 bool rbc_fnmatch_len(const char *pattern, size_t pattern_len, const char *path, unsigned flags);
 
-/// @brief Check if dotfile should be hidden for wildcard segment matching
+/// @brief Check if wildcard pattern can match a dotfile entry
 /// @param[in] name Entry name
 /// @param[in] flags Matching flags (DOTMATCH, HAS_WILDCARD_ANCESTOR)
-/// @param[in] pattern_starts_with_dot Whether the pattern segment starts with '.'
-/// @return true if entry should be skipped (hidden), false if visible
-/// @note Used by rbc_segment_match for SEG_WILDCARD
-static bool rbc_dotfile_hidden(const char *name, unsigned flags, bool pattern_starts_with_dot)
+/// @param[in] explicit_dot Whether the pattern segment starts with '.'
+/// @return true if pattern can match this entry, false if should be SKIPPED (hidden)
+/// @note Used for wildcard matching decision (SEG_WILDCARD and SEG_RECURSIVE zero-dir match)
+/// @note Considers both DOTMATCH flag and explicit pattern notation
+static bool rbc_wildcard_can_match_dotfile(const char *name, unsigned flags, bool explicit_dot)
 {
     if (name[0] != '.')
-        return false; // Not a dotfile
-
-    bool dotmatch = (flags & RBC_FNM_DOTMATCH) != 0;
-    bool explicit_dot = pattern_starts_with_dot;
-
-    // `.` (current directory)
-    if (name[1] == '\0')
-    {
-        // Always skip if reached via wildcard ancestor (prevents path duplication)
-        if (flags & RBC_GLOB_HAS_WILDCARD_ANCESTOR)
-            return true;
-        // Otherwise, visible if pattern starts with dot OR DOTMATCH is set
-        return !explicit_dot && !dotmatch;
-    }
-
-    // `..` is always hidden for wildcards (SEG_DOTDOT handles explicit match)
-    if (name[1] == '.' && name[2] == '\0')
         return true;
-
-    // Other dotfiles: hidden unless pattern starts with dot OR DOTMATCH
-    return !explicit_dot && !dotmatch;
+    // `.`
+    if (name[1] == '\0')
+        return ((explicit_dot || (flags & RBC_FNM_DOTMATCH)) && !(flags & RBC_GLOB_HAS_WILDCARD_ANCESTOR));
+    // `..`
+    if (name[1] == '.' && name[2] == '\0')
+        return false;
+    // `.hidden`
+    return (explicit_dot || (flags & RBC_FNM_DOTMATCH));
 }
 
-/// @brief Check if entry should be skipped for ** (recursive) pattern
+/// @brief Check if ** zero-level match can match a dotfile entry
 /// @param[in] name Entry name
-/// @param[in] flags Matching flags (DOTMATCH)
-/// @return true if entry should be skipped, false if should be processed
-/// @note Used by rbc_glob_entry_action for SEG_RECURSIVE emit/self_recurse decisions
-static bool rbc_recursive_skip(const char *name, unsigned flags)
+/// @return true if entry should be processed for next_seg matching, false if should be SKIPPED
+/// @note Used for ** (SEG_RECURSIVE) zero-directory matching (Decision 2)
+/// @note Special rule: `.` is always hidden in zero-level match unless DOTMATCH
+/// @note Other dotfiles: visible if DOTMATCH or pattern starts with dot
+/// @note `.` is hidden when reached via wildcard ancestor (prevents path duplication)
+static bool rbc_recursive_dir_can_match_dotfile(const char *name)
 {
     if (name[0] != '.')
-        return false; // Not a dotfile, never skip
+        return true;
+    // `.`
+    if (name[1] == '\0')
+        return false;
+    // `..`
+    if (name[1] == '.' && name[2] == '\0')
+        return false;
+    // `.hidden`
+    return false;
+}
+
+/// @brief Check if ** pattern can descend into or emit a dotfile entry
+/// @param[in] name Entry name
+/// @param[in] flags Matching flags (DOTMATCH only)
+/// @return true if entry should be processed (emit/descend), false if should be SKIPPED
+/// @note Used for ** (SEG_RECURSIVE) descending/emitting decision (Decision 3)
+/// @note Considers only DOTMATCH flag, NOT pattern notation (unlike wildcard matching)
+/// @note For example: `**/*` never reaches `.hidden/*` unless DOTMATCH is set
+///                     because Decision 3 prevents descent into `.hidden`
+static bool rbc_recursive_can_descend_into_dotfile(const char *name, unsigned flags)
+{
+    if (name[0] != '.')
+        return true; // Not a dotfile, always process
 
     // `..` is always skipped for ** (no explicit pattern can match)
     if (name[1] == '.' && name[2] == '\0')
-        return true;
+        return false; // Skip
 
-    // Dotfiles (including `.`): skip unless DOTMATCH
-    return !(flags & RBC_FNM_DOTMATCH);
+    // Dotfiles (including `.`): process only if DOTMATCH
+    return (flags & RBC_FNM_DOTMATCH) != 0;
 }
 
 /// @defgroup Path Segment
@@ -260,11 +273,14 @@ static bool rbc_recursive_skip(const char *name, unsigned flags)
 /// @brief Segment Types
 typedef enum rbc_segment_type_e
 {
-    SEG_LITERAL,   // `abc`
-    SEG_DOT,       // `.`
-    SEG_DOTDOT,    // `..`
-    SEG_WILDCARD,  // `*`, `.*`, `?`, `.?`, `[abc]` etc.
-    SEG_RECURSIVE, // `**/`
+    SEG_LITERAL,    // `abc`
+    SEG_DOT,        // `.`
+    SEG_DOTDOT,     // `..`
+    SEG_STAR,       // `*` (pure star, no fnmatch needed)
+    SEG_DOTSTAR,    // `.*` (dot + star, matches dotfiles)
+    SEG_DOTDOTSTAR, // `..*` (dotdot + star, matches `..`-prefixed)
+    SEG_WILDCARD,   // `?`, `[abc]`, `*?`, etc. (needs fnmatch)
+    SEG_RECURSIVE,  // `**/`
 } rbc_segment_type_t;
 
 /// @brief Segment Structure
@@ -307,11 +323,12 @@ static bool rbc_segment_next(const char **pattern, unsigned flags, rbc_segment_t
         return false;
 
     seg->start = p;
-    seg->starts_with_dot = (*p == '.');
     seg->has_trailing_slash = false;
 
+    // Scan the segment
     unsigned char_flags = 0;
     bool in_bracket = false; // Bracket can not be nested, so a simple flag is sufficient
+    int leading_dots = 0;
 
     while (*p && !(*p == '/' && !in_bracket))
     {
@@ -341,6 +358,10 @@ static bool rbc_segment_next(const char **pattern, unsigned flags, rbc_segment_t
                 char_flags |= RBC_SEG_CONTAINS_REGULAR;
             in_bracket = false;
             break;
+        case '.':
+            if (char_flags == 0)
+                leading_dots++;
+            break;
         default:
             char_flags |= RBC_SEG_CONTAINS_REGULAR;
             break;
@@ -353,6 +374,7 @@ static bool rbc_segment_next(const char **pattern, unsigned flags, rbc_segment_t
         return false;
 
     seg->len = p - seg->start;
+    seg->starts_with_dot = (leading_dots > 0);
     if (*p == '/')
     {
         seg->has_trailing_slash = true;
@@ -361,13 +383,19 @@ static bool rbc_segment_next(const char **pattern, unsigned flags, rbc_segment_t
     }
     seg->is_last = (*p == '\0');
 
-    if (seg->len == 1 && seg->start[0] == '.')
+    if ((seg->len == 1) && (leading_dots == 1))
         seg->type = SEG_DOT;
-    else if (seg->len == 2 && seg->start[0] == '.' && seg->start[1] == '.')
+    else if ((seg->len == 2) && (leading_dots == 2))
         seg->type = SEG_DOTDOT;
-    else if (seg->len == 2 && char_flags == RBC_SEG_CONTAINS_STAR)
-        seg->type = seg->has_trailing_slash ? SEG_RECURSIVE : SEG_WILDCARD;
-    else if (char_flags == RBC_SEG_CONTAINS_REGULAR)
+    else if ((seg->len == 2) && (leading_dots == 0) && (char_flags == RBC_SEG_CONTAINS_STAR))
+        seg->type = seg->has_trailing_slash ? SEG_RECURSIVE : SEG_STAR;
+    else if ((seg->len >= 1) && (leading_dots == 0) && (char_flags == RBC_SEG_CONTAINS_STAR))
+        seg->type = SEG_STAR;
+    else if ((seg->len == 2) && (leading_dots == 1) && (char_flags == RBC_SEG_CONTAINS_STAR))
+        seg->type = SEG_DOTSTAR;
+    else if ((seg->len == 3) && (leading_dots == 2) && (char_flags == RBC_SEG_CONTAINS_STAR))
+        seg->type = SEG_DOTDOTSTAR;
+    else if ((char_flags == 0) || (char_flags == RBC_SEG_CONTAINS_REGULAR))
         seg->type = SEG_LITERAL;
     else
         seg->type = SEG_WILDCARD;
@@ -388,9 +416,15 @@ static bool rbc_segment_match(const rbc_segment_t *seg, const char *string, unsi
     switch (seg->type)
     {
     case SEG_DOT:
-        return strcmp(string, ".") == 0;
+        return string[0] == '.' && string[1] == '\0';
     case SEG_DOTDOT:
-        return strcmp(string, "..") == 0;
+        return string[0] == '.' && string[1] == '.' && string[2] == '\0';
+    case SEG_STAR:
+        return true;
+    case SEG_DOTSTAR:
+        return string[0] == '.';
+    case SEG_DOTDOTSTAR:
+        return string[0] == '.' && string[1] == '.';
     case SEG_LITERAL:
         if (flags & RBC_FNM_CASEFOLD)
         {
@@ -512,9 +546,12 @@ static rbc_glob_action_t rbc_glob_entry_action(
             return action;
         break;
 
+    case SEG_STAR:
+    case SEG_DOTSTAR:
+    case SEG_DOTDOTSTAR:
     case SEG_WILDCARD:
-        // Wildcard: check dotfile visibility, then match
-        if (rbc_dotfile_hidden(name, flags, seg->starts_with_dot))
+        // Wildcard: check if pattern can match this dotfile, then match
+        if (!rbc_wildcard_can_match_dotfile(name, flags, seg->starts_with_dot))
             return action;
         if (!rbc_segment_match(seg, name, flags))
             return action;
@@ -522,27 +559,36 @@ static rbc_glob_action_t rbc_glob_entry_action(
 
     case SEG_RECURSIVE:
     {
-        // ** pattern: special handling for emit, zero-directory match, and self-recurse
-        bool skip = rbc_recursive_skip(name, flags);
-        bool dotmatch = (flags & RBC_FNM_DOTMATCH) != 0;
+        // ** pattern: three independent decisions
+        // (A) Emit/descend-ability: rbc_recursive_can_descend_into_dotfile (DOTMATCH only)
+        // (B) Matching-ability: rbc_wildcard_can_match_dotfile (pattern notation + DOTMATCH)
+        bool can_descend = rbc_recursive_can_descend_into_dotfile(name, flags);
 
-        // 1. **/ at end: emit all directories
-        //    Skip "." to avoid path duplication (current dir is already matched)
-        if (seg->is_last && !skip && is_dir && !is_dot)
+        // Decision 1: **/ at end - emit directory entries in current directory
+        //   Rationale: **/  at end matches "all directories at any depth"
+        //   Uses: RECURSIVE dotfile rules (DOTMATCH only, no pattern notation)
+        //   Skip "." to avoid duplication (same path as base)
+
+        bool can_match = rbc_recursive_dir_can_match_dotfile(name);
+        if (seg->is_last && can_match && is_dir && !is_dot)
         {
             action.emit = true;
             action.emit_slash = true;
         }
 
-        // 2. Zero-directory match with next segment
-        //    Skip "." unless DOTMATCH (prevents duplicate, **/. is handled in dispatch)
-        //    Use rbc_dotfile_hidden for wildcard patterns with next_seg.starts_with_dot
-        if (!seg->is_last && !(is_dot && !dotmatch))
-        {
-            bool hidden = (next_seg->type == SEG_WILDCARD &&
-                           rbc_dotfile_hidden(name, flags, next_seg->starts_with_dot));
+        // Decision 2: Zero-directory match with next segment
+        //   Rationale: ** can match zero directories, so try matching next_seg here
+        //   Uses: RECURSIVE zero-match dotfile rules (DOTMATCH + pattern notation)
+        //   This is MATCHING in current directory, not DESCENDING
+        bool explicit_dot = (flags & RBC_GLOB_HAS_WILDCARD_ANCESTOR) ? next_seg->starts_with_dot : false;
 
-            if (!hidden && rbc_segment_match(next_seg, name, flags))
+        if (!seg->is_last && rbc_wildcard_can_match_dotfile(name, flags, explicit_dot))
+        {
+            // rbc_recursive_can_match_dotfile already handles dotfile visibility
+            // rbc_segment_match handles the actual pattern matching
+            bool next_seg_can_match = true;
+
+            if (next_seg_can_match && rbc_segment_match(next_seg, name, flags))
             {
                 if (next_seg->is_last)
                 {
@@ -563,9 +609,11 @@ static rbc_glob_action_t rbc_glob_entry_action(
             }
         }
 
-        // 3. Self-recurse into subdirectories for ** continuation
-        //    Skip "." to avoid infinite loop
-        if (!skip && is_dir && !is_dot)
+        // Decision 3: Self-recurse into subdirectories for ** continuation
+        //   Rationale: ** matches any depth, so descend into subdirs with same pattern
+        //   Uses: can_descend (descend-ability based on DOTMATCH only)
+        //   Skip "." to avoid infinite loop
+        if (can_descend && is_dir && !is_dot)
         {
             action.self_recurse = true;
         }
@@ -650,7 +698,9 @@ static void rbc_glob_scan(const rbc_scan_ctx_t *ctx)
         {
             // Set wildcard ancestor flag if current segment is a wildcard
             unsigned descend_flags = ctx->flags;
-            if (ctx->seg.type == SEG_WILDCARD || ctx->seg.type == SEG_RECURSIVE)
+            if (ctx->seg.type == SEG_STAR || ctx->seg.type == SEG_DOTSTAR ||
+                ctx->seg.type == SEG_DOTDOTSTAR || ctx->seg.type == SEG_WILDCARD ||
+                ctx->seg.type == SEG_RECURSIVE)
                 descend_flags |= RBC_GLOB_HAS_WILDCARD_ANCESTOR;
 
             // For SEG_RECURSIVE, descend uses next_seg.next; otherwise seg.next
@@ -756,8 +806,6 @@ static void rbc_glob_dispatch(
             rbc_glob_emit(path, path_len, NULL, true, baselen, results);
         }
     }
-    // Note: RBC_GLOB_HAS_WILDCARD_ANCESTOR is NOT set here for current scan.
-    // It will be set when descending to child directories (in rbc_glob_scan).
 
     // Execute scan
     rbc_glob_scan(&ctx);
