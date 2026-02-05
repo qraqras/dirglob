@@ -24,6 +24,7 @@
 /// @defgroup Internal Glob Flags (high bits, not part of public FNM_* flags)
 /// @{
 #define RBC_GLOB_HAS_WILDCARD_ANCESTOR 0x10000000 // Internal: traversed through wildcard
+#define RBC_GLOB_IN_RECURSIVE 0x20000000          // Internal: currently in ** recursion
 /// @}
 
 /// @brief Action to take for a directory entry
@@ -225,6 +226,27 @@ static bool rbc_wildcard_can_match_dotfile(const char *name, unsigned flags, boo
     return (explicit_dot || (flags & RBC_FNM_DOTMATCH));
 }
 
+/// @brief Check if wildcard pattern can match a dotfile entry
+/// @param[in] name Entry name
+/// @param[in] flags Matching flags (DOTMATCH, HAS_WILDCARD_ANCESTOR)
+/// @param[in] explicit_dot Whether the pattern segment starts with '.'
+/// @return true if pattern can match this entry, false if should be SKIPPED (hidden)
+/// @note Used for ** zero-directory match at top level (Decision 2, depth 0)
+/// @note `.` is excluded if reached via wildcard ancestor to prevent duplicate paths
+static bool rbc_zero_dir_can_match_dotfile(const char *name, unsigned flags, bool explicit_dot)
+{
+    if (name[0] != '.')
+        return true;
+    // `.` - excluded if reached via wildcard ancestor
+    if (name[1] == '\0')
+        return ((flags & RBC_FNM_DOTMATCH) && !(flags & RBC_GLOB_HAS_WILDCARD_ANCESTOR));
+    // `..`
+    if (name[1] == '.' && name[2] == '\0')
+        return false;
+    // `.hidden` - visible if explicit dot or DOTMATCH
+    return (explicit_dot || (flags & RBC_FNM_DOTMATCH));
+}
+
 /// @brief Check if ** zero-level match can match a dotfile entry
 /// @param[in] name Entry name
 /// @return true if entry should be processed for next_seg matching, false if should be SKIPPED
@@ -257,14 +279,15 @@ static bool rbc_recursive_dir_can_match_dotfile(const char *name)
 static bool rbc_recursive_can_descend_into_dotfile(const char *name, unsigned flags)
 {
     if (name[0] != '.')
-        return true; // Not a dotfile, always process
-
-    // `..` is always skipped for ** (no explicit pattern can match)
+        return true;
+    // `.`
+    if (name[1] == '\0')
+        return false;
+    // `..`
     if (name[1] == '.' && name[2] == '\0')
-        return false; // Skip
-
-    // Dotfiles (including `.`): process only if DOTMATCH
-    return (flags & RBC_FNM_DOTMATCH) != 0;
+        return false;
+    // `.hidden`
+    return (flags & RBC_FNM_DOTMATCH);
 }
 
 /// @defgroup Path Segment
@@ -559,36 +582,20 @@ static rbc_glob_action_t rbc_glob_entry_action(
 
     case SEG_RECURSIVE:
     {
-        // ** pattern: three independent decisions
-        // (A) Emit/descend-ability: rbc_recursive_can_descend_into_dotfile (DOTMATCH only)
-        // (B) Matching-ability: rbc_wildcard_can_match_dotfile (pattern notation + DOTMATCH)
         bool can_descend = rbc_recursive_can_descend_into_dotfile(name, flags);
 
         // Decision 1: **/ at end - emit directory entries in current directory
-        //   Rationale: **/  at end matches "all directories at any depth"
-        //   Uses: RECURSIVE dotfile rules (DOTMATCH only, no pattern notation)
-        //   Skip "." to avoid duplication (same path as base)
-
-        bool can_match = rbc_recursive_dir_can_match_dotfile(name);
-        if (seg->is_last && can_match && is_dir && !is_dot)
+        if (seg->is_last && is_dir && can_descend)
         {
             action.emit = true;
             action.emit_slash = true;
         }
 
         // Decision 2: Zero-directory match with next segment
-        //   Rationale: ** can match zero directories, so try matching next_seg here
-        //   Uses: RECURSIVE zero-match dotfile rules (DOTMATCH + pattern notation)
-        //   This is MATCHING in current directory, not DESCENDING
-        bool explicit_dot = (flags & RBC_GLOB_HAS_WILDCARD_ANCESTOR) ? next_seg->starts_with_dot : false;
-
-        if (!seg->is_last && rbc_wildcard_can_match_dotfile(name, flags, explicit_dot))
+        if (!seg->is_last)
         {
-            // rbc_recursive_can_match_dotfile already handles dotfile visibility
-            // rbc_segment_match handles the actual pattern matching
-            bool next_seg_can_match = true;
-
-            if (next_seg_can_match && rbc_segment_match(next_seg, name, flags))
+            bool should_match = (flags & RBC_GLOB_IN_RECURSIVE) ? rbc_wildcard_can_match_dotfile(name, flags, next_seg->starts_with_dot) : rbc_zero_dir_can_match_dotfile(name, flags, next_seg->starts_with_dot);
+            if (should_match && rbc_segment_match(next_seg, name, flags))
             {
                 if (next_seg->is_last)
                 {
@@ -610,13 +617,8 @@ static rbc_glob_action_t rbc_glob_entry_action(
         }
 
         // Decision 3: Self-recurse into subdirectories for ** continuation
-        //   Rationale: ** matches any depth, so descend into subdirs with same pattern
-        //   Uses: can_descend (descend-ability based on DOTMATCH only)
-        //   Skip "." to avoid infinite loop
-        if (can_descend && is_dir && !is_dot)
-        {
+        if (is_dir && can_descend)
             action.self_recurse = true;
-        }
 
         return action;
     }
@@ -660,35 +662,17 @@ static void rbc_glob_scan(const rbc_scan_ctx_t *ctx)
             break;
 
         // Determine action
-        rbc_glob_action_t action = rbc_glob_entry_action(
-            &ctx->seg, &ctx->next_seg,
-            &entry, ctx->flags);
+        rbc_glob_action_t action = rbc_glob_entry_action(&ctx->seg, &ctx->next_seg, &entry, ctx->flags);
 
         // Emit to results
-        if (action.emit)
-        {
-            if (!rbc_glob_emit(
-                    ctx->path,
-                    ctx->path_len,
-                    entry.name,
-                    action.emit_slash,
-                    ctx->baselen,
-                    ctx->results))
-                break;
-        }
+        if (action.emit && !rbc_glob_emit(ctx->path, ctx->path_len, entry.name, action.emit_slash, ctx->baselen, ctx->results))
+            break;
 
         // Build child path for descent/self-recurse
         size_t new_len = 0;
         if (action.descend || action.self_recurse)
         {
-            size_t name_len = strlen(entry.name);
-            new_len = rbc_path_join(
-                pathbuf,
-                sizeof(pathbuf),
-                ctx->path,
-                ctx->path_len,
-                entry.name,
-                name_len);
+            new_len = rbc_path_join(pathbuf, sizeof(pathbuf), ctx->path, ctx->path_len, entry.name, strlen(entry.name));
             if (new_len == 0)
                 continue; // Path too long, skip
         }
@@ -697,21 +681,13 @@ static void rbc_glob_scan(const rbc_scan_ctx_t *ctx)
         if (action.descend && new_len > 0)
         {
             // Set wildcard ancestor flag if current segment is a wildcard
-            unsigned descend_flags = ctx->flags;
-            if (ctx->seg.type == SEG_STAR || ctx->seg.type == SEG_DOTSTAR ||
-                ctx->seg.type == SEG_DOTDOTSTAR || ctx->seg.type == SEG_WILDCARD ||
-                ctx->seg.type == SEG_RECURSIVE)
+            unsigned descend_flags = ctx->flags & ~RBC_GLOB_IN_RECURSIVE;
+            if (ctx->seg.type == SEG_STAR || ctx->seg.type == SEG_DOTSTAR || ctx->seg.type == SEG_DOTDOTSTAR || ctx->seg.type == SEG_WILDCARD || ctx->seg.type == SEG_RECURSIVE)
                 descend_flags |= RBC_GLOB_HAS_WILDCARD_ANCESTOR;
 
             // For SEG_RECURSIVE, descend uses next_seg.next; otherwise seg.next
             const char *next_pattern = (ctx->seg.type == SEG_RECURSIVE) ? ctx->next_seg.next : ctx->seg.next;
-            rbc_glob_dispatch(
-                pathbuf,
-                new_len,
-                ctx->baselen,
-                next_pattern,
-                descend_flags,
-                ctx->results);
+            rbc_glob_dispatch(pathbuf, new_len, ctx->baselen, next_pattern, descend_flags, ctx->results);
         }
 
         // Self-recurse with same ** segment
@@ -720,7 +696,7 @@ static void rbc_glob_scan(const rbc_scan_ctx_t *ctx)
             rbc_scan_ctx_t child_ctx = *ctx;
             child_ctx.path = pathbuf;
             child_ctx.path_len = new_len;
-            child_ctx.flags |= RBC_GLOB_HAS_WILDCARD_ANCESTOR;
+            child_ctx.flags |= RBC_GLOB_IN_RECURSIVE | RBC_GLOB_HAS_WILDCARD_ANCESTOR;
             rbc_glob_scan(&child_ctx);
         }
     }
