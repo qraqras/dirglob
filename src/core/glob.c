@@ -24,7 +24,7 @@
 /// @defgroup Internal Glob Flags (high bits, not part of public FNM_* flags)
 /// @{
 #define RBC_GLOB_HAS_WILDCARD_ANCESTOR 0x10000000 // Internal: traversed through wildcard
-#define RBC_GLOB_IN_RECURSIVE 0x20000000          // Internal: currently in ** recursion
+#define RBC_GLOB_RECURSIVE_DEPTH_ZERO 0x20000000  // Internal: ** at depth 0 (zero-dir match)
 /// @}
 
 /// @brief Action to take for a directory entry
@@ -594,7 +594,7 @@ static rbc_glob_action_t rbc_glob_entry_action(
         // Decision 2: Zero-directory match with next segment
         if (!seg->is_last)
         {
-            bool should_match = (flags & RBC_GLOB_IN_RECURSIVE) ? rbc_wildcard_can_match_dotfile(name, flags, next_seg->starts_with_dot) : rbc_zero_dir_can_match_dotfile(name, flags, next_seg->starts_with_dot);
+            bool should_match = (flags & RBC_GLOB_RECURSIVE_DEPTH_ZERO) ? rbc_zero_dir_can_match_dotfile(name, flags, next_seg->starts_with_dot) : rbc_wildcard_can_match_dotfile(name, flags, next_seg->starts_with_dot);
             if (should_match && rbc_segment_match(next_seg, name, flags))
             {
                 if (next_seg->is_last)
@@ -681,7 +681,7 @@ static void rbc_glob_scan(const rbc_scan_ctx_t *ctx)
         if (action.descend && new_len > 0)
         {
             // Set wildcard ancestor flag if current segment is a wildcard
-            unsigned descend_flags = ctx->flags & ~RBC_GLOB_IN_RECURSIVE;
+            unsigned descend_flags = ctx->flags & ~RBC_GLOB_RECURSIVE_DEPTH_ZERO;
             if (ctx->seg.type == SEG_STAR || ctx->seg.type == SEG_DOTSTAR || ctx->seg.type == SEG_DOTDOTSTAR || ctx->seg.type == SEG_WILDCARD || ctx->seg.type == SEG_RECURSIVE)
                 descend_flags |= RBC_GLOB_HAS_WILDCARD_ANCESTOR;
 
@@ -696,7 +696,7 @@ static void rbc_glob_scan(const rbc_scan_ctx_t *ctx)
             rbc_scan_ctx_t child_ctx = *ctx;
             child_ctx.path = pathbuf;
             child_ctx.path_len = new_len;
-            child_ctx.flags |= RBC_GLOB_IN_RECURSIVE | RBC_GLOB_HAS_WILDCARD_ANCESTOR;
+            child_ctx.flags = (child_ctx.flags & ~RBC_GLOB_RECURSIVE_DEPTH_ZERO) | RBC_GLOB_HAS_WILDCARD_ANCESTOR;
             rbc_glob_scan(&child_ctx);
         }
     }
@@ -738,6 +738,9 @@ static void rbc_glob_dispatch(
 
     if (seg.type == SEG_RECURSIVE)
     {
+        // Mark this as depth-zero for ** pattern
+        ctx.flags |= RBC_GLOB_RECURSIVE_DEPTH_ZERO;
+
         // Collapse consecutive **/ segments
         rbc_segment_t collapsed = seg;
         rbc_segment_t after = {0};
@@ -754,30 +757,11 @@ static void rbc_glob_dispatch(
         // Update seg to collapsed version
         ctx.seg = collapsed;
 
-        // Handle special cases: **/. and **/..
-        if (!collapsed.is_last)
-        {
-            if (after.type == SEG_DOT)
-            {
-                // Only emit "." if DOTMATCH is set
-                if (flags & RBC_FNM_DOTMATCH)
-                    rbc_glob_emit(
-                        path,
-                        path_len,
-                        ".",
-                        after.has_trailing_slash,
-                        baselen,
-                        results);
-                return;
-            }
-            if (after.type == SEG_DOTDOT)
-                return; // Never match anything
-
+        if (!ctx.seg.is_last)
             ctx.next_seg = after;
-        }
 
         // Zero-directory match: **/ at end matches current directory itself
-        if (collapsed.is_last && path_len > 0)
+        if (ctx.seg.is_last && path_len > 0)
         {
             rbc_glob_emit(path, path_len, NULL, true, baselen, results);
         }
