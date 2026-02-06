@@ -124,6 +124,38 @@ extern "C"
      */
     const char *rbc_normalize_path(const char *path, char *buf, size_t buf_size);
 
+    // ============================================================================
+    // Absolute Path Root Parsing
+    // ============================================================================
+
+    /**
+     * @brief Parsed absolute path root information
+     */
+    typedef struct rbc_path_root_s
+    {
+        const char *root;      ///< Root path ("/" or "C:/")
+        size_t root_len;       ///< Length of root (1 or 3)
+        const char *remainder; ///< Pattern after root (skipping leading slashes)
+    } rbc_path_root_t;
+
+    /**
+     * @brief Parse absolute path into root and remainder
+     *
+     * Extracts the root portion of an absolute path and returns
+     * pointers to both the root string and the remaining path.
+     *
+     * Examples:
+     *   POSIX:   "/foo/bar"  -> root="/", remainder="foo/bar"
+     *   Windows: "C:/foo"    -> root="C:/", remainder="foo"
+     *   Windows: "/foo"      -> root="/", remainder="foo"
+     *
+     * @param path Input path (must be normalized: forward slashes only)
+     * @param result Output structure
+     * @param root_buf Buffer for root string (minimum 4 bytes)
+     * @return true if path is absolute, false otherwise
+     */
+    bool rbc_parse_absolute_root(const char *path, rbc_path_root_t *result, char *root_buf);
+
 #ifdef __cplusplus
 }
 #endif

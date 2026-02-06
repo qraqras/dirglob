@@ -172,31 +172,17 @@ static size_t rbc_path_join(
     const char *component,
     size_t component_len)
 {
-    if (base_len == 0)
-    {
-        if (component_len >= buf_size)
-            return 0;
-        memcpy(buf, component, component_len);
-        buf[component_len] = '\0';
-        return component_len;
-    }
-
-    bool should_append_slash = base[base_len - 1] != '/';
-    size_t pos = base_len;
-    if (should_append_slash)
-        pos++;
-
-    size_t result_len = pos + component_len;
-    if (result_len >= buf_size)
+    // Worst case: `base + '/' + component + '\0'`
+    if ((base_len + component_len + 2) > buf_size)
         return 0;
-
     memcpy(buf, base, base_len);
-    if (should_append_slash)
-        buf[base_len] = '/';
+    size_t pos = base_len;
+    if (pos > 0 && base[pos - 1] != '/')
+        buf[pos++] = '/';
     memcpy(buf + pos, component, component_len);
-    buf[result_len] = '\0';
-
-    return result_len;
+    pos += component_len;
+    buf[pos] = '\0';
+    return pos;
 }
 
 /// @brief Append trailing slash to path buffer if not present
@@ -210,10 +196,10 @@ static size_t rbc_path_append_slash(char *buf, size_t buf_size, size_t path_len)
 {
     if (path_len == 0)
         return 0;
-    if (buf_size <= path_len + 1)
-        return 0;
     if (buf[path_len - 1] == '/')
         return path_len;
+    if ((path_len + 2) > buf_size)
+        return 0;
     buf[path_len++] = '/';
     buf[path_len] = '\0';
     return path_len;
@@ -654,10 +640,6 @@ static void rbc_glob_scan(const char *path, size_t path_len, size_t baselen, con
         const char *name = entry.name;
         bool is_dir = entry.is_dir;
 
-        // ".." is only matched by explicit SEG_DOTDOT pattern
-        if (name[0] == '.' && name[1] == '.' && name[2] == '\0' && seg->type != SEG_DOTDOT)
-            continue;
-
         // Wildcard segments: check dotfile visibility
         if (seg->type == SEG_WILDCARD)
         {
@@ -715,57 +697,19 @@ static void rbc_glob_dispatch(const char *path, size_t path_len, size_t baselen,
  */
 static void rbc_glob_walk(const char *base, size_t baselen, const char *pattern, unsigned flags, rbc_results_t *results)
 {
-    // Handle absolute path
-    if (rbc_is_absolute_path(pattern))
-    {
-        // Skip leading slashes (or drive letter + slash on Windows)
-        const char *after_slash = pattern;
-#ifdef _WIN32
-        // Skip drive letter (C:) if present
-        if (((after_slash[0] >= 'A' && after_slash[0] <= 'Z') ||
-             (after_slash[0] >= 'a' && after_slash[0] <= 'z')) &&
-            after_slash[1] == ':')
-        {
-            after_slash += 2;
-        }
-#endif
-        while (*after_slash == '/' || *after_slash == '\\')
-            after_slash++;
+    char root_buf[4];
+    rbc_path_root_t root_info;
 
-        // Pattern is just "/" or "C:\" - return root itself
-        if (*after_slash == '\0')
+    if (rbc_parse_absolute_root(pattern, &root_info, root_buf))
+    {
+        // Absolute path
+        if (*root_info.remainder == '\0')
         {
-#ifdef _WIN32
-            // Return the drive root if present
-            if (pattern[1] == ':')
-            {
-                char root[4] = {pattern[0], ':', '/', '\0'};
-                rbc_results_add(results, root, 3);
-            }
-            else
-            {
-                rbc_results_add(results, "/", 1);
-            }
-#else
-            rbc_results_add(results, "/", 1);
-#endif
+            // Pattern is just root ("/" or "C:/") - return root itself
+            rbc_results_add(results, root_info.root, root_info.root_len);
             return;
         }
-
-#ifdef _WIN32
-        // Start walk with drive root if present
-        if (pattern[1] == ':')
-        {
-            char root[4] = {pattern[0], ':', '/', '\0'};
-            rbc_glob_dispatch(root, 3, 0, after_slash, flags, results);
-        }
-        else
-        {
-            rbc_glob_dispatch("/", 1, 0, after_slash, flags, results);
-        }
-#else
-        rbc_glob_dispatch("/", 1, 0, after_slash, flags, results);
-#endif
+        rbc_glob_dispatch(root_info.root, root_info.root_len, 0, root_info.remainder, flags, results);
     }
     else
     {

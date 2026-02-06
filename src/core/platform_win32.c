@@ -270,4 +270,49 @@ const char *rbc_normalize_path(const char *path, char *buf, size_t buf_size)
     return buf;
 }
 
+bool rbc_parse_absolute_root(const char *path, rbc_path_root_t *result, char *root_buf)
+{
+    if (!path || path[0] == '\0')
+        return false;
+
+    const char *p = path;
+
+    // Check for drive letter (e.g., "C:/")
+    if (((p[0] >= 'A' && p[0] <= 'Z') || (p[0] >= 'a' && p[0] <= 'z')) && p[1] == ':')
+    {
+        // Drive letter path
+        root_buf[0] = p[0];
+        root_buf[1] = ':';
+        root_buf[2] = '/';
+        root_buf[3] = '\0';
+        result->root = root_buf;
+        result->root_len = 3;
+
+        // Skip drive letter and colon
+        p += 2;
+        // Skip leading slashes
+        while (*p == '/' || *p == '\\')
+            p++;
+        result->remainder = p;
+        return true;
+    }
+
+    // Check for root path ("/foo" or "\\foo")
+    if (p[0] == '/' || p[0] == '\\')
+    {
+        root_buf[0] = '/';
+        root_buf[1] = '\0';
+        result->root = root_buf;
+        result->root_len = 1;
+
+        // Skip leading slashes
+        while (*p == '/' || *p == '\\')
+            p++;
+        result->remainder = p;
+        return true;
+    }
+
+    return false;
+}
+
 #endif // _WIN32

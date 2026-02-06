@@ -183,4 +183,24 @@ const char *rbc_normalize_path(const char *path, char *buf, size_t buf_size)
     return path;
 }
 
+bool rbc_parse_absolute_root(const char *path, rbc_path_root_t *result, char *root_buf)
+{
+    if (!path || path[0] != '/')
+        return false;
+
+    // Skip leading slashes
+    const char *p = path;
+    while (*p == '/')
+        p++;
+
+    // Set root to "/"
+    root_buf[0] = '/';
+    root_buf[1] = '\0';
+    result->root = root_buf;
+    result->root_len = 1;
+    result->remainder = p;
+
+    return true;
+}
+
 #endif // !_WIN32
