@@ -26,11 +26,25 @@
 #define RBC_GLOB_HAS_WILDCARD_ANCESTOR 0x10000000 // Internal: traversed through wildcard
 /// @}
 
+/// @defgroup Internal Error Codes
+/// @{
+typedef enum rbc_glob_err_e
+{
+    RBC_GLOB_OK = 0,           // No error
+    RBC_GLOB_ERR_MEMORY,       // Memory allocation failure (fatal)
+    RBC_GLOB_ERR_PATH_TOO_LONG // Path exceeded MAX_PATH (skip)
+} rbc_glob_err_t;
+/// @}
+
+// Forward declaration
+typedef struct rbc_results_s rbc_results_t;
+static bool rbc_glob_error(rbc_results_t *r, rbc_glob_err_t err);
+
 /// @defgroup Results
 /// @{
 
 /// @brief Results Buffer Structure
-typedef struct rbc_results_s
+struct rbc_results_s
 {
     char *arena;             // Arena buffer storing all paths contiguously
     size_t *offsets;         // Offset of each path in arena (in bytes)
@@ -38,8 +52,8 @@ typedef struct rbc_results_s
     size_t arena_used;       // Bytes used in arena
     size_t arena_capacity;   // Total capacity of arena (in bytes)
     size_t offsets_capacity; // Capacity of offsets array (in elements)
-    bool has_error;          // Error flag (memory allocation failure)
-} rbc_results_t;
+    rbc_glob_err_t error;    // Error code (RBC_GLOB_OK if no fatal error)
+};
 
 /// @brief Initialize results buffer
 /// @param[out] r Results buffer
@@ -58,7 +72,7 @@ static bool rbc_results_init(rbc_results_t *r)
     r->arena_used = 0;
     r->arena_capacity = RBC_RESULTS_INIT_DATA;
     r->offsets_capacity = RBC_RESULTS_INIT_COUNT;
-    r->has_error = false;
+    r->error = RBC_GLOB_OK;
     return true;
 }
 
@@ -76,7 +90,7 @@ static bool rbc_results_add(rbc_results_t *r, const char *path, size_t len)
         size_t *new_off = realloc(r->offsets, new_cap * sizeof(size_t));
         if (!new_off)
         {
-            r->has_error = true;
+            rbc_glob_error(r, RBC_GLOB_ERR_MEMORY);
             return false;
         }
         r->offsets = new_off;
@@ -93,7 +107,7 @@ static bool rbc_results_add(rbc_results_t *r, const char *path, size_t len)
         char *new_arena = realloc(r->arena, new_cap);
         if (!new_arena)
         {
-            r->has_error = true;
+            rbc_glob_error(r, RBC_GLOB_ERR_MEMORY);
             return false;
         }
         r->arena = new_arena;
@@ -115,6 +129,24 @@ static void rbc_results_free(rbc_results_t *r)
 {
     free(r->arena);
     free(r->offsets);
+}
+
+/// @brief Report an error during glob operation
+/// @param[in,out] r Results buffer
+/// @param[in] err Error code
+/// @return true if operation should continue (non-fatal), false if should abort (fatal)
+static bool rbc_glob_error(rbc_results_t *r, rbc_glob_err_t err)
+{
+    switch (err)
+    {
+    case RBC_GLOB_ERR_MEMORY:
+        r->error = err;
+        return false; // Abort
+    case RBC_GLOB_ERR_PATH_TOO_LONG:
+    case RBC_GLOB_OK:
+    default:
+        return true; // Continue
+    }
 }
 
 /// @}
@@ -397,8 +429,8 @@ static bool rbc_segment_match(const rbc_segment_t *seg, const char *string, unsi
 /// @param[in] trailing_slash Whether to append trailing slash
 /// @param[in] baselen Base length to strip from output path
 /// @param[in,out] results Results buffer
-/// @return true on success, false on error (buffer overflow or memory allocation failure)
-static bool rbc_glob_emit(
+/// @note On memory error, sets results->error. Path too long is silently skipped.
+static void rbc_glob_emit(
     const char *path,
     size_t path_len,
     const char *name,
@@ -415,13 +447,19 @@ static bool rbc_glob_emit(
         size_t name_len = strlen(name);
         len = rbc_path_join(pathbuf, sizeof(pathbuf), path, path_len, name, name_len);
         if (len == 0)
-            return true; // Path too long, skip silently
+        {
+            rbc_glob_error(results, RBC_GLOB_ERR_PATH_TOO_LONG);
+            return; // Skip silently (non-fatal)
+        }
     }
     else
     {
         // Use path only
         if (path_len >= sizeof(pathbuf))
-            return true; // Path too long, skip silently
+        {
+            rbc_glob_error(results, RBC_GLOB_ERR_PATH_TOO_LONG);
+            return; // Skip silently (non-fatal)
+        }
         memcpy(pathbuf, path, path_len);
         pathbuf[path_len] = '\0';
         len = path_len;
@@ -431,7 +469,10 @@ static bool rbc_glob_emit(
     {
         len = rbc_path_append_slash(pathbuf, sizeof(pathbuf), len);
         if (len == 0)
-            return true; // Buffer too small, skip silently
+        {
+            rbc_glob_error(results, RBC_GLOB_ERR_PATH_TOO_LONG);
+            return; // Skip silently (non-fatal)
+        }
     }
 
     // Strip baselen and skip leading slashes
@@ -444,9 +485,9 @@ static bool rbc_glob_emit(
     }
 
     if (*result == '\0')
-        return true; // Skip empty results
+        return; // Skip empty results
 
-    return rbc_results_add(results, result, strlen(result));
+    rbc_results_add(results, result, strlen(result));
 }
 
 // Forward declaration
@@ -461,8 +502,8 @@ static void rbc_glob_dispatch(const char *path, size_t path_len, size_t baselen,
 /// @param[in] seg Segment to check (is_last, has_trailing_slash, next)
 /// @param[in] flags Match flags
 /// @param[in,out] results Results buffer
-/// @return true to continue, false to break loop
-static bool rbc_glob_emit_or_descend(
+/// @note Errors are recorded in results->error
+static void rbc_glob_emit_or_descend(
     const char *path,
     size_t path_len,
     const char *name,
@@ -477,18 +518,17 @@ static bool rbc_glob_emit_or_descend(
     if (seg->is_last)
     {
         if (seg->has_trailing_slash && !is_dir)
-            return true; // Skip non-directories when trailing slash is required
-        return rbc_glob_emit(path, path_len, name, false, baselen, results);
+            return; // Skip non-directories when trailing slash is required
+        rbc_glob_emit(path, path_len, name, seg->has_trailing_slash, baselen, results);
     }
     else
     {
         if (!is_dir)
-            return true; // Can't descend into non-directories
+            return; // Can't descend into non-directories
         size_t new_len = rbc_path_join(pathbuf, sizeof(pathbuf), path, path_len, name, strlen(name));
         if (new_len > 0)
             rbc_glob_dispatch(pathbuf, new_len, baselen, seg->next, flags, results);
     }
-    return true;
 }
 
 /// @brief Collapse consecutive **/ segments
@@ -551,10 +591,10 @@ static void rbc_glob_scan_recursive(
 
     while (rbc_readdir(dirp, &entry))
     {
-        if (results->has_error)
+        if (results->error)
             break;
 
-        if (is_first_call && (entry.name[0] == '.' && entry.name[1] == '\0'))
+        if (is_first_call && (entry.name[0] == '.' && entry.name[1] == '\0') && !(flags & RBC_FNM_DOTMATCH))
             continue; // Skip "." on first call to avoid duplicate of current directory
 
         const char *name = entry.name;
@@ -563,18 +603,16 @@ static void rbc_glob_scan_recursive(
 
         // Decision 1: **/ at end - emit directory entries
         if (seg->is_last && is_dir && can_descend)
-            if (!rbc_glob_emit(path, path_len, name, true, baselen, results))
-                break;
+            rbc_glob_emit(path, path_len, name, true, baselen, results);
 
         // Decision 2: Zero-directory match with next segment
-        if (!seg->is_last)
+        if (!seg->is_last && !results->error)
         {
             bool can_match = rbc_wildcard_can_match_dotfile(name, flags, next_seg->starts_with_dot);
             if (can_match && rbc_segment_match(next_seg, name, flags))
             {
                 unsigned descend_flags = flags | RBC_GLOB_HAS_WILDCARD_ANCESTOR;
-                if (!rbc_glob_emit_or_descend(path, path_len, name, is_dir, baselen, next_seg, descend_flags, results))
-                    break;
+                rbc_glob_emit_or_descend(path, path_len, name, is_dir, baselen, next_seg, descend_flags, results);
             }
         }
 
@@ -610,7 +648,7 @@ static void rbc_glob_scan(const char *path, size_t path_len, size_t baselen, con
 
     while (rbc_readdir(dirp, &entry))
     {
-        if (results->has_error)
+        if (results->error)
             break;
 
         const char *name = entry.name;
@@ -635,8 +673,7 @@ static void rbc_glob_scan(const char *path, size_t path_len, size_t baselen, con
         unsigned descend_flags = flags;
         if (seg->type == SEG_WILDCARD)
             descend_flags |= RBC_GLOB_HAS_WILDCARD_ANCESTOR;
-        if (!rbc_glob_emit_or_descend(path, path_len, name, is_dir, baselen, seg, descend_flags, results))
-            break;
+        rbc_glob_emit_or_descend(path, path_len, name, is_dir, baselen, seg, descend_flags, results);
     }
 
     rbc_closedir(dirp);
@@ -1105,14 +1142,14 @@ bool rbc_glob(
             }
 
             // Stop processing if memory allocation failed
-            if (results.has_error)
+            if (results.error)
                 break;
         }
 
         rbc_brace_free(expanded);
 
         // Stop processing patterns if memory allocation failed
-        if (results.has_error)
+        if (results.error)
             break;
     }
 
@@ -1120,7 +1157,7 @@ bool rbc_glob(
     bool ok = rbc_results_to_output(&results, out, count, lengths);
 
     // Check for errors during processing
-    if (results.has_error)
+    if (results.error)
         ok = false;
 
     rbc_results_free(&results);
