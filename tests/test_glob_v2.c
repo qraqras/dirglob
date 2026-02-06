@@ -17,9 +17,9 @@
 
 // External API
 bool rbc_glob(const char **patterns, size_t npatterns, unsigned flags,
-                 const char *base, bool sort,
-                 char ***out, size_t *count, size_t **lengths);
-void rbc_glob_free(char **list, size_t count, size_t *lengths);
+              const char *base, bool sort,
+              char ***out, size_t *count, size_t **lengths);
+void rbc_globfree(char **list, size_t count, size_t *lengths);
 
 // Test helper
 static int test_count = 0;
@@ -74,7 +74,7 @@ static void test_simple_literal(void)
         print_results(results, count);
     }
 
-    rbc_glob_free(results, count, NULL);
+    rbc_globfree(results, count, NULL);
     PASS();
 }
 
@@ -107,7 +107,7 @@ static void test_recursive_pattern(void)
         }
     }
 
-    rbc_glob_free(results, count, NULL);
+    rbc_globfree(results, count, NULL);
     PASS();
 }
 
@@ -132,7 +132,7 @@ static void test_brace_expansion(void)
         print_results(results, count);
     }
 
-    rbc_glob_free(results, count, NULL);
+    rbc_globfree(results, count, NULL);
     PASS();
 }
 
@@ -163,8 +163,8 @@ static void test_dotmatch(void)
         FAIL("DOTMATCH should return more or equal results");
     }
 
-    rbc_glob_free(results_no_dot, count_no_dot, NULL);
-    rbc_glob_free(results_with_dot, count_with_dot, NULL);
+    rbc_globfree(results_no_dot, count_no_dot, NULL);
+    rbc_globfree(results_with_dot, count_with_dot, NULL);
 }
 
 static void test_trailing_slash(void)
@@ -200,7 +200,7 @@ static void test_trailing_slash(void)
         }
     }
 
-    rbc_glob_free(results, count, NULL);
+    rbc_globfree(results, count, NULL);
 
     if (all_dirs)
     {
@@ -233,7 +233,7 @@ static void test_double_star_trailing(void)
         print_results(results, count);
     }
 
-    rbc_glob_free(results, count, NULL);
+    rbc_globfree(results, count, NULL);
     PASS();
 }
 
@@ -273,7 +273,7 @@ static void test_wildcard_ancestor_dot(void)
         }
     }
 
-    rbc_glob_free(results, count, NULL);
+    rbc_globfree(results, count, NULL);
 
     if (!has_dot)
     {

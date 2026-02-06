@@ -31,7 +31,7 @@ bool rbc_glob_trie(const char **patterns, size_t npatterns, unsigned flags, cons
 bool rbc_xglob(const rbc_glob_pattern_t *gp, const char *base, bool sort, char ***out, size_t *count, size_t **lengths);
 rbc_glob_pattern_t *rbc_glob_compile(const char *pattern, unsigned flags);
 void rbc_glob_pattern_free(rbc_glob_pattern_t *gp);
-void rbc_glob_free(char **list, size_t count, size_t *lengths);
+void rbc_globfree(char **list, size_t count, size_t *lengths);
 /// @}
 
 /// @defgroup rbc_fnmatch Fnmatch Functions

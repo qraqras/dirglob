@@ -49,7 +49,7 @@ void test_dirglob_returns_empty_for_no_matches(void)
     TEST_ASSERT_NOT_NULL(result);
     TEST_ASSERT_EQUAL_UINT(0, count);
 
-    rbc_glob_free(result, count, lengths);
+    rbc_globfree(result, count, lengths);
 }
 
 void test_dirglob_null_params_return_error(void)
@@ -68,7 +68,7 @@ void test_dirglob_null_params_return_error(void)
 void test_dirglob_free_null_is_safe(void)
 {
     /* Should not crash */
-    rbc_glob_free(NULL, 0, NULL);
+    rbc_globfree(NULL, 0, NULL);
     TEST_ASSERT_TRUE(1);
 }
 
@@ -111,5 +111,5 @@ void test_recursive_glob_duplicates(void)
         }
     }
 
-    rbc_glob_free(result, count, NULL);
+    rbc_globfree(result, count, NULL);
 }

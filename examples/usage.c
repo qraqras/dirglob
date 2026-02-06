@@ -41,7 +41,7 @@ int main(int argc, char **argv)
         {
             printf("%s\n", result[i]);
         }
-        rbc_glob_free(result, count, lengths);
+        rbc_globfree(result, count, lengths);
     }
     else
     {

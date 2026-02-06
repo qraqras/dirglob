@@ -57,7 +57,7 @@ static VALUE rbcglob_glob(int argc, VALUE *argv, VALUE self)
         rb_ary_push(result, rb_str_new(out[i], lengths[i]));
     }
 
-    rbc_glob_free(out, count, lengths);
+    rbc_globfree(out, count, lengths);
 
     return result;
 }

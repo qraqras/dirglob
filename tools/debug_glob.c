@@ -29,7 +29,7 @@ int main(int argc, char **argv)
         {
             printf("  %zu: %s\n", j, out[j] ? out[j] : "(null)");
         }
-        rbc_glob_free(out, count, lengths);
+        rbc_globfree(out, count, lengths);
         printf("---\n");
     }
     return 0;

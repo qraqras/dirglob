@@ -26,7 +26,7 @@ int main(void)
                      {
                             printf("  %s\n", files[i]);
                      }
-                     rbc_glob_free(files, count, NULL);
+                     rbc_globfree(files, count, NULL);
               }
        }
        printf("\n");
@@ -45,7 +45,7 @@ int main(void)
                      {
                             printf("  %s\n", files[i]);
                      }
-                     rbc_glob_free(files, count, NULL);
+                     rbc_globfree(files, count, NULL);
               }
        }
        printf("\n");
@@ -64,7 +64,7 @@ int main(void)
                      {
                             printf("  %s\n", files[i]);
                      }
-                     rbc_glob_free(files, count, NULL);
+                     rbc_globfree(files, count, NULL);
               }
        }
 

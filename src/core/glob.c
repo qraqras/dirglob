@@ -1165,7 +1165,7 @@ bool rbc_glob(
     return ok;
 }
 
-void rbc_glob_free(char **list, size_t count, size_t *lengths)
+void rbc_globfree(char **list, size_t count, size_t *lengths)
 {
     if (!list)
         return;

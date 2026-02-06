@@ -53,7 +53,7 @@ void bench_rbcglob(const char *pattern, int iterations)
         if (success)
         {
             total_matches += count;
-            rbc_glob_free(out, count, NULL);
+            rbc_globfree(out, count, NULL);
         }
     }
     double end = get_time_sec();
