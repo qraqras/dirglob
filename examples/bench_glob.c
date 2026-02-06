@@ -46,14 +46,13 @@ void bench_rbcglob(const char *pattern, int iterations)
     for (int i = 0; i < iterations; i++)
     {
         const char *patterns[] = {pattern};
-        char **out = NULL;
-        size_t count = 0;
+        rbc_glob_result_t result = {0};
 
-        bool success = rbc_glob(patterns, 1, 0, NULL, true, &out, &count, NULL);
-        if (success)
+        rbc_glob_status_t success = rbc_glob(patterns, 1, 0, NULL, true, &result, NULL, NULL);
+        if (success == RBC_GLOB_SUCCESS)
         {
-            total_matches += count;
-            rbc_globfree(out, count, NULL);
+            total_matches += result.count;
+            rbc_globfree(&result);
         }
     }
     double end = get_time_sec();

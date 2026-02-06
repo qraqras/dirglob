@@ -9,17 +9,7 @@
 #include <stdbool.h>
 #include <sys/stat.h>
 #include <unistd.h>
-
-#define RBC_FNM_NOESCAPE 0x01
-#define RBC_FNM_PATHNAME 0x02
-#define RBC_FNM_DOTMATCH 0x04
-#define RBC_FNM_CASEFOLD 0x08
-
-// External API
-bool rbc_glob(const char **patterns, size_t npatterns, unsigned flags,
-              const char *base, bool sort,
-              char ***out, size_t *count, size_t **lengths);
-void rbc_globfree(char **list, size_t count, size_t *lengths);
+#include <rbc/rbc.h>
 
 // Test helper
 static int test_count = 0;
@@ -58,23 +48,22 @@ static void test_simple_literal(void)
     TEST("Simple literal pattern");
 
     const char *patterns[] = {"*.txt"};
-    char **results = NULL;
-    size_t count = 0;
+    rbc_glob_result_t result = {0};
 
-    bool ok = rbc_glob(patterns, 1, 0, ".", true, &results, &count, NULL);
-    if (!ok)
+    rbc_glob_status_t ok = rbc_glob(patterns, 1, 0, ".", true, &result, NULL, NULL);
+    if (ok != RBC_GLOB_SUCCESS)
     {
         FAIL("rbc_glob returned false");
         return;
     }
 
-    printf("found %zu files\n", count);
-    if (count > 0)
+    printf("found %zu files\n", result.count);
+    if (result.count > 0)
     {
-        print_results(results, count);
+        print_results(result.paths, result.count);
     }
 
-    rbc_globfree(results, count, NULL);
+    rbc_globfree(&result);
     PASS();
 }
 
@@ -83,31 +72,30 @@ static void test_recursive_pattern(void)
     TEST("Recursive ** pattern");
 
     const char *patterns[] = {"**/*.c"};
-    char **results = NULL;
-    size_t count = 0;
+    rbc_glob_result_t result = {0};
 
-    bool ok = rbc_glob(patterns, 1, 0, ".", true, &results, &count, NULL);
-    if (!ok)
+    rbc_glob_status_t ok = rbc_glob(patterns, 1, 0, ".", true, &result, NULL, NULL);
+    if (ok != RBC_GLOB_SUCCESS)
     {
         FAIL("rbc_glob returned false");
         return;
     }
 
-    printf("found %zu files\n", count);
-    if (count > 0 && count <= 10)
+    printf("found %zu files\n", result.count);
+    if (result.count > 0 && result.count <= 10)
     {
-        print_results(results, count);
+        print_results(result.paths, result.count);
     }
-    else if (count > 10)
+    else if (result.count > 10)
     {
         printf("  (showing first 10)\n");
         for (size_t i = 0; i < 10; i++)
         {
-            printf("    [%zu] %s\n", i, results[i]);
+            printf("    [%zu] %s\n", i, result.paths[i]);
         }
     }
 
-    rbc_globfree(results, count, NULL);
+    rbc_globfree(&result);
     PASS();
 }
 
@@ -116,23 +104,22 @@ static void test_brace_expansion(void)
     TEST("Brace expansion {a,b}");
 
     const char *patterns[] = {"{src,include}/**/*.h"};
-    char **results = NULL;
-    size_t count = 0;
+    rbc_glob_result_t result = {0};
 
-    bool ok = rbc_glob(patterns, 1, 0, ".", true, &results, &count, NULL);
-    if (!ok)
+    rbc_glob_status_t ok = rbc_glob(patterns, 1, 0, ".", true, &result, NULL, NULL);
+    if (ok != RBC_GLOB_SUCCESS)
     {
         FAIL("rbc_glob returned false");
         return;
     }
 
-    printf("found %zu files\n", count);
-    if (count > 0 && count <= 10)
+    printf("found %zu files\n", result.count);
+    if (result.count > 0 && result.count <= 10)
     {
-        print_results(results, count);
+        print_results(result.paths, result.count);
     }
 
-    rbc_globfree(results, count, NULL);
+    rbc_globfree(&result);
     PASS();
 }
 
@@ -141,20 +128,18 @@ static void test_dotmatch(void)
     TEST("DOTMATCH flag");
 
     const char *patterns[] = {"*"};
-    char **results_no_dot = NULL;
-    char **results_with_dot = NULL;
-    size_t count_no_dot = 0;
-    size_t count_with_dot = 0;
+    rbc_glob_result_t result_no_dot = {0};
+    rbc_glob_result_t result_with_dot = {0};
 
     // Without DOTMATCH
-    rbc_glob(patterns, 1, 0, ".", true, &results_no_dot, &count_no_dot, NULL);
+    rbc_glob(patterns, 1, 0, ".", true, &result_no_dot, NULL, NULL);
 
     // With DOTMATCH
-    rbc_glob(patterns, 1, RBC_FNM_DOTMATCH, ".", true, &results_with_dot, &count_with_dot, NULL);
+    rbc_glob(patterns, 1, RBC_FNM_DOTMATCH, ".", true, &result_with_dot, NULL, NULL);
 
-    printf("without DOTMATCH: %zu, with DOTMATCH: %zu\n", count_no_dot, count_with_dot);
+    printf("without DOTMATCH: %zu, with DOTMATCH: %zu\n", result_no_dot.count, result_with_dot.count);
 
-    if (count_with_dot >= count_no_dot)
+    if (result_with_dot.count >= result_no_dot.count)
     {
         PASS();
     }
@@ -163,8 +148,8 @@ static void test_dotmatch(void)
         FAIL("DOTMATCH should return more or equal results");
     }
 
-    rbc_globfree(results_no_dot, count_no_dot, NULL);
-    rbc_globfree(results_with_dot, count_with_dot, NULL);
+    rbc_globfree(&result_no_dot);
+    rbc_globfree(&result_with_dot);
 }
 
 static void test_trailing_slash(void)
@@ -172,35 +157,34 @@ static void test_trailing_slash(void)
     TEST("Trailing slash (directories only)");
 
     const char *patterns[] = {"*/"};
-    char **results = NULL;
-    size_t count = 0;
+    rbc_glob_result_t result = {0};
 
-    bool ok = rbc_glob(patterns, 1, 0, ".", true, &results, &count, NULL);
-    if (!ok)
+    rbc_glob_status_t ok = rbc_glob(patterns, 1, 0, ".", true, &result, NULL, NULL);
+    if (ok != RBC_GLOB_SUCCESS)
     {
         FAIL("rbc_glob returned false");
         return;
     }
 
-    printf("found %zu directories\n", count);
-    if (count > 0)
+    printf("found %zu directories\n", result.count);
+    if (result.count > 0)
     {
-        print_results(results, count);
+        print_results(result.paths, result.count);
     }
 
     // All results should end with /
     bool all_dirs = true;
-    for (size_t i = 0; i < count; i++)
+    for (size_t i = 0; i < result.count; i++)
     {
-        size_t len = strlen(results[i]);
-        if (len == 0 || results[i][len - 1] != '/')
+        size_t len = strlen(result.paths[i]);
+        if (len == 0 || result.paths[i][len - 1] != '/')
         {
             all_dirs = false;
             break;
         }
     }
 
-    rbc_globfree(results, count, NULL);
+    rbc_globfree(&result);
 
     if (all_dirs)
     {
@@ -217,23 +201,22 @@ static void test_double_star_trailing(void)
     TEST("**/ pattern (all directories)");
 
     const char *patterns[] = {"**/"};
-    char **results = NULL;
-    size_t count = 0;
+    rbc_glob_result_t result = {0};
 
-    bool ok = rbc_glob(patterns, 1, 0, "src", true, &results, &count, NULL);
-    if (!ok)
+    rbc_glob_status_t ok = rbc_glob(patterns, 1, 0, "src", true, &result, NULL, NULL);
+    if (ok != RBC_GLOB_SUCCESS)
     {
         FAIL("rbc_glob returned false");
         return;
     }
 
-    printf("found %zu directories under src/\n", count);
-    if (count > 0 && count <= 10)
+    printf("found %zu directories under src/\n", result.count);
+    if (result.count > 0 && result.count <= 10)
     {
-        print_results(results, count);
+        print_results(result.paths, result.count);
     }
 
-    rbc_globfree(results, count, NULL);
+    rbc_globfree(&result);
     PASS();
 }
 
@@ -244,11 +227,10 @@ static void test_wildcard_ancestor_dot(void)
     // This tests the Ruby behavior where . entries are excluded
     // when reached via wildcard ancestor
     const char *patterns[] = {"*/*"};
-    char **results = NULL;
-    size_t count = 0;
+    rbc_glob_result_t result = {0};
 
-    bool ok = rbc_glob(patterns, 1, RBC_FNM_DOTMATCH, ".", true, &results, &count, NULL);
-    if (!ok)
+    rbc_glob_status_t ok = rbc_glob(patterns, 1, RBC_FNM_DOTMATCH, ".", true, &result, NULL, NULL);
+    if (ok != RBC_GLOB_SUCCESS)
     {
         FAIL("rbc_glob returned false");
         return;
@@ -256,24 +238,24 @@ static void test_wildcard_ancestor_dot(void)
 
     // Check that no result ends with "/."
     bool has_dot = false;
-    for (size_t i = 0; i < count; i++)
+    for (size_t i = 0; i < result.count; i++)
     {
-        size_t len = strlen(results[i]);
-        if (len >= 2 && results[i][len - 2] == '/' && results[i][len - 1] == '.')
+        size_t len = strlen(result.paths[i]);
+        if (len >= 2 && result.paths[i][len - 2] == '/' && result.paths[i][len - 1] == '.')
         {
             has_dot = true;
-            printf("  Found: %s\n", results[i]);
+            printf("  Found: %s\n", result.paths[i]);
             break;
         }
-        if (len == 1 && results[i][0] == '.')
+        if (len == 1 && result.paths[i][0] == '.')
         {
             has_dot = true;
-            printf("  Found: %s\n", results[i]);
+            printf("  Found: %s\n", result.paths[i]);
             break;
         }
     }
 
-    rbc_globfree(results, count, NULL);
+    rbc_globfree(&result);
 
     if (!has_dot)
     {

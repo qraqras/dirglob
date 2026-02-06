@@ -17,16 +17,15 @@ int main(void)
        printf("-------------------------------------------\n");
        {
               const char *patterns[] = {"*.c"};
-              char **files;
-              size_t count;
-              if (rbc_glob(patterns, 1, 0, ".", true, &files, &count, NULL))
+              rbc_glob_result_t result = {0};
+              if (rbc_glob(patterns, 1, 0, ".", true, &result, NULL, NULL) == RBC_GLOB_SUCCESS)
               {
-                     printf("Found %zu files:\n", count);
-                     for (size_t i = 0; i < count; i++)
+                     printf("Found %zu files:\n", result.count);
+                     for (size_t i = 0; i < result.count; i++)
                      {
-                            printf("  %s\n", files[i]);
+                            printf("  %s\n", result.paths[i]);
                      }
-                     rbc_globfree(files, count, NULL);
+                     rbc_globfree(&result);
               }
        }
        printf("\n");
@@ -36,16 +35,15 @@ int main(void)
        printf("-------------------------------------------\n");
        {
               const char *patterns[] = {"*.c", "*.h"};
-              char **files;
-              size_t count;
-              if (rbc_glob(patterns, 2, 0, ".", true, &files, &count, NULL))
+              rbc_glob_result_t result = {0};
+              if (rbc_glob(patterns, 2, 0, ".", true, &result, NULL, NULL) == RBC_GLOB_SUCCESS)
               {
-                     printf("Found %zu files:\n", count);
-                     for (size_t i = 0; i < count; i++)
+                     printf("Found %zu files:\n", result.count);
+                     for (size_t i = 0; i < result.count; i++)
                      {
-                            printf("  %s\n", files[i]);
+                            printf("  %s\n", result.paths[i]);
                      }
-                     rbc_globfree(files, count, NULL);
+                     rbc_globfree(&result);
               }
        }
        printf("\n");
@@ -55,16 +53,15 @@ int main(void)
        printf("-------------------------------------------\n");
        {
               const char *patterns[] = {"src/{core,utils}/*.c"};
-              char **files;
-              size_t count;
-              if (rbc_glob(patterns, 1, 0, ".", true, &files, &count, NULL))
+              rbc_glob_result_t result = {0};
+              if (rbc_glob(patterns, 1, 0, ".", true, &result, NULL, NULL) == RBC_GLOB_SUCCESS)
               {
-                     printf("Found %zu files:\n", count);
-                     for (size_t i = 0; i < count; i++)
+                     printf("Found %zu files:\n", result.count);
+                     for (size_t i = 0; i < result.count; i++)
                      {
-                            printf("  %s\n", files[i]);
+                            printf("  %s\n", result.paths[i]);
                      }
-                     rbc_globfree(files, count, NULL);
+                     rbc_globfree(&result);
               }
        }
 

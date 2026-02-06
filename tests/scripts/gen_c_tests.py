@@ -99,8 +99,8 @@ static void test_glob_against_ruby(const char *pattern, int flags,
 
     /* Execute rbc_glob */
     const char *patterns[] = {{pattern}};
-    bool ret = rbc_glob(patterns, 1, flags, base, sort, &results, &count, &lengths);
-    TEST_ASSERT_TRUE_MESSAGE(ret, "rbc_glob failed");
+    rbc_glob_status_t ret = rbc_glob(patterns, 1, flags, base, sort, &results, &count, &lengths, NULL, NULL);
+    TEST_ASSERT_EQUAL_MESSAGE(RBC_GLOB_SUCCESS, ret, "rbc_glob failed");
 
     /* Load expected results from Ruby */
     FILE *fp = fopen(expected_file, "r");

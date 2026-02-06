@@ -13,23 +13,21 @@ int main(int argc, char **argv)
     for (int i = 1; i < argc; ++i)
     {
         const char *pattern = argv[i];
-        char **out = NULL;
-        size_t count = 0;
-        size_t *lengths = NULL;
+        rbc_glob_result_t result = {0};
 
         printf("Pattern: '%s'\n", pattern);
-        if (!rbc_glob(&pattern, 1, 0, ".", false, &out, &count, &lengths))
+        if (rbc_glob(&pattern, 1, 0, ".", false, &result, NULL, NULL) != RBC_GLOB_SUCCESS)
         {
             fprintf(stderr, "rbc_glob failed\n");
             continue;
         }
 
-        printf("Matches: %zu\n", count);
-        for (size_t j = 0; j < count; ++j)
+        printf("Matches: %zu\n", result.count);
+        for (size_t j = 0; j < result.count; ++j)
         {
-            printf("  %zu: %s\n", j, out[j] ? out[j] : "(null)");
+            printf("  %zu: %s\n", j, result.paths[j] ? result.paths[j] : "(null)");
         }
-        rbc_globfree(out, count, lengths);
+        rbc_globfree(&result);
         printf("---\n");
     }
     return 0;

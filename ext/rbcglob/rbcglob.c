@@ -1,6 +1,7 @@
 #include <ruby.h>
 #include <rbc/rbc.h>
 #include <stdlib.h>
+#include <string.h>
 
 static VALUE mRBCGlob;
 
@@ -40,26 +41,24 @@ static VALUE rbcglob_glob(int argc, VALUE *argv, VALUE self)
     const char *pat = StringValueCStr(pattern);
     const char *patterns[] = {pat};
 
-    char **out = NULL;
-    size_t count = 0;
-    size_t *lengths = NULL;
+    rbc_glob_result_t result = {0};
 
-    bool success = rbc_glob(patterns, 1, flags, base, true, &out, &count, &lengths);
+    rbc_glob_status_t status = rbc_glob(patterns, 1, flags, base, true, &result, NULL, NULL);
 
-    if (!success)
+    if (status != RBC_GLOB_SUCCESS)
     {
         return rb_ary_new();
     }
 
-    VALUE result = rb_ary_new_capa(count);
-    for (size_t i = 0; i < count; i++)
+    VALUE rb_result = rb_ary_new_capa(result.count);
+    for (size_t i = 0; i < result.count; i++)
     {
-        rb_ary_push(result, rb_str_new(out[i], lengths[i]));
+        rb_ary_push(rb_result, rb_str_new_cstr(result.paths[i]));
     }
 
-    rbc_globfree(out, count, lengths);
+    rbc_globfree(&result);
 
-    return result;
+    return rb_result;
 }
 
 void Init_rbcglob(void)

@@ -10,23 +10,23 @@ bool test_glob(const char *pattern, const char *filename, bool expected)
         fclose(f);
 
     const char *patterns[] = {pattern};
-    char **results = NULL;
-    size_t count = 0;
+    rbc_glob_result_t result = {0};
 
-    bool ret = rbc_glob(patterns, 1, 0, NULL, true, &results, &count, NULL);
+    rbc_glob_status_t ret = rbc_glob(patterns, 1, 0, NULL, true, &result, NULL, NULL);
 
     bool found = false;
-    if (ret)
+    if (ret == RBC_GLOB_SUCCESS)
     {
-        for (size_t i = 0; i < count; i++)
+        for (size_t i = 0; i < result.count; i++)
         {
-            if (strcmp(results[i], filename) == 0)
+            if (strcmp(result.paths[i], filename) == 0)
             {
                 found = true;
             }
         }
     }
 
+    rbc_globfree(&result);
     remove(filename);
 
     if (found == expected)

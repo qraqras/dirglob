@@ -9,17 +9,7 @@
 #include <stdlib.h>
 
 #define RBC_GLOB_MAX_PATH RBC_MAX_PATH
-#define RBC_RESULTS_INIT_DATA (64 * 1024) // 64KB initial data buffer
 #define RBC_RESULTS_INIT_COUNT 256        // Initial path count
-
-/// @defgroup Segment Character Flags
-/// @{
-#define RBC_SEG_CONTAINS_STAR 0x01     // Contains '*'
-#define RBC_SEG_CONTAINS_QUESTION 0x02 // Contains '?'
-#define RBC_SEG_CONTAINS_BRACKET 0x04  // Contains '[...]'
-#define RBC_SEG_CONTAINS_ESCAPE 0x08   // Contains escape sequences
-#define RBC_SEG_CONTAINS_REGULAR 0x10  // Contains regular characters
-/// @}
 
 /// @defgroup Internal Glob Flags (high bits, not part of public FNM_* flags)
 /// @{
@@ -46,12 +36,9 @@ static bool rbc_glob_error(rbc_results_t *r, rbc_glob_err_t err);
 /// @brief Results Buffer Structure
 struct rbc_results_s
 {
-    char *arena;             // Arena buffer storing all paths contiguously
-    size_t *offsets;         // Offset of each path in arena (in bytes)
+    char **paths;            // Array of path strings (individually allocated)
     size_t count;            // Number of stored paths
-    size_t arena_used;       // Bytes used in arena
-    size_t arena_capacity;   // Total capacity of arena (in bytes)
-    size_t offsets_capacity; // Capacity of offsets array (in elements)
+    size_t capacity;         // Capacity of paths array
     rbc_glob_err_t error;    // Error code (RBC_GLOB_OK if no fatal error)
 };
 
@@ -60,18 +47,11 @@ struct rbc_results_s
 /// @return true on success, false on failure
 static bool rbc_results_init(rbc_results_t *r)
 {
-    r->arena = malloc(RBC_RESULTS_INIT_DATA);
-    r->offsets = malloc(RBC_RESULTS_INIT_COUNT * sizeof(size_t));
-    if (!r->arena || !r->offsets)
-    {
-        free(r->arena);
-        free(r->offsets);
+    r->paths = malloc(RBC_RESULTS_INIT_COUNT * sizeof(char *));
+    if (!r->paths)
         return false;
-    }
     r->count = 0;
-    r->arena_used = 0;
-    r->arena_capacity = RBC_RESULTS_INIT_DATA;
-    r->offsets_capacity = RBC_RESULTS_INIT_COUNT;
+    r->capacity = RBC_RESULTS_INIT_COUNT;
     r->error = RBC_GLOB_OK;
     return true;
 }
@@ -83,42 +63,30 @@ static bool rbc_results_init(rbc_results_t *r)
 /// @return true on success, false on failure
 static bool rbc_results_add(rbc_results_t *r, const char *path, size_t len)
 {
-    // Grow offsets array if needed
-    if (r->count >= r->offsets_capacity)
+    // Grow paths array if needed
+    if (r->count >= r->capacity)
     {
-        size_t new_cap = r->offsets_capacity * 2;
-        size_t *new_off = realloc(r->offsets, new_cap * sizeof(size_t));
-        if (!new_off)
+        size_t new_cap = r->capacity * 2;
+        char **new_paths = realloc(r->paths, new_cap * sizeof(char *));
+        if (!new_paths)
         {
             rbc_glob_error(r, RBC_GLOB_ERR_MEMORY);
             return false;
         }
-        r->offsets = new_off;
-        r->offsets_capacity = new_cap;
+        r->paths = new_paths;
+        r->capacity = new_cap;
     }
 
-    // Grow arena buffer if needed (include null terminator)
-    size_t needed = r->arena_used + len + 1;
-    if (needed > r->arena_capacity)
+    // Allocate and copy path
+    char *copy = malloc(len + 1);
+    if (!copy)
     {
-        size_t new_cap = r->arena_capacity;
-        while (new_cap < needed)
-            new_cap *= 2;
-        char *new_arena = realloc(r->arena, new_cap);
-        if (!new_arena)
-        {
-            rbc_glob_error(r, RBC_GLOB_ERR_MEMORY);
-            return false;
-        }
-        r->arena = new_arena;
-        r->arena_capacity = new_cap;
+        rbc_glob_error(r, RBC_GLOB_ERR_MEMORY);
+        return false;
     }
-
-    // Store offset and copy path
-    r->offsets[r->count++] = r->arena_used;
-    memcpy(r->arena + r->arena_used, path, len);
-    r->arena[r->arena_used + len] = '\0';
-    r->arena_used += len + 1;
+    memcpy(copy, path, len);
+    copy[len] = '\0';
+    r->paths[r->count++] = copy;
 
     return true;
 }
@@ -127,8 +95,9 @@ static bool rbc_results_add(rbc_results_t *r, const char *path, size_t len)
 /// @param[in] r Results buffer
 static void rbc_results_free(rbc_results_t *r)
 {
-    free(r->arena);
-    free(r->offsets);
+    for (size_t i = 0; i < r->count; i++)
+        free(r->paths[i]);
+    free(r->paths);
 }
 
 /// @brief Report an error during glob operation
@@ -147,6 +116,96 @@ static bool rbc_glob_error(rbc_results_t *r, rbc_glob_err_t err)
     default:
         return true; // Continue
     }
+}
+
+/// @}
+
+/// @defgroup Emit Context
+/// @{
+
+/// @brief Callback function type (matches rbc_glob_callback_t in header)
+typedef bool (*rbc_emit_callback_t)(const char *path, size_t path_len, void *user_data);
+
+/// @brief Emit context for callback or accumulate mode
+typedef struct rbc_emit_ctx_s
+{
+    // Callback mode
+    rbc_emit_callback_t callback;
+    void *user_data;
+
+    // Accumulate mode (for sort:true or rbc_glob)
+    rbc_results_t *results;
+
+    // Error callback
+    rbc_glob_errfunc_t errfunc;
+    void *errfunc_data;
+
+    // State
+    bool stopped;              // User requested stop via callback returning false
+    bool has_error;            // Fatal error occurred
+    rbc_glob_status_t status;  // Final status code
+} rbc_emit_ctx_t;
+
+/// @brief Initialize emit context for callback mode
+static void rbc_emit_ctx_init_callback(rbc_emit_ctx_t *ctx, rbc_emit_callback_t callback, void *user_data, rbc_glob_errfunc_t errfunc, void *errfunc_data)
+{
+    ctx->callback = callback;
+    ctx->user_data = user_data;
+    ctx->results = NULL;
+    ctx->errfunc = errfunc;
+    ctx->errfunc_data = errfunc_data;
+    ctx->stopped = false;
+    ctx->has_error = false;
+    ctx->status = RBC_GLOB_SUCCESS;
+}
+
+/// @brief Initialize emit context for accumulate mode
+static void rbc_emit_ctx_init_results(rbc_emit_ctx_t *ctx, rbc_results_t *results, rbc_glob_errfunc_t errfunc, void *errfunc_data)
+{
+    ctx->callback = NULL;
+    ctx->user_data = NULL;
+    ctx->results = results;
+    ctx->errfunc = errfunc;
+    ctx->errfunc_data = errfunc_data;
+    ctx->stopped = false;
+    ctx->has_error = false;
+    ctx->status = RBC_GLOB_SUCCESS;
+}
+
+/// @brief Check if emit context should stop processing
+static inline bool rbc_emit_ctx_should_stop(const rbc_emit_ctx_t *ctx)
+{
+    return ctx->stopped || ctx->has_error;
+}
+
+/// @brief Report an error and determine whether to continue
+/// @param[in,out] ctx Emit context
+/// @param[in] errc Error code
+/// @param[in] path Path where error occurred (may be NULL)
+/// @return true if should continue, false if should abort
+static bool rbc_emit_ctx_report_error(rbc_emit_ctx_t *ctx, rbc_glob_errc_t errc, const char *path)
+{
+    // RBC_GLOB_E_NOMEM is always fatal (internal indication)
+    // Actual memory errors are reported via has_error directly
+
+    // Non-fatal: call errfunc if available
+    if (ctx->errfunc)
+    {
+        if (!ctx->errfunc(path, errc, ctx->errfunc_data))
+        {
+            ctx->has_error = true;
+            ctx->status = RBC_GLOB_ABORTED;
+            return false;
+        }
+    }
+    return true;  // Continue
+}
+
+/// @brief Mark context with fatal memory error
+static void rbc_emit_ctx_set_nomem(rbc_emit_ctx_t *ctx)
+{
+    ctx->has_error = true;
+    ctx->status = RBC_GLOB_NOMEM;
 }
 
 /// @}
@@ -259,6 +318,15 @@ static bool rbc_recursive_can_descend_into_dotfile(const char *name, unsigned fl
 /// @defgroup Path Segment
 /// @{
 
+/// @defgroup Segment Character Flags
+/// @{
+#define RBC_SEG_CONTAINS_STAR 0x01     // Contains '*'
+#define RBC_SEG_CONTAINS_QUESTION 0x02 // Contains '?'
+#define RBC_SEG_CONTAINS_BRACKET 0x04  // Contains '[...]'
+#define RBC_SEG_CONTAINS_ESCAPE 0x08   // Contains escape sequences
+#define RBC_SEG_CONTAINS_REGULAR 0x10  // Contains regular characters
+/// @}
+
 /// @brief Segment Types
 typedef enum rbc_segment_type_e
 {
@@ -304,10 +372,10 @@ static bool rbc_segment_next(const char **pattern, unsigned flags, rbc_segment_t
     unsigned char_flags = 0;
     bool in_bracket = false; // Bracket can not be nested, so a simple flag is sufficient
 
-    while (*p && !(*p == '/' && !in_bracket))
+    while (*p && !((*p == '/') && !in_bracket))
     {
         // Handle escape sequences
-        if (!(flags & RBC_FNM_NOESCAPE) && *p == '\\' && *(p + 1))
+        if (!(flags & RBC_FNM_NOESCAPE) && (*p == '\\') && *(p + 1))
         {
             char_flags |= RBC_SEG_CONTAINS_ESCAPE;
             p += 2;
@@ -408,22 +476,25 @@ static bool rbc_segment_match(const rbc_segment_t *seg, const char *string, unsi
 /// Glob Internal Implementation
 /// ============================================================================
 
-/// @brief Emit a path to results buffer
+/// @brief Emit a path via callback or to results buffer
 /// @param[in] path Base path
 /// @param[in] path_len Length of base path
 /// @param[in] name Entry name to append (NULL to emit path only)
 /// @param[in] trailing_slash Whether to append trailing slash
 /// @param[in] baselen Base length to strip from output path
-/// @param[in,out] results Results buffer
-/// @note On memory error, sets results->error. Path too long is silently skipped.
+/// @param[in,out] ctx Emit context
+/// @note On memory error, sets ctx->has_error. Path too long is silently skipped.
 static void rbc_glob_emit(
     const char *path,
     size_t path_len,
     const char *name,
     bool trailing_slash,
     size_t baselen,
-    rbc_results_t *results)
+    rbc_emit_ctx_t *ctx)
 {
+    if (rbc_emit_ctx_should_stop(ctx))
+        return;
+
     char pathbuf[RBC_GLOB_MAX_PATH];
     size_t len;
 
@@ -433,19 +504,13 @@ static void rbc_glob_emit(
         size_t name_len = strlen(name);
         len = rbc_path_join(pathbuf, sizeof(pathbuf), path, path_len, name, name_len);
         if (len == 0)
-        {
-            rbc_glob_error(results, RBC_GLOB_ERR_PATH_TOO_LONG);
-            return; // Skip silently (non-fatal)
-        }
+            return; // Skip silently (path too long, non-fatal)
     }
     else
     {
         // Use path only
         if (path_len >= sizeof(pathbuf))
-        {
-            rbc_glob_error(results, RBC_GLOB_ERR_PATH_TOO_LONG);
-            return; // Skip silently (non-fatal)
-        }
+            return; // Skip silently (path too long, non-fatal)
         memcpy(pathbuf, path, path_len);
         pathbuf[path_len] = '\0';
         len = path_len;
@@ -455,29 +520,46 @@ static void rbc_glob_emit(
     {
         len = rbc_path_append_slash(pathbuf, sizeof(pathbuf), len);
         if (len == 0)
-        {
-            rbc_glob_error(results, RBC_GLOB_ERR_PATH_TOO_LONG);
-            return; // Skip silently (non-fatal)
-        }
+            return; // Skip silently (path too long, non-fatal)
     }
 
     // Strip baselen and skip leading slashes
     const char *result = pathbuf;
+    size_t result_len = len;
     if (baselen > 0)
     {
         result += baselen;
-        while (*result == '/')
+        result_len -= baselen;
+        while (*result == '/' && result_len > 0)
+        {
             result++;
+            result_len--;
+        }
     }
 
-    if (*result == '\0')
+    if (result_len == 0)
         return; // Skip empty results
 
-    rbc_results_add(results, result, strlen(result));
+    // Emit via callback or accumulate
+    if (ctx->callback)
+    {
+        if (!ctx->callback(result, result_len, ctx->user_data))
+        {
+            ctx->stopped = true;
+            ctx->status = RBC_GLOB_STOPPED;
+        }
+    }
+    else if (ctx->results)
+    {
+        if (!rbc_results_add(ctx->results, result, result_len))
+        {
+            rbc_emit_ctx_set_nomem(ctx);
+        }
+    }
 }
 
-// Forward declaration
-static void rbc_glob_dispatch(const char *path, size_t path_len, size_t baselen, const char *pattern, unsigned flags, rbc_results_t *results);
+// Forward declarations
+static void rbc_glob_dispatch(const char *path, size_t path_len, size_t baselen, const char *pattern, unsigned flags, rbc_emit_ctx_t *ctx);
 
 /// @brief Emit or descend based on segment state
 /// @param[in] path Current directory path
@@ -487,8 +569,7 @@ static void rbc_glob_dispatch(const char *path, size_t path_len, size_t baselen,
 /// @param[in] baselen Length to strip from output
 /// @param[in] seg Segment to check (is_last, has_trailing_slash, next)
 /// @param[in] flags Match flags
-/// @param[in,out] results Results buffer
-/// @note Errors are recorded in results->error
+/// @param[in,out] ctx Emit context
 static void rbc_glob_emit_or_descend(
     const char *path,
     size_t path_len,
@@ -497,7 +578,7 @@ static void rbc_glob_emit_or_descend(
     size_t baselen,
     const rbc_segment_t *seg,
     unsigned flags,
-    rbc_results_t *results)
+    rbc_emit_ctx_t *ctx)
 {
     char pathbuf[RBC_GLOB_MAX_PATH];
 
@@ -505,7 +586,7 @@ static void rbc_glob_emit_or_descend(
     {
         if (seg->has_trailing_slash && !is_dir)
             return; // Skip non-directories when trailing slash is required
-        rbc_glob_emit(path, path_len, name, seg->has_trailing_slash, baselen, results);
+        rbc_glob_emit(path, path_len, name, seg->has_trailing_slash, baselen, ctx);
     }
     else
     {
@@ -513,7 +594,7 @@ static void rbc_glob_emit_or_descend(
             return; // Can't descend into non-directories
         size_t new_len = rbc_path_join(pathbuf, sizeof(pathbuf), path, path_len, name, strlen(name));
         if (new_len > 0)
-            rbc_glob_dispatch(pathbuf, new_len, baselen, seg->next, flags, results);
+            rbc_glob_dispatch(pathbuf, new_len, baselen, seg->next, flags, ctx);
     }
 }
 
@@ -550,7 +631,7 @@ static void rbc_collapse_recursive(rbc_segment_t *seg, rbc_segment_t *next_seg, 
 /// @param[in] next_seg Next segment after ** (valid when !seg->is_last)
 /// @param[in] flags Match flags
 /// @param[in] is_first_call True if this is the initial call (not self-recurse)
-/// @param[in,out] results Results buffer
+/// @param[in,out] ctx Emit context
 static void rbc_glob_scan_recursive(
     const char *path,
     size_t path_len,
@@ -559,14 +640,17 @@ static void rbc_glob_scan_recursive(
     const rbc_segment_t *next_seg,
     unsigned flags,
     bool is_first_call,
-    rbc_results_t *results)
+    rbc_emit_ctx_t *ctx)
 {
     // Zero-directory match: **/ at end matches current directory itself
     // Only emit on first call to avoid duplicates from self_recurse
     if (is_first_call && seg->is_last && path_len > 0)
     {
-        rbc_glob_emit(path, path_len, NULL, true, baselen, results);
+        rbc_glob_emit(path, path_len, NULL, true, baselen, ctx);
     }
+
+    if (rbc_emit_ctx_should_stop(ctx))
+        return;
 
     rbc_dir_t *dirp = rbc_opendir(path_len > 0 ? path : ".");
     if (!dirp)
@@ -577,7 +661,7 @@ static void rbc_glob_scan_recursive(
 
     while (rbc_readdir(dirp, &entry))
     {
-        if (results->error)
+        if (rbc_emit_ctx_should_stop(ctx))
             break;
 
         if (is_first_call && (entry.name[0] == '.' && entry.name[1] == '\0') && !(flags & RBC_FNM_DOTMATCH))
@@ -589,27 +673,27 @@ static void rbc_glob_scan_recursive(
 
         // Decision 1: **/ at end - emit directory entries
         if (seg->is_last && is_dir && can_descend)
-            rbc_glob_emit(path, path_len, name, true, baselen, results);
+            rbc_glob_emit(path, path_len, name, true, baselen, ctx);
 
         // Decision 2: Zero-directory match with next segment
-        if (!seg->is_last && !results->error)
+        if (!seg->is_last && !rbc_emit_ctx_should_stop(ctx))
         {
             bool can_match = rbc_wildcard_can_match_dotfile(name, flags, next_seg->starts_with_dot);
             if (can_match && rbc_segment_match(next_seg, name, flags))
             {
                 unsigned descend_flags = flags | RBC_GLOB_HAS_WILDCARD_ANCESTOR;
-                rbc_glob_emit_or_descend(path, path_len, name, is_dir, baselen, next_seg, descend_flags, results);
+                rbc_glob_emit_or_descend(path, path_len, name, is_dir, baselen, next_seg, descend_flags, ctx);
             }
         }
 
         // Decision 3: Self-recurse into subdirectories for ** continuation
-        if (is_dir && can_descend)
+        if (is_dir && can_descend && !rbc_emit_ctx_should_stop(ctx))
         {
             size_t new_len = rbc_path_join(pathbuf, sizeof(pathbuf), path, path_len, name, strlen(name));
             if (new_len > 0)
             {
                 unsigned recurse_flags = flags | RBC_GLOB_HAS_WILDCARD_ANCESTOR;
-                rbc_glob_scan_recursive(pathbuf, new_len, baselen, seg, next_seg, recurse_flags, false, results);
+                rbc_glob_scan_recursive(pathbuf, new_len, baselen, seg, next_seg, recurse_flags, false, ctx);
             }
         }
     }
@@ -623,8 +707,8 @@ static void rbc_glob_scan_recursive(
 /// @param[in] baselen Length to strip from output
 /// @param[in] seg Current segment (must NOT be SEG_RECURSIVE)
 /// @param[in] flags Match flags
-/// @param[in,out] results Results buffer
-static void rbc_glob_scan(const char *path, size_t path_len, size_t baselen, const rbc_segment_t *seg, unsigned flags, rbc_results_t *results)
+/// @param[in,out] ctx Emit context
+static void rbc_glob_scan(const char *path, size_t path_len, size_t baselen, const rbc_segment_t *seg, unsigned flags, rbc_emit_ctx_t *ctx)
 {
     rbc_dir_t *dirp = rbc_opendir(path_len > 0 ? path : ".");
     if (!dirp)
@@ -634,7 +718,7 @@ static void rbc_glob_scan(const char *path, size_t path_len, size_t baselen, con
 
     while (rbc_readdir(dirp, &entry))
     {
-        if (results->error)
+        if (rbc_emit_ctx_should_stop(ctx))
             break;
 
         const char *name = entry.name;
@@ -655,7 +739,7 @@ static void rbc_glob_scan(const char *path, size_t path_len, size_t baselen, con
         unsigned descend_flags = flags;
         if (seg->type == SEG_WILDCARD)
             descend_flags |= RBC_GLOB_HAS_WILDCARD_ANCESTOR;
-        rbc_glob_emit_or_descend(path, path_len, name, is_dir, baselen, seg, descend_flags, results);
+        rbc_glob_emit_or_descend(path, path_len, name, is_dir, baselen, seg, descend_flags, ctx);
     }
 
     rbc_closedir(dirp);
@@ -667,10 +751,9 @@ static void rbc_glob_scan(const char *path, size_t path_len, size_t baselen, con
 /// @param[in] baselen Length to strip from output path
 /// @param[in] pattern Pattern string
 /// @param[in] flags Match flags
-/// @param[in,out] results Results buffer
-static void rbc_glob_dispatch(const char *path, size_t path_len, size_t baselen, const char *pattern, unsigned flags, rbc_results_t *results)
+/// @param[in,out] ctx Emit context
+static void rbc_glob_dispatch(const char *path, size_t path_len, size_t baselen, const char *pattern, unsigned flags, rbc_emit_ctx_t *ctx)
 {
-    // Parse first segment
     rbc_segment_t seg;
     const char *pat_ptr = pattern;
     if (!rbc_segment_next(&pat_ptr, flags, &seg))
@@ -678,24 +761,20 @@ static void rbc_glob_dispatch(const char *path, size_t path_len, size_t baselen,
 
     if (seg.type == SEG_RECURSIVE)
     {
-        // Collapse consecutive **/ segments and parse next segment
         rbc_segment_t next_seg = {0};
         rbc_collapse_recursive(&seg, &next_seg, flags);
-
-        // Dispatch to recursive scan
-        rbc_glob_scan_recursive(path, path_len, baselen, &seg, &next_seg, flags, true, results);
+        rbc_glob_scan_recursive(path, path_len, baselen, &seg, &next_seg, flags, true, ctx);
     }
     else
     {
-        // Dispatch to normal scan
-        rbc_glob_scan(path, path_len, baselen, &seg, flags, results);
+        rbc_glob_scan(path, path_len, baselen, &seg, flags, ctx);
     }
 }
 
 /**
  * @brief Main glob walker entry point
  */
-static void rbc_glob_walk(const char *base, size_t baselen, const char *pattern, unsigned flags, rbc_results_t *results)
+static void rbc_glob_walk(const char *base, size_t baselen, const char *pattern, unsigned flags, rbc_emit_ctx_t *ctx)
 {
     char root_buf[4];
     rbc_path_root_t root_info;
@@ -705,16 +784,30 @@ static void rbc_glob_walk(const char *base, size_t baselen, const char *pattern,
         // Absolute path
         if (*root_info.remainder == '\0')
         {
-            // Pattern is just root ("/" or "C:/") - return root itself
-            rbc_results_add(results, root_info.root, root_info.root_len);
+            // Pattern is just root ("/" or "C:/") - emit root itself
+            if (ctx->callback)
+            {
+                if (!ctx->callback(root_info.root, root_info.root_len, ctx->user_data))
+                {
+                    ctx->stopped = true;
+                    ctx->status = RBC_GLOB_STOPPED;
+                }
+            }
+            else if (ctx->results)
+            {
+                if (!rbc_results_add(ctx->results, root_info.root, root_info.root_len))
+                {
+                    rbc_emit_ctx_set_nomem(ctx);
+                }
+            }
             return;
         }
-        rbc_glob_dispatch(root_info.root, root_info.root_len, 0, root_info.remainder, flags, results);
+        rbc_glob_dispatch(root_info.root, root_info.root_len, 0, root_info.remainder, flags, ctx);
     }
     else
     {
         // Relative path
-        rbc_glob_dispatch(base, baselen, baselen, pattern, flags, results);
+        rbc_glob_dispatch(base, baselen, baselen, pattern, flags, ctx);
     }
 }
 
@@ -724,33 +817,44 @@ static void rbc_glob_walk(const char *base, size_t baselen, const char *pattern,
 
 #define BRACE_MAX_EXPANSIONS 256
 #define BRACE_MAX_DEPTH 8
+#define BRACE_MAX_OPTIONS 64
 
 typedef struct
 {
     char **patterns;
     size_t count;
     size_t capacity;
+    bool error; // Memory allocation error
 } rbc_brace_result_t;
 
 static bool rbc_brace_add(rbc_brace_result_t *r, const char *pattern, size_t len)
 {
-    if (r->count >= r->capacity)
+    if (r->error)
+        return false;
+
+    if (r->capacity <= r->count)
     {
         size_t new_cap = r->capacity * 2;
         if (new_cap > BRACE_MAX_EXPANSIONS)
             new_cap = BRACE_MAX_EXPANSIONS;
         if (r->count >= new_cap)
-            return false; // Limit reached
+            return true; // Limit reached, silently skip
         char **new_patterns = realloc(r->patterns, new_cap * sizeof(char *));
         if (!new_patterns)
+        {
+            r->error = true;
             return false;
+        }
         r->patterns = new_patterns;
         r->capacity = new_cap;
     }
 
     char *copy = malloc(len + 1);
     if (!copy)
+    {
+        r->error = true;
         return false;
+    }
     memcpy(copy, pattern, len);
     copy[len] = '\0';
     r->patterns[r->count++] = copy;
@@ -770,7 +874,7 @@ static void rbc_brace_expand_option(
     rbc_brace_result_t *result,
     int depth)
 {
-    if (depth > BRACE_MAX_DEPTH)
+    if (result->error || depth > BRACE_MAX_DEPTH)
         return;
 
     char buf[RBC_GLOB_MAX_PATH];
@@ -791,7 +895,7 @@ static void rbc_brace_expand_impl(
     rbc_brace_result_t *result,
     int depth)
 {
-    if (result->count >= BRACE_MAX_EXPANSIONS)
+    if (result->error || result->count >= BRACE_MAX_EXPANSIONS)
         return;
 
     char buf[RBC_GLOB_MAX_PATH];
@@ -801,8 +905,13 @@ static void rbc_brace_expand_impl(
 
     while (p < end)
     {
-        if (*p == '\\' && p + 1 < end)
+        if (buf_pos >= sizeof(buf) - 1)
+            return; // Buffer full
+
+        if ((*p == '\\') && ((p + 1) < end))
         {
+            if (buf_pos >= sizeof(buf) - 2)
+                return;
             buf[buf_pos++] = *p++;
             buf[buf_pos++] = *p++;
             continue;
@@ -810,18 +919,19 @@ static void rbc_brace_expand_impl(
 
         if (*p == '{')
         {
-            // Find matching close brace
-            const char *opt_starts[256];
+            // Find matching close brace and collect options
+            const char *opt_starts[BRACE_MAX_OPTIONS];
             size_t opt_count = 0;
             const char *scan = p + 1;
             const char *close = NULL;
             int brace_depth = 0;
+            bool has_comma = false;
 
             opt_starts[opt_count++] = scan;
 
             while (scan < end)
             {
-                if (*scan == '\\' && scan + 1 < end)
+                if ((*scan == '\\') && ((scan + 1) < end))
                 {
                     scan += 2;
                     continue;
@@ -839,14 +949,17 @@ static void rbc_brace_expand_impl(
                     }
                     brace_depth--;
                 }
-                else if (brace_depth == 0 && *scan == ',' && opt_count < 256)
+                else if (brace_depth == 0 && *scan == ',')
                 {
-                    opt_starts[opt_count++] = scan + 1;
+                    has_comma = true;
+                    if (opt_count < BRACE_MAX_OPTIONS)
+                        opt_starts[opt_count++] = scan + 1;
                 }
                 scan++;
             }
 
-            if (!close)
+            // No closing brace or no comma (single element like {a})
+            if (!close || !has_comma)
             {
                 buf[buf_pos++] = *p++;
                 continue;
@@ -854,21 +967,17 @@ static void rbc_brace_expand_impl(
 
             // Expand all options
             size_t suffix_len = end - (close + 1);
-            for (size_t i = 0; i < opt_count; i++)
+            for (size_t i = 0; i < opt_count && !result->error; i++)
             {
                 const char *opt_start = opt_starts[i];
                 const char *opt_end = (i + 1 < opt_count) ? opt_starts[i + 1] - 1 : close;
                 size_t opt_len = opt_end - opt_start;
 
                 rbc_brace_expand_option(
-                    buf,
-                    buf_pos,
-                    opt_start,
-                    opt_len,
-                    close + 1,
-                    suffix_len,
-                    result,
-                    depth);
+                    buf, buf_pos,
+                    opt_start, opt_len,
+                    close + 1, suffix_len,
+                    result, depth);
             }
             return;
         }
@@ -881,8 +990,50 @@ static void rbc_brace_expand_impl(
     rbc_brace_add(result, buf, buf_pos);
 }
 
+/// @brief Check if pattern contains expandable braces
+/// @param[in] pattern Pattern string
+/// @param[in] len Pattern length
+/// @return true if pattern contains '{' followed by ',' and '}', false otherwise
+static bool rbc_brace_has_expandable(const char *pattern, size_t len)
+{
+    const char *p = pattern;
+    const char *end = pattern + len;
+    int depth = 0;
+    bool has_comma_at_depth0 = false;
+
+    while (p < end)
+    {
+        if (*p == '\\' && (p + 1) < end)
+        {
+            p += 2;
+            continue;
+        }
+        if (*p == '{')
+        {
+            if (depth == 0)
+                has_comma_at_depth0 = false;
+            depth++;
+        }
+        else if (*p == '}')
+        {
+            if (depth == 1 && has_comma_at_depth0)
+                return true;
+            if (depth > 0)
+                depth--;
+        }
+        else if (*p == ',' && depth == 1)
+        {
+            has_comma_at_depth0 = true;
+        }
+        p++;
+    }
+    return false;
+}
+
 static rbc_brace_result_t *rbc_brace_expand(const char *pattern)
 {
+    size_t len = strlen(pattern);
+
     rbc_brace_result_t *result = malloc(sizeof(rbc_brace_result_t));
     if (!result)
         return NULL;
@@ -890,6 +1041,7 @@ static rbc_brace_result_t *rbc_brace_expand(const char *pattern)
     result->patterns = malloc(8 * sizeof(char *));
     result->count = 0;
     result->capacity = 8;
+    result->error = false;
 
     if (!result->patterns)
     {
@@ -897,7 +1049,30 @@ static rbc_brace_result_t *rbc_brace_expand(const char *pattern)
         return NULL;
     }
 
-    rbc_brace_expand_impl(pattern, strlen(pattern), result, 0);
+    // Fast path: no expandable braces
+    if (!rbc_brace_has_expandable(pattern, len))
+    {
+        if (!rbc_brace_add(result, pattern, len))
+        {
+            free(result->patterns);
+            free(result);
+            return NULL;
+        }
+        return result;
+    }
+
+    rbc_brace_expand_impl(pattern, len, result, 0);
+
+    // On error, clean up and return NULL
+    if (result->error)
+    {
+        for (size_t i = 0; i < result->count; i++)
+            free(result->patterns[i]);
+        free(result->patterns);
+        free(result);
+        return NULL;
+    }
+
     return result;
 }
 
@@ -923,7 +1098,7 @@ static int rbc_strcmp_wrapper(const void *a, const void *b)
 }
 
 /**
- * @brief Sort a range of results within the arena
+ * @brief Sort a range of results
  *
  * Ruby's Dir.glob with sort:true sorts each brace-expanded pattern's
  * results individually, then concatenates them in brace expansion order.
@@ -938,107 +1113,41 @@ static void rbc_results_sort_range(rbc_results_t *r, size_t start, size_t end)
     if (end <= start + 1)
         return; // 0 or 1 element, nothing to sort
 
-    size_t n = end - start;
-
-    // Create temporary array of string pointers for sorting
-    const char **ptrs = malloc(n * sizeof(const char *));
-    if (!ptrs)
-        return;
-
-    // Build pointer array from offsets
-    for (size_t i = 0; i < n; i++)
-    {
-        ptrs[i] = r->arena + r->offsets[start + i];
-    }
-
-    // Sort the pointer array
-    qsort(ptrs, n, sizeof(const char *), rbc_strcmp_wrapper);
-
-    // Rebuild offsets array from sorted pointers
-    for (size_t i = 0; i < n; i++)
-    {
-        r->offsets[start + i] = (size_t)(ptrs[i] - r->arena);
-    }
-
-    free(ptrs);
+    qsort(r->paths + start, end - start, sizeof(char *), rbc_strcmp_wrapper);
 }
 
 /**
- * @brief Convert arena results to output format
+ * @brief Transfer results to output (ownership transfer)
  */
-static bool rbc_results_to_output(
-    rbc_results_t *r,
-    char ***out,
-    size_t *count,
-    size_t **lengths)
+static void rbc_results_transfer(rbc_results_t *r, rbc_glob_result_t *result)
 {
-    *count = r->count;
-
-    if (r->count == 0)
-    {
-        *out = NULL;
-        if (lengths)
-            *lengths = NULL;
-        return true;
-    }
-
-    // Allocate output arrays
-    char **items = malloc(r->count * sizeof(char *));
-    size_t *lens = lengths ? malloc(r->count * sizeof(size_t)) : NULL;
-
-    if (!items || (lengths && !lens))
-    {
-        free(items);
-        free(lens);
-        return false;
-    }
-
-    // Copy paths from arena to individual allocations
-    for (size_t i = 0; i < r->count; i++)
-    {
-        const char *src = r->arena + r->offsets[i];
-        size_t len = strlen(src);
-        items[i] = malloc(len + 1);
-        if (!items[i])
-        {
-            for (size_t j = 0; j < i; j++)
-                free(items[j]);
-            free(items);
-            free(lens);
-            return false;
-        }
-        memcpy(items[i], src, len + 1);
-        if (lens)
-            lens[i] = len;
-    }
-
-    *out = items;
-    if (lengths)
-        *lengths = lens;
-    return true;
+    result->paths = r->paths;
+    result->count = r->count;
+    // Clear source to prevent double-free
+    r->paths = NULL;
+    r->count = 0;
 }
 
 // ============================================================================
 // Public API
 // ============================================================================
 
-bool rbc_glob(
+/// @brief Internal: Process patterns with emit context
+/// @param[in] patterns Array of pattern strings
+/// @param[in] npatterns Number of patterns
+/// @param[in] flags Matching flags
+/// @param[in] base Base directory
+/// @param[in] sort Whether to sort results
+/// @param[in,out] ctx Emit context
+/// @return true on success, false on error
+static bool rbc_glob_internal(
     const char **patterns,
     size_t npatterns,
     unsigned flags,
     const char *base,
     bool sort,
-    char ***out,
-    size_t *count,
-    size_t **lengths)
+    rbc_emit_ctx_t *ctx)
 {
-    if (!patterns || npatterns == 0 || !out || !count)
-        return false;
-
-    rbc_results_t results;
-    if (!rbc_results_init(&results))
-        return false;
-
     // Calculate base length
     size_t baselen = 0;
     const char *actual_base = "";
@@ -1054,9 +1163,15 @@ bool rbc_glob(
             baselen--;
     }
 
+    // For sort:true with accumulate mode, we sort after each pattern
+    // Callback mode never sorts (always uses filesystem order for efficiency)
+
     // Process each pattern
     for (size_t i = 0; i < npatterns; i++)
     {
+        if (rbc_emit_ctx_should_stop(ctx))
+            break;
+
         // Normalize path separators (Windows: \ -> /)
         char norm_buf[RBC_GLOB_MAX_PATH];
         const char *pattern = rbc_normalize_path(patterns[i], norm_buf, sizeof(norm_buf));
@@ -1069,52 +1184,98 @@ bool rbc_glob(
         // Process each expanded pattern
         for (size_t j = 0; j < expanded->count; j++)
         {
-            size_t count_before = results.count;
+            if (rbc_emit_ctx_should_stop(ctx))
+                break;
+
+            size_t count_before = ctx->results ? ctx->results->count : 0;
 
             rbc_glob_walk(
                 actual_base,
                 baselen,
                 expanded->patterns[j],
                 flags,
-                &results);
+                ctx);
 
-            // Sort results for this brace-expanded pattern
-            // Ruby sorts each pattern's results individually, then concatenates
-            if (sort && results.count > count_before)
+            // Sort results for this brace-expanded pattern (accumulate mode only)
+            if (sort && ctx->results && ctx->results->count > count_before)
             {
-                rbc_results_sort_range(&results, count_before, results.count);
+                rbc_results_sort_range(ctx->results, count_before, ctx->results->count);
             }
-
-            // Stop processing if memory allocation failed
-            if (results.error)
-                break;
         }
 
         rbc_brace_free(expanded);
-
-        // Stop processing patterns if memory allocation failed
-        if (results.error)
-            break;
     }
 
-    // Convert to output format (already sorted per-pattern)
-    bool ok = rbc_results_to_output(&results, out, count, lengths);
-
-    // Check for errors during processing
-    if (results.error)
-        ok = false;
-
-    rbc_results_free(&results);
-
-    return ok;
+    return !ctx->has_error;
 }
 
-void rbc_globfree(char **list, size_t count, size_t *lengths)
+rbc_glob_status_t rbc_glob(
+    const char **patterns,
+    size_t npatterns,
+    unsigned flags,
+    const char *base,
+    bool sort,
+    rbc_glob_result_t *result,
+    rbc_glob_errfunc_t errfunc,
+    void *errfunc_data)
 {
-    if (!list)
+    if (!patterns || npatterns == 0 || !result)
+        return RBC_GLOB_NOMEM;  // Invalid args treated as error
+
+    // Initialize result to safe state
+    result->paths = NULL;
+    result->count = 0;
+
+    rbc_results_t results;
+    if (!rbc_results_init(&results))
+        return RBC_GLOB_NOMEM;
+
+    rbc_emit_ctx_t ctx;
+    rbc_emit_ctx_init_results(&ctx, &results, errfunc, errfunc_data);
+
+    rbc_glob_internal(patterns, npatterns, flags, base, sort, &ctx);
+
+    if (ctx.status == RBC_GLOB_SUCCESS)
+    {
+        rbc_results_transfer(&results, result);
+    }
+    else
+    {
+        rbc_results_free(&results);
+    }
+
+    return ctx.status;
+}
+
+rbc_glob_status_t rbc_glob_each(
+    const char **patterns,
+    size_t npatterns,
+    unsigned flags,
+    const char *base,
+    rbc_glob_callback_t callback,
+    void *user_data,
+    rbc_glob_errfunc_t errfunc,
+    void *errfunc_data)
+{
+    if (!patterns || npatterns == 0 || !callback)
+        return RBC_GLOB_NOMEM;  // Invalid args treated as error
+
+    rbc_emit_ctx_t ctx;
+    rbc_emit_ctx_init_callback(&ctx, callback, user_data, errfunc, errfunc_data);
+
+    // Callback mode always iterates in filesystem order (no sorting)
+    rbc_glob_internal(patterns, npatterns, flags, base, false, &ctx);
+
+    return ctx.status;
+}
+
+void rbc_globfree(rbc_glob_result_t *result)
+{
+    if (!result || !result->paths)
         return;
-    for (size_t i = 0; i < count; i++)
-        free(list[i]);
-    free(list);
-    free(lengths);
+    for (size_t i = 0; i < result->count; i++)
+        free(result->paths[i]);
+    free(result->paths);
+    result->paths = NULL;
+    result->count = 0;
 }

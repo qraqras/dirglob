@@ -40,35 +40,29 @@ void tearDown(void) {}
 void test_dirglob_returns_empty_for_no_matches(void)
 {
     const char *patterns[] = {"nonexistent_*.txt"};
-    char **result = NULL;
-    size_t *lengths = NULL;
-    size_t count = 0;
-    bool success = rbc_glob(patterns, 1, 0, NULL, 1, &result, &count, &lengths);
+    rbc_glob_result_t result = {0};
+    rbc_glob_status_t success = rbc_glob(patterns, 1, 0, NULL, 1, &result, NULL, NULL);
 
-    TEST_ASSERT_TRUE(success);
-    TEST_ASSERT_NOT_NULL(result);
-    TEST_ASSERT_EQUAL_UINT(0, count);
+    TEST_ASSERT_EQUAL(RBC_GLOB_SUCCESS, success);
+    TEST_ASSERT_EQUAL_UINT(0, result.count);
 
-    rbc_globfree(result, count, lengths);
+    rbc_globfree(&result);
 }
 
 void test_dirglob_null_params_return_error(void)
 {
     const char *patterns[] = {"*.txt"};
-    char **result = NULL;
-    size_t count = 0;
 
-    /* NULL out parameter */
-    TEST_ASSERT_FALSE(rbc_glob(patterns, 1, 0, NULL, 1, NULL, &count, NULL));
-
-    /* NULL count parameter */
-    TEST_ASSERT_FALSE(rbc_glob(patterns, 1, 0, NULL, 1, &result, NULL, NULL));
+    /* NULL result parameter */
+    TEST_ASSERT_NOT_EQUAL(RBC_GLOB_SUCCESS, rbc_glob(patterns, 1, 0, NULL, 1, NULL, NULL, NULL));
 }
 
 void test_dirglob_free_null_is_safe(void)
 {
     /* Should not crash */
-    rbc_globfree(NULL, 0, NULL);
+    rbc_globfree(NULL);
+    rbc_glob_result_t empty = {0};
+    rbc_globfree(&empty);
     TEST_ASSERT_TRUE(1);
 }
 
@@ -91,25 +85,24 @@ void test_dirglob_character_class_match(void)
 void test_recursive_glob_duplicates(void)
 {
     const char *patterns[] = {"**/*.txt"};
-    char **result = NULL;
-    size_t count = 0;
+    rbc_glob_result_t result = {0};
 
-    bool success = rbc_glob(patterns, 1, 0, NULL, 1, &result, &count, NULL);
-    TEST_ASSERT_TRUE(success);
+    rbc_glob_status_t success = rbc_glob(patterns, 1, 0, NULL, 1, &result, NULL, NULL);
+    TEST_ASSERT_EQUAL(RBC_GLOB_SUCCESS, success);
 
     // Check for duplicates
-    for (size_t i = 0; i < count; i++)
+    for (size_t i = 0; i < result.count; i++)
     {
-        for (size_t j = i + 1; j < count; j++)
+        for (size_t j = i + 1; j < result.count; j++)
         {
-            if (strcmp(result[i], result[j]) == 0)
+            if (strcmp(result.paths[i], result.paths[j]) == 0)
             {
                 char msg[256];
-                snprintf(msg, sizeof(msg), "Duplicate found: %s at indices %zu and %zu", result[i], i, j);
+                snprintf(msg, sizeof(msg), "Duplicate found: %s at indices %zu and %zu", result.paths[i], i, j);
                 TEST_FAIL_MESSAGE(msg);
             }
         }
     }
 
-    rbc_globfree(result, count, NULL);
+    rbc_globfree(&result);
 }

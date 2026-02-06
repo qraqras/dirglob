@@ -30,18 +30,16 @@ int main(int argc, char **argv)
         }
     }
 
-    char **result = NULL;
-    size_t *lengths = NULL;
-    size_t count = 0;
+    rbc_glob_result_t result = {0};
     const char *patterns[] = {pattern};
 
-    if (rbc_glob(patterns, 1, flags, NULL, sort ? 1 : 0, &result, &count, &lengths))
+    if (rbc_glob(patterns, 1, flags, NULL, sort, &result, NULL, NULL) == RBC_GLOB_SUCCESS)
     {
-        for (size_t i = 0; i < count; i++)
+        for (size_t i = 0; i < result.count; i++)
         {
-            printf("%s\n", result[i]);
+            printf("%s\n", result.paths[i]);
         }
-        rbc_globfree(result, count, lengths);
+        rbc_globfree(&result);
     }
     else
     {
