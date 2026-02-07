@@ -593,10 +593,12 @@ static void rbc_glob_scan_recursive(
 
         const char *name = entry.name;
         bool is_dir = entry.is_dir;
+        bool is_link = entry.is_link;
         bool can_descend = rbc_recursive_can_descend_into_dotfile(name, flags);
 
         // Decision 1: **/ at end - emit directory entries
-        if (seg->is_last && is_dir && can_descend)
+        // Skip symlinks (Ruby behavior: **/ does not emit symlinks as directories)
+        if (seg->is_last && is_dir && !is_link && can_descend)
             rbc_glob_emit(path, path_len, name, true, baselen, ctx);
 
         // Decision 2: Zero-directory match with next segment
@@ -611,7 +613,8 @@ static void rbc_glob_scan_recursive(
         }
 
         // Decision 3: Self-recurse into subdirectories for ** continuation
-        if (is_dir && can_descend && !rbc_glob_should_exit(ctx))
+        // Skip symlinks to avoid infinite loops (Ruby behavior: ** does not follow symlinks)
+        if (is_dir && !is_link && can_descend && !rbc_glob_should_exit(ctx))
         {
             size_t new_len = rbc_path_join(pathbuf, sizeof(pathbuf), path, path_len, name, strlen(name));
             if (new_len > 0)
