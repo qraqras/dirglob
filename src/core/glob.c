@@ -681,6 +681,69 @@ static void rbc_glob_scan(const char *path, size_t path_len, size_t baselen, con
 /// @param[in,out] ctx Emit context
 static void rbc_glob_dispatch(const char *path, size_t path_len, size_t baselen, const char *pattern, unsigned flags, rbc_glob_ctx_t *ctx)
 {
+    if (rbc_glob_should_exit(ctx))
+        return;
+
+    // Skip consecutive LITERAL segments using pattern string directly
+    // On Linux with CASEFOLD, skip optimization (need readdir for case-insensitive match)
+#ifndef _WIN32
+    if (!(flags & RBC_FNM_CASEFOLD))
+#endif
+    {
+        const char *pat_ptr = pattern;
+        rbc_segment_t seg;
+
+        if (rbc_segment_next(&pat_ptr, flags, &seg) && seg.type == SEG_LITERAL)
+        {
+            // Consume consecutive LITERAL segments - track end position in pattern string
+            const char *literal_end = seg.start + seg.len;
+            bool last_trailing_slash = seg.has_trailing_slash;
+            bool literal_chain_is_last = seg.is_last; // Track if LITERAL chain is at pattern end
+
+            while (!seg.is_last)
+            {
+                const char *peek = pat_ptr;
+                if (!rbc_segment_next(&peek, flags, &seg) || seg.type != SEG_LITERAL)
+                    break;
+                pat_ptr = peek;
+                literal_end = seg.start + seg.len;
+                last_trailing_slash = seg.has_trailing_slash;
+                literal_chain_is_last = seg.is_last; // Update: now this LITERAL is last
+            }
+
+            // Build full path: path + "/" + pattern[0:literal_end]
+            char full_path[RBC_GLOB_MAX_PATH];
+            size_t full_len;
+            size_t literal_len = literal_end - pattern;
+
+            if (path_len > 0)
+            {
+                full_len = rbc_path_join(full_path, sizeof(full_path), path, path_len, pattern, literal_len);
+                if (full_len == 0)
+                    goto fallback;
+            }
+            else
+            {
+                if (literal_len >= sizeof(full_path))
+                    goto fallback;
+                memcpy(full_path, pattern, literal_len);
+                full_path[literal_len] = '\0';
+                full_len = literal_len;
+            }
+
+            if (literal_chain_is_last)
+            {
+                // Pattern ends with LITERAL - need existence check, fallback to readdir
+                goto fallback;
+            }
+
+            // Continue with remaining pattern (seg holds the non-LITERAL segment)
+            rbc_glob_dispatch(full_path, full_len, baselen, seg.start, flags, ctx);
+            return;
+        }
+    }
+
+fallback:;
     rbc_segment_t seg;
     const char *pat_ptr = pattern;
     if (!rbc_segment_next(&pat_ptr, flags, &seg))
@@ -688,9 +751,9 @@ static void rbc_glob_dispatch(const char *path, size_t path_len, size_t baselen,
 
     if (seg.type == SEG_RECURSIVE)
     {
-        rbc_segment_t next_seg = {0};
-        rbc_collapse_recursive(&seg, &next_seg, flags);
-        rbc_glob_scan_recursive(path, path_len, baselen, &seg, &next_seg, flags, true, ctx);
+        rbc_segment_t rec_next_seg = {0};
+        rbc_collapse_recursive(&seg, &rec_next_seg, flags);
+        rbc_glob_scan_recursive(path, path_len, baselen, &seg, &rec_next_seg, flags, true, ctx);
     }
     else
     {
@@ -703,6 +766,11 @@ static void rbc_glob_dispatch(const char *path, size_t path_len, size_t baselen,
  */
 static void rbc_glob_walk(const char *base, size_t baselen, const char *pattern, unsigned flags, rbc_glob_ctx_t *ctx)
 {
+#ifdef _WIN32
+    // Windows filesystem is case-insensitive, always use CASEFOLD
+    flags |= RBC_FNM_CASEFOLD;
+#endif
+
     char root_buf[4];
     rbc_path_root_t root_info;
 

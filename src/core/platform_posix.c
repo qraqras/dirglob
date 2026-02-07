@@ -9,6 +9,7 @@
 
 #include "platform.h"
 #include <dirent.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -164,6 +165,53 @@ bool rbc_is_directory(const char *path)
         return false;
     struct stat st;
     return stat(path, &st) == 0 && S_ISDIR(st.st_mode);
+}
+
+rbc_stat_result_t rbc_stat_type(const char *path, rbc_stat_errc_t *errc)
+{
+    if (!path)
+    {
+        if (errc)
+            *errc = RBC_STAT_E_NOENT;
+        return RBC_STAT_NOTFOUND;
+    }
+
+    struct stat st;
+    if (stat(path, &st) != 0)
+    {
+        // Map errno to error code
+        if (errc)
+        {
+            switch (errno)
+            {
+            case ENOENT:
+                *errc = RBC_STAT_E_NOENT;
+                break;
+            case EACCES:
+                *errc = RBC_STAT_E_ACCES;
+                break;
+            case ENOTDIR:
+                *errc = RBC_STAT_E_NOTDIR;
+                break;
+            case ENAMETOOLONG:
+                *errc = RBC_STAT_E_NAMETOOLONG;
+                break;
+            default:
+                *errc = RBC_STAT_E_IO;
+                break;
+            }
+        }
+        return (errno == ENOENT) ? RBC_STAT_NOTFOUND : RBC_STAT_ERROR;
+    }
+
+    if (errc)
+        *errc = RBC_STAT_E_NONE;
+
+    if (S_ISDIR(st.st_mode))
+        return RBC_STAT_DIR;
+    if (S_ISREG(st.st_mode))
+        return RBC_STAT_FILE;
+    return RBC_STAT_OTHER;
 }
 
 // ============================================================================
