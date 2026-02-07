@@ -29,10 +29,10 @@ typedef struct rbc_glob_pattern_s rbc_glob_pattern_t;
 /// @brief Glob operation status codes
 typedef enum rbc_glob_status_e
 {
-    RBC_GLOB_SUCCESS = 0, ///< Operation completed successfully
-    RBC_GLOB_STOPPED,     ///< User callback requested early termination
-    RBC_GLOB_NOMEM,       ///< Memory allocation failure (fatal)
-    RBC_GLOB_ABORTED,     ///< Aborted by error callback
+    RBC_GLOB_SUCCESS, ///< Operation completed successfully
+    RBC_GLOB_STOPPED, ///< User callback requested early termination
+    RBC_GLOB_NOMEM,   ///< Memory allocation failure (fatal)
+    RBC_GLOB_ABORTED, ///< Aborted by error callback
 } rbc_glob_status_t;
 
 /// @brief Error codes passed to error callback

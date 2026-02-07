@@ -9,173 +9,86 @@
 #include <stdlib.h>
 
 #define RBC_GLOB_MAX_PATH RBC_MAX_PATH
-#define RBC_RESULTS_INIT_COUNT 256        // Initial path count
+#define RBC_RESULTS_INIT_COUNT 256 // Initial path count
 
 /// @defgroup Internal Glob Flags (high bits, not part of public FNM_* flags)
 /// @{
 #define RBC_GLOB_HAS_WILDCARD_ANCESTOR 0x10000000 // Internal: traversed through wildcard
 /// @}
 
-/// @defgroup Internal Error Codes
-/// @{
-typedef enum rbc_glob_err_e
-{
-    RBC_GLOB_OK = 0,           // No error
-    RBC_GLOB_ERR_MEMORY,       // Memory allocation failure (fatal)
-    RBC_GLOB_ERR_PATH_TOO_LONG // Path exceeded MAX_PATH (skip)
-} rbc_glob_err_t;
-/// @}
+/// @brief Error callback function type
+typedef bool (*rbc_glob_emitfunc_t)(const char *path, size_t path_len, void *user_data);
 
-// Forward declaration
-typedef struct rbc_results_s rbc_results_t;
-static bool rbc_glob_error(rbc_results_t *r, rbc_glob_err_t err);
-
-/// @defgroup Results
+/// @defgroup Glob Context
 /// @{
 
-/// @brief Results Buffer Structure
-struct rbc_results_s
+/// @brief Glob Context Structure
+typedef struct rbc_glob_ctx_s
 {
-    char **paths;            // Array of path strings (individually allocated)
-    size_t count;            // Number of stored paths
-    size_t capacity;         // Capacity of paths array
-    rbc_glob_err_t error;    // Error code (RBC_GLOB_OK if no fatal error)
-};
-
-/// @brief Initialize results buffer
-/// @param[out] r Results buffer
-/// @return true on success, false on failure
-static bool rbc_results_init(rbc_results_t *r)
-{
-    r->paths = malloc(RBC_RESULTS_INIT_COUNT * sizeof(char *));
-    if (!r->paths)
-        return false;
-    r->count = 0;
-    r->capacity = RBC_RESULTS_INIT_COUNT;
-    r->error = RBC_GLOB_OK;
-    return true;
-}
-
-/// @brief Add a path to results buffer
-/// @param[in, out] r Results buffer
-/// @param[in] path Path string
-/// @param[in] len Length of path
-/// @return true on success, false on failure
-static bool rbc_results_add(rbc_results_t *r, const char *path, size_t len)
-{
-    // Grow paths array if needed
-    if (r->count >= r->capacity)
-    {
-        size_t new_cap = r->capacity * 2;
-        char **new_paths = realloc(r->paths, new_cap * sizeof(char *));
-        if (!new_paths)
-        {
-            rbc_glob_error(r, RBC_GLOB_ERR_MEMORY);
-            return false;
-        }
-        r->paths = new_paths;
-        r->capacity = new_cap;
-    }
-
-    // Allocate and copy path
-    char *copy = malloc(len + 1);
-    if (!copy)
-    {
-        rbc_glob_error(r, RBC_GLOB_ERR_MEMORY);
-        return false;
-    }
-    memcpy(copy, path, len);
-    copy[len] = '\0';
-    r->paths[r->count++] = copy;
-
-    return true;
-}
-
-/// @brief Free results buffer
-/// @param[in] r Results buffer
-static void rbc_results_free(rbc_results_t *r)
-{
-    for (size_t i = 0; i < r->count; i++)
-        free(r->paths[i]);
-    free(r->paths);
-}
-
-/// @brief Report an error during glob operation
-/// @param[in,out] r Results buffer
-/// @param[in] err Error code
-/// @return true if operation should continue (non-fatal), false if should abort (fatal)
-static bool rbc_glob_error(rbc_results_t *r, rbc_glob_err_t err)
-{
-    switch (err)
-    {
-    case RBC_GLOB_ERR_MEMORY:
-        r->error = err;
-        return false; // Abort
-    case RBC_GLOB_ERR_PATH_TOO_LONG:
-    case RBC_GLOB_OK:
-    default:
-        return true; // Continue
-    }
-}
-
-/// @}
-
-/// @defgroup Emit Context
-/// @{
-
-/// @brief Callback function type (matches rbc_glob_callback_t in header)
-typedef bool (*rbc_emit_callback_t)(const char *path, size_t path_len, void *user_data);
-
-/// @brief Emit context for callback or accumulate mode
-typedef struct rbc_emit_ctx_s
-{
-    // Callback mode
-    rbc_emit_callback_t callback;
-    void *user_data;
-
-    // Accumulate mode (for sort:true or rbc_glob)
-    rbc_results_t *results;
-
-    // Error callback
+    // streaming mode
+    rbc_glob_emitfunc_t emitfunc;
+    void *emitfunc_data;
+    // buffering mode
+    rbc_glob_result_t *result;
+    size_t result_capacity;
+    // error handling
     rbc_glob_errfunc_t errfunc;
     void *errfunc_data;
+    // status
+    rbc_glob_status_t status;
+} rbc_glob_ctx_t;
 
-    // State
-    bool stopped;              // User requested stop via callback returning false
-    bool has_error;            // Fatal error occurred
-    rbc_glob_status_t status;  // Final status code
-} rbc_emit_ctx_t;
-
-/// @brief Initialize emit context for callback mode
-static void rbc_emit_ctx_init_callback(rbc_emit_ctx_t *ctx, rbc_emit_callback_t callback, void *user_data, rbc_glob_errfunc_t errfunc, void *errfunc_data)
+/// @brief Initialize emit context for streaming mode
+/// @param[out] ctx
+/// @param[in] emitfunc
+/// @param[in] emitfunc_data
+/// @param[in] errfunc
+/// @param[in] errfunc_data
+static bool rbc_glob_ctx_init_streaming(rbc_glob_ctx_t *ctx, rbc_glob_emitfunc_t emitfunc, void *emitfunc_data, rbc_glob_errfunc_t errfunc, void *errfunc_data)
 {
-    ctx->callback = callback;
-    ctx->user_data = user_data;
-    ctx->results = NULL;
+    // ctx setup
+    ctx->emitfunc = emitfunc;
+    ctx->emitfunc_data = emitfunc_data;
+    ctx->result = NULL;
+    ctx->result_capacity = 0;
     ctx->errfunc = errfunc;
     ctx->errfunc_data = errfunc_data;
-    ctx->stopped = false;
-    ctx->has_error = false;
     ctx->status = RBC_GLOB_SUCCESS;
+    return true;
 }
 
-/// @brief Initialize emit context for accumulate mode
-static void rbc_emit_ctx_init_results(rbc_emit_ctx_t *ctx, rbc_results_t *results, rbc_glob_errfunc_t errfunc, void *errfunc_data)
+/// @brief Initialize emit context for buffering mode
+/// @param[out] ctx
+/// @param[in] result
+/// @param[in] errfunc
+/// @param[in] errfunc_data
+/// @return
+static bool rbc_glob_ctx_init_buffering(rbc_glob_ctx_t *ctx, rbc_glob_result_t *result, rbc_glob_errfunc_t errfunc, void *errfunc_data)
 {
-    ctx->callback = NULL;
-    ctx->user_data = NULL;
-    ctx->results = results;
+    // result setup
+    result->paths = malloc(RBC_RESULTS_INIT_COUNT * sizeof(char *));
+    if (!result->paths)
+        return false;
+    result->count = 0;
+    // ctx setup
+    ctx->emitfunc = NULL;
+    ctx->emitfunc_data = NULL;
+    ctx->result = result;
+    ctx->result_capacity = RBC_RESULTS_INIT_COUNT;
     ctx->errfunc = errfunc;
     ctx->errfunc_data = errfunc_data;
-    ctx->stopped = false;
-    ctx->has_error = false;
     ctx->status = RBC_GLOB_SUCCESS;
+    return true;
 }
 
-/// @brief Check if emit context should stop processing
-static inline bool rbc_emit_ctx_should_stop(const rbc_emit_ctx_t *ctx)
+/// @}
+
+/// @brief Check if emit context should exit
+/// @param[in] ctx
+/// @return
+static inline bool rbc_glob_should_exit(const rbc_glob_ctx_t *ctx)
 {
-    return ctx->stopped || ctx->has_error;
+    return ctx->status != RBC_GLOB_SUCCESS;
 }
 
 /// @brief Report an error and determine whether to continue
@@ -183,32 +96,19 @@ static inline bool rbc_emit_ctx_should_stop(const rbc_emit_ctx_t *ctx)
 /// @param[in] errc Error code
 /// @param[in] path Path where error occurred (may be NULL)
 /// @return true if should continue, false if should abort
-static bool rbc_emit_ctx_report_error(rbc_emit_ctx_t *ctx, rbc_glob_errc_t errc, const char *path)
+static bool rbc_glob_report_error(rbc_glob_ctx_t *ctx, rbc_glob_errc_t errc, const char *path)
 {
-    // RBC_GLOB_E_NOMEM is always fatal (internal indication)
-    // Actual memory errors are reported via has_error directly
-
     // Non-fatal: call errfunc if available
     if (ctx->errfunc)
     {
         if (!ctx->errfunc(path, errc, ctx->errfunc_data))
         {
-            ctx->has_error = true;
             ctx->status = RBC_GLOB_ABORTED;
             return false;
         }
     }
-    return true;  // Continue
+    return true; // Continue
 }
-
-/// @brief Mark context with fatal memory error
-static void rbc_emit_ctx_set_nomem(rbc_emit_ctx_t *ctx)
-{
-    ctx->has_error = true;
-    ctx->status = RBC_GLOB_NOMEM;
-}
-
-/// @}
 
 /// @defgroup Path
 /// @{
@@ -472,9 +372,45 @@ static bool rbc_segment_match(const rbc_segment_t *seg, const char *string, unsi
 
 /// @}
 
-/// ============================================================================
-/// Glob Internal Implementation
-/// ============================================================================
+/// @brief Add a path to the result buffer
+/// @param[in,out] ctx Emit context (must be in accumulate mode)
+/// @param[in] path Path string
+/// @param[in] path_len Length of path
+/// @return true on success, false on failure (sets nomem error)
+static bool rbc_glob_emit_buffering(rbc_glob_ctx_t *ctx, const char *path, size_t path_len)
+{
+    rbc_glob_result_t *r = ctx->result;
+
+    if (!r)
+        return false;
+
+    // Grow paths array if needed
+    if (ctx->result_capacity <= r->count)
+    {
+        size_t new_cap = ctx->result_capacity * 2;
+        char **new_paths = realloc(r->paths, new_cap * sizeof(char *));
+        if (!new_paths)
+        {
+            ctx->status = RBC_GLOB_NOMEM;
+            return false;
+        }
+        r->paths = new_paths;
+        ctx->result_capacity = new_cap;
+    }
+
+    // Allocate and copy path
+    char *copy = malloc(path_len + 1);
+    if (!copy)
+    {
+        ctx->status = RBC_GLOB_NOMEM;
+        return false;
+    }
+    memcpy(copy, path, path_len);
+    copy[path_len] = '\0';
+    r->paths[r->count++] = copy;
+
+    return true;
+}
 
 /// @brief Emit a path via callback or to results buffer
 /// @param[in] path Base path
@@ -483,16 +419,10 @@ static bool rbc_segment_match(const rbc_segment_t *seg, const char *string, unsi
 /// @param[in] trailing_slash Whether to append trailing slash
 /// @param[in] baselen Base length to strip from output path
 /// @param[in,out] ctx Emit context
-/// @note On memory error, sets ctx->has_error. Path too long is silently skipped.
-static void rbc_glob_emit(
-    const char *path,
-    size_t path_len,
-    const char *name,
-    bool trailing_slash,
-    size_t baselen,
-    rbc_emit_ctx_t *ctx)
+/// @note On memory error, sets ctx->status. Path too long is silently skipped.
+static void rbc_glob_emit(const char *path, size_t path_len, const char *name, bool trailing_slash, size_t baselen, rbc_glob_ctx_t *ctx)
 {
-    if (rbc_emit_ctx_should_stop(ctx))
+    if (rbc_glob_should_exit(ctx))
         return;
 
     char pathbuf[RBC_GLOB_MAX_PATH];
@@ -541,25 +471,21 @@ static void rbc_glob_emit(
         return; // Skip empty results
 
     // Emit via callback or accumulate
-    if (ctx->callback)
+    if (ctx->emitfunc)
     {
-        if (!ctx->callback(result, result_len, ctx->user_data))
+        if (!ctx->emitfunc(result, result_len, ctx->emitfunc_data))
         {
-            ctx->stopped = true;
             ctx->status = RBC_GLOB_STOPPED;
         }
     }
-    else if (ctx->results)
+    else if (ctx->result)
     {
-        if (!rbc_results_add(ctx->results, result, result_len))
-        {
-            rbc_emit_ctx_set_nomem(ctx);
-        }
+        rbc_glob_emit_buffering(ctx, result, result_len);
     }
 }
 
 // Forward declarations
-static void rbc_glob_dispatch(const char *path, size_t path_len, size_t baselen, const char *pattern, unsigned flags, rbc_emit_ctx_t *ctx);
+static void rbc_glob_dispatch(const char *path, size_t path_len, size_t baselen, const char *pattern, unsigned flags, rbc_glob_ctx_t *ctx);
 
 /// @brief Emit or descend based on segment state
 /// @param[in] path Current directory path
@@ -578,7 +504,7 @@ static void rbc_glob_emit_or_descend(
     size_t baselen,
     const rbc_segment_t *seg,
     unsigned flags,
-    rbc_emit_ctx_t *ctx)
+    rbc_glob_ctx_t *ctx)
 {
     char pathbuf[RBC_GLOB_MAX_PATH];
 
@@ -640,16 +566,14 @@ static void rbc_glob_scan_recursive(
     const rbc_segment_t *next_seg,
     unsigned flags,
     bool is_first_call,
-    rbc_emit_ctx_t *ctx)
+    rbc_glob_ctx_t *ctx)
 {
     // Zero-directory match: **/ at end matches current directory itself
     // Only emit on first call to avoid duplicates from self_recurse
     if (is_first_call && seg->is_last && path_len > 0)
-    {
         rbc_glob_emit(path, path_len, NULL, true, baselen, ctx);
-    }
 
-    if (rbc_emit_ctx_should_stop(ctx))
+    if (rbc_glob_should_exit(ctx))
         return;
 
     rbc_dir_t *dirp = rbc_opendir(path_len > 0 ? path : ".");
@@ -661,7 +585,7 @@ static void rbc_glob_scan_recursive(
 
     while (rbc_readdir(dirp, &entry))
     {
-        if (rbc_emit_ctx_should_stop(ctx))
+        if (rbc_glob_should_exit(ctx))
             break;
 
         if (is_first_call && (entry.name[0] == '.' && entry.name[1] == '\0') && !(flags & RBC_FNM_DOTMATCH))
@@ -676,7 +600,7 @@ static void rbc_glob_scan_recursive(
             rbc_glob_emit(path, path_len, name, true, baselen, ctx);
 
         // Decision 2: Zero-directory match with next segment
-        if (!seg->is_last && !rbc_emit_ctx_should_stop(ctx))
+        if (!seg->is_last && !rbc_glob_should_exit(ctx))
         {
             bool can_match = rbc_wildcard_can_match_dotfile(name, flags, next_seg->starts_with_dot);
             if (can_match && rbc_segment_match(next_seg, name, flags))
@@ -687,7 +611,7 @@ static void rbc_glob_scan_recursive(
         }
 
         // Decision 3: Self-recurse into subdirectories for ** continuation
-        if (is_dir && can_descend && !rbc_emit_ctx_should_stop(ctx))
+        if (is_dir && can_descend && !rbc_glob_should_exit(ctx))
         {
             size_t new_len = rbc_path_join(pathbuf, sizeof(pathbuf), path, path_len, name, strlen(name));
             if (new_len > 0)
@@ -708,7 +632,7 @@ static void rbc_glob_scan_recursive(
 /// @param[in] seg Current segment (must NOT be SEG_RECURSIVE)
 /// @param[in] flags Match flags
 /// @param[in,out] ctx Emit context
-static void rbc_glob_scan(const char *path, size_t path_len, size_t baselen, const rbc_segment_t *seg, unsigned flags, rbc_emit_ctx_t *ctx)
+static void rbc_glob_scan(const char *path, size_t path_len, size_t baselen, const rbc_segment_t *seg, unsigned flags, rbc_glob_ctx_t *ctx)
 {
     rbc_dir_t *dirp = rbc_opendir(path_len > 0 ? path : ".");
     if (!dirp)
@@ -718,7 +642,7 @@ static void rbc_glob_scan(const char *path, size_t path_len, size_t baselen, con
 
     while (rbc_readdir(dirp, &entry))
     {
-        if (rbc_emit_ctx_should_stop(ctx))
+        if (rbc_glob_should_exit(ctx))
             break;
 
         const char *name = entry.name;
@@ -752,7 +676,7 @@ static void rbc_glob_scan(const char *path, size_t path_len, size_t baselen, con
 /// @param[in] pattern Pattern string
 /// @param[in] flags Match flags
 /// @param[in,out] ctx Emit context
-static void rbc_glob_dispatch(const char *path, size_t path_len, size_t baselen, const char *pattern, unsigned flags, rbc_emit_ctx_t *ctx)
+static void rbc_glob_dispatch(const char *path, size_t path_len, size_t baselen, const char *pattern, unsigned flags, rbc_glob_ctx_t *ctx)
 {
     rbc_segment_t seg;
     const char *pat_ptr = pattern;
@@ -774,7 +698,7 @@ static void rbc_glob_dispatch(const char *path, size_t path_len, size_t baselen,
 /**
  * @brief Main glob walker entry point
  */
-static void rbc_glob_walk(const char *base, size_t baselen, const char *pattern, unsigned flags, rbc_emit_ctx_t *ctx)
+static void rbc_glob_walk(const char *base, size_t baselen, const char *pattern, unsigned flags, rbc_glob_ctx_t *ctx)
 {
     char root_buf[4];
     rbc_path_root_t root_info;
@@ -785,20 +709,16 @@ static void rbc_glob_walk(const char *base, size_t baselen, const char *pattern,
         if (*root_info.remainder == '\0')
         {
             // Pattern is just root ("/" or "C:/") - emit root itself
-            if (ctx->callback)
+            if (ctx->emitfunc)
             {
-                if (!ctx->callback(root_info.root, root_info.root_len, ctx->user_data))
+                if (!ctx->emitfunc(root_info.root, root_info.root_len, ctx->emitfunc_data))
                 {
-                    ctx->stopped = true;
                     ctx->status = RBC_GLOB_STOPPED;
                 }
             }
-            else if (ctx->results)
+            else if (ctx->result)
             {
-                if (!rbc_results_add(ctx->results, root_info.root, root_info.root_len))
-                {
-                    rbc_emit_ctx_set_nomem(ctx);
-                }
+                rbc_glob_emit_buffering(ctx, root_info.root, root_info.root_len);
             }
             return;
         }
@@ -1092,7 +1012,7 @@ static void rbc_brace_free(rbc_brace_result_t *result)
 // Result Conversion and Sorting
 // ============================================================================
 
-static int rbc_strcmp_wrapper(const void *a, const void *b)
+static int rbc_glob_strcmp_wrapper(const void *a, const void *b)
 {
     return strcmp(*(const char **)a, *(const char **)b);
 }
@@ -1108,22 +1028,22 @@ static int rbc_strcmp_wrapper(const void *a, const void *b)
  * @param start Start index (inclusive)
  * @param end End index (exclusive)
  */
-static void rbc_results_sort_range(rbc_results_t *r, size_t start, size_t end)
+static void rbc_glob_result_sort_range(rbc_glob_result_t *r, size_t start, size_t end)
 {
     if (end <= start + 1)
         return; // 0 or 1 element, nothing to sort
 
-    qsort(r->paths + start, end - start, sizeof(char *), rbc_strcmp_wrapper);
+    qsort(r->paths + start, end - start, sizeof(char *), rbc_glob_strcmp_wrapper);
 }
 
-/**
- * @brief Transfer results to output (ownership transfer)
- */
-static void rbc_results_transfer(rbc_results_t *r, rbc_glob_result_t *result)
+/// @brief Free result paths on error
+static void rbc_glob_result_cleanup(rbc_glob_result_t *r)
 {
-    result->paths = r->paths;
-    result->count = r->count;
-    // Clear source to prevent double-free
+    if (!r->paths)
+        return;
+    for (size_t i = 0; i < r->count; i++)
+        free(r->paths[i]);
+    free(r->paths);
     r->paths = NULL;
     r->count = 0;
 }
@@ -1146,7 +1066,7 @@ static bool rbc_glob_internal(
     unsigned flags,
     const char *base,
     bool sort,
-    rbc_emit_ctx_t *ctx)
+    rbc_glob_ctx_t *ctx)
 {
     // Calculate base length
     size_t baselen = 0;
@@ -1169,7 +1089,7 @@ static bool rbc_glob_internal(
     // Process each pattern
     for (size_t i = 0; i < npatterns; i++)
     {
-        if (rbc_emit_ctx_should_stop(ctx))
+        if (rbc_glob_should_exit(ctx))
             break;
 
         // Normalize path separators (Windows: \ -> /)
@@ -1184,10 +1104,10 @@ static bool rbc_glob_internal(
         // Process each expanded pattern
         for (size_t j = 0; j < expanded->count; j++)
         {
-            if (rbc_emit_ctx_should_stop(ctx))
+            if (rbc_glob_should_exit(ctx))
                 break;
 
-            size_t count_before = ctx->results ? ctx->results->count : 0;
+            size_t count_before = ctx->result ? ctx->result->count : 0;
 
             rbc_glob_walk(
                 actual_base,
@@ -1197,16 +1117,16 @@ static bool rbc_glob_internal(
                 ctx);
 
             // Sort results for this brace-expanded pattern (accumulate mode only)
-            if (sort && ctx->results && ctx->results->count > count_before)
+            if (sort && ctx->result && ctx->result->count > count_before)
             {
-                rbc_results_sort_range(ctx->results, count_before, ctx->results->count);
+                rbc_glob_result_sort_range(ctx->result, count_before, ctx->result->count);
             }
         }
 
         rbc_brace_free(expanded);
     }
 
-    return !ctx->has_error;
+    return ctx->status == RBC_GLOB_SUCCESS;
 }
 
 rbc_glob_status_t rbc_glob(
@@ -1220,28 +1140,21 @@ rbc_glob_status_t rbc_glob(
     void *errfunc_data)
 {
     if (!patterns || npatterns == 0 || !result)
-        return RBC_GLOB_NOMEM;  // Invalid args treated as error
+        return RBC_GLOB_NOMEM; // Invalid args treated as error
 
     // Initialize result to safe state
     result->paths = NULL;
     result->count = 0;
 
-    rbc_results_t results;
-    if (!rbc_results_init(&results))
+    rbc_glob_ctx_t ctx;
+    if (!rbc_glob_ctx_init_buffering(&ctx, result, errfunc, errfunc_data))
         return RBC_GLOB_NOMEM;
-
-    rbc_emit_ctx_t ctx;
-    rbc_emit_ctx_init_results(&ctx, &results, errfunc, errfunc_data);
 
     rbc_glob_internal(patterns, npatterns, flags, base, sort, &ctx);
 
-    if (ctx.status == RBC_GLOB_SUCCESS)
+    if (ctx.status != RBC_GLOB_SUCCESS)
     {
-        rbc_results_transfer(&results, result);
-    }
-    else
-    {
-        rbc_results_free(&results);
+        rbc_glob_result_cleanup(result);
     }
 
     return ctx.status;
@@ -1258,10 +1171,10 @@ rbc_glob_status_t rbc_glob_each(
     void *errfunc_data)
 {
     if (!patterns || npatterns == 0 || !callback)
-        return RBC_GLOB_NOMEM;  // Invalid args treated as error
+        return RBC_GLOB_NOMEM; // Invalid args treated as error
 
-    rbc_emit_ctx_t ctx;
-    rbc_emit_ctx_init_callback(&ctx, callback, user_data, errfunc, errfunc_data);
+    rbc_glob_ctx_t ctx;
+    rbc_glob_ctx_init_streaming(&ctx, callback, user_data, errfunc, errfunc_data);
 
     // Callback mode always iterates in filesystem order (no sorting)
     rbc_glob_internal(patterns, npatterns, flags, base, false, &ctx);
