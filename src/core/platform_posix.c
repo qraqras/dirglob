@@ -167,45 +167,26 @@ bool rbc_is_directory(const char *path)
     return stat(path, &st) == 0 && S_ISDIR(st.st_mode);
 }
 
-rbc_stat_result_t rbc_stat_type(const char *path, rbc_stat_errc_t *errc)
+rbc_stat_result_t rbc_stat_type(const char *path, int *errnum)
 {
     if (!path)
     {
-        if (errc)
-            *errc = RBC_STAT_E_NOENT;
+        if (errnum)
+            *errnum = ENOENT;
         return RBC_STAT_NOTFOUND;
     }
 
     struct stat st;
     if (stat(path, &st) != 0)
     {
-        // Map errno to error code
-        if (errc)
-        {
-            switch (errno)
-            {
-            case ENOENT:
-                *errc = RBC_STAT_E_NOENT;
-                break;
-            case EACCES:
-                *errc = RBC_STAT_E_ACCES;
-                break;
-            case ENOTDIR:
-                *errc = RBC_STAT_E_NOTDIR;
-                break;
-            case ENAMETOOLONG:
-                *errc = RBC_STAT_E_NAMETOOLONG;
-                break;
-            default:
-                *errc = RBC_STAT_E_IO;
-                break;
-            }
-        }
-        return (errno == ENOENT) ? RBC_STAT_NOTFOUND : RBC_STAT_ERROR;
+        int saved = errno;
+        if (errnum)
+            *errnum = saved;
+        return (saved == ENOENT) ? RBC_STAT_NOTFOUND : RBC_STAT_ERROR;
     }
 
-    if (errc)
-        *errc = RBC_STAT_E_NONE;
+    if (errnum)
+        *errnum = 0;
 
     if (S_ISDIR(st.st_mode))
         return RBC_STAT_DIR;

@@ -208,20 +208,20 @@ bool rbc_is_directory(const char *path)
     return (attrs & FILE_ATTRIBUTE_DIRECTORY) != 0;
 }
 
-rbc_stat_result_t rbc_stat_type(const char *path, rbc_stat_errc_t *errc)
+rbc_stat_result_t rbc_stat_type(const char *path, int *errnum)
 {
     if (!path)
     {
-        if (errc)
-            *errc = RBC_STAT_E_NOENT;
+        if (errnum)
+            *errnum = ENOENT;
         return RBC_STAT_NOTFOUND;
     }
 
     wchar_t wide_path[RBC_MAX_PATH];
     if (!utf8_to_wide(path, wide_path, RBC_MAX_PATH))
     {
-        if (errc)
-            *errc = RBC_STAT_E_NAMETOOLONG;
+        if (errnum)
+            *errnum = ENAMETOOLONG;
         return RBC_STAT_ERROR;
     }
 
@@ -229,19 +229,19 @@ rbc_stat_result_t rbc_stat_type(const char *path, rbc_stat_errc_t *errc)
     if (attrs == INVALID_FILE_ATTRIBUTES)
     {
         DWORD err = GetLastError();
-        if (errc)
+        if (errnum)
         {
             switch (err)
             {
             case ERROR_FILE_NOT_FOUND:
             case ERROR_PATH_NOT_FOUND:
-                *errc = RBC_STAT_E_NOENT;
+                *errnum = ENOENT;
                 break;
             case ERROR_ACCESS_DENIED:
-                *errc = RBC_STAT_E_ACCES;
+                *errnum = EACCES;
                 break;
             default:
-                *errc = RBC_STAT_E_IO;
+                *errnum = EIO;
                 break;
             }
         }
@@ -250,8 +250,8 @@ rbc_stat_result_t rbc_stat_type(const char *path, rbc_stat_errc_t *errc)
                    : RBC_STAT_ERROR;
     }
 
-    if (errc)
-        *errc = RBC_STAT_E_NONE;
+    if (errnum)
+        *errnum = 0;
 
     if (attrs & FILE_ATTRIBUTE_DIRECTORY)
         return RBC_STAT_DIR;

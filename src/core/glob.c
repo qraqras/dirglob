@@ -2,6 +2,7 @@
 #include "rbc/rbc.h"
 #include "../utils/utils.h"
 
+#include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -25,17 +26,15 @@ typedef bool (*rbc_glob_emitfunc_t)(const char *path, size_t path_len, void *use
 /// @brief Glob Context Structure
 typedef struct rbc_glob_ctx_s
 {
+    rbc_glob_status_t status;
+    rbc_glob_errfunc_t errfunc;
+    void *errfunc_data;
     // streaming mode
     rbc_glob_emitfunc_t emitfunc;
     void *emitfunc_data;
     // buffering mode
     rbc_glob_result_t *result;
     size_t result_capacity;
-    // error handling
-    rbc_glob_errfunc_t errfunc;
-    void *errfunc_data;
-    // status
-    rbc_glob_status_t status;
 } rbc_glob_ctx_t;
 
 /// @brief Initialize emit context for streaming mode
@@ -46,14 +45,13 @@ typedef struct rbc_glob_ctx_s
 /// @param[in] errfunc_data
 static bool rbc_glob_ctx_init_streaming(rbc_glob_ctx_t *ctx, rbc_glob_emitfunc_t emitfunc, void *emitfunc_data, rbc_glob_errfunc_t errfunc, void *errfunc_data)
 {
-    // ctx setup
+    ctx->status = RBC_GLOB_SUCCESS;
+    ctx->errfunc = errfunc;
+    ctx->errfunc_data = errfunc_data;
     ctx->emitfunc = emitfunc;
     ctx->emitfunc_data = emitfunc_data;
     ctx->result = NULL;
     ctx->result_capacity = 0;
-    ctx->errfunc = errfunc;
-    ctx->errfunc_data = errfunc_data;
-    ctx->status = RBC_GLOB_SUCCESS;
     return true;
 }
 
@@ -71,13 +69,13 @@ static bool rbc_glob_ctx_init_buffering(rbc_glob_ctx_t *ctx, rbc_glob_result_t *
         return false;
     result->count = 0;
     // ctx setup
+    ctx->status = RBC_GLOB_SUCCESS;
+    ctx->errfunc = errfunc;
+    ctx->errfunc_data = errfunc_data;
     ctx->emitfunc = NULL;
     ctx->emitfunc_data = NULL;
     ctx->result = result;
     ctx->result_capacity = RBC_RESULTS_INIT_COUNT;
-    ctx->errfunc = errfunc;
-    ctx->errfunc_data = errfunc_data;
-    ctx->status = RBC_GLOB_SUCCESS;
     return true;
 }
 
@@ -93,15 +91,15 @@ static inline bool rbc_glob_should_exit(const rbc_glob_ctx_t *ctx)
 
 /// @brief Report an error and determine whether to continue
 /// @param[in,out] ctx Emit context
-/// @param[in] errc Error code
+/// @param[in] errnum System errno value
 /// @param[in] path Path where error occurred (may be NULL)
 /// @return true if should continue, false if should abort
-static bool rbc_glob_report_error(rbc_glob_ctx_t *ctx, rbc_glob_errc_t errc, const char *path)
+static bool rbc_glob_report_error(rbc_glob_ctx_t *ctx, int errnum, const char *path)
 {
     // Non-fatal: call errfunc if available
     if (ctx->errfunc)
     {
-        if (!ctx->errfunc(path, errc, ctx->errfunc_data))
+        if (!ctx->errfunc(path, errnum, ctx->errfunc_data))
         {
             ctx->status = RBC_GLOB_ABORTED;
             return false;
@@ -576,9 +574,15 @@ static void rbc_glob_scan_recursive(
     if (rbc_glob_should_exit(ctx))
         return;
 
-    rbc_dir_t *dirp = rbc_opendir(path_len > 0 ? path : ".");
+    const char *dir_path = path_len > 0 ? path : ".";
+    rbc_dir_t *dirp = rbc_opendir(dir_path);
     if (!dirp)
+    {
+        // ENOENT/ENOTDIR: path doesn't exist, silently skip (FreeBSD convention)
+        if (errno != ENOENT && errno != ENOTDIR)
+            rbc_glob_report_error(ctx, errno, dir_path);
         return;
+    }
 
     rbc_dirent_t entry;
     char pathbuf[RBC_GLOB_MAX_PATH];
@@ -637,9 +641,15 @@ static void rbc_glob_scan_recursive(
 /// @param[in,out] ctx Emit context
 static void rbc_glob_scan(const char *path, size_t path_len, size_t baselen, const rbc_segment_t *seg, unsigned flags, rbc_glob_ctx_t *ctx)
 {
-    rbc_dir_t *dirp = rbc_opendir(path_len > 0 ? path : ".");
+    const char *dir_path = path_len > 0 ? path : ".";
+    rbc_dir_t *dirp = rbc_opendir(dir_path);
     if (!dirp)
+    {
+        // ENOENT/ENOTDIR: path doesn't exist, silently skip (FreeBSD convention)
+        if (errno != ENOENT && errno != ENOTDIR)
+            rbc_glob_report_error(ctx, errno, dir_path);
         return;
+    }
 
     rbc_dirent_t entry;
 

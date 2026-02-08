@@ -117,30 +117,16 @@ extern "C"
     } rbc_stat_result_t;
 
     /**
-     * @brief Error code for rbc_stat_type()
-     * @note Maps to rbc_glob_errc_t
-     */
-    typedef enum rbc_stat_errc_e
-    {
-        RBC_STAT_E_NONE,        ///< No error
-        RBC_STAT_E_ACCES,       ///< Permission denied
-        RBC_STAT_E_NOENT,       ///< Path does not exist
-        RBC_STAT_E_NOTDIR,      ///< Component is not a directory
-        RBC_STAT_E_NAMETOOLONG, ///< Path too long
-        RBC_STAT_E_IO,          ///< I/O or other error
-    } rbc_stat_errc_t;
-
-    /**
      * @brief Get path type via stat
      *
      * Uses stat() to determine if path is file/directory/other.
      * Follows symlinks (uses stat, not lstat).
      *
      * @param path File path (UTF-8)
-     * @param errc Output error code (may be NULL)
+     * @param errnum Output errno value (may be NULL). Set to 0 on success.
      * @return Stat result type
      */
-    rbc_stat_result_t rbc_stat_type(const char *path, rbc_stat_errc_t *errc);
+    rbc_stat_result_t rbc_stat_type(const char *path, int *errnum);
 
     // ============================================================================
     // Path Utilities

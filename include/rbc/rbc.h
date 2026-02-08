@@ -35,16 +35,6 @@ typedef enum rbc_glob_status_e
     RBC_GLOB_ABORTED, ///< Aborted by error callback
 } rbc_glob_status_t;
 
-/// @brief Error codes passed to error callback
-typedef enum rbc_glob_errc_e
-{
-    RBC_GLOB_E_ACCES,       ///< Permission denied (EACCES)
-    RBC_GLOB_E_NOENT,       ///< Path does not exist (ENOENT)
-    RBC_GLOB_E_NOTDIR,      ///< Not a directory (ENOTDIR)
-    RBC_GLOB_E_NAMETOOLONG, ///< Path too long (ENAMETOOLONG)
-    RBC_GLOB_E_IO,          ///< I/O error or other system error
-} rbc_glob_errc_t;
-
 /// @brief Glob result structure (POSIX-style)
 /// @note Caller provides this struct, rbc_glob() fills it
 /// @note Must be freed with rbc_globfree() after use
@@ -63,10 +53,10 @@ typedef bool (*rbc_glob_callback_t)(const char *path, size_t path_len, void *use
 
 /// @brief Error callback function type
 /// @param path Path where error occurred (may be NULL for memory errors)
-/// @param errc Error code
+/// @param errnum System errno value (EACCES, ENOENT, etc.)
 /// @param user_data User-provided context pointer
 /// @return true to continue (ignore error), false to abort
-typedef bool (*rbc_glob_errfunc_t)(const char *path, rbc_glob_errc_t errc, void *user_data);
+typedef bool (*rbc_glob_errfunc_t)(const char *path, int errnum, void *user_data);
 
 /// @brief Glob file paths matching patterns
 /// @param patterns Array of glob pattern strings
