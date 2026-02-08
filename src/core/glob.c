@@ -519,6 +519,8 @@ static void rbc_glob_emit_or_descend(
         size_t new_len = rbc_path_join(pathbuf, sizeof(pathbuf), path, path_len, name, strlen(name));
         if (new_len > 0)
             rbc_glob_dispatch(pathbuf, new_len, baselen, seg->next, flags, ctx);
+        else
+            rbc_glob_report_error(ctx, ENAMETOOLONG, path);
     }
 }
 
@@ -625,6 +627,10 @@ static void rbc_glob_scan_recursive(
             {
                 unsigned recurse_flags = flags | RBC_GLOB_HAS_WILDCARD_ANCESTOR;
                 rbc_glob_scan_recursive(pathbuf, new_len, baselen, seg, next_seg, recurse_flags, false, ctx);
+            }
+            else
+            {
+                rbc_glob_report_error(ctx, ENAMETOOLONG, path);
             }
         }
     }
@@ -1180,7 +1186,10 @@ static bool rbc_glob_internal(
         // Expand braces
         rbc_brace_result_t *expanded = rbc_brace_expand(pattern);
         if (!expanded)
-            continue;
+        {
+            ctx->status = RBC_GLOB_NOMEM;
+            break;
+        }
 
         // Process each expanded pattern
         for (size_t j = 0; j < expanded->count; j++)
@@ -1221,7 +1230,7 @@ rbc_glob_status_t rbc_glob(
     void *errfunc_data)
 {
     if (!patterns || npatterns == 0 || !result)
-        return RBC_GLOB_NOMEM; // Invalid args treated as error
+        return RBC_GLOB_INVAL;
 
     // Initialize result to safe state
     result->paths = NULL;
@@ -1252,7 +1261,7 @@ rbc_glob_status_t rbc_glob_each(
     void *errfunc_data)
 {
     if (!patterns || npatterns == 0 || !callback)
-        return RBC_GLOB_NOMEM; // Invalid args treated as error
+        return RBC_GLOB_INVAL;
 
     rbc_glob_ctx_t ctx;
     rbc_glob_ctx_init_streaming(&ctx, callback, user_data, errfunc, errfunc_data);

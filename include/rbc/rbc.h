@@ -33,6 +33,7 @@ typedef enum rbc_glob_status_e
     RBC_GLOB_STOPPED, ///< User callback requested early termination
     RBC_GLOB_NOMEM,   ///< Memory allocation failure (fatal)
     RBC_GLOB_ABORTED, ///< Aborted by error callback
+    RBC_GLOB_INVAL,   ///< Invalid arguments (NULL patterns, zero count, etc.)
 } rbc_glob_status_t;
 
 /// @brief Glob result structure (POSIX-style)
