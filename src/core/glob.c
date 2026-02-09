@@ -162,6 +162,31 @@ static size_t rbc_path_append_slash(char *buf, size_t buf_size, size_t path_len)
     return path_len;
 }
 
+/// @brief Append a path component in-place (no base copy, avoids memcpy overlap)
+/// @param[in,out] buf Buffer containing existing path (modified in place)
+/// @param[in] buf_size Size of buffer
+/// @param[in] path_len Current path length in buffer
+/// @param[in] component Component to append
+/// @param[in] component_len Length of component
+/// @return New path length, or 0 on overflow
+static size_t rbc_path_append_component(
+    char *buf,
+    size_t buf_size,
+    size_t path_len,
+    const char *component,
+    size_t component_len)
+{
+    size_t need_sep = (path_len > 0 && buf[path_len - 1] != '/') ? 1 : 0;
+    if ((path_len + need_sep + component_len + 1) > buf_size)
+        return 0;
+    if (need_sep)
+        buf[path_len++] = '/';
+    memcpy(buf + path_len, component, component_len);
+    path_len += component_len;
+    buf[path_len] = '\0';
+    return path_len;
+}
+
 /// @}
 
 /// ============================================================================
@@ -532,8 +557,8 @@ static void rbc_collapse_recursive(rbc_segment_t *seg, rbc_segment_t *next_seg, 
 }
 
 /// @brief Scan directory for ** pattern (handles 0-directory and N-directory match)
-/// @param[in] path Directory path
-/// @param[in] path_len Path length
+/// @param[in,out] path Mutable shared path buffer (RBC_GLOB_MAX_PATH bytes, modified in-place during recursion)
+/// @param[in] path_len Current path length in buffer
 /// @param[in] baselen Length to strip from output
 /// @param[in] seg Current ** segment (collapsed)
 /// @param[in] next_seg Next segment after ** (valid when !seg->is_last)
@@ -541,7 +566,7 @@ static void rbc_collapse_recursive(rbc_segment_t *seg, rbc_segment_t *next_seg, 
 /// @param[in] is_first_call True if this is the initial call (not self-recurse)
 /// @param[in,out] ctx Emit context
 static void rbc_glob_scan_recursive(
-    const char *path,
+    char *path,
     size_t path_len,
     size_t baselen,
     const rbc_segment_t *seg,
@@ -569,7 +594,6 @@ static void rbc_glob_scan_recursive(
     }
 
     rbc_dirent_t entry;
-    char pathbuf[RBC_GLOB_MAX_PATH];
 
     while (rbc_readdir(dirp, &entry))
     {
@@ -604,11 +628,12 @@ static void rbc_glob_scan_recursive(
         // Skip symlinks to avoid infinite loops (Ruby behavior: ** does not follow symlinks)
         if (is_dir && !is_link && can_descend && !rbc_glob_should_exit(ctx))
         {
-            size_t new_len = rbc_path_join(pathbuf, sizeof(pathbuf), path, path_len, name, strlen(name));
+            size_t new_len = rbc_path_append_component(path, RBC_GLOB_MAX_PATH, path_len, name, strlen(name));
             if (new_len > 0)
             {
                 unsigned recurse_flags = flags | RBC_GLOB_HAS_WILDCARD_ANCESTOR;
-                rbc_glob_scan_recursive(pathbuf, new_len, baselen, seg, next_seg, recurse_flags, false, ctx);
+                rbc_glob_scan_recursive(path, new_len, baselen, seg, next_seg, recurse_flags, false, ctx);
+                path[path_len] = '\0'; // Restore shared path buffer
             }
             else
             {
@@ -775,9 +800,14 @@ static void rbc_glob_dispatch(const char *path, size_t path_len, size_t baselen,
     // Dispatch based on first (already parsed) segment type
     if (seg.type == SEG_RECURSIVE)
     {
+        // Allocate mutable path buffer shared across recursive descent (one per ** encounter)
+        char rec_pathbuf[RBC_GLOB_MAX_PATH];
+        if (path_len >= sizeof(rec_pathbuf))
+            return;
+        memcpy(rec_pathbuf, path, path_len + 1); // Include '\0'
         rbc_segment_t rec_next_seg = {0};
         rbc_collapse_recursive(&seg, &rec_next_seg, flags);
-        rbc_glob_scan_recursive(path, path_len, baselen, &seg, &rec_next_seg, flags, true, ctx);
+        rbc_glob_scan_recursive(rec_pathbuf, path_len, baselen, &seg, &rec_next_seg, flags, true, ctx);
     }
     else
     {
