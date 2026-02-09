@@ -228,9 +228,7 @@ static bool rbc_recursive_can_descend_into_dotfile(const char *name, unsigned fl
 /// @brief Segment Types
 typedef enum rbc_segment_type_e
 {
-    SEG_LITERAL,   // `abc`
-    SEG_DOT,       // `.`
-    SEG_DOTDOT,    // `..`
+    SEG_LITERAL,   // `abc`, `.`, `..`
     SEG_WILDCARD,  // `?`, `[abc]`, `*?`, etc. (needs fnmatch)
     SEG_RECURSIVE, // `**/`
 } rbc_segment_type_t;
@@ -318,11 +316,7 @@ static bool rbc_segment_next(const char **pattern, unsigned flags, rbc_segment_t
     }
     seg->is_last = (*p == '\0');
 
-    if ((seg->len == 1) && (seg->start[0] == '.'))
-        seg->type = SEG_DOT;
-    else if ((seg->len == 2) && (seg->start[0] == '.') && (seg->start[1] == '.'))
-        seg->type = SEG_DOTDOT;
-    else if ((seg->len == 2) && (char_flags == RBC_SEG_CONTAINS_STAR) && seg->has_trailing_slash)
+    if ((seg->len == 2) && (char_flags == RBC_SEG_CONTAINS_STAR) && seg->has_trailing_slash)
         seg->type = SEG_RECURSIVE;
     else if (char_flags == RBC_SEG_CONTAINS_REGULAR)
         seg->type = SEG_LITERAL;
@@ -344,21 +338,9 @@ static bool rbc_segment_match(const rbc_segment_t *seg, const char *string, unsi
 {
     switch (seg->type)
     {
-    case SEG_DOT:
-        return string[0] == '.' && string[1] == '\0';
-    case SEG_DOTDOT:
-        return string[0] == '.' && string[1] == '.' && string[2] == '\0';
     case SEG_LITERAL:
         if (flags & RBC_FNM_CASEFOLD)
-        {
-            const char *p_start = seg->start;
-            const char *p_end = seg->start + seg->len;
-            const char *s = string;
-            while (p_start < p_end && *s)
-                if (!rbc_char_match(*p_start++, *s++, flags))
-                    return false;
-            return p_start == p_end && *s == '\0';
-        }
+            return rbc_fnmatch_len(seg->start, seg->len, string, flags);
         return strlen(string) == seg->len && strncmp(seg->start, string, seg->len) == 0;
     case SEG_WILDCARD:
         return rbc_fnmatch_len(seg->start, seg->len, string, flags);
@@ -700,71 +682,97 @@ static void rbc_glob_dispatch(const char *path, size_t path_len, size_t baselen,
     if (rbc_glob_should_exit(ctx))
         return;
 
-    // Skip consecutive LITERAL segments using pattern string directly
-    // On Linux with CASEFOLD, skip optimization (need readdir for case-insensitive match)
+    // Parse first segment (single parse, reused by all code paths)
+    const char *pat_ptr = pattern;
+    rbc_segment_t seg;
+    if (!rbc_segment_next(&pat_ptr, flags, &seg))
+        return; // Empty pattern
+
+    // Optimization: Skip consecutive LITERAL segments (including "." and "..")
+    // using direct path construction + stat(), avoiding readdir entirely.
+    //   - Intermediate chains: path join and recurse (no readdir for parent dirs)
+    //   - Terminal chains: stat() O(1) instead of readdir O(n)
+    // On POSIX with CASEFOLD, skip optimization (need readdir for case-insensitive match)
+    if (seg.type == SEG_LITERAL
 #ifndef _WIN32
-    if (!(flags & RBC_FNM_CASEFOLD))
+        && !(flags & RBC_FNM_CASEFOLD)
 #endif
+    )
     {
-        const char *pat_ptr = pattern;
-        rbc_segment_t seg;
+        // Consume consecutive LITERAL segments
+        const char *literal_end = seg.start + seg.len;
+        bool last_trailing_slash = seg.has_trailing_slash;
+        bool chain_is_last = seg.is_last;
 
-        if (rbc_segment_next(&pat_ptr, flags, &seg) && seg.type == SEG_LITERAL)
+        while (!seg.is_last)
         {
-            // Consume consecutive LITERAL segments - track end position in pattern string
-            const char *literal_end = seg.start + seg.len;
-            bool last_trailing_slash = seg.has_trailing_slash;
-            bool literal_chain_is_last = seg.is_last; // Track if LITERAL chain is at pattern end
+            const char *peek = pat_ptr;
+            if (!rbc_segment_next(&peek, flags, &seg) || seg.type != SEG_LITERAL)
+                break;
+            pat_ptr = peek;
+            literal_end = seg.start + seg.len;
+            last_trailing_slash = seg.has_trailing_slash;
+            chain_is_last = seg.is_last;
+        }
 
-            while (!seg.is_last)
-            {
-                const char *peek = pat_ptr;
-                if (!rbc_segment_next(&peek, flags, &seg) || seg.type != SEG_LITERAL)
-                    break;
-                pat_ptr = peek;
-                literal_end = seg.start + seg.len;
-                last_trailing_slash = seg.has_trailing_slash;
-                literal_chain_is_last = seg.is_last; // Update: now this LITERAL is last
-            }
+        // Build full path: path + "/" + pattern[0:literal_end]
+        char full_path[RBC_GLOB_MAX_PATH];
+        size_t full_len;
+        size_t literal_len = literal_end - pattern;
+        bool path_ok;
 
-            // Build full path: path + "/" + pattern[0:literal_end]
-            char full_path[RBC_GLOB_MAX_PATH];
-            size_t full_len;
-            size_t literal_len = literal_end - pattern;
-
-            if (path_len > 0)
+        if (path_len > 0)
+        {
+            full_len = rbc_path_join(full_path, sizeof(full_path), path, path_len, pattern, literal_len);
+            path_ok = (full_len > 0);
+        }
+        else
+        {
+            path_ok = (literal_len < sizeof(full_path));
+            if (path_ok)
             {
-                full_len = rbc_path_join(full_path, sizeof(full_path), path, path_len, pattern, literal_len);
-                if (full_len == 0)
-                    goto fallback;
-            }
-            else
-            {
-                if (literal_len >= sizeof(full_path))
-                    goto fallback;
                 memcpy(full_path, pattern, literal_len);
                 full_path[literal_len] = '\0';
                 full_len = literal_len;
             }
+        }
 
-            if (literal_chain_is_last)
+        if (path_ok)
+        {
+            if (chain_is_last)
             {
-                // Pattern ends with LITERAL - need existence check, fallback to readdir
-                goto fallback;
+                // Terminal LITERAL chain: use stat() for O(1) existence check
+                int errnum = 0;
+                rbc_stat_result_t st = rbc_stat_type(full_path, &errnum);
+
+                if (st == RBC_STAT_NOTFOUND)
+                    return; // Does not exist
+                if (st == RBC_STAT_ERROR)
+                {
+                    rbc_glob_report_error(ctx, errnum, full_path);
+                    return;
+                }
+
+                // Trailing slash in pattern requires target to be a directory
+                if (last_trailing_slash && st != RBC_STAT_DIR)
+                    return;
+
+                rbc_glob_emit(full_path, full_len, NULL, last_trailing_slash, baselen, ctx);
+                return;
             }
 
-            // Continue with remaining pattern (seg holds the non-LITERAL segment)
+            // Intermediate chain: continue with remaining pattern
             rbc_glob_dispatch(full_path, full_len, baselen, seg.start, flags, ctx);
             return;
         }
+
+        // Path too long for joined chain - re-parse first segment and fall through
+        // to single-segment processing (rare case)
+        pat_ptr = pattern;
+        rbc_segment_next(&pat_ptr, flags, &seg);
     }
 
-fallback:;
-    rbc_segment_t seg;
-    const char *pat_ptr = pattern;
-    if (!rbc_segment_next(&pat_ptr, flags, &seg))
-        return; // Empty pattern
-
+    // Dispatch based on first (already parsed) segment type
     if (seg.type == SEG_RECURSIVE)
     {
         rbc_segment_t rec_next_seg = {0};
@@ -1199,18 +1207,11 @@ static bool rbc_glob_internal(
 
             size_t count_before = ctx->result ? ctx->result->count : 0;
 
-            rbc_glob_walk(
-                actual_base,
-                baselen,
-                expanded->patterns[j],
-                flags,
-                ctx);
+            rbc_glob_walk(actual_base, baselen, expanded->patterns[j], flags, ctx);
 
             // Sort results for this brace-expanded pattern (accumulate mode only)
             if (sort && ctx->result && ctx->result->count > count_before)
-            {
                 rbc_glob_result_sort_range(ctx->result, count_before, ctx->result->count);
-            }
         }
 
         rbc_brace_free(expanded);
@@ -1231,22 +1232,12 @@ rbc_glob_status_t rbc_glob(
 {
     if (!patterns || npatterns == 0 || !result)
         return RBC_GLOB_INVAL;
-
-    // Initialize result to safe state
-    result->paths = NULL;
-    result->count = 0;
-
     rbc_glob_ctx_t ctx;
     if (!rbc_glob_ctx_init_buffering(&ctx, result, errfunc, errfunc_data))
         return RBC_GLOB_NOMEM;
-
     rbc_glob_internal(patterns, npatterns, flags, base, sort, &ctx);
-
     if (ctx.status != RBC_GLOB_SUCCESS)
-    {
         rbc_glob_result_cleanup(result);
-    }
-
     return ctx.status;
 }
 
@@ -1262,13 +1253,9 @@ rbc_glob_status_t rbc_glob_each(
 {
     if (!patterns || npatterns == 0 || !callback)
         return RBC_GLOB_INVAL;
-
     rbc_glob_ctx_t ctx;
     rbc_glob_ctx_init_streaming(&ctx, callback, user_data, errfunc, errfunc_data);
-
-    // Callback mode always iterates in filesystem order (no sorting)
     rbc_glob_internal(patterns, npatterns, flags, base, false, &ctx);
-
     return ctx.status;
 }
 
