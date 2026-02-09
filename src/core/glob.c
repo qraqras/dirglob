@@ -130,17 +130,42 @@ static size_t rbc_path_join(
     const char *component,
     size_t component_len)
 {
-    // Worst case: `base + '/' + component + '\0'`
-    if (base_len + component_len + 2 > buf_size)
+    size_t sep_len = base_len > 0 && base[base_len - 1] != '/' ? 1 : 0;
+    if (base_len + sep_len + component_len + 1 > buf_size)
         return 0;
     memcpy(buf, base, base_len);
     size_t pos = base_len;
-    if (pos > 0 && base[pos - 1] != '/')
+    if (sep_len)
         buf[pos++] = '/';
     memcpy(buf + pos, component, component_len);
     pos += component_len;
     buf[pos] = '\0';
     return pos;
+}
+
+/// @brief Append a path component in-place (no base copy, avoids memcpy overlap)
+/// @param[in,out] buf Buffer containing existing path (modified in place)
+/// @param[in] buf_size Size of buffer
+/// @param[in] base_len Current path length in buffer
+/// @param[in] component Component to append
+/// @param[in] component_len Length of component
+/// @return New path length, or 0 on overflow
+static size_t rbc_path_append(
+    char *buf,
+    size_t buf_size,
+    size_t base_len,
+    const char *component,
+    size_t component_len)
+{
+    size_t sep_len = base_len > 0 && buf[base_len - 1] != '/' ? 1 : 0;
+    if (base_len + sep_len + component_len + 1 > buf_size)
+        return 0;
+    if (sep_len)
+        buf[base_len++] = '/';
+    memcpy((buf + base_len), component, component_len);
+    base_len += component_len;
+    buf[base_len] = '\0';
+    return base_len;
 }
 
 /// @brief Append trailing slash to path buffer if not present
@@ -156,34 +181,9 @@ static size_t rbc_path_append_slash(char *buf, size_t buf_size, size_t path_len)
         return 0;
     if (buf[path_len - 1] == '/')
         return path_len;
-    if (path_len + 2 > buf_size)
+    if (path_len + 1 > buf_size)
         return 0;
     buf[path_len++] = '/';
-    buf[path_len] = '\0';
-    return path_len;
-}
-
-/// @brief Append a path component in-place (no base copy, avoids memcpy overlap)
-/// @param[in,out] buf Buffer containing existing path (modified in place)
-/// @param[in] buf_size Size of buffer
-/// @param[in] path_len Current path length in buffer
-/// @param[in] component Component to append
-/// @param[in] component_len Length of component
-/// @return New path length, or 0 on overflow
-static size_t rbc_path_append_component(
-    char *buf,
-    size_t buf_size,
-    size_t path_len,
-    const char *component,
-    size_t component_len)
-{
-    size_t need_sep = path_len > 0 && buf[path_len - 1] != '/' ? 1 : 0;
-    if (path_len + need_sep + component_len + 1 > buf_size)
-        return 0;
-    if (need_sep)
-        buf[path_len++] = '/';
-    memcpy((buf + path_len), component, component_len);
-    path_len += component_len;
     buf[path_len] = '\0';
     return path_len;
 }
@@ -633,7 +633,7 @@ static void rbc_glob_scan_recursive(
         // Skip symlinks to avoid infinite loops (Ruby behavior: ** does not follow symlinks)
         if (is_dir && !is_link && can_descend && !rbc_glob_should_exit(ctx))
         {
-            size_t new_len = rbc_path_append_component(path, RBC_GLOB_MAX_PATH, path_len, name, name_len);
+            size_t new_len = rbc_path_append(path, RBC_GLOB_MAX_PATH, path_len, name, name_len);
             if (new_len > 0)
             {
                 unsigned recurse_flags = flags | RBC_GLOB_HAS_WILDCARD_ANCESTOR;

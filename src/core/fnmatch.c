@@ -177,7 +177,6 @@ static int rbc_fnmatch_recursive(const char *pattern, const char *pattern_end, c
         case '*':
         {
             bool seg_start = p == pattern || p[-1] == '/';
-
             // Handle `**/` (If not PATHNAME, this behaves the same as `*`)
             if ((flags & RBC_FNM_PATHNAME) && seg_start && p + 2 < pattern_end && p[1] == '*' && p[2] == '/')
             {
@@ -250,20 +249,17 @@ static int rbc_fnmatch_recursive(const char *pattern, const char *pattern_end, c
             s_start = s;
             continue;
         }
-
         case '?':
             if ((flags & RBC_FNM_PATHNAME) && *s == '/')
                 goto backtrack;
             p++;
             rbc_utf8_decode(&s);
             continue;
-
         case '[':
             p = rbc_bracket_consume(p + 1, rbc_utf8_decode(&s), flags);
             if (!p)
                 return false;
             continue;
-
         case '\\':
             if (!(flags & RBC_FNM_NOESCAPE) && p + 1 < pattern_end)
             {
@@ -277,7 +273,6 @@ static int rbc_fnmatch_recursive(const char *pattern, const char *pattern_end, c
                 goto backtrack;
             }
             // **** FALLTHROUGH ****
-
         default:
             if (rbc_char_match(*p, *s, flags))
             {
@@ -294,7 +289,6 @@ static int rbc_fnmatch_recursive(const char *pattern, const char *pattern_end, c
             // If PATHNAME, `*` cannot match across `/`
             if ((flags & RBC_FNM_PATHNAME) && *s_start == '/')
                 return false;
-
             p = p_start;
             rbc_utf8_decode(&s_start); // Advance by one codepoint (UTF-8 safe)
             s = s_start;
