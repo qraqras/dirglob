@@ -21,40 +21,6 @@ typedef enum rbc_segment_type_e
     RBC_SEGMENT_BRANCH,    // Branch segment (`/{a, *, c}/`)
 } rbc_segment_type_t;
 
-/// @brief Match strategy enumeration
-typedef enum rbc_match_strategy_e
-{
-    RBC_MATCH_STRATEGY_LITERAL,       // `literal`
-    RBC_MATCH_STRATEGY_STAR,          // `*`
-    RBC_MATCH_STRATEGY_QUESTION,      // `??`
-    RBC_MATCH_STRATEGY_PREFIX,        // `prefix*`
-    RBC_MATCH_STRATEGY_SUFFIX,        // `*suffix`
-    RBC_MATCH_STRATEGY_PREFIX_SUFFIX, // `prefix*suffix`
-} rbc_match_strategy_t;
-
-/// @brief Match hints structure
-typedef struct rbc_match_hints_s
-{
-    rbc_match_strategy_t strategy; // Fast path type (1 byte)
-    uint16_t pattern_len;          // Pattern length (avoids strlen)
-    uint16_t prefix_len;           // Literal prefix length
-    uint16_t suffix_len;           // Literal suffix length
-} rbc_match_hints_t;
-
-/// @brief Precompiled fnmatch pattern structure
-struct rbc_fnmatch_pattern_s
-{
-    const char *pattern;     // Original pattern string
-    rbc_match_hints_t hints; // Optimization hints
-};
-
-/// @brief Branch alternatives structure (for brace expansion)
-typedef struct rbc_alternatives_s
-{
-    rbc_fnmatch_pattern_t **patterns; // Array of precompiled patterns
-    size_t count;                     // Number of alternatives
-} rbc_alternatives_t;
-
 /// @brief Context Structure
 typedef struct rbc_ctx_s
 {
@@ -88,8 +54,6 @@ struct rbc_segment_s
         struct
         {
             char *original_pattern;
-            rbc_fnmatch_pattern_t *compiled;  // Precompiled pattern (may be NULL if fallback needed)
-            rbc_alternatives_t *alternatives; // For brace-expanded patterns (mutually exclusive with compiled)
         } glob;
 
         // SEG_BRANCH
@@ -191,13 +155,6 @@ void rbc_glob_results_clear(rbc_results_t *results);
 rbc_segment_t *rbc_glob_segment_compile(rbc_arena_t *arena, const char *pattern, unsigned int flags);
 void rbc_segment_exec(rbc_segment_t *root, const char *base_path, unsigned flags, bool sort, rbc_match_callback_t callback, void *user_data, rbc_arena_t *arena);
 bool rbc_segment_match(const rbc_segment_t *seg, const char *name, unsigned int flags);
-/// @}
-
-/// @defgroup Helper Functions
-/// @{
-rbc_alternatives_t *rbc_alternatives_compile(rbc_arena_t *arena, const char *pattern, unsigned int flags);
-void rbc_alternatives_free(rbc_alternatives_t *alt, rbc_arena_t *arena);
-bool rbc_alternatives_match(const rbc_alternatives_t *alt, const char *name, unsigned int flags);
 /// @}
 
 #endif /* RBC_INTERNAL_H */

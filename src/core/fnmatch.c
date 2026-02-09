@@ -92,11 +92,14 @@ static const char *rbc_bracket_consume(const char *pattern, uint32_t c, unsigned
     if ((flags & RBC_FNM_PATHNAME) && c == '/')
         return NULL;
     if (*p == ']')
-        return NULL;
+        return NULL; // `[]` matches nothing
 
     bool invert;
     if (invert = (*p == '!' || *p == '^'))
-        p++;
+        p++; // `[!]` matches any character
+
+    if (flags & RBC_FNM_CASEFOLD)
+        c = rbc_ascii_tolower(c);
 
     bool matched = false;
     while (*p)
@@ -104,36 +107,45 @@ static const char *rbc_bracket_consume(const char *pattern, uint32_t c, unsigned
         if (*p == ']')
             return (invert ? !matched : matched) ? p + 1 : NULL;
         if (*p == '\\' && !(flags & RBC_FNM_NOESCAPE) && p[1])
-            p++;
-        if (p[1] == '-' && p[2] && p[2] != ']')
+            p++; // skip escape
+
+        const char *next = p;
+        uint32_t pc = rbc_utf8_decode(&next);
+
+        if (*next == '-' && next[1] && next[1] != ']')
         {
-            uint32_t start = (unsigned char)*p;
-            uint32_t end = (unsigned char)p[2];
-            uint32_t ch = c;
+            const char *end_pos = next + 1; // skip hyphen
+            if (*end_pos == '\\' && !(flags & RBC_FNM_NOESCAPE) && end_pos[1])
+                end_pos++; // skip escape for range end
+            uint32_t end_cp = rbc_utf8_decode(&end_pos);
+            uint32_t start = pc;
+            uint32_t end = end_cp;
             if (flags & RBC_FNM_CASEFOLD)
             {
                 start = rbc_ascii_tolower(start);
                 end = rbc_ascii_tolower(end);
-                ch = rbc_ascii_tolower(ch);
             }
-            matched |= ch >= start && ch <= end;
-            p += 3;
+            // NOTE: When start > end (inverted range, e.g. [z-a]),
+            // the range check is always false, so only endpoint equality applies.
+            // This matches Ruby's behavior (POSIX leaves inverted ranges undefined).
+            matched |= (start <= c && c <= end) || c == start || c == end;
+            p = end_pos;
             continue;
         }
-        matched |= rbc_char_match(*p, c, flags);
-        p++;
+        matched |= rbc_char_match(pc, c, flags);
+        p = next;
     }
     return NULL;
 }
 
-/// @brief Check if leading dot prevents match (DOTMATCH restriction)
+/// @brief Check if pattern can match a leading dot in string
 /// @param pattern Current position in pattern
 /// @param string Current position in string
 /// @param flags Matching flags
-/// @return true if dot restriction prevents match
-static inline bool rbc_dot_mismatch(const char *pattern, const char *string, unsigned flags)
+/// @return true if matching can proceed, false if dot is hidden
+static inline bool rbc_can_dotmatch(const char *pattern, const char *string, unsigned flags)
 {
-    return !(flags & RBC_FNM_DOTMATCH) && *pattern != '.' && *string == '.';
+    return *string != '.' || *pattern == '.' || (flags & RBC_FNM_DOTMATCH);
 }
 
 /// @param pattern Pattern string
@@ -152,7 +164,7 @@ static int rbc_fnmatch_recursive(const char *pattern, const char *pattern_end, c
     const char *p_start = NULL; // Position after last `*` in pattern
     const char *s_start = NULL; // Position in string when `*` was seen
 
-    if (p < pattern_end && rbc_dot_mismatch(p, s, flags))
+    if (!rbc_can_dotmatch(p, s, flags))
         return false;
 
     while (*s)
@@ -164,7 +176,7 @@ static int rbc_fnmatch_recursive(const char *pattern, const char *pattern_end, c
         {
         case '*':
         {
-            bool seg_start = (p == pattern || p[-1] == '/');
+            bool seg_start = p == pattern || p[-1] == '/';
 
             // Handle `**/` (If not PATHNAME, this behaves the same as `*`)
             if ((flags & RBC_FNM_PATHNAME) && seg_start && p + 2 < pattern_end && p[1] == '*' && p[2] == '/')
@@ -194,7 +206,7 @@ static int rbc_fnmatch_recursive(const char *pattern, const char *pattern_end, c
                 for (;;)
                 {
                     // Try matching rest of pattern from here
-                    if (!rbc_dot_mismatch(p_rest, s_try, flags) && rbc_fnmatch_recursive(p_rest, pattern_end, s_try, flags, depth + 1))
+                    if (rbc_can_dotmatch(p_rest, s_try, flags) && rbc_fnmatch_recursive(p_rest, pattern_end, s_try, flags, depth + 1))
                         return true;
 
                     // Advance to next `/` in string
@@ -313,58 +325,12 @@ bool rbc_fnmatch(const char *pattern, const char *path, unsigned flags)
 {
     if (!pattern || !path)
         return false;
-
     return rbc_fnmatch_recursive(pattern, pattern + strlen(pattern), path, flags, 0);
 }
 
 bool rbc_fnmatch_len(const char *pattern, size_t pattern_len, const char *path, unsigned flags)
 {
-    if (!pattern || !path || (pattern_len == 0))
+    if (!pattern || !path || pattern_len == 0)
         return false;
-
     return rbc_fnmatch_recursive(pattern, pattern + pattern_len, path, flags, 0);
-}
-
-/* Stub implementations for precompiled pattern API */
-struct rbc_fnmatch_pattern_s
-{
-    char *pattern;
-    unsigned flags;
-};
-
-rbc_fnmatch_pattern_t *rbc_fnmatch_compile(const char *pattern, unsigned flags)
-{
-    if (!pattern)
-        return NULL;
-
-    rbc_fnmatch_pattern_t *fp = malloc(sizeof(rbc_fnmatch_pattern_t));
-    if (!fp)
-        return NULL;
-
-    fp->pattern = strdup(pattern);
-    if (!fp->pattern)
-    {
-        free(fp);
-        return NULL;
-    }
-    fp->flags = flags;
-    return fp;
-}
-
-bool rbc_xfnmatch(const rbc_fnmatch_pattern_t *fp, const char *path, unsigned flags)
-{
-    if (!fp || !fp->pattern || !path)
-        return false;
-    /* Use flags from compiled pattern, but allow override */
-    unsigned use_flags = fp->flags | flags;
-    return rbc_fnmatch(fp->pattern, path, use_flags);
-}
-
-void rbc_fnmatch_pattern_free(rbc_fnmatch_pattern_t *fp)
-{
-    if (fp)
-    {
-        free(fp->pattern);
-        free(fp);
-    }
 }

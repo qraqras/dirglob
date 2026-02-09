@@ -186,59 +186,6 @@ void bench_rbc_fnmatch(const char *pattern, int iterations)
     free(files);
 }
 
-void bench_rbc_xfnmatch(const char *pattern, int iterations)
-{
-    // Collect all files first
-    char **files = NULL;
-    size_t capacity = 0;
-    size_t file_count = collect_files_recursive(".", &files, &capacity, 0);
-
-    if (file_count == 0)
-    {
-        printf("rbc_xfnmatch : No files to test\n");
-        return;
-    }
-
-    // Precompile pattern once
-    rbc_fnmatch_pattern_t *fp = rbc_fnmatch_compile(pattern, 0);
-    if (!fp)
-    {
-        printf("rbc_xfnmatch : Failed to compile pattern\n");
-        for (size_t i = 0; i < file_count; i++)
-            free(files[i]);
-        free(files);
-        return;
-    }
-
-    double start = get_time_sec();
-    size_t total_matches = 0;
-
-    // Use precompiled pattern for all iterations
-    for (int i = 0; i < iterations; i++)
-    {
-        size_t matches = 0;
-        for (size_t j = 0; j < file_count; j++)
-        {
-            if (rbc_xfnmatch(fp, files[j], 0))
-            {
-                matches++;
-            }
-        }
-        total_matches += matches;
-    }
-    double end = get_time_sec();
-    double elapsed = end - start;
-    double avg_per_iter = elapsed / iterations;
-    printf("rbc_xfnmatch : %.6f sec total, %.6f sec/iter, matches: %zu, %.2f iter/sec (tested %zu files)\n",
-           elapsed, avg_per_iter, total_matches / iterations, 1.0 / avg_per_iter, file_count);
-
-    // Cleanup
-    rbc_fnmatch_pattern_free(fp);
-    for (size_t i = 0; i < file_count; i++)
-        free(files[i]);
-    free(files);
-}
-
 int main(int argc, char **argv)
 {
     if (argc < 2)
@@ -279,7 +226,6 @@ int main(int argc, char **argv)
             printf("--- Fnmatch Benchmarks ---\n");
             bench_libc_fnmatch(patterns[i], iterations);
             bench_rbc_fnmatch(patterns[i], iterations);
-            bench_rbc_xfnmatch(patterns[i], iterations);
         }
         return 0;
     }
@@ -319,7 +265,6 @@ int main(int argc, char **argv)
         printf("--- Fnmatch Benchmarks ---\n");
         bench_libc_fnmatch(pattern, iterations);
         bench_rbc_fnmatch(pattern, iterations);
-        bench_rbc_xfnmatch(pattern, iterations);
         printf("\n");
     }
 

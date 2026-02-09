@@ -87,12 +87,8 @@ void rbc_glob_pattern_free(rbc_glob_pattern_t *gp);
 
 /// @defgroup rbc_fnmatch Fnmatch Functions
 /// @{
-typedef struct rbc_fnmatch_pattern_s rbc_fnmatch_pattern_t;
 bool rbc_fnmatch(const char *pattern, const char *path, unsigned flags);
 bool rbc_fnmatch_len(const char *pattern, size_t pattern_len, const char *path, unsigned flags);
-bool rbc_xfnmatch(const rbc_fnmatch_pattern_t *fp, const char *path, unsigned flags);
-rbc_fnmatch_pattern_t *rbc_fnmatch_compile(const char *pattern, unsigned flags);
-void rbc_fnmatch_pattern_free(rbc_fnmatch_pattern_t *fp);
 /// @}
 
 #endif /* RBC_RBC_H */
