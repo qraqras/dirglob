@@ -131,7 +131,7 @@ static size_t rbc_path_join(
     size_t component_len)
 {
     // Worst case: `base + '/' + component + '\0'`
-    if ((base_len + component_len + 2) > buf_size)
+    if (base_len + component_len + 2 > buf_size)
         return 0;
     memcpy(buf, base, base_len);
     size_t pos = base_len;
@@ -156,7 +156,7 @@ static size_t rbc_path_append_slash(char *buf, size_t buf_size, size_t path_len)
         return 0;
     if (buf[path_len - 1] == '/')
         return path_len;
-    if ((path_len + 2) > buf_size)
+    if (path_len + 2 > buf_size)
         return 0;
     buf[path_len++] = '/';
     buf[path_len] = '\0';
@@ -177,12 +177,12 @@ static size_t rbc_path_append_component(
     const char *component,
     size_t component_len)
 {
-    size_t need_sep = (path_len > 0 && buf[path_len - 1] != '/') ? 1 : 0;
-    if ((path_len + need_sep + component_len + 1) > buf_size)
+    size_t need_sep = path_len > 0 && buf[path_len - 1] != '/' ? 1 : 0;
+    if (path_len + need_sep + component_len + 1 > buf_size)
         return 0;
     if (need_sep)
         buf[path_len++] = '/';
-    memcpy(buf + path_len, component, component_len);
+    memcpy((buf + path_len), component, component_len);
     path_len += component_len;
     buf[path_len] = '\0';
     return path_len;
@@ -209,12 +209,12 @@ static bool rbc_wildcard_can_match_dotfile(const char *name, unsigned flags, boo
         return true;
     // `.`
     if (name[1] == '\0')
-        return ((explicit_dot || (flags & RBC_FNM_DOTMATCH)) && !(flags & RBC_GLOB_HAS_WILDCARD_ANCESTOR));
+        return (explicit_dot || flags & RBC_FNM_DOTMATCH) && !(flags & RBC_GLOB_HAS_WILDCARD_ANCESTOR);
     // `..`
     if (name[1] == '.' && name[2] == '\0')
         return false;
     // `.hidden`
-    return (explicit_dot || (flags & RBC_FNM_DOTMATCH));
+    return explicit_dot || flags & RBC_FNM_DOTMATCH;
 }
 
 /// @brief Check if ** pattern can descend into or emit a dotfile entry
@@ -236,7 +236,7 @@ static bool rbc_recursive_can_descend_into_dotfile(const char *name, unsigned fl
     if (name[1] == '.' && name[2] == '\0')
         return false;
     // `.hidden`
-    return (flags & RBC_FNM_DOTMATCH);
+    return flags & RBC_FNM_DOTMATCH;
 }
 
 /// @defgroup Path Segment
@@ -287,17 +287,17 @@ static bool rbc_segment_next(const char **pattern, unsigned flags, rbc_segment_t
         return false;
 
     seg->start = p;
-    seg->starts_with_dot = (*p == '.');
+    seg->starts_with_dot = *p == '.';
     seg->has_trailing_slash = false;
 
     // Scan the segment
     unsigned char_flags = 0;
     bool in_bracket = false; // Bracket can not be nested, so a simple flag is sufficient
 
-    while (*p && !((*p == '/') && !in_bracket))
+    while (*p && !(*p == '/' && !in_bracket))
     {
         // Handle escape sequences
-        if (!(flags & RBC_FNM_NOESCAPE) && (*p == '\\') && *(p + 1))
+        if (!(flags & RBC_FNM_NOESCAPE) && *p == '\\' && *(p + 1))
         {
             char_flags |= RBC_SEG_CONTAINS_ESCAPE;
             p += 2;
@@ -342,7 +342,7 @@ static bool rbc_segment_next(const char **pattern, unsigned flags, rbc_segment_t
     }
     seg->is_last = (*p == '\0');
 
-    if ((seg->len == 2) && (char_flags == RBC_SEG_CONTAINS_STAR) && seg->has_trailing_slash)
+    if (seg->len == 2 && char_flags == RBC_SEG_CONTAINS_STAR && seg->has_trailing_slash)
         seg->type = SEG_RECURSIVE;
     else if (char_flags == RBC_SEG_CONTAINS_REGULAR)
         seg->type = SEG_LITERAL;
@@ -599,7 +599,7 @@ static void rbc_glob_scan_recursive(
         if (rbc_glob_should_exit(ctx))
             break;
 
-        if (is_first_call && (ctx->shared_dirent.name[0] == '.' && ctx->shared_dirent.name[1] == '\0') && !(flags & RBC_FNM_DOTMATCH))
+        if (is_first_call && ctx->shared_dirent.name[0] == '.' && ctx->shared_dirent.name[1] == '\0' && !(flags & RBC_FNM_DOTMATCH))
             continue; // Skip "." on first call to avoid duplicate of current directory
 
         // Copy entry fields locally: shared_dirent is overwritten by descendant readdir calls
@@ -758,11 +758,11 @@ static void rbc_glob_dispatch(const char *path, size_t path_len, size_t baselen,
         if (path_len > 0)
         {
             full_len = rbc_path_join(full_path, sizeof(full_path), path, path_len, pattern, literal_len);
-            path_ok = (full_len > 0);
+            path_ok = full_len > 0;
         }
         else
         {
-            path_ok = (literal_len < sizeof(full_path));
+            path_ok = literal_len < sizeof(full_path);
             if (path_ok)
             {
                 memcpy(full_path, pattern, literal_len);
@@ -915,8 +915,7 @@ static bool rbc_brace_add(rbc_brace_result_t *r, const char *pattern, size_t len
     return true;
 }
 
-static void rbc_brace_expand_impl(const char *pattern, size_t len,
-                                  rbc_brace_result_t *result, int depth);
+static void rbc_brace_expand_impl(const char *pattern, size_t len, rbc_brace_result_t *result, int depth);
 
 static void rbc_brace_expand_option(
     const char *prefix,
@@ -962,7 +961,7 @@ static void rbc_brace_expand_impl(
         if (buf_pos >= sizeof(buf) - 1)
             return; // Buffer full
 
-        if ((*p == '\\') && ((p + 1) < end))
+        if (*p == '\\' && p + 1 < end)
         {
             if (buf_pos >= sizeof(buf) - 2)
                 return;
@@ -985,7 +984,7 @@ static void rbc_brace_expand_impl(
 
             while (scan < end)
             {
-                if ((*scan == '\\') && ((scan + 1) < end))
+                if (*scan == '\\' && scan + 1 < end)
                 {
                     scan += 2;
                     continue;
@@ -1020,11 +1019,11 @@ static void rbc_brace_expand_impl(
             }
 
             // Expand all options
-            size_t suffix_len = end - (close + 1);
+            size_t suffix_len = end - close + 1;
             for (size_t i = 0; i < opt_count && !result->error; i++)
             {
                 const char *opt_start = opt_starts[i];
-                const char *opt_end = (i + 1 < opt_count) ? opt_starts[i + 1] - 1 : close;
+                const char *opt_end = i + 1 < opt_count ? opt_starts[i + 1] - 1 : close;
                 size_t opt_len = opt_end - opt_start;
 
                 rbc_brace_expand_option(
@@ -1057,7 +1056,7 @@ static bool rbc_brace_has_expandable(const char *pattern, size_t len)
 
     while (p < end)
     {
-        if (*p == '\\' && (p + 1) < end)
+        if (*p == '\\' && p + 1 < end)
         {
             p += 2;
             continue;

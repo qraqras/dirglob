@@ -1,13 +1,3 @@
-/*
- * Simple iterative fnmatch implementation
- * Inspired by SQLite glob.c (Public Domain)
- * Adapted for Ruby File.fnmatch compatibility
- */
-
-/*
- * 参照実装: https://github.com/sqlite/sqlite/blob/master/src/func.c#L728
- */
-
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -31,7 +21,7 @@ static inline bool rbc_should_skip_dot(const char *pattern, const char *string, 
 /// @return true if advanced position is at segment start (after '/')
 static inline bool rbc_advance_pattern(const char **pattern, unsigned flags)
 {
-    return (*(*pattern)++ == '/') && (flags & RBC_FNM_PATHNAME);
+    return *(*pattern)++ == '/' && flags & RBC_FNM_PATHNAME;
 }
 
 /// @brief Match bracket expression [..]
@@ -46,7 +36,7 @@ static const char *rbc_match_bracket(const char *pattern, int c, unsigned flags)
     bool invert = false;
     bool matched = false;
 
-    if ((flags & RBC_FNM_PATHNAME) && c == '/')
+    if (flags & RBC_FNM_PATHNAME && c == '/')
         return NULL;
 
     if (*p == ']')
@@ -61,7 +51,7 @@ static const char *rbc_match_bracket(const char *pattern, int c, unsigned flags)
     while (*p)
     {
         if (*p == ']')
-            return (invert ? !matched : matched) ? (p + 1) : NULL;
+            return (invert ? !matched : matched) ? p + 1 : NULL;
 
         if (*p == '\\' && !(flags & RBC_FNM_NOESCAPE) && p[1])
             p++;
@@ -71,7 +61,6 @@ static const char *rbc_match_bracket(const char *pattern, int c, unsigned flags)
             int start = (unsigned char)*p;
             int end = (unsigned char)p[2];
             int ch = c;
-
             if (flags & RBC_FNM_CASEFOLD)
             {
                 start = tolower(start);
@@ -79,7 +68,7 @@ static const char *rbc_match_bracket(const char *pattern, int c, unsigned flags)
                 ch = tolower(ch);
             }
 
-            matched |= (ch >= start && ch <= end);
+            matched |= ch >= start && ch <= end;
             p += 3;
             continue;
         }
@@ -123,12 +112,13 @@ static int rbc_fnmatch_recursive(const char *pattern, const char *pattern_end, c
         {
         case '*':
             // Handle `**/` (If not PATHNAME, this behaves the same as `*`)
-            if ((flags & RBC_FNM_PATHNAME) && at_segment_start &&
-                p + 2 < pattern_end && p[1] == '*' && p[2] == '/')
+            if (flags & RBC_FNM_PATHNAME && at_segment_start && (p + 2) < pattern_end && p[1] == '*' && p[2] == '/')
             {
                 // Skip `**/` patterns consecutively
-                while (p + 2 < pattern_end && p[0] == '*' && p[1] == '*' && p[2] == '/')
+                do
+                {
                     p += 3;
+                } while (p + 2 < pattern_end && p[0] == '*' && p[1] == '*' && p[2] == '/');
 
                 const char *p_rest = p;
 
@@ -146,11 +136,10 @@ static int rbc_fnmatch_recursive(const char *pattern, const char *pattern_end, c
                 const char *s_try = s;
 
                 // Try matching at current position and after each / in string
-                while (1)
+                for (;;)
                 {
                     // Try matching rest of pattern from here
-                    if (!rbc_should_skip_dot(p_rest, s_try, flags) &&
-                        rbc_fnmatch_recursive(p_rest, pattern_end, s_try, flags, depth + 1))
+                    if (!rbc_should_skip_dot(p_rest, s_try, flags) && rbc_fnmatch_recursive(p_rest, pattern_end, s_try, flags, depth + 1))
                         return true;
 
                     // Advance to next `/` in string
@@ -186,7 +175,7 @@ static int rbc_fnmatch_recursive(const char *pattern, const char *pattern_end, c
             }
 
             // If not DOTMATCH, `*` cannot match `.` at segment start
-            if ((flags & RBC_FNM_PATHNAME) && at_segment_start && !(flags & RBC_FNM_DOTMATCH) && *s == '.')
+            if (flags & RBC_FNM_PATHNAME && at_segment_start && !(flags & RBC_FNM_DOTMATCH) && *s == '.')
                 goto backtrack;
 
             // Record positions for backtracking
@@ -196,7 +185,7 @@ static int rbc_fnmatch_recursive(const char *pattern, const char *pattern_end, c
             continue;
 
         case '?':
-            if ((flags & RBC_FNM_PATHNAME) && *s == '/')
+            if (flags & RBC_FNM_PATHNAME && *s == '/')
                 goto backtrack;
             at_segment_start = rbc_advance_pattern(&p, flags);
             rbc_next_codepoint(&s);
@@ -237,7 +226,7 @@ static int rbc_fnmatch_recursive(const char *pattern, const char *pattern_end, c
         if (p_start)
         {
             // If PATHNAME, `*` cannot match across `/`
-            if ((flags & RBC_FNM_PATHNAME) && *s_start == '/')
+            if (flags & RBC_FNM_PATHNAME && *s_start == '/')
                 return false;
 
             p = p_start;
@@ -282,7 +271,7 @@ bool rbc_fnmatch(const char *pattern, const char *path, unsigned flags)
 
 bool rbc_fnmatch_len(const char *pattern, size_t pattern_len, const char *path, unsigned flags)
 {
-    if (!pattern || !path || pattern_len == 0)
+    if (!pattern || !path || (pattern_len == 0))
         return false;
 
     return rbc_fnmatch_recursive(pattern, pattern + pattern_len, path, flags, 0);
