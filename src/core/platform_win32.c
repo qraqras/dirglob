@@ -1,10 +1,3 @@
-/**
- * @file platform_win32.c
- * @brief Windows implementation of platform abstraction layer
- *
- * Uses UTF-8 for external interface, converts to UTF-16 for Windows API calls.
- */
-
 #ifdef _WIN32
 
 #include "platform.h"

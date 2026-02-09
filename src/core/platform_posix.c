@@ -1,10 +1,3 @@
-/**
- * @file platform_posix.c
- * @brief POSIX implementation of platform abstraction layer
- *
- * For: Linux, macOS, BSD, and other POSIX-compliant systems
- */
-
 #ifndef _WIN32
 
 #include "platform.h"

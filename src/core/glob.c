@@ -209,12 +209,12 @@ static bool rbc_wildcard_can_match_dotfile(const char *name, unsigned flags, boo
         return true;
     // `.`
     if (name[1] == '\0')
-        return (explicit_dot || flags & RBC_FNM_DOTMATCH) && !(flags & RBC_GLOB_HAS_WILDCARD_ANCESTOR);
+        return (explicit_dot || (flags & RBC_FNM_DOTMATCH)) && !(flags & RBC_GLOB_HAS_WILDCARD_ANCESTOR);
     // `..`
     if (name[1] == '.' && name[2] == '\0')
         return false;
     // `.hidden`
-    return explicit_dot || flags & RBC_FNM_DOTMATCH;
+    return explicit_dot || (flags & RBC_FNM_DOTMATCH);
 }
 
 /// @brief Check if ** pattern can descend into or emit a dotfile entry
@@ -236,7 +236,7 @@ static bool rbc_recursive_can_descend_into_dotfile(const char *name, unsigned fl
     if (name[1] == '.' && name[2] == '\0')
         return false;
     // `.hidden`
-    return flags & RBC_FNM_DOTMATCH;
+    return (flags & RBC_FNM_DOTMATCH);
 }
 
 /// @defgroup Path Segment
