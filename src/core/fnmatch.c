@@ -92,13 +92,19 @@ static const char *rbc_match_bracket(const char *pattern, int c, unsigned flags)
 }
 
 /// @brief Internal fnmatch implementation with pattern length
+#define RBC_FNMATCH_MAX_RECURSION 64
+
 /// @param pattern Pattern string
 /// @param pattern_end End of pattern (exclusive)
 /// @param string Target string
 /// @param flags Matching flags
+/// @param depth Current recursion depth
 /// @return true if matched, false if no match
-static int rbc_fnmatch_internal_len(const char *pattern, const char *pattern_end, const char *string, unsigned flags)
+static int rbc_fnmatch_recursive(const char *pattern, const char *pattern_end, const char *string, unsigned flags, int depth)
 {
+    if (depth > RBC_FNMATCH_MAX_RECURSION)
+        return false;
+
     const char *p = pattern;
     const char *s = string;
     const char *p_start = NULL;   // Position after last `*` in pattern
@@ -144,7 +150,7 @@ static int rbc_fnmatch_internal_len(const char *pattern, const char *pattern_end
                 {
                     // Try matching rest of pattern from here
                     if (!rbc_should_skip_dot(p_rest, s_try, flags) &&
-                        rbc_fnmatch_internal_len(p_rest, pattern_end, s_try, flags))
+                        rbc_fnmatch_recursive(p_rest, pattern_end, s_try, flags, depth + 1))
                         return true;
 
                     // Advance to next `/` in string
@@ -235,7 +241,8 @@ static int rbc_fnmatch_internal_len(const char *pattern, const char *pattern_end
                 return false;
 
             p = p_start;
-            s = ++s_start; // Advance string and retry
+            rbc_next_codepoint(&s_start); // Advance by one codepoint (UTF-8 safe)
+            s = s_start;
             // Check if p_start is right after '/' in pattern
             at_segment_start = (p_start > pattern && p_start[-1] == '/');
             continue;
@@ -270,7 +277,7 @@ bool rbc_fnmatch(const char *pattern, const char *path, unsigned flags)
     if (!pattern || !path)
         return false;
 
-    return rbc_fnmatch_internal_len(pattern, pattern + strlen(pattern), path, flags);
+    return rbc_fnmatch_recursive(pattern, pattern + strlen(pattern), path, flags, 0);
 }
 
 bool rbc_fnmatch_len(const char *pattern, size_t pattern_len, const char *path, unsigned flags)
@@ -278,7 +285,7 @@ bool rbc_fnmatch_len(const char *pattern, size_t pattern_len, const char *path, 
     if (!pattern || !path || pattern_len == 0)
         return false;
 
-    return rbc_fnmatch_internal_len(pattern, pattern + pattern_len, path, flags);
+    return rbc_fnmatch_recursive(pattern, pattern + pattern_len, path, flags, 0);
 }
 
 /* Stub implementations for precompiled pattern API */

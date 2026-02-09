@@ -9,7 +9,8 @@
 #include <string.h>
 #include <stdlib.h>
 
-#define RBC_GLOB_MAX_PATH RBC_MAX_PATH
+#define RBC_GLOB_MAX_PATH 4096     // Max path length for glob operations
+#define RBC_NAME_BUF_SIZE 256      // Buffer for entry names (should be >= NAME_MAX)
 #define RBC_RESULTS_INIT_COUNT 256 // Initial path count
 
 /// @defgroup Internal Glob Flags (high bits, not part of public FNM_* flags)
@@ -27,6 +28,7 @@ typedef bool (*rbc_glob_emitfunc_t)(const char *path, size_t path_len, void *use
 typedef struct rbc_glob_ctx_s
 {
     rbc_glob_status_t status;
+    rbc_dirent_t shared_dirent;
     rbc_glob_errfunc_t errfunc;
     void *errfunc_data;
     // streaming mode
@@ -35,6 +37,7 @@ typedef struct rbc_glob_ctx_s
     // buffering mode
     rbc_glob_result_t *result;
     size_t result_capacity;
+    // shared readdir buffer (avoids ~4KB per recursive frame)
 } rbc_glob_ctx_t;
 
 /// @brief Initialize emit context for streaming mode
@@ -45,13 +48,12 @@ typedef struct rbc_glob_ctx_s
 /// @param[in] errfunc_data
 static bool rbc_glob_ctx_init_streaming(rbc_glob_ctx_t *ctx, rbc_glob_emitfunc_t emitfunc, void *emitfunc_data, rbc_glob_errfunc_t errfunc, void *errfunc_data)
 {
+    memset(ctx, 0, sizeof(*ctx));
     ctx->status = RBC_GLOB_SUCCESS;
     ctx->errfunc = errfunc;
     ctx->errfunc_data = errfunc_data;
     ctx->emitfunc = emitfunc;
     ctx->emitfunc_data = emitfunc_data;
-    ctx->result = NULL;
-    ctx->result_capacity = 0;
     return true;
 }
 
@@ -69,11 +71,10 @@ static bool rbc_glob_ctx_init_buffering(rbc_glob_ctx_t *ctx, rbc_glob_result_t *
         return false;
     result->count = 0;
     // ctx setup
+    memset(ctx, 0, sizeof(*ctx));
     ctx->status = RBC_GLOB_SUCCESS;
     ctx->errfunc = errfunc;
     ctx->errfunc_data = errfunc_data;
-    ctx->emitfunc = NULL;
-    ctx->emitfunc_data = NULL;
     ctx->result = result;
     ctx->result_capacity = RBC_RESULTS_INIT_COUNT;
     return true;
@@ -593,19 +594,23 @@ static void rbc_glob_scan_recursive(
         return;
     }
 
-    rbc_dirent_t entry;
-
-    while (rbc_readdir(dirp, &entry))
+    while (rbc_readdir(dirp, &ctx->shared_dirent))
     {
         if (rbc_glob_should_exit(ctx))
             break;
 
-        if (is_first_call && (entry.name[0] == '.' && entry.name[1] == '\0') && !(flags & RBC_FNM_DOTMATCH))
+        if (is_first_call && (ctx->shared_dirent.name[0] == '.' && ctx->shared_dirent.name[1] == '\0') && !(flags & RBC_FNM_DOTMATCH))
             continue; // Skip "." on first call to avoid duplicate of current directory
 
-        const char *name = entry.name;
-        bool is_dir = entry.is_dir;
-        bool is_link = entry.is_link;
+        // Copy entry fields locally: shared_dirent is overwritten by descendant readdir calls
+        char name_buf[RBC_NAME_BUF_SIZE];
+        size_t name_len = strlen(ctx->shared_dirent.name);
+        if (name_len >= sizeof(name_buf))
+            continue; // Exceeds NAME_MAX, skip
+        memcpy(name_buf, ctx->shared_dirent.name, name_len + 1);
+        const char *name = name_buf;
+        bool is_dir = ctx->shared_dirent.is_dir;
+        bool is_link = ctx->shared_dirent.is_link;
         bool can_descend = rbc_recursive_can_descend_into_dotfile(name, flags);
 
         // Decision 1: **/ at end - emit directory entries
@@ -628,7 +633,7 @@ static void rbc_glob_scan_recursive(
         // Skip symlinks to avoid infinite loops (Ruby behavior: ** does not follow symlinks)
         if (is_dir && !is_link && can_descend && !rbc_glob_should_exit(ctx))
         {
-            size_t new_len = rbc_path_append_component(path, RBC_GLOB_MAX_PATH, path_len, name, strlen(name));
+            size_t new_len = rbc_path_append_component(path, RBC_GLOB_MAX_PATH, path_len, name, name_len);
             if (new_len > 0)
             {
                 unsigned recurse_flags = flags | RBC_GLOB_HAS_WILDCARD_ANCESTOR;
@@ -664,15 +669,19 @@ static void rbc_glob_scan(const char *path, size_t path_len, size_t baselen, con
         return;
     }
 
-    rbc_dirent_t entry;
-
-    while (rbc_readdir(dirp, &entry))
+    while (rbc_readdir(dirp, &ctx->shared_dirent))
     {
         if (rbc_glob_should_exit(ctx))
             break;
 
-        const char *name = entry.name;
-        bool is_dir = entry.is_dir;
+        // Copy entry fields locally: shared_dirent may be overwritten by descendant calls
+        char name_buf[RBC_NAME_BUF_SIZE];
+        size_t name_len = strlen(ctx->shared_dirent.name);
+        if (name_len >= sizeof(name_buf))
+            continue; // Exceeds NAME_MAX, skip
+        memcpy(name_buf, ctx->shared_dirent.name, name_len + 1);
+        const char *name = name_buf;
+        bool is_dir = ctx->shared_dirent.is_dir;
 
         // Wildcard segments: check dotfile visibility
         if (seg->type == SEG_WILDCARD)
